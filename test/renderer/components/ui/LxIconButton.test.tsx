@@ -75,6 +75,79 @@ describe("LxIconButton", () => {
     expect(large.container.querySelector("button")?.className).toContain("text-sm")
   })
 
+  it("带文字按钮按尺寸档位托管容器高度，与图标模式一致：small=h-6，medium=h-7，large=h-8", () => {
+    const small = render(
+      <LxIconButton icon={<span />} iconOnly={false} size="small" aria-label="height-small">
+        label
+      </LxIconButton>,
+    )
+    expect(small.container.querySelector("button")?.className).toContain("h-6")
+
+    const medium = render(
+      <LxIconButton icon={<span />} iconOnly={false} size="medium" aria-label="height-medium">
+        label
+      </LxIconButton>,
+    )
+    expect(medium.container.querySelector("button")?.className).toContain("h-7")
+
+    const large = render(
+      <LxIconButton icon={<span />} iconOnly={false} size="large" aria-label="height-large">
+        label
+      </LxIconButton>,
+    )
+    expect(large.container.querySelector("button")?.className).toContain("h-8")
+  })
+
+  it("图标尺寸统一映射：按钮内 svg 按 size 档位强制尺寸", () => {
+    const small = render(
+      <LxIconButton aria-label="icon-small">
+        <svg className="h-3 w-3" />
+      </LxIconButton>,
+    )
+    const smallClass = small.container.querySelector("button")?.className ?? ""
+    expect(smallClass).toContain("[&_svg]:h-3.5")
+    expect(smallClass).toContain("[&_svg]:w-3.5")
+
+    const medium = render(
+      <LxIconButton size="medium" aria-label="icon-medium">
+        <svg className="h-3 w-3" />
+      </LxIconButton>,
+    )
+    const mediumClass = medium.container.querySelector("button")?.className ?? ""
+    expect(mediumClass).toContain("[&_svg]:h-4")
+    expect(mediumClass).toContain("[&_svg]:w-4")
+
+    const large = render(
+      <LxIconButton size="large" aria-label="icon-large">
+        <svg className="h-3 w-3" />
+      </LxIconButton>,
+    )
+    const largeClass = large.container.querySelector("button")?.className ?? ""
+    expect(largeClass).toContain("[&_svg]:h-[18px]")
+    expect(largeClass).toContain("[&_svg]:w-[18px]")
+  })
+
+  it("preset 带文字模式图标并入统一档位，不再使用偏小的 chip 档", () => {
+    const { container } = render(
+      <LxIconButton preset="add" iconOnly={false} aria-label="preset-chip">
+        label
+      </LxIconButton>,
+    )
+    const iconClass = container.querySelector("button svg")?.getAttribute("class") ?? ""
+    expect(iconClass).toContain("h-3.5")
+    expect(iconClass).not.toContain("h-2.5")
+  })
+
+  it("尾部关闭图标豁免统一映射，保持独立档位", () => {
+    const { container } = render(
+      <LxIconButton iconOnly={false} onClose={() => {}} confirmClose={false}>
+        label
+      </LxIconButton>,
+    )
+    const buttonClass = container.querySelector("button")?.className ?? ""
+    expect(buttonClass).toContain("[&_[role=button][data-variant=ghost]_svg]:h-3")
+  })
+
   it("suffix 直出渲染：自定义 icon 组不额外包裹容器", () => {
     const { container } = render(
       <LxIconButton

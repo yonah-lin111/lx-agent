@@ -397,7 +397,7 @@ export const SubagentSettings = (): React.JSX.Element => {
             onClick={handleOpenAdd}
             textClass="text-[var(--color-theme-text,rgba(255,255,255,0.8))]"
             hoverBgClass="hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))]"
-            className="shrink-0 rounded-[6px] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.15))] bg-[var(--color-theme-surface,rgba(255,255,255,0.04))] px-2.5 py-1.5 cursor-pointer"
+            className="shrink-0 rounded-[6px] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.15))] bg-[var(--color-theme-surface,rgba(255,255,255,0.04))] px-2.5 cursor-pointer"
             icon={<Plus className="h-3.5 w-3.5" />}
           >
             <span>{t("settings.subagentsAddRole")}</span>
@@ -562,7 +562,7 @@ export const SubagentSettings = (): React.JSX.Element => {
               iconOnly={false}
               onClick={() => setModalOpen(false)}
               textClass="text-white/70"
-              className="border border-white/10 px-3 py-1.5 cursor-pointer"
+              className="border border-white/10 px-3 cursor-pointer"
             >
               {t("settings.cancel")}
             </LxIconButton>
@@ -571,7 +571,7 @@ export const SubagentSettings = (): React.JSX.Element => {
               onClick={handleConfirm}
               textClass="text-white"
               hoverBgClass="hover:bg-white/[0.12]"
-              className="border border-white/15 bg-white/[0.08] px-3.5 py-1.5 font-medium cursor-pointer"
+              className="border border-white/15 bg-white/[0.08] px-3.5 font-medium cursor-pointer"
             >
               {t("settings.confirm")}
             </LxIconButton>

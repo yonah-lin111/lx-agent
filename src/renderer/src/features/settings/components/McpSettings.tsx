@@ -315,7 +315,7 @@ export const McpSettings = (): React.JSX.Element => {
             onClick={handleOpenAdd}
             textClass="text-white/75"
             hoverBgClass="hover:bg-white/[0.08]"
-            className="rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1 cursor-pointer hover:border-white/20"
+            className="rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 cursor-pointer hover:border-white/20"
             icon={<Plus className="h-3.5 w-3.5" />}
           >
             <span>{t("settings.mcpAddServer")}</span>
@@ -342,7 +342,7 @@ export const McpSettings = (): React.JSX.Element => {
                 onClick={handleOpenAdd}
                 textClass="text-white/75"
                 hoverBgClass="hover:bg-white/[0.08]"
-                className="rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1 cursor-pointer hover:border-white/20"
+                className="rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 cursor-pointer hover:border-white/20"
                 icon={<Plus className="h-3.5 w-3.5" />}
               >
                 <span>{t("settings.mcpAddServer")}</span>
@@ -656,7 +656,7 @@ export const McpSettings = (): React.JSX.Element => {
               iconOnly={false}
               onClick={() => setModalOpen(false)}
               textClass="text-white/70"
-              className="border border-white/10 px-3 py-1.5 cursor-pointer"
+              className="border border-white/10 px-3 cursor-pointer"
             >
               {t("settings.cancel")}
             </LxIconButton>
@@ -665,7 +665,7 @@ export const McpSettings = (): React.JSX.Element => {
               onClick={handleSaveModal}
               textClass="text-white"
               hoverBgClass="hover:bg-white/[0.12]"
-              className="border border-white/15 bg-white/[0.08] px-3.5 py-1.5 font-medium cursor-pointer"
+              className="border border-white/15 bg-white/[0.08] px-3.5 font-medium cursor-pointer"
             >
               {t("settings.confirm")}
             </LxIconButton>

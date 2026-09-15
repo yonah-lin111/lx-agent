@@ -47,6 +47,17 @@ describe("控件尺寸阶梯对齐", () => {
     }
   })
 
+  it("LxIconButton 带文字模式与图标模式同高：small h-6 / medium h-7 / large h-8", () => {
+    for (const { size, height } of HEIGHT_STEPS) {
+      const { container } = render(
+        <LxIconButton icon={<span />} iconOnly={false} size={size}>
+          label
+        </LxIconButton>,
+      )
+      expect(container.querySelector("button")?.className).toContain(height)
+    }
+  })
+
   it.each(HEIGHT_STEPS)("LxSelect $size 触发按钮高度为 $height", ({ size, height }) => {
     const { container } = render(
       <LxSelect value="a" onChange={() => {}} options={[{ value: "a", label: "A" }]} size={size} />,

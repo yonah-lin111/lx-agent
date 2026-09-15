@@ -364,7 +364,7 @@ export const CliSettings = (): React.JSX.Element => {
                         onClick={() => void handleRunAction(tool.id, "update", tool.displayName)}
                         textClass="text-purple-300"
                         hoverBgClass="hover:bg-purple-500/30"
-                        className="settings-cli-action-btn h-5.5 px-2 font-medium bg-purple-500/20 cursor-pointer"
+                        className="settings-cli-action-btn px-2 font-medium bg-purple-500/20 cursor-pointer"
                         icon={
                           operating === "update" ? (
                             <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -386,7 +386,7 @@ export const CliSettings = (): React.JSX.Element => {
                         onClick={() => void handleRunAction(tool.id, "install", tool.displayName)}
                         textClass="text-white/70"
                         hoverBgClass="hover:bg-white/[0.08]"
-                        className="settings-cli-action-btn h-5.5 border border-white/10 bg-white/[0.03] px-2 font-medium cursor-pointer hover:border-white/20"
+                        className="settings-cli-action-btn border border-white/10 bg-white/[0.03] px-2 font-medium cursor-pointer hover:border-white/20"
                         icon={
                           operating === "install" ? (
                             <Loader2 className="h-2.5 w-2.5 animate-spin" />

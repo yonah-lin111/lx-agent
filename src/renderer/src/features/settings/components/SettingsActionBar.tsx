@@ -50,7 +50,7 @@ export const SettingsActionBar = ({
         <LxIconButton
           disabled={!isDirty || isSaving}
           textClass="text-white/70"
-          className="px-2.5 py-1"
+          className="px-2.5"
           icon={<RotateCcw className="h-3.5 w-3.5" />}
         >
           <span>{t("common.reset")}</span>
@@ -61,7 +61,7 @@ export const SettingsActionBar = ({
       <LxIconButton
         disabled={!isDirty || isSaving}
         textClass="text-white"
-        className="px-3 py-1 font-medium"
+        className="px-3 font-medium"
         icon={<Save className="h-3.5 w-3.5" />}
         onClick={() => void handleSave()}
       >

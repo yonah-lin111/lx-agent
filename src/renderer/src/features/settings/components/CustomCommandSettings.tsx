@@ -609,7 +609,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                 onClick={handleStartCreate}
                 textClass="text-white"
                 hoverBgClass="hover:bg-white/15"
-                className="rounded-[6px] bg-white/10 px-3 py-1.5 cursor-pointer"
+                className="rounded-[6px] bg-white/10 px-3 cursor-pointer"
                 icon={<Plus className="h-3.5 w-3.5" />}
               >
                 {t("settings.addCustomCommand")}

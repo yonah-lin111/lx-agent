@@ -39,16 +39,36 @@ const SIZE_CONTAINER_CLASSES: Record<LxIconButtonSize, string> = {
   large: "h-8 w-8",
 }
 
+// 文本/芯片模式容器高度：与图标模式档位一致，调用点无需显式设置高度。
+const SIZE_HEIGHT_CLASSES: Record<LxIconButtonSize, string> = {
+  small: "h-6",
+  medium: "h-7",
+  large: "h-8",
+}
+
 const SIZE_ICON_CLASSES: Record<LxIconButtonSize, string> = {
   small: "h-3.5 w-3.5",
   medium: "h-4 w-4",
   large: "h-[18px] w-[18px]",
 }
 
-const SIZE_CHIP_ICON_CLASSES: Record<LxIconButtonSize, string> = {
-  small: "h-2.5 w-2.5",
-  medium: "h-3.5 w-3.5",
-  large: "h-4 w-4",
+// 图标尺寸统一映射：按钮内所有 svg（预设图标、icon prop、children 图标及包裹层内的图标）按 size 档位强制尺寸；
+// 该后代选择器优先级高于 svg 自带尺寸类，调用点的尺寸声明会被覆盖。尾部关闭图标单独豁免（见下）。
+const SIZE_ICON_FORCE_CLASSES: Record<LxIconButtonSize, string> = {
+  small: "[&_svg]:h-3.5 [&_svg]:w-3.5",
+  medium: "[&_svg]:h-4 [&_svg]:w-4",
+  large: "[&_svg]:h-[18px] [&_svg]:w-[18px]",
+}
+
+// 尾部关闭图标保持独立档位（对齐 LxTag），从统一映射中豁免；
+// 通过关闭入口的 role=button + data-variant=ghost 定位，避免命中 ghost 变体按钮自身的图标。
+const SIZE_CLOSE_ICON_FORCE_CLASSES: Record<LxIconButtonSize, string> = {
+  small:
+    "[&_[role=button][data-variant=ghost]_svg]:h-3 [&_[role=button][data-variant=ghost]_svg]:w-3",
+  medium:
+    "[&_[role=button][data-variant=ghost]_svg]:h-3 [&_[role=button][data-variant=ghost]_svg]:w-3",
+  large:
+    "[&_[role=button][data-variant=ghost]_svg]:h-3.5 [&_[role=button][data-variant=ghost]_svg]:w-3.5",
 }
 
 // 带文字按钮的字号：small=xs，medium/large=sm。
@@ -183,7 +203,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     const sizeStyles =
       iconOnly && !hasIconAndLabel && !hasSuffix
         ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0`
-        : SIZE_FONT_CLASSES[size]
+        : `${SIZE_HEIGHT_CLASSES[size]} ${SIZE_FONT_CLASSES[size]}`
     const finalHoverBg = showHoverBg
       ? (hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/10"))
       : ""
@@ -218,7 +238,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     } else if (PresetIcon && !iconOnly && children) {
       renderContent = (
         <>
-          <PresetIcon className={`${SIZE_CHIP_ICON_CLASSES[size]} flex-shrink-0`} />
+          <PresetIcon className={`${SIZE_ICON_CLASSES[size]} flex-shrink-0`} />
           {children}
         </>
       )
@@ -276,7 +296,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
         type={type}
         data-highlighted={highlighted ? "true" : undefined}
         data-variant={variant}
-        className={`${baseStyles} ${hasIconAndLabel || hasSuffix ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${stateStyles} ${className}`}
+        className={`${baseStyles} ${hasIconAndLabel || hasSuffix ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${SIZE_ICON_FORCE_CLASSES[size]} ${SIZE_CLOSE_ICON_FORCE_CLASSES[size]} ${stateStyles} ${className}`}
         disabled={disabled}
         {...props}
       >
