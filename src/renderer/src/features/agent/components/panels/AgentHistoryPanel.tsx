@@ -215,7 +215,7 @@ export const AgentHistoryPanel = ({
           aria-label={t("agent.searchHistory")}
           placeholder={t("agent.searchHistory")}
           prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
-          size="xs"
+          size="small"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />

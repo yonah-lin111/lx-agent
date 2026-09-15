@@ -256,7 +256,7 @@ export const ReferencedFolderCommandMenu = ({
           aria-label={t("project.searchFolderContent")}
           placeholder={t("project.searchFolderContent")}
           prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/40" />}
-          size="xs"
+          size="small"
           value={query}
           variant="simple"
           onChange={(event) => setQuery(event.target.value)}

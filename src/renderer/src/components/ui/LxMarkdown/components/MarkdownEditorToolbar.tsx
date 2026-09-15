@@ -124,7 +124,7 @@ export const MarkdownEditorToolbar = ({
         aria-label={t("common.search")}
         placeholder={t("common.search")}
         prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
-        size="xs"
+        size="small"
         value={shortcutQuery}
         onChange={(event) => setShortcutQuery(event.target.value)}
       />

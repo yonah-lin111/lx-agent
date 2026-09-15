@@ -16,24 +16,24 @@ const HEIGHT_STEPS = [
   { size: "large", height: "h-8" },
 ] as const
 
-// LxInput 尺寸枚举映射到统一阶梯。
+// LxInput 与统一阶梯同构：small=h-6 / medium=h-7 / large=h-8。
 const INPUT_HEIGHT_STEPS = [
-  { size: "xs", height: "h-6" },
-  { size: "sm", height: "h-7" },
-  { size: "lg", height: "h-8" },
-] as const
-
-// LxTag 的中间档名为 default，映射到统一阶梯的 medium（h-7）。
-const TAG_HEIGHT_STEPS = [
   { size: "small", height: "h-6" },
-  { size: "default", height: "h-7" },
+  { size: "medium", height: "h-7" },
   { size: "large", height: "h-8" },
 ] as const
 
-// LxNavItem 与 LxTag 共用 small/default/large 三档命名。
+// LxTag 与统一阶梯同构。
+const TAG_HEIGHT_STEPS = [
+  { size: "small", height: "h-6" },
+  { size: "medium", height: "h-7" },
+  { size: "large", height: "h-8" },
+] as const
+
+// LxNavItem 与 LxTag 共用 small/medium/large 三档命名。
 const NAV_ITEM_HEIGHT_STEPS = [
   { size: "small", height: "h-6" },
-  { size: "default", height: "h-7" },
+  { size: "medium", height: "h-7" },
   { size: "large", height: "h-8" },
 ] as const
 
@@ -82,15 +82,15 @@ describe("控件尺寸阶梯对齐", () => {
     expect(container.querySelector(".lx-input")?.className).toContain(height)
   })
 
-  it("LxInput 字号：xs（small）=text-xs，sm（default）/lg（大号）=text-sm", () => {
-    const xs = render(<LxInput size="xs" aria-label="font-xs" />)
-    expect(xs.container.querySelector("input")?.className).toContain("text-xs")
+  it("LxInput 字号：small=text-xs，medium/large=text-sm", () => {
+    const small = render(<LxInput size="small" aria-label="font-small" />)
+    expect(small.container.querySelector("input")?.className).toContain("text-xs")
 
-    const sm = render(<LxInput size="sm" aria-label="font-sm" />)
-    expect(sm.container.querySelector("input")?.className).toContain("text-sm")
+    const medium = render(<LxInput size="medium" aria-label="font-medium" />)
+    expect(medium.container.querySelector("input")?.className).toContain("text-sm")
 
-    const lg = render(<LxInput size="lg" aria-label="font-lg" />)
-    expect(lg.container.querySelector("input")?.className).toContain("text-sm")
+    const large = render(<LxInput size="large" aria-label="font-large" />)
+    expect(large.container.querySelector("input")?.className).toContain("text-sm")
   })
 
   it.each(TAG_HEIGHT_STEPS)("LxTag $size 高度为 $height", ({ size, height }) => {
@@ -103,7 +103,29 @@ describe("控件尺寸阶梯对齐", () => {
     expect(container.querySelector(".lx-nav-item")?.className).toContain(height)
   })
 
-  it("LxInput 默认尺寸为 sm（h-7），多行输入保持内容撑高", () => {
+  it("各 Lx 控件默认档统一为 medium（h-7）", () => {
+    expect(
+      render(<LxIconButton aria-label="default-icon" />).container.querySelector("button")
+        ?.className,
+    ).toContain("h-7")
+    expect(
+      render(<LxInput aria-label="default-input" />).container.querySelector(".lx-input")
+        ?.className,
+    ).toContain("h-7")
+    expect(render(<LxTag>tag</LxTag>).container.querySelector(".lx-tag")?.className).toContain(
+      "h-7",
+    )
+    expect(
+      render(<LxNavItem>item</LxNavItem>).container.querySelector(".lx-nav-item")?.className,
+    ).toContain("h-7")
+    expect(
+      render(
+        <LxSelect value="a" onChange={() => {}} options={[{ value: "a", label: "A" }]} />,
+      ).container.querySelector(".lx-select-trigger")?.className,
+    ).toContain("h-7")
+  })
+
+  it("LxInput 默认尺寸为 medium（h-7），多行输入保持内容撑高", () => {
     const singleLine = render(<LxInput aria-label="default-size" />)
     expect(singleLine.container.querySelector(".lx-input")?.className).toContain("h-7")
 
@@ -113,11 +135,11 @@ describe("控件尺寸阶梯对齐", () => {
     expect(multilineClassName).toContain("py-1.5")
   })
 
-  it("LxTag 内部尺度对齐控件档位：small=xs、default/large=sm，关闭图标逐档递增", () => {
+  it("LxTag 内部尺度对齐控件档位：small=xs、medium/large=sm，关闭图标逐档递增", () => {
     const small = render(<LxTag size="small">tag</LxTag>)
     expect(small.container.querySelector(".lx-tag")?.className).toContain("text-xs")
 
-    const middle = render(<LxTag size="default">tag</LxTag>)
+    const middle = render(<LxTag size="medium">tag</LxTag>)
     expect(middle.container.querySelector(".lx-tag")?.className).toContain("text-sm")
 
     const large = render(<LxTag size="large">tag</LxTag>)

@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useRef, useState } from "react"
 import { useTranslation } from "@/i18n"
 
 // 输入框尺寸。
-export type LxInputSize = "xs" | "sm" | "lg"
+export type LxInputSize = "small" | "medium" | "large"
 
 // 输入框样式。
 export type LxInputVariant = "default" | "simple"
@@ -59,16 +59,16 @@ export interface LxInputProps
 
 // 单行输入框固定高度：对齐 LxIconButton / LxSelect 的尺寸阶梯。
 const SIZE_CONTAINER_CLASSES: Record<LxInputSize, string> = {
-  xs: "h-6 gap-1.5 px-2",
-  sm: "h-7 gap-1.5 px-2.5",
-  lg: "h-8 gap-1.5 px-3",
+  small: "h-6 gap-1.5 px-2",
+  medium: "h-7 gap-1.5 px-2.5",
+  large: "h-8 gap-1.5 px-3",
 }
 
 // 多行输入框按内容撑高，仅保留内边距。
 const SIZE_MULTILINE_CLASSES: Record<LxInputSize, string> = {
-  xs: "gap-1.5 px-2 py-1",
-  sm: "gap-1.5 px-2.5 py-1.5",
-  lg: "gap-1.5 px-3 py-1.5",
+  small: "gap-1.5 px-2 py-1",
+  medium: "gap-1.5 px-2.5 py-1.5",
+  large: "gap-1.5 px-3 py-1.5",
 }
 
 /**
@@ -81,7 +81,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
       multiline = false,
       prefix,
       suffix,
-      size = "sm",
+      size = "medium",
       variant = "default",
       transparent = false,
       clear = false,
@@ -98,8 +98,8 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
     const [hasValue, setHasValue] = useState<boolean>(() => Boolean(value ?? defaultValue))
     const [showPassword, setShowPassword] = useState<boolean>(false)
     const { t } = useTranslation()
-    // 字号规则：xs（small）= text-xs，sm（default）/lg（大号）= text-sm。
-    const textSizeClass = size === "xs" ? "text-xs" : "text-sm"
+    // 字号规则：small = text-xs，medium/large = text-sm。
+    const textSizeClass = size === "small" ? "text-xs" : "text-sm"
     const sizeClass = multiline ? SIZE_MULTILINE_CLASSES[size] : SIZE_CONTAINER_CLASSES[size]
     const variantClass =
       variant === "simple"

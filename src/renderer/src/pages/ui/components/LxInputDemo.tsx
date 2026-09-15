@@ -77,9 +77,9 @@ export const LxInputDemo = (): React.JSX.Element => {
         description={t("uiPreview.demos.sizesAndVariantsDesc")}
       >
         <div className="grid gap-2 lg:grid-cols-2">
-          <LxInput size="xs" placeholder={t("uiPreview.demos.xsSize")} />
-          <LxInput size="sm" placeholder={t("uiPreview.demos.smSize")} />
-          <LxInput size="lg" placeholder={t("uiPreview.demos.lgSize")} />
+          <LxInput size="small" placeholder={t("uiPreview.demos.smallSize")} />
+          <LxInput size="medium" placeholder={t("uiPreview.demos.mediumSize")} />
+          <LxInput size="large" placeholder={t("uiPreview.demos.largeSize")} />
           <LxInput variant="simple" placeholder={t("uiPreview.demos.simpleVariant")} />
           <LxInput disabled value={t("uiPreview.demos.disabledStatus")} />
         </div>

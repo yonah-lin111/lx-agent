@@ -4,7 +4,7 @@ import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 
 // LxTag 组件尺寸类型。
-export type LxTagSize = "small" | "default" | "large"
+export type LxTagSize = "small" | "medium" | "large"
 
 // Tag 组件颜色类型。
 export type LxTagColor =
@@ -158,7 +158,7 @@ const sizeStyles: Record<LxTagSize, { container: string; closeIconSize: string }
     container: "h-6 gap-1.5 rounded-[6px] px-2 text-xs",
     closeIconSize: "h-3 w-3",
   },
-  default: {
+  medium: {
     container: "h-7 gap-1.5 rounded-[6px] px-2.5 text-sm",
     closeIconSize: "h-3 w-3",
   },
@@ -174,7 +174,7 @@ const sizeStyles: Record<LxTagSize, { container: string; closeIconSize: string }
 export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTag(
   {
     children,
-    size = "default",
+    size = "medium",
     variant = "solid",
     prefix,
     suffix,

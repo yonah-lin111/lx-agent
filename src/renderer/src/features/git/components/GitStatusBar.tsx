@@ -280,7 +280,7 @@ export const GitStatusBar = ({
         <div className="flex shrink-0 flex-col gap-1.5 border-b border-white/5 p-2">
           <div className="text-xs font-medium text-white/40">{t("git.switchProject")}</div>
           <LxInput
-            size="xs"
+            size="small"
             placeholder={t("git.searchProjects")}
             prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
             value={projectQuery}
@@ -409,7 +409,7 @@ export const GitStatusBar = ({
         <div className="flex shrink-0 flex-col gap-1.5 border-b border-white/5 p-2">
           <div className="text-xs font-medium text-white/40">{t("git.switchBranch")}</div>
           <LxInput
-            size="xs"
+            size="small"
             placeholder={t("git.searchBranches")}
             prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
             value={branchQuery}
@@ -517,7 +517,7 @@ export const GitStatusBar = ({
         <div className="flex shrink-0 flex-col gap-1.5 border-b border-white/5 p-2">
           <div className="text-xs font-medium text-white/40">{t("git.switchWorktree")}</div>
           <LxInput
-            size="xs"
+            size="small"
             placeholder={t("git.searchWorktrees")}
             prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
             value={worktreeQuery}

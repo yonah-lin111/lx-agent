@@ -2,7 +2,7 @@ import type React from "react"
 import { forwardRef } from "react"
 
 // 导航行尺寸类型。
-export type LxNavItemSize = "small" | "default" | "large"
+export type LxNavItemSize = "small" | "medium" | "large"
 
 // 导航行层级：1 = 根容器，2 = 中间容器，3 = 叶子。
 export type LxNavItemLevel = 1 | 2 | 3
@@ -24,7 +24,7 @@ export interface LxNavItemProps extends Omit<React.HTMLAttributes<HTMLDivElement
 // 尺寸阶梯：高度与内部尺度对齐 LxTag 的容器度量；字号 small=xs，default/large=sm。
 const sizeStyles: Record<LxNavItemSize, string> = {
   small: "h-6 gap-1.5 px-2 text-xs",
-  default: "h-7 gap-1.5 px-2.5 text-sm",
+  medium: "h-7 gap-1.5 px-2.5 text-sm",
   large: "h-8 gap-1.5 px-3 text-sm",
 }
 
@@ -34,7 +34,7 @@ const sizeStyles: Record<LxNavItemSize, string> = {
 export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxNavItem(
   {
     children,
-    size = "default",
+    size = "medium",
     level = 1,
     prefix,
     suffix,

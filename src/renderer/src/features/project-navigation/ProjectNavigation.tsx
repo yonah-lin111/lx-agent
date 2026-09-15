@@ -875,7 +875,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
             placeholder={t("project.searchProjects")}
             aria-label={t("project.searchProjects")}
             prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/25" />}
-            size="sm"
+            size="medium"
             onChange={(event) => setSearchKeyword(event.target.value)}
             clear
           />

@@ -185,7 +185,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       shape = "square",
       variant = "solid",
       showHoverBg = true,
-      size = "small",
+      size = "medium",
       disabled,
       title,
       ...props

@@ -100,7 +100,7 @@ describe("LxIconButton", () => {
 
   it("图标尺寸统一映射：按钮内 svg 按 size 档位强制尺寸", () => {
     const small = render(
-      <LxIconButton aria-label="icon-small">
+      <LxIconButton size="small" aria-label="icon-small">
         <svg className="h-3 w-3" />
       </LxIconButton>,
     )
@@ -129,7 +129,7 @@ describe("LxIconButton", () => {
 
   it("preset 带文字模式图标并入统一档位，不再使用偏小的 chip 档", () => {
     const { container } = render(
-      <LxIconButton preset="add" iconOnly={false} aria-label="preset-chip">
+      <LxIconButton preset="add" iconOnly={false} size="small" aria-label="preset-chip">
         label
       </LxIconButton>,
     )
