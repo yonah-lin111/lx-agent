@@ -98,15 +98,15 @@ describe("LxIconButton", () => {
     expect(large.container.querySelector("button")?.className).toContain("h-8")
   })
 
-  it("图标尺寸统一映射：按钮内 svg 按 size 档位强制尺寸", () => {
+  it("图标尺寸统一映射：按钮直接子级 svg 按 size 档位强制尺寸", () => {
     const small = render(
       <LxIconButton size="small" aria-label="icon-small">
         <svg className="h-3 w-3" />
       </LxIconButton>,
     )
     const smallClass = small.container.querySelector("button")?.className ?? ""
-    expect(smallClass).toContain("[&_svg]:h-3.5")
-    expect(smallClass).toContain("[&_svg]:w-3.5")
+    expect(smallClass).toContain("[&>svg]:h-3.5")
+    expect(smallClass).toContain("[&>svg]:w-3.5")
 
     const medium = render(
       <LxIconButton size="medium" aria-label="icon-medium">
@@ -114,8 +114,8 @@ describe("LxIconButton", () => {
       </LxIconButton>,
     )
     const mediumClass = medium.container.querySelector("button")?.className ?? ""
-    expect(mediumClass).toContain("[&_svg]:h-4")
-    expect(mediumClass).toContain("[&_svg]:w-4")
+    expect(mediumClass).toContain("[&>svg]:h-4")
+    expect(mediumClass).toContain("[&>svg]:w-4")
 
     const large = render(
       <LxIconButton size="large" aria-label="icon-large">
@@ -123,8 +123,8 @@ describe("LxIconButton", () => {
       </LxIconButton>,
     )
     const largeClass = large.container.querySelector("button")?.className ?? ""
-    expect(largeClass).toContain("[&_svg]:h-[18px]")
-    expect(largeClass).toContain("[&_svg]:w-[18px]")
+    expect(largeClass).toContain("[&>svg]:h-[18px]")
+    expect(largeClass).toContain("[&>svg]:w-[18px]")
   })
 
   it("preset 带文字模式图标并入统一档位，不再使用偏小的 chip 档", () => {
@@ -138,14 +138,34 @@ describe("LxIconButton", () => {
     expect(iconClass).not.toContain("h-2.5")
   })
 
-  it("尾部关闭图标豁免统一映射，保持独立档位", () => {
+  it("包装层内的装饰性 svg 不被统一映射命中", () => {
+    const { container } = render(
+      <LxIconButton
+        aria-label="with-decor"
+        icon={
+          <span>
+            <svg className="h-1.5 w-1.5" />
+          </span>
+        }
+      />,
+    )
+    const buttonClass = container.querySelector("button")?.className ?? ""
+    expect(buttonClass).toContain("[&>svg]:h-4")
+    expect(container.querySelector("span svg")?.getAttribute("class")).toBe("h-1.5 w-1.5")
+  })
+
+  it("尾部关闭图标走独立档位，不被直接子级映射命中", () => {
     const { container } = render(
       <LxIconButton iconOnly={false} onClose={() => {}} confirmClose={false}>
         label
       </LxIconButton>,
     )
     const buttonClass = container.querySelector("button")?.className ?? ""
-    expect(buttonClass).toContain("[&_[role=button][data-variant=ghost]_svg]:h-3")
+    expect(buttonClass).toContain("[&>svg]:h-4")
+    expect(buttonClass).not.toContain("role=button")
+    expect(container.querySelector('[data-variant="ghost"] svg')?.getAttribute("class")).toContain(
+      "h-3",
+    )
   })
 
   it("suffix 直出渲染：自定义 icon 组不额外包裹容器", () => {

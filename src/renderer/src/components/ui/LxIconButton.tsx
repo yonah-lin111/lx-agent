@@ -52,23 +52,13 @@ const SIZE_ICON_CLASSES: Record<LxIconButtonSize, string> = {
   large: "h-[18px] w-[18px]",
 }
 
-// 图标尺寸统一映射：按钮内所有 svg（预设图标、icon prop、children 图标及包裹层内的图标）按 size 档位强制尺寸；
-// 该后代选择器优先级高于 svg 自带尺寸类，调用点的尺寸声明会被覆盖。尾部关闭图标单独豁免（见下）。
+// 图标尺寸统一映射：只作用于按钮自身的直接子级 svg（icon prop / children 图标）按 size 档位强制尺寸；
+// 该直接子级选择器优先级高于 svg 自带尺寸类，调用点的尺寸声明会被覆盖。
+// 包装层内的装饰性 svg（状态点、徽标）与嵌套按钮的图标不受影响，尾部关闭图标也因包裹层而天然豁免。
 const SIZE_ICON_FORCE_CLASSES: Record<LxIconButtonSize, string> = {
-  small: "[&_svg]:h-3.5 [&_svg]:w-3.5",
-  medium: "[&_svg]:h-4 [&_svg]:w-4",
-  large: "[&_svg]:h-[18px] [&_svg]:w-[18px]",
-}
-
-// 尾部关闭图标保持独立档位（对齐 LxTag），从统一映射中豁免；
-// 通过关闭入口的 role=button + data-variant=ghost 定位，避免命中 ghost 变体按钮自身的图标。
-const SIZE_CLOSE_ICON_FORCE_CLASSES: Record<LxIconButtonSize, string> = {
-  small:
-    "[&_[role=button][data-variant=ghost]_svg]:h-3 [&_[role=button][data-variant=ghost]_svg]:w-3",
-  medium:
-    "[&_[role=button][data-variant=ghost]_svg]:h-3 [&_[role=button][data-variant=ghost]_svg]:w-3",
-  large:
-    "[&_[role=button][data-variant=ghost]_svg]:h-3.5 [&_[role=button][data-variant=ghost]_svg]:w-3.5",
+  small: "[&>svg]:h-3.5 [&>svg]:w-3.5",
+  medium: "[&>svg]:h-4 [&>svg]:w-4",
+  large: "[&>svg]:h-[18px] [&>svg]:w-[18px]",
 }
 
 // 带文字按钮的字号：small=xs，medium/large=sm。
@@ -296,7 +286,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
         type={type}
         data-highlighted={highlighted ? "true" : undefined}
         data-variant={variant}
-        className={`${baseStyles} ${hasIconAndLabel || hasSuffix ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${SIZE_ICON_FORCE_CLASSES[size]} ${SIZE_CLOSE_ICON_FORCE_CLASSES[size]} ${stateStyles} ${className}`}
+        className={`${baseStyles} ${hasIconAndLabel || hasSuffix ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${SIZE_ICON_FORCE_CLASSES[size]} ${stateStyles} ${className}`}
         disabled={disabled}
         {...props}
       >
