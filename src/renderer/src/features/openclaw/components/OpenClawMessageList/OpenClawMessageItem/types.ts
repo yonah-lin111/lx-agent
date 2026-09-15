@@ -1,4 +1,4 @@
-import type { OpenClawChatMessage } from "@shared/contracts/openclaw"
+import type { OpenClawChatMessage, OpenClawSessionStats } from "@shared/contracts/openclaw"
 
 export interface ConversationAgent {
   agentId: string
@@ -12,4 +12,6 @@ export interface OpenClawMessageItemProps {
   agent?: ConversationAgent
   targetAgents?: ConversationAgent[]
   isStreaming?: boolean
+  // 会话级模型与上下文用量；仅最新一条 AI 消息传入。
+  stats?: OpenClawSessionStats
 }

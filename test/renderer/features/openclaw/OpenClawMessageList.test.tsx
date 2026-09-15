@@ -98,4 +98,46 @@ describe("OpenClawMessageList & OpenClawMessageItem", () => {
 
     expect(screen.getByText("1 coworker(s) working…")).not.toBeNull()
   })
+
+  it("仅最新一条 AI 消息展示模型与上下文百分比", () => {
+    const timeline: OfficeTimelineMessage[] = [
+      { agentId: "lily", message: user("u1", "assign", 100) },
+      { agentId: "lily", message: assistant("a1", "first", 200) },
+      { agentId: "lily", message: assistant("a2", "second", 300) },
+      { agentId: "amy", message: assistant("a3", "amy-reply", 400) },
+    ]
+
+    render(
+      <OpenClawMessageList
+        timeline={timeline}
+        agents={agents}
+        streamingAgentIds={[]}
+        sessionStats={{
+          lily: {
+            model: "gemini-3.8-flash",
+            modelProvider: "google",
+            contextUsed: 250000,
+            contextWindow: 1000000,
+          },
+        }}
+      />,
+    )
+
+    // getByText 在多处命中时会抛错：能取到即证明只有最新一条 AI 消息展示。
+    expect(screen.getByText("gemini-3.8-flash")).not.toBeNull()
+    expect(screen.getByText("25%")).not.toBeNull()
+    expect(screen.getAllByText("Lily")).toHaveLength(2)
+  })
+
+  it("无会话统计时不在名称右侧渲染模型与上下文", () => {
+    const timeline: OfficeTimelineMessage[] = [
+      { agentId: "lily", message: user("u1", "assign", 100) },
+      { agentId: "lily", message: assistant("a1", "reply", 200) },
+    ]
+
+    render(<OpenClawMessageList timeline={timeline} agents={agents} streamingAgentIds={[]} />)
+
+    expect(screen.queryByText("gemini-3.8-flash")).toBeNull()
+    expect(screen.queryByText(/^\d+%$/)).toBeNull()
+  })
 })

@@ -28,6 +28,17 @@ export interface OpenClawChatMessage {
   code?: "approval-required"
 }
 
+// 会话级模型与上下文用量（Gateway sessions.describe 投影）。
+export interface OpenClawSessionStats {
+  // 当前服务该会话的模型（运行时 activeModel 优先，回退选中模型）。
+  model?: string
+  modelProvider?: string
+  // 上下文已用 token（Gateway pre-prompt 估算）。
+  contextUsed?: number
+  // 上下文窗口容量 token。
+  contextWindow?: number
+}
+
 // Gateway 会话摘要（sessions.list / sessions.create 投影）。
 export interface OpenClawSessionInfo {
   key: string
@@ -49,6 +60,8 @@ export interface OpenClawSessionSnapshot {
   // 远端设备配对待审批时的 requestId。
   pairingRequestId?: string
   isStreaming: boolean
+  // 会话级模型与上下文用量；未绑定会话或 Gateway 未提供时为空。
+  stats?: OpenClawSessionStats
   messages: OpenClawChatMessage[]
 }
 
