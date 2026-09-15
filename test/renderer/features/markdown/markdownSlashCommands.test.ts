@@ -6,10 +6,14 @@ import {
   getMarkdownSendPromptOptions,
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
+  getTemplateCursorOffset,
   getTemplatePlaceholderSelectionRange,
   getTemplatePresetInitialSelectionRange,
+  identifyCliTypeFromTitle,
+  isDefaultCliTitle,
   MARKDOWN_TEMPLATE_PRESET_OPTIONS,
   parseMarkdownSendPromptCommandLine,
+  resolveEffectiveCliTitle,
   stripMarkdownSlashCommands,
 } from "@/features/markdown/commands/markdownSlashCommands"
 
@@ -647,5 +651,84 @@ describe("Markdown 斜杠命令武装判定", () => {
     const optionsAgentOnly = getMarkdownSendPromptOptions("zh", tabs, [])
     expect(optionsAgentOnly.length).toBe(1)
     expect(optionsAgentOnly[0].id).toBe("lx")
+  })
+})
+
+describe("Markdown 斜杠命令 CLI 标题识别", () => {
+  it("identifyCliTypeFromTitle 识别各 CLI 的标题形态", () => {
+    expect(identifyCliTypeFromTitle("opencode-dev")).toBe("opencode")
+    expect(identifyCliTypeFromTitle("OC | 项目")).toBe("opencode")
+    expect(identifyCliTypeFromTitle("oc")).toBe("opencode")
+
+    expect(identifyCliTypeFromTitle("cc-switch")).toBe("claude")
+    expect(identifyCliTypeFromTitle("Claude Code")).toBe("claude")
+
+    expect(identifyCliTypeFromTitle("openai codex")).toBe("codex")
+    expect(identifyCliTypeFromTitle("cx - 任务")).toBe("codex")
+
+    expect(identifyCliTypeFromTitle("gemini cli")).toBe("gemini")
+    expect(identifyCliTypeFromTitle("gm: 会话")).toBe("gemini")
+
+    expect(identifyCliTypeFromTitle("antigravity")).toBe("agy")
+    expect(identifyCliTypeFromTitle("ag - 窗口")).toBe("agy")
+
+    expect(identifyCliTypeFromTitle("grok-cli")).toBe("grok")
+    expect(identifyCliTypeFromTitle("gk|x")).toBe("grok")
+  })
+
+  it("identifyCliTypeFromTitle 无法识别时返回 null", () => {
+    expect(identifyCliTypeFromTitle("")).toBeNull()
+    expect(identifyCliTypeFromTitle("   ")).toBeNull()
+    expect(identifyCliTypeFromTitle("我的终端")).toBeNull()
+  })
+
+  it("isDefaultCliTitle 判定默认与自定义标题", () => {
+    expect(isDefaultCliTitle("")).toBe(true)
+    expect(isDefaultCliTitle("  ")).toBe(true)
+    expect(isDefaultCliTitle("OpenCode")).toBe(true)
+    expect(isDefaultCliTitle("New Terminal")).toBe(true)
+    expect(isDefaultCliTitle(" bash ")).toBe(true)
+    expect(isDefaultCliTitle("我的项目终端")).toBe(false)
+    expect(isDefaultCliTitle("auth 重构窗口")).toBe(false)
+  })
+
+  it("resolveEffectiveCliTitle 按 pane/tab 标题与分屏数解析有效标题", () => {
+    // pane 自带自定义标题：优先 paneTitle。
+    expect(resolveEffectiveCliTitle("auth 窗口", "opencode", "opencode")).toEqual({
+      effectiveTitle: "auth 窗口",
+      isDefault: false,
+    })
+
+    // 多分屏且 pane 为默认标题：保留 paneTitle 并标记默认。
+    expect(resolveEffectiveCliTitle("opencode", "auth 窗口", "opencode", true)).toEqual({
+      effectiveTitle: "opencode",
+      isDefault: true,
+    })
+    expect(resolveEffectiveCliTitle("", "auth 窗口", "opencode", true)).toEqual({
+      effectiveTitle: "Terminal",
+      isDefault: true,
+    })
+
+    // 单分屏且 tab 有自定义标题：回退到 tabTitle。
+    expect(resolveEffectiveCliTitle("opencode", "auth 窗口", "opencode")).toEqual({
+      effectiveTitle: "auth 窗口",
+      isDefault: false,
+    })
+
+    // 全部默认：兜底标题链。
+    expect(resolveEffectiveCliTitle("opencode", "", "opencode")).toEqual({
+      effectiveTitle: "opencode",
+      isDefault: true,
+    })
+    expect(resolveEffectiveCliTitle("", "", "opencode")).toEqual({
+      effectiveTitle: "Terminal",
+      isDefault: true,
+    })
+  })
+
+  it("getTemplateCursorOffset 定位列表占位符与空标题冒号", () => {
+    expect(getTemplateCursorOffset("- 目标: \n- 约束: ")).toBe(6)
+    expect(getTemplateCursorOffset("模板标题「title: 」\n- 内容")).toBe(12)
+    expect(getTemplateCursorOffset("无占位符内容")).toBe(6)
   })
 })
