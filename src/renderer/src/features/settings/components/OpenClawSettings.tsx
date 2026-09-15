@@ -290,7 +290,6 @@ export const OpenClawSettings = (): React.JSX.Element => {
           </span>
           <LxIconButton
             preset="add"
-            size="small"
             aria-label={t("settings.openclawAddInstance")}
             title={{ content: t("settings.openclawAddInstance"), placement: "bottom" }}
             onClick={handleAddInstance}
@@ -426,7 +425,6 @@ export const OpenClawSettings = (): React.JSX.Element => {
                 </div>
                 <div className="flex items-center gap-1">
                   <LxIconButton
-                    size="small"
                     aria-label={t("settings.openclawTestConnection")}
                     title={{ content: t("settings.openclawTestConnection"), placement: "top" }}
                     disabled={testingId === selectedId || fetchingId === selectedId}
@@ -441,7 +439,6 @@ export const OpenClawSettings = (): React.JSX.Element => {
                     )}
                   </LxIconButton>
                   <LxIconButton
-                    size="small"
                     aria-label={t("settings.openclawFetchAgents")}
                     title={{ content: t("settings.openclawFetchAgents"), placement: "top" }}
                     disabled={fetchingId === selectedId || testingId === selectedId}
@@ -492,7 +489,6 @@ export const OpenClawSettings = (): React.JSX.Element => {
                           }
                         />
                         <LxIconButton
-                          size="small"
                           aria-label={t("settings.openclawSessionLoad")}
                           title={{ content: t("settings.openclawSessionLoad"), placement: "top" }}
                           disabled={sessionLoadingKey === sessionKey}
@@ -516,7 +512,6 @@ export const OpenClawSettings = (): React.JSX.Element => {
             <div className="flex justify-end">
               <LxIconButton
                 preset="delete"
-                size="small"
                 aria-label={t("settings.openclawDeleteInstance")}
                 title={{
                   content: t("settings.openclawDeleteConfirm"),

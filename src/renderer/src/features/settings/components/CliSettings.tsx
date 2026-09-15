@@ -265,7 +265,6 @@ export const CliSettings = (): React.JSX.Element => {
                     </code>
                     {tool.homepage ? (
                       <LxIconButton
-                        size="small"
                         variant="ghost"
                         showHoverBg={false}
                         aria-label={t("settings.cliHomepage")}
@@ -359,46 +358,53 @@ export const CliSettings = (): React.JSX.Element => {
                   {/* 右侧：安装 / 升级 / 复制 / 自定义路径操作按钮 */}
                   <div className="flex shrink-0 items-center gap-1">
                     {tool.hasUpdate ? (
-                      <button
-                        type="button"
+                      <LxIconButton
+                        iconOnly={false}
                         disabled={Boolean(operating)}
-                        className="settings-cli-action-btn flex h-5.5 items-center gap-1 rounded bg-purple-500/20 px-2 text-xs font-medium text-purple-300 transition-colors hover:bg-purple-500/30 disabled:opacity-50"
                         onClick={() => void handleRunAction(tool.id, "update", tool.displayName)}
+                        textClass="text-purple-300"
+                        hoverBgClass="hover:bg-purple-500/30"
+                        className="settings-cli-action-btn h-5.5 px-2 font-medium bg-purple-500/20 cursor-pointer"
+                        icon={
+                          operating === "update" ? (
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          ) : (
+                            <ArrowUpCircle className="h-2.5 w-2.5" />
+                          )
+                        }
                       >
-                        {operating === "update" ? (
-                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                        ) : (
-                          <ArrowUpCircle className="h-2.5 w-2.5" />
-                        )}
                         <span>
                           {operating === "update"
                             ? t("settings.cliUpdating")
                             : t("settings.cliUpdate")}
                         </span>
-                      </button>
+                      </LxIconButton>
                     ) : !tool.installed ? (
-                      <button
-                        type="button"
+                      <LxIconButton
+                        iconOnly={false}
                         disabled={Boolean(operating)}
-                        className="settings-cli-action-btn flex h-5.5 items-center gap-1 rounded border border-white/10 bg-white/[0.03] px-2 text-xs font-medium text-white/70 transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
                         onClick={() => void handleRunAction(tool.id, "install", tool.displayName)}
+                        textClass="text-white/70"
+                        hoverBgClass="hover:bg-white/[0.08]"
+                        className="settings-cli-action-btn h-5.5 border border-white/10 bg-white/[0.03] px-2 font-medium cursor-pointer hover:border-white/20"
+                        icon={
+                          operating === "install" ? (
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          ) : (
+                            <Download className="h-2.5 w-2.5" />
+                          )
+                        }
                       >
-                        {operating === "install" ? (
-                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                        ) : (
-                          <Download className="h-2.5 w-2.5" />
-                        )}
                         <span>
                           {operating === "install"
                             ? t("settings.cliInstalling")
                             : t("settings.cliInstall")}
                         </span>
-                      </button>
+                      </LxIconButton>
                     ) : null}
 
                     <LxTooltip content={t("settings.cliCopyInstallCommand")} placement="top">
                       <LxIconButton
-                        size="small"
                         aria-label={t("settings.cliCopyInstallCommand")}
                         onClick={() => void handleCopyInstallCommand(tool.id)}
                       >
@@ -408,7 +414,6 @@ export const CliSettings = (): React.JSX.Element => {
 
                     <LxTooltip content={t("settings.cliCustomPath")} placement="top">
                       <LxIconButton
-                        size="small"
                         highlighted={isCustomPathOpen || Boolean(currentCustomPath)}
                         aria-label={t("settings.cliCustomPath")}
                         onClick={() =>

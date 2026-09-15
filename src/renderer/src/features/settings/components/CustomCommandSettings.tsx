@@ -487,7 +487,6 @@ ${t("settings.customCommandAgentMDHelpDesc")}
             </span>
             <LxIconButton
               preset="add"
-              size="small"
               aria-label={t("settings.addCustomCommand")}
               title={{ content: t("settings.addCustomCommand"), placement: "top" }}
               onClick={handleStartCreate}
@@ -529,7 +528,6 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                         Draft
                       </LxTag>
                       <LxIconButton
-                        size="small"
                         variant="ghost"
                         showHoverBg={false}
                         aria-label={t("common.delete")}
@@ -582,7 +580,6 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                           placement="top"
                         >
                           <LxIconButton
-                            size="small"
                             variant="ghost"
                             showHoverBg={false}
                             hoverTextClass="hover:text-rose-400"
@@ -607,14 +604,16 @@ ${t("settings.customCommandAgentMDHelpDesc")}
           {!selectedCommandName && !isEditingDraft && commands.length === 0 && !hasDraft ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-white/40">
               <p>{t("settings.customCommandsEmptyTip")}</p>
-              <button
-                type="button"
-                className="inline-flex items-center rounded-[6px] bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/15 transition-colors"
+              <LxIconButton
+                iconOnly={false}
                 onClick={handleStartCreate}
+                textClass="text-white"
+                hoverBgClass="hover:bg-white/15"
+                className="rounded-[6px] bg-white/10 px-3 py-1.5 cursor-pointer"
+                icon={<Plus className="h-3.5 w-3.5" />}
               >
-                <Plus className="mr-1 h-3.5 w-3.5" />
                 {t("settings.addCustomCommand")}
-              </button>
+              </LxIconButton>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
