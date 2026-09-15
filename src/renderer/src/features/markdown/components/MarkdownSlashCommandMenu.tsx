@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPanel"
 import { LxTag } from "@/components/ui/LxTag"
 import type { MarkdownSlashCommand } from "@/features/markdown/commands/markdownSlashCommands"
+import { getSlashCommandIcon } from "@/features/markdown/components/markdownCommandIcons"
 
 // Markdown 斜杠命令菜单属性。
 interface MarkdownSlashCommandMenuProps {
@@ -52,40 +53,6 @@ const getCommandTags = (command: MarkdownSlashCommand): { label: string; bgClass
 }
 
 /**
- * 激活项与面板边缘保持间距，避免上下键移动时被裁切。
- */
-const useActiveItemScrollIntoView = (
-  isOpen: boolean,
-  position: CSSProperties | null,
-  activeIndex: number,
-): React.RefObject<HTMLDivElement | null> => {
-  const panelRef = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    if (!isOpen || !position) return
-    const container = panelRef.current
-    if (!container) return
-
-    const activeElement = container.querySelector(
-      `[data-index="${activeIndex}"]`,
-    ) as HTMLElement | null
-    if (!activeElement) return
-
-    const scrollPadding = 4
-    const containerRect = container.getBoundingClientRect()
-    const activeRect = activeElement.getBoundingClientRect()
-
-    if (activeRect.top < containerRect.top + scrollPadding) {
-      container.scrollTop -= containerRect.top + scrollPadding - activeRect.top
-    } else if (activeRect.bottom > containerRect.bottom - scrollPadding) {
-      container.scrollTop += activeRect.bottom - (containerRect.bottom - scrollPadding)
-    }
-  }, [isOpen, position, activeIndex])
-
-  return panelRef
-}
-
-/**
  * 渲染紧贴编辑器光标的 Markdown 模板命令菜单。
  */
 export const MarkdownSlashCommandMenu = ({
@@ -95,113 +62,67 @@ export const MarkdownSlashCommandMenu = ({
   visible = false,
   onSelect,
 }: MarkdownSlashCommandMenuProps): React.JSX.Element | null => {
-  const [shouldRender, setShouldRender] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
-
-  const lastDataRef = useRef<{
-    commands: MarkdownSlashCommand[]
-    activeIndex: number
-    position: CSSProperties
-  } | null>(null)
-
-  if (visible && commands && position) {
-    lastDataRef.current = { commands, activeIndex, position }
-  }
-
-  useEffect(() => {
-    if (visible) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-      return
-    }
-    if (!shouldRender) return
-
-    setIsAnimatingOut(true)
-    const timer = setTimeout(() => {
-      setShouldRender(false)
-      setIsAnimatingOut(false)
-    }, 120)
-    return () => clearTimeout(timer)
-  }, [visible, shouldRender])
-
-  const displayData =
-    visible && commands && position ? { commands, activeIndex, position } : lastDataRef.current
-
-  const panelRef = useActiveItemScrollIntoView(
-    shouldRender && visible,
-    displayData?.position ?? null,
-    displayData?.activeIndex ?? 0,
-  )
-
-  if (!shouldRender || !displayData) return null
-
-  const {
-    commands: displayCommands,
-    activeIndex: displayActiveIndex,
-    position: displayPosition,
-  } = displayData
-
-  const renderCommandItem = (command: MarkdownSlashCommand, index: number): React.JSX.Element => {
-    const isActive = index === displayActiveIndex
-    const tags = getCommandTags(command)
-
-    return (
-      <div
-        key={command.id}
-        data-index={index}
-        aria-selected={isActive}
-        className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-          isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-        }`}
-        role="option"
-        onMouseDown={(event) => {
-          event.preventDefault()
-          onSelect?.(command)
-        }}
-      >
-        <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
-          /
-        </span>
-        <span className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="shrink-0 text-[13px] leading-none text-white">{command.label}</span>
-          {command.argumentHint && (
-            <span className="shrink-0 font-mono text-[11px] leading-none text-white/40">
-              {command.argumentHint}
-            </span>
-          )}
-          <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
-            {command.description}
-          </span>
-        </span>
-        {tags.length > 0 && (
-          <div className="ml-auto flex shrink-0 items-center gap-1">
-            {tags.map((tag) => (
-              <LxTag
-                key={tag.label}
-                bgClass={tag.bgClass}
-                className="pointer-events-none shrink-0"
-                size="small"
-              >
-                {tag.label}
-              </LxTag>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
+  const panelData = commands && position ? { position, activeIndex, commands } : null
 
   return (
-    <div
-      ref={panelRef}
-      aria-label="Markdown 模板命令"
-      className={`markdown-command-menu markdown-command-menu--slash pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-        isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaLabel="Markdown 模板命令"
+      className="markdown-command-menu markdown-command-menu--slash pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      data={panelData}
+      scrollActiveItem
+      visible={visible}
     >
-      {displayCommands.map((command, index) => renderCommandItem(command, index))}
-    </div>
+      {(displayData) => (
+        <>
+          {displayData.commands.map((command, index) => {
+            const isActive = index === displayData.activeIndex
+            const tags = getCommandTags(command)
+
+            return (
+              <LxCommandPanelItem
+                key={command.id}
+                active={isActive}
+                className="flex h-11 items-center gap-2 px-2"
+                index={index}
+                leading={
+                  <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
+                    {getSlashCommandIcon(command)}
+                  </span>
+                }
+                onSelect={() => onSelect?.(command)}
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="shrink-0 text-[13px] leading-none text-white">
+                    {command.label}
+                  </span>
+                  {command.argumentHint && (
+                    <span className="shrink-0 font-mono text-[11px] leading-none text-white/40">
+                      {command.argumentHint}
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+                    {command.description}
+                  </span>
+                </span>
+                {tags.length > 0 && (
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    {tags.map((tag) => (
+                      <LxTag
+                        key={tag.label}
+                        bgClass={tag.bgClass}
+                        className="pointer-events-none shrink-0"
+                        size="small"
+                      >
+                        {tag.label}
+                      </LxTag>
+                    ))}
+                  </div>
+                )}
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }

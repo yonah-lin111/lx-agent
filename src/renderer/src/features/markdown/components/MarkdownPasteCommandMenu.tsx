@@ -1,6 +1,6 @@
 import { FileCheck, FileText, Folder, Image as ImageIcon, Link, Upload } from "lucide-react"
 import type { CSSProperties, ReactNode } from "react"
-import { useEffect, useRef, useState } from "react"
+import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPanel"
 import { useTranslation } from "@/i18n"
 
 export interface MarkdownPasteReferenceOption {
@@ -82,68 +82,31 @@ export const MarkdownPasteCommandMenu = ({
   const { t } = useTranslation()
   const defaultOptions = buildPasteReferenceOptions([], t)
   const options = customOptions && customOptions.length > 0 ? customOptions : defaultOptions
-
-  const [shouldRender, setShouldRender] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
-  const lastDataRef = useRef<{
-    activeIndex: number
-    position: CSSProperties
-    options: MarkdownPasteReferenceOption[]
-  } | null>(null)
-
-  if (visible && position) {
-    lastDataRef.current = { activeIndex, position, options }
-  }
-
-  useEffect(() => {
-    if (visible) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-      return
-    }
-    if (!shouldRender) return
-
-    setIsAnimatingOut(true)
-    const timer = setTimeout(() => {
-      setShouldRender(false)
-      setIsAnimatingOut(false)
-    }, 120)
-    return () => clearTimeout(timer)
-  }, [visible, shouldRender])
-
-  if (!shouldRender) return null
-  const displayData = visible && position ? { activeIndex, position, options } : lastDataRef.current
-  if (!displayData) return null
+  const panelData = position ? { position, activeIndex, options } : null
 
   return (
-    <div
-      aria-label={t("markdown.pasteReferenceAria")}
-      className={`markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-sm shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-        isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayData.position}
+    <LxCommandPanel
+      ariaLabel={t("markdown.pasteReferenceAria")}
+      className="markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-sm shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      data={panelData}
+      visible={visible}
     >
-      {displayData.options.map((option, index) => {
-        const isSelected = index === displayData.activeIndex
-        return (
-          <div
-            key={option.id}
-            aria-selected={isSelected}
-            className={`flex h-11 w-full cursor-pointer items-center gap-2.5 rounded-[4px] px-3 text-left text-xs transition-colors ${
-              isSelected ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-            }`}
-            role="option"
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(option)
-            }}
-          >
-            {option.icon}
-            <span className="truncate">{option.label}</span>
-          </div>
-        )
-      })}
-    </div>
+      {(displayData) => (
+        <>
+          {displayData.options.map((option, index) => (
+            <LxCommandPanelItem
+              key={option.id}
+              active={index === displayData.activeIndex}
+              className="flex h-11 items-center gap-2.5 px-3 text-xs"
+              index={index}
+              leading={option.icon}
+              onSelect={() => onSelect?.(option)}
+            >
+              <span className="truncate">{option.label}</span>
+            </LxCommandPanelItem>
+          ))}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }
