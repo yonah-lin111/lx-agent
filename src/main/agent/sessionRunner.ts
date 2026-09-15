@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, rmSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -16,24 +16,16 @@ import type {
   ModelSwitchMessage,
   PromptAssembly,
   TodoList,
-  TodoStateMessage,
   UserMessage,
-  UserMessageCommand,
 } from "@shared/contracts/agent"
 import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { projectService } from "@/services/projectService"
-import { getSkillSettings, getSubagentSettings } from "@/services/settingsService"
+import { getSubagentSettings } from "@/services/settingsService"
 import { getAppDataRoot } from "../paths"
-import {
-  ALL_TOOL_NAMES,
-  buildSystemPromptSync,
-  createRegistry,
-  MAX_INJECTED_SKILLS,
-  resolveCwd,
-} from "./assembly"
+import { ALL_TOOL_NAMES, buildSystemPromptSync, createRegistry, resolveCwd } from "./assembly"
 import { createCompactionSummaryMessage } from "./compaction"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { ContextCompactor } from "./contextCompactor"
@@ -54,16 +46,17 @@ import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
 import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
 import type { PersonalityName } from "./prompts/personalities"
-import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
-import { unifiedExecManager } from "./shell/unifiedExecManager"
 import {
-  extractSkillMentions,
-  type LoadedSkill,
-  skillLoader,
-  stripFrontmatter,
-} from "./skills/skillLoader"
+  createTodoStateMessage,
+  expandAndDetectCommand,
+  processPendingFiles,
+  resolveInjectedSkills,
+  resolveMcpTools,
+} from "./sessionRunnerInput"
+import { unifiedExecManager } from "./shell/unifiedExecManager"
+import type { LoadedSkill } from "./skills/skillLoader"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { modelSupportsImageInput } from "./stream/modelCapabilities"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
@@ -81,23 +74,6 @@ interface QueuedMessage {
   text: string
   context?: AgentSendContext
 }
-
-// 附件文件名消毒：仅保留最后一段路径（剥离分隔符与 ..），非法名返回 undefined。
-const sanitizeAttachmentName = (name: string): string | undefined => {
-  const base = name
-    .split(/[\\/]+/)
-    .filter(Boolean)
-    .pop()
-  if (!base || base === "." || base === "..") return undefined
-  return base
-}
-
-// 构造任务清单状态消息（transformContext 注入；不进 state.messages）。
-const createTodoStateMessage = (todos: TodoList): TodoStateMessage => ({
-  role: "todoState",
-  todos,
-  timestamp: Date.now(),
-})
 
 export interface SessionRunnerOptions {
   sessionId: string | null
@@ -425,7 +401,7 @@ export class AgentSessionRunner {
     }
 
     if (cwd) {
-      this.activeSkills = this.resolveInjectedSkills(cwd)
+      this.activeSkills = resolveInjectedSkills(cwd)
     }
 
     const capabilitiesSignature = JSON.stringify([
@@ -616,107 +592,8 @@ export class AgentSessionRunner {
     }
     const snapshot = getDefaultCapabilities()
     this.activeCapabilities = snapshot.tools
-    this.activeMcp = this.resolveMcpTools()
-    this.activeSkills = cwd ? this.resolveInjectedSkills(cwd) : []
-  }
-
-  private resolveMcpTools(): string[] {
-    return mcpManager.getTools().map((handle) => handle.fullName)
-  }
-
-  private resolveInjectedSkills(cwd: string): LoadedSkill[] {
-    const disabledSkills = new Set(getSkillSettings().disabled)
-    const available = skillLoader
-      .load(cwd)
-      .filter((skill) => !skill.disableModelInvocation && !disabledSkills.has(skill.name))
-    return [...available].sort((a, b) => a.name.localeCompare(b.name)).slice(0, MAX_INJECTED_SKILLS)
-  }
-
-  private _buildSkillPromptBlock(skill: LoadedSkill): string {
-    const body = stripFrontmatter(readFileSync(skill.filePath, "utf8")).trim()
-    let mcpNote = ""
-    if (skill.dependencies?.tools) {
-      const mcpTools = skill.dependencies.tools.filter((t) => t.type.toLowerCase() === "mcp")
-      if (mcpTools.length > 0) {
-        const connectedServers = new Set(
-          mcpManager
-            .getStatus()
-            .filter((s) => s.status === "connected")
-            .map((s) => s.name),
-        )
-        const missing = mcpTools.filter((t) => !connectedServers.has(t.value))
-        if (missing.length > 0) {
-          mcpNote = `\n\n[Warning: This skill requires MCP server(s): ${missing.map((m) => m.value).join(", ")}, which are currently disconnected.]`
-        }
-      }
-    }
-    return `<skill name="${skill.name}" location="${skill.filePath}">\nReferences are relative to ${skill.baseDir}.\n\n${body}${mcpNote}\n</skill>`
-  }
-
-  private _expandAndDetectCommand(
-    text: string,
-    overrideCwd?: string,
-  ): {
-    expanded: string
-    command?: UserMessageCommand
-  } {
-    const cwd = overrideCwd ?? this.getEffectiveCwd()
-    const disabledSkills = new Set(getSkillSettings().disabled)
-
-    // 1. 兼容 /skill:<name> 命令语法
-    if (text.startsWith("/skill:")) {
-      const spaceIndex = text.indexOf(" ")
-      const skillName = spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex)
-      const args = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1).trim()
-      const skill = cwd ? skillLoader.get(skillName, cwd) : undefined
-      if (skill && !disabledSkills.has(skill.name)) {
-        const skillBlock = this._buildSkillPromptBlock(skill)
-        return {
-          expanded: args ? `${skillBlock}\n\n${args}` : skillBlock,
-          command: {
-            name: skill.name,
-            kind: "skill",
-          },
-        }
-      }
-    }
-
-    // 2. 显式 $skill-name 提及语法（零轮往返直接注入当前轮提示词）
-    if (cwd) {
-      const mentionedNames = extractSkillMentions(text)
-      if (mentionedNames.length > 0) {
-        const matchedSkills = mentionedNames
-          .filter((name) => !disabledSkills.has(name))
-          .map((name) => skillLoader.get(name, cwd))
-          .filter((s): s is LoadedSkill => s !== undefined)
-
-        if (matchedSkills.length > 0) {
-          const blocks = matchedSkills.map((s) => this._buildSkillPromptBlock(s)).join("\n\n")
-          return {
-            expanded: `${blocks}\n\n${text}`,
-            command: {
-              name: matchedSkills[0].name,
-              kind: "skill",
-            },
-          }
-        }
-      }
-    }
-
-    // 3. Prompt 模板指令
-    const templateMatch = promptTemplateLoader.match(text, cwd)
-    if (templateMatch) {
-      return {
-        expanded: templateMatch.expanded,
-        command: {
-          name: templateMatch.template.name,
-          kind: "prompt",
-          source: templateMatch.template.source,
-        },
-      }
-    }
-
-    return { expanded: text }
+    this.activeMcp = resolveMcpTools()
+    this.activeSkills = cwd ? resolveInjectedSkills(cwd) : []
   }
 
   private enqueueMessage(text: string, context?: AgentSendContext): AgentSendResult {
@@ -803,7 +680,10 @@ export class AgentSessionRunner {
     if (options?.delivery === "steer" && this.agent?.state.isStreaming) {
       const isNewSession = !this.currentSessionId
       if (!isNewSession && this.currentSessionId) {
-        const { expanded, command } = this._expandAndDetectCommand(processedText, context?.cwd)
+        const { expanded, command } = expandAndDetectCommand(
+          processedText,
+          context?.cwd ?? this.getEffectiveCwd(),
+        )
         const steerMessage: UserMessage = {
           role: "user",
           content: expanded,
@@ -812,7 +692,7 @@ export class AgentSessionRunner {
           command: command ?? { name: "steer", kind: "builtin" },
         }
         if (context?.files && context.files.length > 0) {
-          steerMessage.files = this.processPendingFiles(this.currentSessionId, context.files)
+          steerMessage.files = processPendingFiles(this.currentSessionId, context.files)
         }
         this.agent.steer(steerMessage)
         return {
@@ -835,41 +715,6 @@ export class AgentSessionRunner {
     return result
   }
 
-  private processPendingFiles(sessionId: string, files: AttachedFile[]): AttachedFile[] {
-    const copied: AttachedFile[] = []
-    const sessionDir = join(getAppDataRoot(), "session", sessionId)
-
-    for (const file of files) {
-      const safeName = sanitizeAttachmentName(file.name)
-      if (!safeName) {
-        console.warn(`Skipped attachment with invalid file name: "${file.name}"`)
-        continue
-      }
-
-      const subFolder = file.type === "image" ? "image" : "text"
-      const destFolder = join(sessionDir, subFolder)
-
-      if (!existsSync(destFolder)) {
-        mkdirSync(destFolder, { recursive: true })
-      }
-
-      const destPath = join(destFolder, safeName)
-      try {
-        copyFileSync(file.path, destPath)
-        copied.push({
-          name: safeName,
-          path: destPath,
-          type: file.type,
-          size: file.size,
-          extension: file.extension,
-        })
-      } catch (err) {
-        console.error(`Failed to copy attachment file: ${file.path} to ${destPath}`, err)
-      }
-    }
-    return copied
-  }
-
   private async runOne(
     text: string,
     files?: AttachedFile[],
@@ -886,7 +731,10 @@ export class AgentSessionRunner {
       this.compactor.setBoundary(null)
       this.turnStore.resetOverflow()
     }
-    const { expanded, command } = this._expandAndDetectCommand(text, overrideCwd)
+    const { expanded, command } = expandAndDetectCommand(
+      text,
+      overrideCwd ?? this.getEffectiveCwd(),
+    )
     // 生命周期 hook：SessionStart（每个会话一次）+ UserPromptSubmit（每次提交）。
     const promptHooks = await this.dispatchPromptHooks(expanded, isNewSession)
     if ("error" in promptHooks) {
@@ -926,7 +774,7 @@ export class AgentSessionRunner {
     }
 
     if (files && files.length > 0 && this.currentSessionId) {
-      this.turnStore.setCopiedFiles(this.processPendingFiles(this.currentSessionId, files))
+      this.turnStore.setCopiedFiles(processPendingFiles(this.currentSessionId, files))
     } else {
       this.turnStore.clearCopiedFiles()
     }
@@ -1102,8 +950,8 @@ export class AgentSessionRunner {
     }
     this.activeCapabilities = getDefaultCapabilities().tools
     this.requestedCwd = sessionCwd
-    this.activeMcp = this.resolveMcpTools()
-    this.activeSkills = this.resolveInjectedSkills(sessionCwd)
+    this.activeMcp = resolveMcpTools()
+    this.activeSkills = resolveInjectedSkills(sessionCwd)
     this.turnStore.loadTodo(todos)
 
     const lastModelSwitch = [...messages]
