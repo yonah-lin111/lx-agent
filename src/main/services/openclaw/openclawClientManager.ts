@@ -7,6 +7,7 @@ import type {
   OpenClawChatMessage,
   OpenClawConnectionStatus,
   OpenClawConnectResult,
+  OpenClawMessageUsage,
   OpenClawSendMessageInput,
   OpenClawSessionEvent,
   OpenClawSessionInfo,
@@ -870,6 +871,19 @@ class OpenClawClientManager {
 
     if (state === "final") {
       if (text) message.content = text
+      // run 结束回填该条消息生成时的模型与 token 用量（权威值）。
+      const model = rawMessage ? readTrimmedString(rawMessage.model) : undefined
+      const modelProvider = rawMessage
+        ? (readTrimmedString(rawMessage.provider) ?? readTrimmedString(rawMessage.modelProvider))
+        : undefined
+      const usage = isRecord(payload.usage)
+        ? mapMessageUsage(payload.usage)
+        : rawMessage && isRecord(rawMessage.usage)
+          ? mapMessageUsage(rawMessage.usage)
+          : null
+      if (model) message.model = model
+      if (modelProvider) message.modelProvider = modelProvider
+      if (usage) message.usage = usage
       message.status = "completed"
       session.isStreaming = false
       session.activeRunId = null
@@ -1037,6 +1051,17 @@ const readTrimmedString = (value: unknown): string | undefined => {
 const readNonNegativeNumber = (value: unknown): number | undefined =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined
 
+// 将 Gateway 用量对象映射为消息 token 用量。
+const mapMessageUsage = (raw: Record<string, unknown>): OpenClawMessageUsage | null => {
+  const input = readNonNegativeNumber(raw.input) ?? readNonNegativeNumber(raw.inputTokens)
+  const output = readNonNegativeNumber(raw.output) ?? readNonNegativeNumber(raw.outputTokens)
+  const usage: OpenClawMessageUsage = {
+    ...(input !== undefined ? { input } : {}),
+    ...(output !== undefined ? { output } : {}),
+  }
+  return Object.keys(usage).length > 0 ? usage : null
+}
+
 // 将 sessions.describe 结果映射为会话级模型与上下文用量。
 const mapSessionStats = (payload: unknown): OpenClawSessionStats | null => {
   const session = isRecord(payload) && isRecord(payload.session) ? payload.session : null
@@ -1086,6 +1111,11 @@ const mapHistoryMessage = (
       : typeof raw.runId === "string" && raw.runId
         ? raw.runId
         : undefined
+  // assistant 消息自带生成时模型与 token 用量，随历史一并保留。
+  const model = readTrimmedString(source.model)
+  const modelProvider =
+    readTrimmedString(source.provider) ?? readTrimmedString(source.modelProvider)
+  const usage = isRecord(source.usage) ? mapMessageUsage(source.usage) : null
   return {
     id,
     role: roleRaw,
@@ -1093,6 +1123,9 @@ const mapHistoryMessage = (
     timestamp,
     ...(runId ? { runId } : {}),
     status: "completed",
+    ...(model ? { model } : {}),
+    ...(modelProvider ? { modelProvider } : {}),
+    ...(usage ? { usage } : {}),
   }
 }
 

@@ -14,6 +14,12 @@ export type OpenClawConnectionStatus =
 // 聊天消息角色。
 export type OpenClawChatRole = "user" | "assistant" | "system"
 
+// 单条消息的 token 用量（Gateway 消息自带）。
+export interface OpenClawMessageUsage {
+  input?: number
+  output?: number
+}
+
 // 单条聊天消息。
 export interface OpenClawChatMessage {
   id: string
@@ -26,6 +32,11 @@ export interface OpenClawChatMessage {
   error?: string
   // 需要渲染进程本地化的消息类型；content 存放该类型的参数（如 requestId）。
   code?: "approval-required"
+  // 该条消息生成时的模型（assistant 消息，历史水合与 run 结束回填）。
+  model?: string
+  modelProvider?: string
+  // 该条消息的 token 用量（assistant 消息，历史水合与 run 结束回填）。
+  usage?: OpenClawMessageUsage
 }
 
 // 会话级模型与上下文用量（Gateway sessions.describe 投影）。
