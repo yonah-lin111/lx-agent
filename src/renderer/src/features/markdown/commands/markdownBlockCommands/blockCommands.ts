@@ -1,0 +1,93 @@
+import type { Locale } from "@shared/settings"
+import { Code, Heading, List, ListOrdered, ListTodo, Quote, Table2 } from "lucide-react"
+import { en } from "@/i18n/locales/en"
+import { zh } from "@/i18n/locales/zh"
+import type {
+  MarkdownBlockCommand,
+  MarkdownBlockCommandId,
+  MarkdownBlockInsertion,
+  MarkdownBlockTriggerKind,
+} from "./types"
+
+const createCommandsByTrigger = (
+  locale: Locale,
+): Record<MarkdownBlockTriggerKind, MarkdownBlockCommand[]> => {
+  const dict = locale === "en" ? en : zh
+  const headingCommands: MarkdownBlockCommand[] = Array.from({ length: 6 }, (_, index) => ({
+    id: `heading${index + 1}` as MarkdownBlockCommandId,
+    label: dict.markdown.blockHeadingLevel.replace("{{level}}", String(index + 1)),
+    preview: `${"#".repeat(index + 1)} Heading`,
+    icon: Heading,
+  }))
+
+  return {
+    heading: headingCommands,
+    unorderedList: [
+      {
+        id: "unorderedList",
+        label: dict.markdown.blockUnorderedList,
+        preview: "- Item",
+        icon: List,
+      },
+      { id: "taskList", label: dict.markdown.blockTaskList, preview: "- [ ] Task", icon: ListTodo },
+    ],
+    orderedList: [
+      {
+        id: "orderedList",
+        label: dict.markdown.blockOrderedList,
+        preview: "1. Item",
+        icon: ListOrdered,
+      },
+    ],
+    quote: [{ id: "quote", label: dict.markdown.blockQuote, preview: "> Quote", icon: Quote }],
+    codeBlock: [
+      { id: "codeBlock", label: dict.markdown.blockCodeBlock, preview: "```language", icon: Code },
+    ],
+    table: [{ id: "table", label: dict.markdown.blockTable, preview: "| Header |", icon: Table2 }],
+  }
+}
+
+const commandsByLocale: Record<Locale, Record<MarkdownBlockTriggerKind, MarkdownBlockCommand[]>> = {
+  zh: createCommandsByTrigger("zh"),
+  en: createCommandsByTrigger("en"),
+}
+
+/**
+ * 获取匹配触发标记时可用的 Markdown 块命令。
+ */
+export const getMarkdownBlockCommands = (
+  kind: MarkdownBlockTriggerKind,
+  locale: Locale = "zh",
+): MarkdownBlockCommand[] => (commandsByLocale[locale] ?? commandsByLocale.zh)[kind]
+
+/**
+ * 创建块命令替换触发标记所需的文本和选区。
+ */
+export const createMarkdownBlockInsertion = (
+  commandId: MarkdownBlockCommandId,
+): MarkdownBlockInsertion => {
+  if (commandId.startsWith("heading")) {
+    const level = Number(commandId.at(-1))
+    const text = `${"#".repeat(level)} Heading`
+    return { text, selectionStart: level + 1, selectionEnd: text.length }
+  }
+
+  switch (commandId) {
+    case "unorderedList":
+      return { text: "- item", selectionStart: 2, selectionEnd: 6 }
+    case "taskList":
+      return { text: "- [ ] task", selectionStart: 6, selectionEnd: 10 }
+    case "orderedList":
+      return { text: "1. item", selectionStart: 3, selectionEnd: 7 }
+    case "quote":
+      return { text: "> quote", selectionStart: 2, selectionEnd: 7 }
+    case "codeBlock":
+      return { text: "```language\n```", selectionStart: 3, selectionEnd: 11 }
+    case "table": {
+      const text = "| Header | Header |\n| --- | --- |\n| content | content |\n|  |  |"
+      return { text, selectionStart: 2, selectionEnd: 8 }
+    }
+    default:
+      throw new Error(`Unsupported Markdown block command: ${commandId}`)
+  }
+}
