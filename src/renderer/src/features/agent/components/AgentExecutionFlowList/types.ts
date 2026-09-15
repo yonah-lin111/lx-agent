@@ -22,7 +22,14 @@ import {
 } from "lucide-react"
 import type React from "react"
 import type { LxTagColor } from "@/components/ui/LxTag"
-import type { ExecutionStep, ExecutionStepKind } from "@/features/agent/types"
+import type { useModelSettings } from "@/features/agent/hooks/modelsStore"
+import type {
+  ChatMessage,
+  ExecutionStep,
+  ExecutionStepKind,
+  ProposedPlanData,
+  ReviewFindingItem,
+} from "@/features/agent/types"
 import type { TranslationKey } from "@/i18n"
 
 export type FilterKind = "all" | "calls" | ExecutionStepKind
@@ -221,3 +228,50 @@ export const getKindMeta = (
       return { icon: Workflow, labelKey: "agent.executionFlow", tagColor: "default" }
   }
 }
+
+// 输入区导航按钮状态。
+export interface AgentFlowNavState {
+  canScrollBottom: boolean
+}
+
+// 执行流程列表命令式句柄：供输入区回到底部按钮调用。
+export interface AgentExecutionFlowListRef {
+  scrollToBottom: () => void
+}
+
+export interface AgentExecutionFlowListProps {
+  // 当前会话的全部消息列表
+  messages: readonly ChatMessage[]
+  // 是否正在流式生成/运行中
+  isStreaming?: boolean
+  // 当前会话 ID（用于查询完整装配的系统提示词）
+  sessionId?: string
+  // 当前项目或工作区路径
+  cwd?: string
+  // 点击推荐提示词回调
+  onSelectPrompt?: (prompt: string) => void
+  // 导航状态变化回调（驱动输入区上一个/下一个/回到底部按钮可用性）
+  onNavigationStateChange?: (state: AgentFlowNavState) => void
+  // "继续生成"可用（最后一条 AI 回答被截断/中止且未在流式）
+  canContinue?: boolean
+  // 点击"继续生成"：续写被中断的上一轮输出
+  onContinue?: () => void
+  // 采纳并执行实施方案
+  onAcceptPlan?: (plan: ProposedPlanData) => void
+  // 采纳并修复代码审查项
+  onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
+  // 审查项回填到输入框
+  onFillInput?: (text: string) => void
+  // 删除指定 AI 消息所在的一轮对话
+  onDeleteMessage?: (messageId: string) => void
+  // 是否只读模式
+  readOnly?: boolean
+}
+
+// 执行流程渲染元素：单个步骤或同轮折叠组。
+export type FlowRenderElement =
+  | { kind: "single"; step: ExecutionStep }
+  | { kind: "group"; groupId: string; steps: ExecutionStep[]; turnIndex: number }
+
+// 模型设置状态（modelsStore）。
+export type ModelSettingsState = ReturnType<typeof useModelSettings>
