@@ -7,10 +7,12 @@ import type {
   OpenClawChatMessage,
   OpenClawConnectionStatus,
   OpenClawConnectResult,
+  OpenClawMessageUsage,
   OpenClawSendMessageInput,
   OpenClawSessionEvent,
   OpenClawSessionInfo,
   OpenClawSessionSnapshot,
+  OpenClawSessionStats,
 } from "@shared/contracts/openclaw"
 import type { OpenClawAgentItem, OpenClawInstanceConfig } from "@shared/settings"
 import { getOpenClawSettings, saveOpenClawSettings } from "@/services/settingsService"
@@ -53,6 +55,8 @@ interface AgentSession {
   subscribed: boolean
   // 是否已从 Gateway 水合历史消息（连接建立/切换绑定时重置）。
   hydrated: boolean
+  // 会话级模型与上下文用量（来自 sessions.describe，best-effort）。
+  stats: OpenClawSessionStats | null
 }
 
 // 单个实例的连接状态。
@@ -110,6 +114,7 @@ class OpenClawClientManager {
       ...(connection.error ? { connectionError: connection.error } : {}),
       ...(connection.pairingRequestId ? { pairingRequestId: connection.pairingRequestId } : {}),
       isStreaming: session.isStreaming,
+      ...(session.stats ? { stats: { ...session.stats } } : {}),
       messages: session.messages.map((message) => ({ ...message })),
     }
   }
@@ -163,6 +168,7 @@ class OpenClawClientManager {
     session.activeRunId = null
     session.subscribed = false
     session.hydrated = false
+    session.stats = null
   }
 
   // 读取（必要时创建）某个 Agent 的会话投影。
@@ -178,6 +184,7 @@ class OpenClawClientManager {
       activeRunId: null,
       subscribed: false,
       hydrated: false,
+      stats: null,
     }
     connection.sessions.set(agentId, session)
     return session
@@ -568,6 +575,7 @@ class OpenClawClientManager {
     session.activeRunId = null
     session.subscribed = false
     session.hydrated = false
+    session.stats = null
     this.emitSnapshot(connection, session)
 
     await this.hydrateSession(connection, session)
@@ -630,6 +638,7 @@ class OpenClawClientManager {
           if (msg.role === "assistant" && msg.status === "streaming") msg.status = "completed"
         }
         this.emitSnapshot(connection, session)
+        void this.refreshStats(connection, session)
       })
       .catch((error: unknown) => {
         session.isStreaming = false
@@ -652,6 +661,7 @@ class OpenClawClientManager {
           })
         }
         this.emitSnapshot(connection, session)
+        void this.refreshStats(connection, session)
       })
   }
 
@@ -673,6 +683,7 @@ class OpenClawClientManager {
     session.isStreaming = false
     session.activeRunId = null
     this.emitSnapshot(connection, session)
+    void this.refreshStats(connection, session)
   }
 
   // 释放所有连接。
@@ -708,8 +719,29 @@ class OpenClawClientManager {
       session.messages = mapHistoryMessages(payload)
       this.emitSnapshot(connection, session)
       await this.ensureSubscribed(session, client)
+      await this.refreshStats(connection, session)
     } catch (error) {
       console.warn(`[OpenClaw] Failed to hydrate session ${sessionKey}:`, error)
+    }
+  }
+
+  // 从 Gateway 拉取会话级模型与上下文用量，变化时推送快照（best-effort）。
+  private async refreshStats(connection: InstanceConnection, session: AgentSession): Promise<void> {
+    const client = connection.client
+    const sessionKey = session.sessionKey
+    if (!client || !sessionKey || connection.status !== "connected") return
+    try {
+      const payload = await client.request<unknown>("sessions.describe", {
+        key: sessionKey,
+        agentId: session.agentId,
+      })
+      if (session.sessionKey !== sessionKey) return
+      const stats = mapSessionStats(payload)
+      if (!stats || JSON.stringify(stats) === JSON.stringify(session.stats)) return
+      session.stats = stats
+      this.emitSnapshot(connection, session)
+    } catch (error) {
+      console.warn(`[OpenClaw] Failed to refresh stats for ${sessionKey}:`, error)
     }
   }
 
@@ -786,6 +818,7 @@ class OpenClawClientManager {
         session.isStreaming = false
         session.activeRunId = null
         this.emitSnapshot(connection, session)
+        void this.refreshStats(connection, session)
         return
       }
       return
@@ -838,6 +871,19 @@ class OpenClawClientManager {
 
     if (state === "final") {
       if (text) message.content = text
+      // run 结束回填该条消息生成时的模型与 token 用量（权威值）。
+      const model = rawMessage ? readTrimmedString(rawMessage.model) : undefined
+      const modelProvider = rawMessage
+        ? (readTrimmedString(rawMessage.provider) ?? readTrimmedString(rawMessage.modelProvider))
+        : undefined
+      const usage = isRecord(payload.usage)
+        ? mapMessageUsage(payload.usage)
+        : rawMessage && isRecord(rawMessage.usage)
+          ? mapMessageUsage(rawMessage.usage)
+          : null
+      if (model) message.model = model
+      if (modelProvider) message.modelProvider = modelProvider
+      if (usage) message.usage = usage
       message.status = "completed"
       session.isStreaming = false
       session.activeRunId = null
@@ -994,6 +1040,49 @@ const mapSessionList = (payload: unknown): OpenClawSessionInfo[] =>
     .map(mapSessionInfo)
     .filter((session): session is OpenClawSessionInfo => session !== null)
 
+// 读取非空字符串字段。
+const readTrimmedString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  return trimmed ? trimmed : undefined
+}
+
+// 读取非负有限数字字段。
+const readNonNegativeNumber = (value: unknown): number | undefined =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined
+
+// 将 Gateway 用量对象映射为消息 token 用量。
+const mapMessageUsage = (raw: Record<string, unknown>): OpenClawMessageUsage | null => {
+  const input = readNonNegativeNumber(raw.input) ?? readNonNegativeNumber(raw.inputTokens)
+  const output = readNonNegativeNumber(raw.output) ?? readNonNegativeNumber(raw.outputTokens)
+  const usage: OpenClawMessageUsage = {
+    ...(input !== undefined ? { input } : {}),
+    ...(output !== undefined ? { output } : {}),
+  }
+  return Object.keys(usage).length > 0 ? usage : null
+}
+
+// 将 sessions.describe 结果映射为会话级模型与上下文用量。
+const mapSessionStats = (payload: unknown): OpenClawSessionStats | null => {
+  const session = isRecord(payload) && isRecord(payload.session) ? payload.session : null
+  if (!session) return null
+  const budget = isRecord(session.contextBudgetStatus) ? session.contextBudgetStatus : null
+  const model = readTrimmedString(session.activeModel) ?? readTrimmedString(session.model)
+  const modelProvider =
+    readTrimmedString(session.activeModelProvider) ?? readTrimmedString(session.modelProvider)
+  const contextUsed = budget ? readNonNegativeNumber(budget.estimatedPromptTokens) : undefined
+  const contextWindow =
+    (budget ? readNonNegativeNumber(budget.contextTokenBudget) : undefined) ??
+    readNonNegativeNumber(session.contextTokens)
+  const stats: OpenClawSessionStats = {
+    ...(model ? { model } : {}),
+    ...(modelProvider ? { modelProvider } : {}),
+    ...(contextUsed !== undefined ? { contextUsed } : {}),
+    ...(contextWindow !== undefined ? { contextWindow } : {}),
+  }
+  return Object.keys(stats).length > 0 ? stats : null
+}
+
 // 将 chat.history 结果中的单条消息映射为聊天消息（历史消息均为已完成态）。
 const mapHistoryMessage = (
   raw: Record<string, unknown>,
@@ -1022,6 +1111,11 @@ const mapHistoryMessage = (
       : typeof raw.runId === "string" && raw.runId
         ? raw.runId
         : undefined
+  // assistant 消息自带生成时模型与 token 用量，随历史一并保留。
+  const model = readTrimmedString(source.model)
+  const modelProvider =
+    readTrimmedString(source.provider) ?? readTrimmedString(source.modelProvider)
+  const usage = isRecord(source.usage) ? mapMessageUsage(source.usage) : null
   return {
     id,
     role: roleRaw,
@@ -1029,6 +1123,9 @@ const mapHistoryMessage = (
     timestamp,
     ...(runId ? { runId } : {}),
     status: "completed",
+    ...(model ? { model } : {}),
+    ...(modelProvider ? { modelProvider } : {}),
+    ...(usage ? { usage } : {}),
   }
 }
 

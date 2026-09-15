@@ -33,7 +33,7 @@ describe("OpenClawConversationView", () => {
   })
 
   it("无消息时展示空态提示", () => {
-    render(<OpenClawConversationView timeline={[]} agents={agents} streamingAgentIds={[]} />)
+    render(<OpenClawConversationView timeline={[]} agents={agents} />)
 
     expect(screen.getByText("No message yet. Pick a coworker and send a task.")).not.toBeNull()
   })
@@ -45,7 +45,7 @@ describe("OpenClawConversationView", () => {
       { agentId: "amy", message: assistant("a2", "amy-reply", 300) },
     ]
 
-    render(<OpenClawConversationView timeline={timeline} agents={agents} streamingAgentIds={[]} />)
+    render(<OpenClawConversationView timeline={timeline} agents={agents} />)
 
     // 用户消息与两条助手回复均在单一时间线上
     expect(screen.getByText("帮我看看登录逻辑")).not.toBeNull()
@@ -56,15 +56,17 @@ describe("OpenClawConversationView", () => {
     expect(screen.getByText("Amy")).not.toBeNull()
   })
 
-  it("存在员工流式时展示工作中提示", () => {
+  it("仅正在输出的消息展示 loading，历史消息不展示", () => {
     const timeline: OfficeTimelineMessage[] = [
-      { agentId: "lily", message: assistant("a1", "partial", 100) },
+      { agentId: "lily", message: assistant("a1", "done", 100) },
+      { agentId: "lily", message: { ...assistant("a2", "", 200), status: "streaming" } },
     ]
 
-    render(
-      <OpenClawConversationView timeline={timeline} agents={agents} streamingAgentIds={["lily"]} />,
-    )
+    const { container } = render(<OpenClawConversationView timeline={timeline} agents={agents} />)
 
-    expect(screen.getByText("1 coworker(s) working…")).not.toBeNull()
+    const bubbles = container.querySelectorAll('[data-assistant-bubble="true"]')
+    expect(bubbles).toHaveLength(2)
+    expect(bubbles[0]?.querySelectorAll(".animate-pulse")).toHaveLength(0)
+    expect(bubbles[1]?.querySelectorAll(".animate-pulse")).toHaveLength(3)
   })
 })

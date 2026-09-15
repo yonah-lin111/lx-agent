@@ -1,4 +1,4 @@
-import type { OpenClawConnectionStatus } from "@shared/contracts/openclaw"
+import type { OpenClawConnectionStatus, OpenClawSessionStats } from "@shared/contracts/openclaw"
 import { Plus, RefreshCw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -98,6 +98,13 @@ export const OpenClawPage = (): React.JSX.Element => {
       sessions.filter((session) => session.snapshot?.isStreaming).map((session) => session.agentId),
     [sessions],
   )
+
+  // 各员工的会话级模型与上下文用量（供消息列表在最新一条 AI 消息上展示）。
+  const sessionStats = useMemo<Record<string, OpenClawSessionStats | undefined>>(() => {
+    const map: Record<string, OpenClawSessionStats | undefined> = {}
+    for (const session of sessions) map[session.agentId] = session.snapshot?.stats
+    return map
+  }, [sessions])
 
   const candidates = useMemo(
     () =>
@@ -390,7 +397,7 @@ export const OpenClawPage = (): React.JSX.Element => {
         <OpenClawMessageList
           timeline={timeline}
           agents={conversationAgents}
-          streamingAgentIds={streamingAgentIds}
+          sessionStats={sessionStats}
         />
       </div>
 

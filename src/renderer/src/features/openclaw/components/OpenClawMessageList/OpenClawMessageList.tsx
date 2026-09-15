@@ -1,13 +1,42 @@
+import type { OpenClawChatMessage, OpenClawSessionStats } from "@shared/contracts/openclaw"
+import { ArrowDownToLine } from "lucide-react"
 import type React from "react"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useTranslation } from "@/i18n"
 import type { OfficeTimelineMessage } from "../../hooks/useOpenClawOffice"
-import { type ConversationAgent, OpenClawMessageItem } from "./OpenClawMessageItem"
+import {
+  type ConversationAgent,
+  OpenClawMessageItem,
+  type OpenClawMessageStats,
+} from "./OpenClawMessageItem"
+
+// 视为"在底部附近"的滚动余量（px）。
+const NEAR_BOTTOM_THRESHOLD = 150
+
+// 组装单条消息的展示统计：优先该条消息记录值，缺失时回退会话级实时值。
+const resolveMessageStats = (
+  message: OpenClawChatMessage,
+  session: OpenClawSessionStats | undefined,
+): OpenClawMessageStats | undefined => {
+  const model = message.model ?? session?.model
+  const modelProvider = message.modelProvider ?? session?.modelProvider
+  const contextUsed = message.usage?.input ?? session?.contextUsed
+  const stats: OpenClawMessageStats = {
+    ...(model ? { model } : {}),
+    ...(modelProvider ? { modelProvider } : {}),
+    ...(contextUsed !== undefined ? { contextUsed } : {}),
+    ...(session?.contextWindow !== undefined ? { contextWindow: session.contextWindow } : {}),
+    ...(message.usage?.output !== undefined ? { outputTokens: message.usage.output } : {}),
+  }
+  return Object.keys(stats).length > 0 ? stats : undefined
+}
 
 export interface OpenClawMessageListProps {
   timeline: OfficeTimelineMessage[]
   agents: ConversationAgent[]
-  streamingAgentIds: string[]
+  // 各 Agent 的会话级模型与上下文用量（流式消息回退展示）。
+  sessionStats?: Record<string, OpenClawSessionStats | undefined>
 }
 
 /**
@@ -16,20 +45,75 @@ export interface OpenClawMessageListProps {
 export const OpenClawMessageList = ({
   timeline,
   agents,
-  streamingAgentIds,
+  sessionStats,
 }: OpenClawMessageListProps): React.JSX.Element => {
   const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement | null>(null)
+
+  // 吸底状态：用户主动上滚后释放，滚回底部附近后恢复。
+  const stickToBottomRef = useRef(true)
+  const lastScrollTopRef = useRef<number | null>(null)
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+
   const lastMessage = timeline[timeline.length - 1]
+  // 内容信号：新消息与流式增量都会改变该值，驱动吸底跟随。
+  const contentSignal = `${timeline.length}:${lastMessage?.message.content.length ?? 0}`
 
   const agentMap = useMemo(() => new Map(agents.map((agent) => [agent.agentId, agent])), [agents])
 
-  // 新消息或流式增量时滚动到底部
-  const scrollSignal = `${timeline.length}:${lastMessage?.message.content.length ?? 0}:${streamingAgentIds.length}`
+  // 切换办公区/员工集合时重置为吸底。
   useEffect(() => {
+    stickToBottomRef.current = true
+    lastScrollTopRef.current = null
+    setShowScrollToBottom(false)
+  }, [agents])
+
+  // 用户发送新消息后平滑滚动到底部（对齐 AgentMessageList）。
+  const prevMessageIdsRef = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    const previousIds = prevMessageIdsRef.current
+    prevMessageIdsRef.current = new Set(timeline.map((item) => item.message.id))
+    if (!previousIds) return
+    const hasNewUserMessage = timeline.some(
+      (item) => item.message.role === "user" && !previousIds.has(item.message.id),
+    )
+    if (!hasNewUserMessage) return
+    stickToBottomRef.current = true
+    setShowScrollToBottom(false)
     const container = scrollRef.current
-    if (container) container.scrollTop = container.scrollHeight
-  }, [scrollSignal])
+    if (container) container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
+  }, [timeline])
+
+  // 新消息或流式增量时：仅在吸底状态下跟随到底部。
+  useLayoutEffect(() => {
+    const container = scrollRef.current
+    if (!container || container.clientHeight <= 0) return
+    if (!stickToBottomRef.current) return
+    container.scrollTop = container.scrollHeight
+    setShowScrollToBottom(false)
+  }, [contentSignal])
+
+  // 滚动事件：识别用户主动上滚以释放吸底，并据此显示回到底部按钮。
+  const handleScroll = (): void => {
+    const container = scrollRef.current
+    if (!container || container.clientHeight <= 0) return
+    const nearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < NEAR_BOTTOM_THRESHOLD
+    const prevScrollTop = lastScrollTopRef.current
+    const isScrollingUp = prevScrollTop !== null && prevScrollTop - container.scrollTop > 0.5
+    stickToBottomRef.current = isScrollingUp ? false : nearBottom
+    lastScrollTopRef.current = container.scrollTop
+    setShowScrollToBottom(!nearBottom)
+  }
+
+  // 回到底部：恢复吸底并平滑滚动。
+  const scrollToBottom = (): void => {
+    const container = scrollRef.current
+    if (!container) return
+    stickToBottomRef.current = true
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
+    setShowScrollToBottom(false)
+  }
 
   if (timeline.length === 0) {
     return (
@@ -40,44 +124,56 @@ export const OpenClawMessageList = ({
   }
 
   return (
-    <div
-      ref={scrollRef}
-      className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]"
-    >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-        {timeline.map((item) => {
-          const { agentId, message, targetAgentIds } = item
-          const agent = agentMap.get(agentId)
-          const targetAgents = targetAgentIds
-            ? targetAgentIds
-                .map((id) => agentMap.get(id))
-                .filter((a): a is ConversationAgent => Boolean(a))
-            : undefined
-          const isStreaming = streamingAgentIds.includes(agentId)
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]"
+      >
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+          {timeline.map((item) => {
+            const { agentId, message, targetAgentIds } = item
+            const agent = agentMap.get(agentId)
+            const targetAgents = targetAgentIds
+              ? targetAgentIds
+                  .map((id) => agentMap.get(id))
+                  .filter((a): a is ConversationAgent => Boolean(a))
+              : undefined
 
-          return (
-            <OpenClawMessageItem
-              key={message.id}
-              agentId={agentId}
-              message={message}
-              agent={agent}
-              targetAgents={targetAgents}
-              isStreaming={isStreaming}
-            />
-          )
-        })}
-
-        {streamingAgentIds.length > 0 && (
-          <div className="flex items-center gap-1.5 px-1 py-1 text-[11px] text-white/40">
-            <span className="flex gap-1">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-400/80" />
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-400/80 [animation-delay:150ms]" />
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-400/80 [animation-delay:300ms]" />
-            </span>
-            <span>{t("openclaw.workingCount", { count: streamingAgentIds.length })}</span>
-          </div>
-        )}
+            return (
+              <OpenClawMessageItem
+                key={message.id}
+                agentId={agentId}
+                message={message}
+                agent={agent}
+                targetAgents={targetAgents}
+                isStreaming={message.status === "streaming"}
+                stats={
+                  message.role === "assistant"
+                    ? resolveMessageStats(message, sessionStats?.[agentId])
+                    : undefined
+                }
+              />
+            )
+          })}
+        </div>
       </div>
+
+      {/* 回到底部悬浮按钮 */}
+      {showScrollToBottom && (
+        <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2">
+          <LxIconButton
+            shape="circle"
+            size="medium"
+            aria-label={t("openclaw.scrollToBottom")}
+            title={{ content: t("openclaw.scrollToBottom"), placement: "top" }}
+            className="pointer-events-auto border border-[var(--color-theme-border-subtle,rgba(255,255,255,0.12))] bg-[var(--color-theme-surface-elevated,#212121)] text-[var(--color-theme-text-secondary,rgba(255,255,255,0.6))] shadow-lg backdrop-blur hover:border-[var(--color-theme-border-hover,rgba(255,255,255,0.25))] hover:bg-[var(--color-theme-surface-hover,#2a2a2a)] hover:text-[var(--color-theme-text-primary,#fff)]"
+            onClick={scrollToBottom}
+          >
+            <ArrowDownToLine className="h-3.5 w-3.5" />
+          </LxIconButton>
+        </div>
+      )}
     </div>
   )
 }
