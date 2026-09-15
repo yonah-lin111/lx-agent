@@ -1,6 +1,5 @@
 import type { Project, ProjectFolder, ProjectItem } from "@shared/project"
 import type {
-  ProjectNavigationFilterScope,
   ProjectNavigationFolder,
   ProjectNavigationProject,
   ProjectNavigationPrompt,
@@ -165,49 +164,6 @@ export const filterProjectNavigationTree = (
 
     return isProjectMatched || folders.length > 0 || prompts.length > 0
       ? [{ ...project, projectFolders: folders, prompts }]
-      : []
-  })
-}
-
-/**
- * 根据条目状态过滤项目树，同时保留匹配条目的父级层级。
- * 范围限定为当前项目且存在当前条目时，仅保留该项目的匹配条目。
- */
-export const filterProjectNavigationTreeByStatus = (
-  projects: ProjectNavigationProject[],
-  statuses: ProjectNavigationPrompt["status"][],
-  scope: ProjectNavigationFilterScope,
-  activeProjectId?: string,
-): ProjectNavigationProject[] => {
-  if (statuses.length === 0) return projects
-
-  const filterFolderByStatus = (
-    folder: ProjectNavigationFolder,
-  ): ProjectNavigationFolder | null => {
-    const filteredChildFolders = folder.projectFolders
-      .map(filterFolderByStatus)
-      .filter((child): child is ProjectNavigationFolder => child !== null)
-    const filteredPrompts = folder.prompts.filter((prompt) => statuses.includes(prompt.status))
-
-    if (filteredChildFolders.length > 0 || filteredPrompts.length > 0) {
-      return {
-        ...folder,
-        projectFolders: filteredChildFolders,
-        prompts: filteredPrompts,
-      }
-    }
-    return null
-  }
-
-  return projects.flatMap((project) => {
-    if (scope !== "all" && activeProjectId && project.id !== activeProjectId) return []
-    const projectFolders = project.projectFolders
-      .map(filterFolderByStatus)
-      .filter((folder): folder is ProjectNavigationFolder => folder !== null)
-    const prompts = project.prompts.filter((prompt) => statuses.includes(prompt.status))
-
-    return projectFolders.length > 0 || prompts.length > 0
-      ? [{ ...project, projectFolders, prompts }]
       : []
   })
 }

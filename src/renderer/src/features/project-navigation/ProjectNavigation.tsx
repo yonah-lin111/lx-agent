@@ -8,14 +8,13 @@ import {
   Locate,
   Plus,
   Search,
-  SlidersHorizontal,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenuItem } from "@/components/ui/LxMenu"
-import { LxTag, type LxTagColor } from "@/components/ui/LxTag"
+import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useRecentItemsStore } from "@/features/project/recentItemsStore"
@@ -39,7 +38,6 @@ import { useProjectNavigationActions } from "@/features/project-navigation/hooks
 import { useProjectNavigationData } from "@/features/project-navigation/hooks/useProjectNavigationData"
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import type {
-  ProjectNavigationFilterScope,
   ProjectNavigationMenuTarget,
   ProjectNavigationProject,
   ProjectNavigationSortDirection,
@@ -47,7 +45,6 @@ import type {
 } from "@/features/project-navigation/types"
 import {
   filterProjectNavigationTree,
-  filterProjectNavigationTreeByStatus,
   sortProjectNavigationTree,
 } from "@/features/project-navigation/utils"
 import { useTranslation } from "@/i18n"
@@ -162,51 +159,19 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const [collapsedProjectFolders, setCollapsedProjectFolders] = useState<Record<string, boolean>>(
     {},
   )
-  const [statusFilter, setStatusFilter] = useState<PromptStatus[]>([])
-  const [filterScope, setFilterScope] = useState<ProjectNavigationFilterScope>("all")
   const [sort, setSort] = useState<ProjectNavigationSort>(readSortPreference)
-  // 筛选激活前的折叠状态快照，取消筛选时用于恢复。
-  const collapseSnapshotRef = useRef<{
-    collapsedProjects: Record<string, boolean>
-    collapsedProjectFolders: Record<string, boolean>
-  } | null>(null)
   const { createMenuItem, deleteItem, renameItem, saveProject, importProject, updatePromptStatus } =
     useProjectNavigationActions(projects, refreshProjects, toast)
 
-  // 当前激活条目所属的项目 id，用于"当前项目"范围筛选。
-  const activeProjectId = useMemo(() => {
-    if (!activePromptId) return undefined
-    if (activePromptId.startsWith("temp-")) {
-      return activePromptId.slice("temp-".length)
-    }
-    const hasPrompt = (folders: ProjectNavigationProject["projectFolders"]): boolean =>
-      folders.some(
-        (folder) =>
-          folder.prompts.some((prompt) => prompt.id === activePromptId) ||
-          hasPrompt(folder.projectFolders),
-      )
-
-    return projects.find(
-      (project) =>
-        project.prompts.some((prompt) => prompt.id === activePromptId) ||
-        hasPrompt(project.projectFolders),
-    )?.id
-  }, [activePromptId, projects])
-
-  // 先按关键词过滤，再按状态与范围过滤项目树，最后按当前排序偏好重排。
+  // 先按关键词过滤项目树，再按当前排序偏好重排。
   const filteredProjects = useMemo(
     () =>
       sortProjectNavigationTree(
-        filterProjectNavigationTreeByStatus(
-          filterProjectNavigationTree(projects, searchKeyword),
-          statusFilter,
-          filterScope,
-          activeProjectId,
-        ),
+        filterProjectNavigationTree(projects, searchKeyword),
         sort.key,
         sort.direction,
       ),
-    [projects, searchKeyword, statusFilter, filterScope, activeProjectId, sort],
+    [projects, searchKeyword, sort],
   )
 
   // 排序偏好变更时持久化到 localStorage。
@@ -518,90 +483,6 @@ export const ProjectNavigation = (): React.JSX.Element => {
     setCollapsedProjectFolders(nextCollapsedFolders)
   }
 
-  // 范围筛选选项（单选）。
-  const scopeFilterOptions: { value: ProjectNavigationFilterScope; label: string }[] = [
-    { value: "all", label: t("project.allProjects") },
-    { value: "current", label: t("project.currentProject") },
-  ]
-
-  // 状态筛选选项（多选），颜色与条目状态图标一致。
-  const statusFilterOptions: { value: PromptStatus; label: string; color: LxTagColor }[] = [
-    { value: "todo", label: t("agent.promptStatusTodo"), color: "gray" },
-    { value: "in_progress", label: t("agent.promptStatusInProgress"), color: "amber" },
-    { value: "completed", label: t("agent.promptStatusCompleted"), color: "emerald" },
-  ]
-
-  /**
-   * 展开范围内包含指定状态条目的项目与文件夹；首次激活筛选时保存折叠状态快照，
-   * 取消筛选时恢复快照，其余容器保持原折叠状态。
-   */
-  const expandStatusFilteredContainers = (
-    statuses: PromptStatus[],
-    scope: ProjectNavigationFilterScope,
-  ): void => {
-    if (statuses.length === 0) {
-      if (collapseSnapshotRef.current) {
-        setCollapsedProjects(collapseSnapshotRef.current.collapsedProjects)
-        setCollapsedProjectFolders(collapseSnapshotRef.current.collapsedProjectFolders)
-        collapseSnapshotRef.current = null
-      }
-      // 恢复原折叠状态后，展开当前激活条目所属的项目与文件夹。
-      locatePrompt(activePromptId)
-      return
-    }
-    if (statusFilter.length === 0 && !collapseSnapshotRef.current) {
-      collapseSnapshotRef.current = { collapsedProjects, collapsedProjectFolders }
-    }
-    const nextCollapsedProjects = { ...collapsedProjects }
-    const nextCollapsedFolders = { ...collapsedProjectFolders }
-
-    const expandMatchingFolders = (
-      folders: ProjectNavigationProject["projectFolders"],
-    ): boolean => {
-      let hasMatch = false
-      for (const folder of folders) {
-        const childMatched = expandMatchingFolders(folder.projectFolders)
-        const promptMatched = folder.prompts.some((prompt) => statuses.includes(prompt.status))
-        if (childMatched || promptMatched) {
-          nextCollapsedFolders[folder.id] = true
-          hasMatch = true
-        }
-      }
-      return hasMatch
-    }
-
-    for (const project of projects) {
-      if (scope !== "all" && activeProjectId && project.id !== activeProjectId) continue
-      const foldersMatched = expandMatchingFolders(project.projectFolders)
-      const promptsMatched = project.prompts.some((prompt) => statuses.includes(prompt.status))
-      if (foldersMatched || promptsMatched) {
-        nextCollapsedProjects[project.id] = true
-      }
-    }
-    setCollapsedProjects(nextCollapsedProjects)
-    setCollapsedProjectFolders(nextCollapsedFolders)
-  }
-
-  /**
-   * 切换筛选范围，重复点击当前范围时回退为"全部项目"。
-   */
-  const toggleScopeFilter = (scope: ProjectNavigationFilterScope): void => {
-    const next = filterScope === scope ? "all" : scope
-    setFilterScope(next)
-    expandStatusFilteredContainers(statusFilter, next)
-  }
-
-  /**
-   * 切换筛选状态的多选状态。
-   */
-  const toggleStatusFilter = (status: PromptStatus): void => {
-    const next = statusFilter.includes(status)
-      ? statusFilter.filter((item) => item !== status)
-      : [...statusFilter, status]
-    setStatusFilter(next)
-    expandStatusFilteredContainers(next, filterScope)
-  }
-
   const addPanel = (
     <div className="flex min-w-36 flex-col gap-0.5" aria-label={t("project.createOrImportProject")}>
       <LxMenuItem
@@ -616,45 +497,6 @@ export const ProjectNavigation = (): React.JSX.Element => {
       >
         {t("project.importProject")}
       </LxMenuItem>
-    </div>
-  )
-
-  const filterPanel = (
-    <div className="flex flex-col gap-1.5" aria-label={t("project.filterItems")}>
-      <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-        {t("project.scope")}
-        <div className="flex flex-nowrap gap-1">
-          {scopeFilterOptions.map(({ value, label }) => (
-            <LxTag
-              key={value}
-              size="small"
-              highlighted={filterScope === value}
-              onClick={() => toggleScopeFilter(value)}
-            >
-              {label}
-            </LxTag>
-          ))}
-        </div>
-      </div>
-      <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-        {t("common.status")}
-        <div className="flex flex-nowrap gap-1">
-          {statusFilterOptions.map(({ value, label, color }) => {
-            const isSelected = statusFilter.includes(value)
-            return (
-              <LxTag
-                size="small"
-                key={value}
-                color={color}
-                highlighted={isSelected}
-                onClick={() => toggleStatusFilter(value)}
-              >
-                {label}
-              </LxTag>
-            )
-          })}
-        </div>
-      </div>
     </div>
   )
 
@@ -830,16 +672,6 @@ export const ProjectNavigation = (): React.JSX.Element => {
             >
               {isAllCollapsed ? <ChevronsDownUp /> : <ChevronsUpDown />}
             </LxIconButton>
-            <LxTooltip
-              content={filterPanel}
-              contentClassName="!p-2"
-              placement="bottom"
-              trigger="hover"
-            >
-              <LxIconButton aria-label={t("project.filterItems")} size="small">
-                <SlidersHorizontal />
-              </LxIconButton>
-            </LxTooltip>
             <LxTooltip
               content={sortPanel}
               contentClassName="!p-2"
