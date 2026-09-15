@@ -53,7 +53,7 @@
 
 ## 2. 协作模式硬门禁（Gate 1）
 
-`src/shared/contracts/agent.ts` 定义四态协作模式（历史值 `"default"` 由 `normalizeCollaborationMode` 归一化为 `"build"`）：
+`src/shared/contracts/agent/permissions.ts` 定义四态协作模式（历史值 `"default"` 由 `normalizeCollaborationMode` 归一化为 `"build"`）：
 
 ```typescript
 export type CollaborationMode = "build" | "plan" | "review" | "design"

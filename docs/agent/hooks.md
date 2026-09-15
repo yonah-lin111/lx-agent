@@ -125,7 +125,7 @@ stdout（camelCase 严格 JSON，允许为空）：
 
 ## 6. 代码与测试
 
-- 契约：`src/shared/contracts/agent.ts`（`HookEventName` / `HookRunStatus` / `HookContextMessage`）
+- 契约：`src/shared/contracts/agent/hooks.ts`（`HookEventName` / `HookRunStatus` / `HookContextMessage`）
 - 引擎：`src/main/agent/hooks/`（`hookConfig` / `commandRunner` / `outputParser` / `dispatcher` / `hooksManager`）
 - 设置读写：`settingsService`（`getHookSettings` / `saveHookSettings`，保存后只清 `global` 缓存）+ IPC `settings:hooks:get/save`；编辑器：`src/renderer/src/features/settings/components/HooksSettings.tsx`
 - 单测：`test/main/agent/hooks/`（配置校验 / parser 全分支 / runner / dispatcher / 压缩 fail-open）、`test/main/services/hookSettingsService.test.ts`（归一 / 写盘 / 拒绝 / 缓存失效）

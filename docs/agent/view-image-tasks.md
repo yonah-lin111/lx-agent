@@ -10,7 +10,7 @@
 
 ## 1. 契约扩展
 
-- [ ] `src/shared/contracts/agent.ts`
+- [ ] `src/shared/contracts/agent/tools.ts`
   - 新增 `ViewImageDetails`（字段见设计 §3）
   - `ToolResultMessage` 新增 `image?: ViewImageDetails`
 

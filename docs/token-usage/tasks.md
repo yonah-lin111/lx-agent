@@ -5,7 +5,7 @@
 
 ## 阶段 1：数据契约与存储
 
-- [x] T1 `src/shared/contracts/agent.ts`：`Usage` 增加 `cacheWrite`
+- [x] T1 `src/shared/contracts/agent/primitives.ts`：`Usage` 增加 `cacheWrite`
 - [x] T2 `src/shared/contracts/usage.ts`：日志/查询/聚合 DTO、`computeUsageRates`、`resolveUsageRange`
 - [x] T3 `src/main/db/migrations/0010_create_usage_log.ts` + `migrations/index.ts` 注册
 - [x] T4 `src/main/services/usageLogService.ts`：record / listLogs / summary / daily / modelStats / providerStats / filterOptions
