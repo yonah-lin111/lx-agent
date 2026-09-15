@@ -1,13 +1,21 @@
-import type { AgentMessage, SandboxPolicy } from "@shared/contracts/agent"
+import type { AgentMessage, PromptAssembly, SandboxPolicy } from "@shared/contracts/agent"
 import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import { getSubagentSettings } from "@/services/settingsService"
-import { type BuildSystemPromptOptions, buildSystemPromptSync, createRegistry } from "./assembly"
+import {
+  ALL_TOOL_NAMES,
+  type BuildSystemPromptOptions,
+  buildSystemPromptSync,
+  createRegistry,
+  resolveCwd,
+} from "./assembly"
 import { createCompactionSummaryMessage } from "./compaction"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { Agent } from "./core/agent"
 import type { Model } from "./core/types"
 import { hookResultMessages, hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
+import { permissionManager } from "./permissions/permissionManager"
+import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
 import type { SessionRunnerHost } from "./sessionRunner.types"
 import { createTodoStateMessage } from "./sessionRunnerInput"
@@ -182,4 +190,38 @@ export const buildSessionAgent = (
   })
 
   return { agent, registry, subagentRuntime }
+}
+
+/**
+ * 组装完整系统提示（含环境变量与激活工具清单），供只读预览使用。
+ */
+export const getPromptAssembly = async (
+  host: SessionRunnerHost,
+  cwd?: string,
+): Promise<PromptAssembly> => {
+  const targetCwd = cwd ?? host.cwd ?? host.requestedCwd ?? resolveCwd() ?? ""
+  const targetSessionId = host.currentSessionId ?? undefined
+  const activeSkills = host.activeSkills
+  const currentSandboxPolicy = permissionManager.getSandboxPolicy()
+  const modelId = host.agent?.state.model.id
+  const contextUsage = host.compactor.getUsage()
+
+  const assembly = await defaultSystemPromptManager.assemble({
+    cwd: targetCwd,
+    sessionId: targetSessionId,
+    modelId,
+    sandboxPolicy: currentSandboxPolicy,
+    collaborationMode: host.collaborationMode,
+    contextUsage,
+    activeSkills,
+  })
+
+  const activeTools: string[] = host.registry
+    ? host.registry.getAll().map((tool) => tool.name)
+    : Array.from(ALL_TOOL_NAMES)
+
+  return {
+    ...assembly,
+    activeTools,
+  }
 }

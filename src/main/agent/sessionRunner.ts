@@ -1,6 +1,4 @@
 import { existsSync } from "node:fs"
-import { homedir } from "node:os"
-import { join } from "node:path"
 import type {
   AgentCompactResult,
   AgentContextUsage,
@@ -20,34 +18,38 @@ import type {
 } from "@shared/contracts/agent"
 import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
-import { agentSessionService, createExternalId } from "@/services/agentSessionService"
+import { agentSessionService } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { projectService } from "@/services/projectService"
 import type { QueuedMessage, SessionRunnerOptions } from "./sessionRunner.types"
-import { buildSessionAgent } from "./sessionRunnerAgentFactory"
+import { buildSessionAgent, getPromptAssembly } from "./sessionRunnerAgentFactory"
+import { cleanUp, dispose, freezeNewSession } from "./sessionRunnerLifecycle"
 import { clearQueue, enqueueMessage, kickDrain } from "./sessionRunnerQueue"
-import { continueChat, discardPendingTurn, runSessionTurn } from "./sessionRunnerTurns"
+import {
+  restoreMessages,
+  restoreSessionData,
+  switchModel,
+  switchProject,
+  switchWorktree,
+} from "./sessionRunnerSessionData"
+import { continueChat, runSessionTurn } from "./sessionRunnerTurns"
 
 export type { SessionRunnerOptions } from "./sessionRunner.types"
 
-import { ALL_TOOL_NAMES, buildSystemPromptSync, resolveCwd } from "./assembly"
+import { buildSystemPromptSync, resolveCwd } from "./assembly"
 import { ContextCompactor } from "./contextCompactor"
 import { Agent } from "./core/agent"
 import { TurnContext } from "./core/turnContext"
 import type { AgentTool } from "./core/types"
-import { hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
-import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
 import type { PersonalityName } from "./prompts/personalities"
-import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
 import {
   expandAndDetectCommand,
   processPendingFiles,
   resolveInjectedSkills,
-  resolveMcpTools,
 } from "./sessionRunnerInput"
 import { unifiedExecManager } from "./shell/unifiedExecManager"
 import type { LoadedSkill } from "./skills/skillLoader"
@@ -65,7 +67,8 @@ export class AgentSessionRunner {
   public tabId?: string
   // 内部协作面：由 sessionRunnerAgentFactory / 工具守卫模块共享。
   public agent?: Agent
-  private registry?: ToolRegistry
+  // 内部协作面：工具注册表由装配工厂创建，供提示组装只读使用。
+  public registry?: ToolRegistry
   public subagentPool = new SubagentPool()
   // 会话级并发槽位：跨嵌套深度共享，registry 重建不重置计数。
   public subagentRuntime?: SubagentRuntime
@@ -187,30 +190,11 @@ export class AgentSessionRunner {
   }
 
   public cleanUp(): void {
-    this.abort()
-    if (this.currentSessionId) {
-      permissionManager.clearSession(this.currentSessionId)
-      questionManager.clearSession(this.currentSessionId)
-      lspManager.clearSession(this.currentSessionId)
-      unifiedExecManager.clearSession(this.currentSessionId)
-      this.subagentPool.clear()
-    }
-    this.guardReminders.clear()
+    cleanUp(this)
   }
 
-  // 会话销毁：best-effort 派发 SessionEnd（不等待异步工作），再清理运行态。
   public dispose(reason: "quit" | "dispose"): void {
-    const sessionId = this.currentSessionId
-    if (sessionId) {
-      void hooksManager.dispatchBestEffort({
-        event: "SessionEnd",
-        sessionId,
-        cwd: this.getEffectiveCwd(),
-        payload: { reason },
-      })
-    }
-    this.cleanUp()
-    this.sessionStartFired = false
+    dispose(this, reason)
   }
 
   // 内部协作面：会话装配与就绪检查（实现含 sessionRunnerAgentFactory）。
@@ -323,20 +307,7 @@ export class AgentSessionRunner {
   }
 
   public freezeNewSession(context: AgentSendContext): void {
-    if (this.currentSessionId) return
-    this.sessionBinding = {
-      projectId: context.projectId,
-      page: context.page,
-    }
-    const cwd = context.cwd ?? (context.projectId ? resolveCwd() : join(homedir(), "Desktop"))
-    if (cwd) this.requestedCwd = cwd
-    if (context.personality) {
-      this.personality = context.personality
-    }
-    const snapshot = getDefaultCapabilities()
-    this.activeCapabilities = snapshot.tools
-    this.activeMcp = resolveMcpTools()
-    this.activeSkills = cwd ? resolveInjectedSkills(cwd) : []
+    freezeNewSession(this, context)
   }
 
   public async send(
@@ -433,24 +404,7 @@ export class AgentSessionRunner {
   }
 
   public restoreMessages(messages: AgentMessage[]): void {
-    discardPendingTurn(this)
-    this.agent?.abort()
-    clearQueue(this)
-    const ready = this.ensureReady()
-    if ("error" in ready) return
-    ready.agent.state.messages = [...messages]
-    this.turnStore.syncMessageSeqs(messages)
-    if (messages.length === 0) {
-      this.setSessionId(null)
-      this.sessionBinding = null
-      this.compactor.setBoundary(null)
-      this.turnStore.clearTodo()
-    } else if (this.compactor.getBoundary()) {
-      const boundary = this.compactor.getBoundary()!
-      const keptExists = this.turnStore.getMessageSeqs().some((seq) => seq >= boundary.firstKeptSeq)
-      if (!keptExists) this.compactor.setBoundary(null)
-    }
-    this.compactor.emitUsage()
+    restoreMessages(this, messages)
   }
 
   public async restoreSessionData(
@@ -462,137 +416,21 @@ export class AgentSessionRunner {
     projectId?: string | null,
     page?: string | null,
   ): Promise<void> {
-    discardPendingTurn(this)
-    this.agent?.abort()
-    clearQueue(this)
-    await mcpManager.ensureConnected()
-    this.setSessionId(sessionId)
-    this.sessionBinding = {
-      projectId: projectId ?? undefined,
-      page: page ?? undefined,
-    }
-    this.activeCapabilities = getDefaultCapabilities().tools
-    this.requestedCwd = sessionCwd
-    this.activeMcp = resolveMcpTools()
-    this.activeSkills = resolveInjectedSkills(sessionCwd)
-    this.turnStore.loadTodo(todos)
-
-    const lastModelSwitch = [...messages]
-      .reverse()
-      .find((m): m is ModelSwitchMessage => m.role === "modelSwitch")
-    if (lastModelSwitch) {
-      this.requestedModel = {
-        provider: lastModelSwitch.provider,
-        model: lastModelSwitch.model,
-        ...(lastModelSwitch.variant ? { variant: lastModelSwitch.variant } : {}),
-      }
-    }
-
-    const ready = this.ensureReady()
-    if ("error" in ready) {
-      throw new Error(ready.error)
-    }
-    ready.agent.state.messages = [...messages]
-    this.turnStore.setMessageSeqs(seqs)
-    this.compactor.loadBoundary(sessionId)
-    this.compactor.emitUsage()
+    return restoreSessionData(this, sessionId, messages, seqs, todos, sessionCwd, projectId, page)
   }
 
   public switchWorktree(path: string): AgentSwitchWorktreeResult {
-    if (this.isBusy()) {
-      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
-    }
-    clearQueue(this)
-    this.requestedCwd = path
-    if (this.currentSessionId) {
-      agentSessionService.updateSessionCwd(this.currentSessionId, path, new Date().toISOString())
-    }
-    return { ok: true }
+    return switchWorktree(this, path)
   }
 
   public switchProject(projectId: string, path: string): AgentSwitchProjectResult {
-    if (this.isBusy()) {
-      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
-    }
-    clearQueue(this)
-    this.requestedCwd = path
-    const normalizedProjectId = projectId || undefined
-    if (this.sessionBinding) {
-      this.sessionBinding.projectId = normalizedProjectId
-    } else {
-      this.sessionBinding = { projectId: normalizedProjectId }
-    }
-    if (this.currentSessionId) {
-      agentSessionService.updateSessionProject(
-        this.currentSessionId,
-        normalizedProjectId ?? null,
-        path,
-        new Date().toISOString(),
-      )
-    }
-    return { ok: true }
+    return switchProject(this, projectId, path)
   }
 
   public switchModel(
     selection: ModelSelection,
   ): { ok: true; message?: ModelSwitchMessage } | { ok: false; error: string } {
-    const prevModel = this.requestedModel
-    this.requestedModel = selection
-
-    if (this.agent) {
-      this.agent.state.model = {
-        provider: selection.provider,
-        id: selection.model,
-        ...(selection.variant ? { variant: selection.variant } : {}),
-      }
-    }
-
-    const sessionId = this.currentSessionId
-    if (!sessionId) {
-      return { ok: true }
-    }
-
-    // 若仅切换 variant 而 provider 与 model 均未变，不插入 model_change 历史与 modelSwitch 消息
-    const isModelUnchanged =
-      prevModel && prevModel.provider === selection.provider && prevModel.model === selection.model
-    if (isModelUnchanged) {
-      return { ok: true }
-    }
-
-    const family = detectModelFamily(selection.model)
-    const instructions = getModelAdaptiveInstructions(family)
-    const message: ModelSwitchMessage = {
-      role: "modelSwitch",
-      provider: selection.provider,
-      model: selection.model,
-      variant: selection.variant,
-      family,
-      instructions,
-      timestamp: Date.now(),
-      isInitial: false,
-    }
-
-    const now = new Date().toISOString()
-    agentSessionService.transaction(() => {
-      const seq = agentSessionService.nextSeq(sessionId)
-      agentSessionService.insertEntry({
-        externalId: createExternalId(),
-        sessionId,
-        seq,
-        type: "model_change",
-        payload: JSON.stringify(message),
-        createdAt: now,
-      })
-      agentSessionService.touchSession(sessionId, now)
-      this.turnStore.getMessageSeqs().push(seq)
-    })
-
-    if (this.agent) {
-      this.agent.state.appendMessage(message)
-    }
-
-    this.emitEvent({ type: "model_switch", message })
-    return { ok: true, message }
+    return switchModel(this, selection)
   }
 
   public setCollaborationMode(mode: CollaborationMode): { ok: true } {
@@ -615,31 +453,7 @@ export class AgentSessionRunner {
   }
 
   public async getPromptAssembly(cwd?: string): Promise<PromptAssembly> {
-    const targetCwd = cwd ?? this.cwd ?? this.requestedCwd ?? resolveCwd() ?? ""
-    const targetSessionId = this.currentSessionId ?? undefined
-    const activeSkills = this.activeSkills
-    const currentSandboxPolicy = permissionManager.getSandboxPolicy()
-    const modelId = this.agent?.state.model.id
-    const contextUsage = this.compactor.getUsage()
-
-    const assembly = await defaultSystemPromptManager.assemble({
-      cwd: targetCwd,
-      sessionId: targetSessionId,
-      modelId,
-      sandboxPolicy: currentSandboxPolicy,
-      collaborationMode: this.collaborationMode,
-      contextUsage,
-      activeSkills,
-    })
-
-    const activeTools: string[] = this.registry
-      ? this.registry.getAll().map((tool) => tool.name)
-      : Array.from(ALL_TOOL_NAMES)
-
-    return {
-      ...assembly,
-      activeTools,
-    }
+    return getPromptAssembly(this, cwd)
   }
 
   public getTurnStore(): TurnStore {

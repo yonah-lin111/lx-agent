@@ -13,6 +13,7 @@ import type { AgentSessionRunner } from "./sessionRunner"
 import type { LoadedSkill } from "./skills/skillLoader"
 import type { SubagentPool } from "./subagent/subagentPool"
 import type { SubagentRuntime } from "./subagent/subagentRuntime"
+import type { ToolRegistry } from "./tools/registry"
 import type { AttachedFile, SessionBinding, TurnStore } from "./turnStore"
 
 // 排队消息：文本 + 完整发送上下文（附件/cwd），drain 时与直接发送语义一致。
@@ -38,6 +39,7 @@ export interface SessionRunnerHost {
   tabId?: string
   // --- 运行态 ---
   agent?: Agent
+  registry?: ToolRegistry
   cwd?: string
   requestedCwd?: string
   requestedModel?: ModelSelection
@@ -64,6 +66,7 @@ export interface SessionRunnerHost {
   setSessionId(sessionId: string | null): void
   isBusy(): boolean
   getEffectiveCwd(): string | undefined
+  abort(): void
   ensureReady(): { agent: Agent } | { error: string }
   // 轮次执行（实现见 sessionRunnerTurns.ts）：队列 drain 与 send 共用，经类委托避免模块循环依赖。
   runOne(text: string, files?: AttachedFile[], overrideCwd?: string): Promise<AgentSendResult>
