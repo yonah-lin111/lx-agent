@@ -20,11 +20,34 @@ const summary: UsageSummary = {
   avgDurationMs: 900,
 }
 
+// 取标题所在汇总卡（图表图例同名文本不带 usage-stat-card 容器）。
+const findStatCard = (titleRe: RegExp): Element | null => {
+  for (const node of screen.queryAllByText(titleRe)) {
+    const card = node.closest(".usage-stat-card")
+    if (card) return card
+  }
+  return null
+}
+
 const getCacheHitCard = (): HTMLElement | null =>
   screen.getByText(/Cache Hit Rate|缓存命中率/).closest(".usage-stat-card")
 
 describe("UsageSummaryCards", () => {
   afterEach(cleanup)
+
+  it("按 cc-switch 口径渲染五张卡：新增输入为扣除缓存后的新鲜输入", () => {
+    render(<UsageSummaryCards summary={summary} />)
+
+    // 新增输入 = 1000 - 100 - 50 = 850，明细展示含缓存的总输入。
+    const freshInputCard = findStatCard(/Fresh Input|新增输入/)
+    expect(freshInputCard?.textContent).toContain("850")
+    expect(freshInputCard?.textContent).toContain("1.0k")
+
+    expect(findStatCard(/^Output Tokens$|^输出 Tokens$/)).toBeDefined()
+    expect(findStatCard(/^Cache Write$|^缓存写入$/)).toBeDefined()
+    expect(findStatCard(/^Cache Read$|^缓存读取$/)).toBeDefined()
+    expect(findStatCard(/Cache Hit Rate|缓存命中率/)).toBeDefined()
+  })
 
   it("缓存命中率卡片展示百分比与对应进度条宽度", () => {
     render(<UsageSummaryCards summary={summary} />)
@@ -36,6 +59,12 @@ describe("UsageSummaryCards", () => {
     expect(fill?.getAttribute("style")).toContain("width: 10%")
   })
 
+  it("不再渲染成本卡片", () => {
+    render(<UsageSummaryCards summary={summary} />)
+
+    expect(findStatCard(/^Total Cost$|^总成本$/)).toBeNull()
+  })
+
   it("无输入 tokens 时命中率显示 -- 且进度条为空", () => {
     render(<UsageSummaryCards summary={{ ...summary, inputTokens: 0, cacheReadTokens: 0 }} />)
 
@@ -44,5 +73,13 @@ describe("UsageSummaryCards", () => {
 
     const fill = card?.querySelector(".usage-cache-hit-meter-fill")
     expect(fill?.getAttribute("style")).toContain("width: 0%")
+  })
+
+  it("summary 为空时全部卡片回退零值", () => {
+    render(<UsageSummaryCards summary={null} />)
+
+    const freshInputCard = findStatCard(/Fresh Input|新增输入/)
+    expect(freshInputCard?.textContent).toContain("0")
+    expect(getCacheHitCard()?.textContent).toContain("--")
   })
 })

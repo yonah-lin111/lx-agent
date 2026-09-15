@@ -18,13 +18,19 @@ const PAGE_SIZE = 50
 // 日志写入事件的时间窗防抖：一步一个请求，避免高频重载。
 const RELOAD_DEBOUNCE_MS = 600
 
-const EMPTY_FILTER_OPTIONS: UsageFilterOptions = { providers: [], models: [], projects: [] }
+const EMPTY_FILTER_OPTIONS: UsageFilterOptions = {
+  providers: [],
+  models: [],
+  projects: [],
+  sessions: [],
+}
 
 export interface UseUsageDataResult {
   range: UsageTimeRange
   provider?: string
   model?: string
   projectId?: string
+  sessionId?: string
   page: number
   rangeBounds: UsageRangeBounds
   // 图表序列粒度：today 为 hour，其余为 day。
@@ -37,12 +43,13 @@ export interface UseUsageDataResult {
   logPage: UsageLogPage | null
   isLoading: boolean
   error: string | null
-  // 自动刷新间隔毫秒（0 = 关闭）。
+  // 自动刷新间隔毫秒（0 = 关闭；关闭时日志写入事件也不触发实时重载）。
   refreshIntervalMs: number
   setRange: (range: UsageTimeRange) => void
   setProvider: (provider?: string) => void
   setModel: (model?: string) => void
   setProjectId: (projectId?: string) => void
+  setSessionId: (sessionId?: string) => void
   setPage: (page: number) => void
   setRefreshIntervalMs: (intervalMs: number) => void
   refresh: () => void
@@ -56,6 +63,7 @@ export const useUsageData = (): UseUsageDataResult => {
   const [provider, setProviderState] = useState<string | undefined>(undefined)
   const [model, setModelState] = useState<string | undefined>(undefined)
   const [projectId, setProjectIdState] = useState<string | undefined>(undefined)
+  const [sessionId, setSessionIdState] = useState<string | undefined>(undefined)
   const [page, setPage] = useState(1)
   const [summary, setSummary] = useState<UsageSummary | null>(null)
   const [daily, setDaily] = useState<UsageDailyPoint[]>([])
@@ -71,10 +79,12 @@ export const useUsageData = (): UseUsageDataResult => {
   const requestIdRef = useRef(0)
 
   // 事件回调/定时器读取最新筛选与页码，避免重新订阅。
-  const filtersRef = useRef({ range, provider, model, projectId })
-  filtersRef.current = { range, provider, model, projectId }
+  const filtersRef = useRef({ range, provider, model, projectId, sessionId })
+  filtersRef.current = { range, provider, model, projectId, sessionId }
   const pageRef = useRef(page)
   pageRef.current = page
+  const refreshIntervalRef = useRef(refreshIntervalMs)
+  refreshIntervalRef.current = refreshIntervalMs
 
   const load = useCallback(async (targetPage: number): Promise<void> => {
     // 时间范围在每次加载时按当前时间重新解析：today/7d/30d 的 endTime = 请求时刻，
@@ -87,6 +97,7 @@ export const useUsageData = (): UseUsageDataResult => {
       provider: latest.provider,
       model: latest.model,
       projectId: latest.projectId,
+      sessionId: latest.sessionId,
     }
 
     const requestId = requestIdRef.current + 1
@@ -105,6 +116,15 @@ export const useUsageData = (): UseUsageDataResult => {
         ])
       // 过期请求（筛选快速切换）丢弃结果。
       if (requestId !== requestIdRef.current) return
+      // 选中会话在当前时间范围下已无记录（如切换时间范围）：回落“全部会话”，
+      // 本轮结果作废，由 sessionId 变化触发的下一轮加载刷新视图。
+      if (
+        latest.sessionId &&
+        !nextOptions.sessions.some((session) => session.id === latest.sessionId)
+      ) {
+        setSessionIdState(undefined)
+        return
+      }
       setSummary(nextSummary)
       setDaily(nextDaily)
       setModelStats(nextModelStats)
@@ -124,12 +144,13 @@ export const useUsageData = (): UseUsageDataResult => {
 
   useEffect(() => {
     void load(page)
-  }, [load, range, provider, model, projectId, page])
+  }, [load, range, provider, model, projectId, sessionId, page])
 
-  // 日志写入后防抖重载当前视图。
+  // 日志写入后防抖重载：仅在自动刷新开启时生效（off 时不做任何实时更新）。
   useEffect(() => {
     let timer: number | undefined
     const unsubscribe = usageApi.onLogRecorded(() => {
+      if (refreshIntervalRef.current <= 0) return
       window.clearTimeout(timer)
       timer = window.setTimeout(() => {
         void load(pageRef.current)
@@ -150,7 +171,7 @@ export const useUsageData = (): UseUsageDataResult => {
     return () => window.clearInterval(timer)
   }, [refreshIntervalMs, load])
 
-  // 筛选变化重置页码；切换 Provider 时级联清空模型。
+  // 筛选变化重置页码；切换 Provider 时级联清空模型；切换项目时级联清空会话。
   const setRange = useCallback((next: UsageTimeRange): void => {
     setRangeState(next)
     setPage(1)
@@ -166,6 +187,11 @@ export const useUsageData = (): UseUsageDataResult => {
   }, [])
   const setProjectId = useCallback((next?: string): void => {
     setProjectIdState(next)
+    setSessionIdState(undefined)
+    setPage(1)
+  }, [])
+  const setSessionId = useCallback((next?: string): void => {
+    setSessionIdState(next)
     setPage(1)
   }, [])
 
@@ -178,6 +204,7 @@ export const useUsageData = (): UseUsageDataResult => {
     provider,
     model,
     projectId,
+    sessionId,
     page,
     rangeBounds,
     granularity: resolveUsageGranularity(range),
@@ -194,6 +221,7 @@ export const useUsageData = (): UseUsageDataResult => {
     setProvider,
     setModel,
     setProjectId,
+    setSessionId,
     setPage,
     setRefreshIntervalMs,
     refresh,

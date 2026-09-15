@@ -29,7 +29,12 @@ const summary: UsageSummary = {
 const daily: UsageDailyPoint[] = []
 const modelStats: UsageModelStats[] = []
 const providerStats: UsageProviderStats[] = []
-const filterOptions: UsageFilterOptions = { providers: [], models: [], projects: [] }
+const filterOptions: UsageFilterOptions = {
+  providers: [],
+  models: [],
+  projects: [],
+  sessions: [],
+}
 const logPage: UsageLogPage = { rows: [], total: 0, page: 1, pageSize: 50 }
 
 describe("useUsageData", () => {
@@ -141,9 +146,29 @@ describe("useUsageData", () => {
     })
   })
 
-  it("日志写入事件防抖后重新拉取数据", async () => {
+  it("关闭自动刷新时日志写入事件不触发重载", async () => {
     renderHook(() => useUsageData())
     await waitFor(() => expect(usageMock.getSummary).toHaveBeenCalledTimes(1))
+    expect(onLogRecordedHandler).toBeTypeOf("function")
+
+    act(() => {
+      onLogRecordedHandler?.()
+      onLogRecordedHandler?.()
+    })
+
+    // 超过防抖窗口仍不重载（off = 完全关闭实时更新）。
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    expect(usageMock.getSummary).toHaveBeenCalledTimes(1)
+  })
+
+  it("开启自动刷新后日志写入事件防抖重载", async () => {
+    const { result } = renderHook(() => useUsageData())
+    await waitFor(() => expect(usageMock.getSummary).toHaveBeenCalledTimes(1))
+
+    act(() => {
+      result.current.setRefreshIntervalMs(5000)
+    })
+    await waitFor(() => expect(result.current.refreshIntervalMs).toBe(5000))
 
     act(() => {
       onLogRecordedHandler?.()
@@ -155,6 +180,91 @@ describe("useUsageData", () => {
         expect(usageMock.getSummary.mock.calls.length).toBeGreaterThan(1)
       },
       { timeout: 2500 },
+    )
+  })
+
+  it("切换会话携带 sessionId 查询并重置页码", async () => {
+    usageMock.getFilterOptions.mockResolvedValue({
+      ...filterOptions,
+      sessions: [{ id: "s1", name: "会话一" }],
+    })
+    const { result } = renderHook(() => useUsageData())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.setPage(3)
+    })
+    await waitFor(() => {
+      expect(usageMock.listLogs).toHaveBeenLastCalledWith(expect.anything(), 3, 50)
+    })
+
+    act(() => {
+      result.current.setSessionId("s1")
+    })
+    await waitFor(() => {
+      expect(usageMock.listLogs).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sessionId: "s1" }),
+        1,
+        50,
+      )
+    })
+    expect(usageMock.getSummary).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sessionId: "s1" }),
+    )
+  })
+
+  it("切换项目级联清空已选会话", async () => {
+    const { result } = renderHook(() => useUsageData())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.setSessionId("s1")
+    })
+    await waitFor(() => expect(result.current.sessionId).toBe("s1"))
+
+    act(() => {
+      result.current.setProjectId("p1")
+    })
+    expect(result.current.sessionId).toBeUndefined()
+    await waitFor(() => {
+      expect(usageMock.listLogs).toHaveBeenLastCalledWith(
+        expect.objectContaining({ projectId: "p1", sessionId: undefined }),
+        1,
+        50,
+      )
+    })
+  })
+
+  it("选中会话从候选中消失时回落全部会话", async () => {
+    const { result } = renderHook(() => useUsageData())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.setSessionId("s1")
+    })
+
+    await waitFor(() => expect(result.current.sessionId).toBeUndefined())
+    expect(usageMock.getSummary).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sessionId: undefined }),
+    )
+  })
+
+  it("选中会话仍在候选中时保持选择", async () => {
+    usageMock.getFilterOptions.mockResolvedValue({
+      ...filterOptions,
+      sessions: [{ id: "s1", name: "会话一" }],
+    })
+    const { result } = renderHook(() => useUsageData())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.setSessionId("s1")
+    })
+
+    await waitFor(() => expect(result.current.filterOptions.sessions).toHaveLength(1))
+    expect(result.current.sessionId).toBe("s1")
+    expect(usageMock.getSummary).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sessionId: "s1" }),
     )
   })
 

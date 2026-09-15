@@ -307,4 +307,94 @@ describe("usageLogService", () => {
     expect(filtered.providers.sort()).toEqual(["anthropic", "openai"])
     expect(filtered.models).toEqual(["m2"])
   })
+
+  it("按会话筛选日志与聚合统计", () => {
+    const service = createUsageLogService(() => database)
+    service.record({
+      sessionId: "s1",
+      projectId: "p1",
+      purpose: "chat",
+      provider: "anthropic",
+      model: "m1",
+      tokens: { input: 10, output: 1, cacheRead: 0, cacheWrite: 0 },
+      status: "success",
+    })
+    service.record({
+      sessionId: "s2",
+      projectId: "p1",
+      purpose: "chat",
+      provider: "anthropic",
+      model: "m1",
+      tokens: { input: 20, output: 1, cacheRead: 0, cacheWrite: 0 },
+      status: "success",
+    })
+    service.record({
+      purpose: "title",
+      provider: "anthropic",
+      model: "m2",
+      tokens: { input: 30, output: 1, cacheRead: 0, cacheWrite: 0 },
+      status: "success",
+    })
+
+    expect(service.listLogs({ sessionId: "s1" }).total).toBe(1)
+    expect(service.getSummary({ sessionId: "s1" }).inputTokens).toBe(10)
+    expect(service.getSummary({ sessionId: "s2" }).inputTokens).toBe(20)
+    expect(service.getModelStats({ sessionId: "s1" }).map((stat) => stat.model)).toEqual(["m1"])
+    // 无会话归属的日志不参与会话筛选，但计入全量统计。
+    expect(service.getSummary({}).inputTokens).toBe(60)
+  })
+
+  it("会话筛选选项按时间与项目收敛，标题缺失时回退短 id", () => {
+    const service = createUsageLogService(() => database)
+    const now = new Date().toISOString()
+    const insertProject = database.prepare(
+      "INSERT INTO project (external_id, name, type, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    insertProject.run("p1", "Alpha", "virtual", null, now, now)
+    insertProject.run("p2", "Beta", "virtual", null, now, now)
+    database
+      .prepare(
+        "INSERT INTO agent_session (external_id, project_id, page, title, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      )
+      .run("sess-alpha-0001", "p1", null, "修复登录 bug", "/tmp/alpha", now, now)
+
+    const early = new Date("2026-09-01T08:00:00Z").getTime()
+    const late = new Date("2026-09-11T08:00:00Z").getTime()
+    service.record({
+      sessionId: "sess-alpha-0001",
+      projectId: "p1",
+      purpose: "chat",
+      provider: "anthropic",
+      model: "m1",
+      tokens: { input: 1, output: 0, cacheRead: 0, cacheWrite: 0 },
+      status: "success",
+      createdAt: early,
+    })
+    service.record({
+      sessionId: "sess-beta-0002",
+      projectId: "p2",
+      purpose: "chat",
+      provider: "openai",
+      model: "m2",
+      tokens: { input: 1, output: 0, cacheRead: 0, cacheWrite: 0 },
+      status: "success",
+      createdAt: late,
+    })
+
+    const all = service.getFilterOptions({})
+    // 最近使用在前；无 agent_session 行时名称回退 id 前 8 位。
+    expect(all.sessions).toEqual([
+      { id: "sess-beta-0002", name: "sess-bet" },
+      { id: "sess-alpha-0001", name: "修复登录 bug" },
+    ])
+
+    // 会话候选随项目收敛。
+    expect(service.getFilterOptions({ projectId: "p1" }).sessions).toEqual([
+      { id: "sess-alpha-0001", name: "修复登录 bug" },
+    ])
+    // 时间范围收敛：只保留范围内有记录的会话。
+    expect(service.getFilterOptions({ startTime: early, endTime: early + 1000 }).sessions).toEqual([
+      { id: "sess-alpha-0001", name: "修复登录 bug" },
+    ])
+  })
 })

@@ -1,59 +1,51 @@
 import { useTranslation } from "@/i18n"
 import type { UsageSummary } from "../types"
-import {
-  calcCacheHitRate,
-  formatCompact,
-  formatDuration,
-  formatNumber,
-  formatPercent,
-  formatUsd,
-} from "../utils"
+import { calcCacheHitRate, formatCompact, formatPercent, getFreshInputTokens } from "../utils"
 
 export interface UsageSummaryCardsProps {
   summary: UsageSummary | null
 }
 
 /**
- * 用量汇总卡：请求数、总 Tokens、总成本、平均耗时与缓存命中率。
+ * 用量汇总卡：新增输入、输出、缓存写入、缓存命中与缓存命中率（对齐 cc-switch 统计口径）。
  */
 export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JSX.Element => {
   const { t } = useTranslation()
 
-  const cacheHitRate = calcCacheHitRate(summary?.inputTokens ?? 0, summary?.cacheReadTokens ?? 0)
+  const inputTokens = summary?.inputTokens ?? 0
+  const cacheReadTokens = summary?.cacheReadTokens ?? 0
+  const cacheWriteTokens = summary?.cacheWriteTokens ?? 0
+  // input 含缓存读写：新增输入为扣除缓存后的新鲜输入。
+  const freshInputTokens = summary ? getFreshInputTokens(summary) : 0
+  const cacheHitRate = calcCacheHitRate(inputTokens, cacheReadTokens)
 
   const cards: {
     title: string
     value: string
-    detail: string
+    detail?: string
     progress?: number | null
   }[] = [
     {
-      title: t("usage.summary.requests"),
-      value: formatNumber(summary?.requestCount ?? 0),
-      detail: `${t("usage.summary.successRate")} ${formatPercent(summary?.successRate ?? 0)}`,
+      title: t("usage.tokens.freshInput"),
+      value: formatCompact(freshInputTokens),
+      detail: `${t("usage.summary.totalInput")} ${formatCompact(inputTokens)}`,
     },
     {
-      title: t("usage.summary.totalTokens"),
-      value: formatCompact(summary?.totalTokens ?? 0),
-      detail: `${t("usage.summary.inputTokens")} ${formatCompact(summary?.inputTokens ?? 0)} · ${t("usage.summary.outputTokens")} ${formatCompact(summary?.outputTokens ?? 0)}`,
+      title: t("usage.summary.outputTokens"),
+      value: formatCompact(summary?.outputTokens ?? 0),
     },
     {
-      title: t("usage.summary.totalCost"),
-      value: summary && summary.pricedRequestCount > 0 ? formatUsd(summary.totalCostUsd) : "--",
-      detail:
-        summary && summary.pricedRequestCount > 0
-          ? `${summary.pricedRequestCount}/${summary.requestCount} ${t("usage.summary.pricedRequests")}`
-          : t("usage.summary.noPricing"),
+      title: t("usage.summary.cacheWriteTokens"),
+      value: formatCompact(cacheWriteTokens),
     },
     {
-      title: t("usage.summary.avgDuration"),
-      value: formatDuration(summary?.avgDurationMs ?? null),
-      detail: `${t("usage.summary.cacheReadTokens")} ${formatCompact(summary?.cacheReadTokens ?? 0)} · ${t("usage.summary.cacheWriteTokens")} ${formatCompact(summary?.cacheWriteTokens ?? 0)}`,
+      title: t("usage.summary.cacheReadTokens"),
+      value: formatCompact(cacheReadTokens),
     },
     {
       title: t("usage.summary.cacheHitRate"),
       value: cacheHitRate === null ? "--" : formatPercent(cacheHitRate),
-      detail: `${t("usage.summary.cacheReadTokens")} ${formatCompact(summary?.cacheReadTokens ?? 0)} · ${t("usage.summary.cacheWriteTokens")} ${formatCompact(summary?.cacheWriteTokens ?? 0)}`,
+      detail: `${t("usage.summary.cacheReadTokens")} ${formatCompact(cacheReadTokens)} · ${t("usage.summary.cacheWriteTokens")} ${formatCompact(cacheWriteTokens)}`,
       progress: cacheHitRate,
     },
   ]
@@ -79,9 +71,11 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
               />
             </div>
           ) : null}
-          <span className="truncate text-xs text-[var(--color-theme-text-subtle)]">
-            {card.detail}
-          </span>
+          {card.detail ? (
+            <span className="truncate text-xs text-[var(--color-theme-text-subtle)]">
+              {card.detail}
+            </span>
+          ) : null}
         </div>
       ))}
     </div>

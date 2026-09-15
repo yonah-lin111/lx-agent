@@ -23,4 +23,5 @@ export interface UsageFiltersState {
   provider?: string
   model?: string
   projectId?: string
+  sessionId?: string
 }

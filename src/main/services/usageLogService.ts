@@ -79,6 +79,10 @@ const buildWhere = (query: UsageQuery, alias = ""): WhereFragment => {
     conditions.push(`${prefix}project_id = ?`)
     params.push(query.projectId)
   }
+  if (query.sessionId) {
+    conditions.push(`${prefix}session_id = ?`)
+    params.push(query.sessionId)
+  }
 
   return { clause: conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "", params }
 }
@@ -437,7 +441,38 @@ export const createUsageLogService = (getConnection: () => Database.Database) =>
         .all(...projectWhere.params) as Array<{ id: string; name: string | null }>
     ).map((row) => ({ id: row.id, name: row.name ?? row.id }))
 
-    return { providers, models, projects }
+    // 会话候选只随「时间范围 + 项目」变化（不随 provider/model 级联），
+    // 名称取 agent_session.title，会话行缺失时回退 id 前 8 位短码。
+    const sessionWhere = buildWhere(
+      {
+        startTime: query.startTime,
+        endTime: query.endTime,
+        projectId: query.projectId,
+      },
+      "ul",
+    )
+    const sessionConditions = ["ul.session_id IS NOT NULL"]
+    if (sessionWhere.clause) {
+      sessionConditions.push(sessionWhere.clause.replace(/^WHERE /, ""))
+    }
+    const sessions = (
+      database
+        .prepare(
+          `SELECT ul.session_id as id, s.title as title, MAX(ul.created_at) as last_used
+           FROM usage_log ul
+           LEFT JOIN agent_session s ON s.external_id = ul.session_id
+           WHERE ${sessionConditions.join(" AND ")}
+           GROUP BY ul.session_id
+           ORDER BY last_used DESC, ul.session_id ASC`,
+        )
+        .all(...sessionWhere.params) as Array<{
+        id: string
+        title: string | null
+        last_used: string
+      }>
+    ).map((row) => ({ id: row.id, name: row.title ?? row.id.slice(0, 8) }))
+
+    return { providers, models, projects, sessions }
   },
 })
 

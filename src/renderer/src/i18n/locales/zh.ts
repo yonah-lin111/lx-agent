@@ -135,6 +135,7 @@ export const zh: TranslationDictionary = {
     allProviders: "全部 Provider",
     allModels: "全部模型",
     allProjects: "全部项目",
+    allSessions: "全部会话",
     timeRange: {
       today: "今日",
       "7d": "近 7 天",
@@ -145,18 +146,14 @@ export const zh: TranslationDictionary = {
       requests: "请求数",
       totalTokens: "总 Tokens",
       totalCost: "总成本",
-      successRate: "成功率",
-      avgDuration: "平均耗时",
-      inputTokens: "输入 Tokens",
+      totalInput: "总输入（含缓存）",
       outputTokens: "输出 Tokens",
       cacheReadTokens: "缓存读取",
       cacheWriteTokens: "缓存写入",
       cacheHitRate: "缓存命中率",
-      pricedRequests: "条已计价",
-      noPricing: "未配置计价",
     },
     tokens: {
-      freshInput: "新鲜输入",
+      freshInput: "新增输入",
     },
     charts: {
       trend: "Token / 成本趋势",

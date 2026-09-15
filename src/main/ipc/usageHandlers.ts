@@ -37,6 +37,7 @@ const parseUsageQuery = (input: unknown): UsageQuery => {
     provider: readOptionalString(record, "provider"),
     model: readOptionalString(record, "model"),
     projectId: readOptionalString(record, "projectId"),
+    sessionId: readOptionalString(record, "sessionId"),
   }
 }
 
