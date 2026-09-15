@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import type { OpenClawChatMessage } from "@shared/contracts/openclaw"
-import { cleanup, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vitest"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { OpenClawMessageList } from "@/features/openclaw/components/OpenClawMessageList"
 import type { OfficeTimelineMessage } from "@/features/openclaw/hooks/useOpenClawOffice"
 
@@ -139,5 +139,106 @@ describe("OpenClawMessageList & OpenClawMessageItem", () => {
 
     expect(screen.queryByText("gemini-3.8-flash")).toBeNull()
     expect(screen.queryByText(/^\d+%$/)).toBeNull()
+  })
+
+  it("用户上滚后释放吸底并显示回到底部按钮", () => {
+    const clientHeightSpy = vi
+      .spyOn(window.HTMLElement.prototype, "clientHeight", "get")
+      .mockReturnValue(600)
+    const scrollHeightSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollHeight", "get")
+      .mockReturnValue(1000)
+    let scrollTopValue = 0
+    const scrollTopGetSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollTop", "get")
+      .mockImplementation(() => scrollTopValue)
+    const scrollTopSetSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollTop", "set")
+      .mockImplementation((val) => {
+        scrollTopValue = val
+      })
+    const scrollTo = vi.fn()
+    const originalScrollTo = window.HTMLElement.prototype.scrollTo
+    window.HTMLElement.prototype.scrollTo = scrollTo
+
+    try {
+      const timeline: OfficeTimelineMessage[] = [
+        { agentId: "lily", message: user("u1", "问题", 100) },
+        { agentId: "lily", message: assistant("a1", "回答", 200) },
+      ]
+      const { container, rerender } = render(
+        <OpenClawMessageList timeline={timeline} agents={agents} streamingAgentIds={[]} />,
+      )
+      const scrollEl = container.querySelector(".custom-scrollbar") as HTMLDivElement
+      expect(scrollEl).not.toBeNull()
+
+      // 初始在底部：锁定吸底。
+      fireEvent.scroll(scrollEl)
+
+      // 用户主动上滚（1000 → 100）：释放吸底、显示回到底部按钮。
+      scrollTopValue = 100
+      fireEvent.scroll(scrollEl)
+      expect(screen.getByRole("button", { name: "Scroll to bottom" })).not.toBeNull()
+
+      // 流式增量不再强制吸底，保持用户的浏览位置。
+      rerender(
+        <OpenClawMessageList
+          timeline={[...timeline, { agentId: "lily", message: assistant("a2", "增量", 300) }]}
+          agents={agents}
+          streamingAgentIds={["lily"]}
+        />,
+      )
+      expect(scrollEl.scrollTop).toBe(100)
+
+      // 点击回到底部：恢复吸底并触发平滑滚动。
+      fireEvent.click(screen.getByRole("button", { name: "Scroll to bottom" }))
+      expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: "smooth" })
+      expect(screen.queryByRole("button", { name: "Scroll to bottom" })).toBeNull()
+    } finally {
+      clientHeightSpy.mockRestore()
+      scrollHeightSpy.mockRestore()
+      scrollTopGetSpy.mockRestore()
+      scrollTopSetSpy.mockRestore()
+      window.HTMLElement.prototype.scrollTo = originalScrollTo
+    }
+  })
+
+  it("吸底状态下流式增量仍跟随到底部", () => {
+    const clientHeightSpy = vi
+      .spyOn(window.HTMLElement.prototype, "clientHeight", "get")
+      .mockReturnValue(600)
+    const scrollHeightSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollHeight", "get")
+      .mockReturnValue(1000)
+    let scrollTopValue = 0
+    const scrollTopSetSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollTop", "set")
+      .mockImplementation((val) => {
+        scrollTopValue = val
+      })
+
+    try {
+      const timeline: OfficeTimelineMessage[] = [
+        { agentId: "lily", message: user("u1", "问题", 100) },
+        { agentId: "lily", message: assistant("a1", "回答", 200) },
+      ]
+      const { rerender } = render(
+        <OpenClawMessageList timeline={timeline} agents={agents} streamingAgentIds={["lily"]} />,
+      )
+
+      rerender(
+        <OpenClawMessageList
+          timeline={[...timeline, { agentId: "lily", message: assistant("a2", "更多", 300) }]}
+          agents={agents}
+          streamingAgentIds={["lily"]}
+        />,
+      )
+
+      expect(scrollTopValue).toBe(1000)
+    } finally {
+      clientHeightSpy.mockRestore()
+      scrollHeightSpy.mockRestore()
+      scrollTopSetSpy.mockRestore()
+    }
   })
 })

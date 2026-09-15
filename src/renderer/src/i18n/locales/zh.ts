@@ -262,6 +262,7 @@ export const zh: TranslationDictionary = {
     rosterSection: "员工",
     conversationEmpty: "还没有消息，选中员工后派发一条任务。",
     workingCount: "{{count}} 位员工工作中…",
+    scrollToBottom: "回到底部",
     modelLabel: "模型：{{model}}",
     contextUsed: "上下文：已用 {{used}} / {{total}} tokens",
     contextCapacity: "上下文容量：{{total}} tokens",

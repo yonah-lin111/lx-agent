@@ -261,6 +261,7 @@ export const en = {
     rosterSection: "Team",
     conversationEmpty: "No message yet. Pick a coworker and send a task.",
     workingCount: "{{count}} coworker(s) working…",
+    scrollToBottom: "Scroll to bottom",
     modelLabel: "Model: {{model}}",
     contextUsed: "Context: {{used}} / {{total}} tokens",
     contextCapacity: "Context capacity: {{total}} tokens",
