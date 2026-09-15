@@ -23,28 +23,20 @@ import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { projectService } from "@/services/projectService"
-import { getSubagentSettings } from "@/services/settingsService"
 import { getAppDataRoot } from "../paths"
 import type { QueuedMessage, SessionRunnerOptions } from "./sessionRunner.types"
+import { buildSessionAgent } from "./sessionRunnerAgentFactory"
 import { clearQueue, enqueueMessage, kickDrain } from "./sessionRunnerQueue"
-import {
-  afterToolCallWithGuard,
-  beforeToolCallWithGuard,
-  dispatchPostToolUse,
-  dispatchPreToolUse,
-  dispatchPromptHooks,
-} from "./sessionRunnerToolHooks"
+import { dispatchPromptHooks } from "./sessionRunnerToolHooks"
 
 export type { SessionRunnerOptions } from "./sessionRunner.types"
 
-import { ALL_TOOL_NAMES, buildSystemPromptSync, createRegistry, resolveCwd } from "./assembly"
-import { createCompactionSummaryMessage } from "./compaction"
-import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
+import { ALL_TOOL_NAMES, buildSystemPromptSync, resolveCwd } from "./assembly"
 import { ContextCompactor } from "./contextCompactor"
 import { Agent } from "./core/agent"
 import { TurnContext } from "./core/turnContext"
 import type { AgentTool } from "./core/types"
-import { hookResultMessages, hooksManager } from "./hooks"
+import { hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
@@ -53,7 +45,6 @@ import type { PersonalityName } from "./prompts/personalities"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
 import {
-  createTodoStateMessage,
   expandAndDetectCommand,
   processPendingFiles,
   resolveInjectedSkills,
@@ -61,8 +52,6 @@ import {
 } from "./sessionRunnerInput"
 import { unifiedExecManager } from "./shell/unifiedExecManager"
 import type { LoadedSkill } from "./skills/skillLoader"
-import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
-import { modelSupportsImageInput } from "./stream/modelCapabilities"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
 import { SubagentPool } from "./subagent/subagentPool"
 import { SubagentRuntime } from "./subagent/subagentRuntime"
@@ -226,7 +215,8 @@ export class AgentSessionRunner {
     this.sessionStartFired = false
   }
 
-  private ensureReady(): { agent: Agent } | { error: string } {
+  // 内部协作面：会话装配与就绪检查（实现含 sessionRunnerAgentFactory）。
+  public ensureReady(): { agent: Agent } | { error: string } {
     permissionManager.load()
     permissionManager.setMcpTools(this.currentSessionId, this.activeMcp)
 
@@ -291,131 +281,18 @@ export class AgentSessionRunner {
       this.turnStore.setMcpToolNames(
         new Map(mcpManager.getTools().map((handle) => [handle.fullName, handle.server])),
       )
-      const currentSandboxPolicy = permissionManager.getSandboxPolicy()
-      const contextUsage = this.compactor.getUsage()
-      const systemPrompt = buildSystemPromptSync({
+      const { agent, registry, subagentRuntime } = buildSessionAgent(this, {
         cwd,
-        sessionId: this.currentSessionId ?? undefined,
-        modelId: modelResult.model.id,
-        sandboxPolicy: currentSandboxPolicy,
-        collaborationMode: this.collaborationMode,
-        contextUsage,
+        model: modelResult.model,
+        sandboxPolicy: permissionManager.getSandboxPolicy(),
+        contextUsage: this.compactor.getUsage(),
+        activeCapabilities: this.activeCapabilities,
+        activeMcp: this.activeMcp,
         activeSkills: this.activeSkills,
         personality: this.personality,
       })
-      // 会话装配时快照子代理设置：设置保存仅对新会话生效。
-      const subagentSettings = getSubagentSettings()
-      // 子代理协作模式由设置决定（缺省 build），不继承主 agent 模式。
-      const subagentMode = normalizeCollaborationMode(subagentSettings.mode)
-      const subagentSystemPrompt = buildSystemPromptSync({
-        cwd,
-        sessionId: this.currentSessionId ?? undefined,
-        modelId: modelResult.model.id,
-        sandboxPolicy: currentSandboxPolicy,
-        collaborationMode: subagentMode,
-        contextUsage,
-        activeSkills: this.activeSkills,
-        personality: this.personality,
-      })
-      this.subagentRuntime ??= new SubagentRuntime(subagentSettings.maxConcurrent)
-      const registry = createRegistry(
-        cwd,
-        this.activeCapabilities,
-        this.activeMcp,
-        this.activeSkills.length > 0,
-        {
-          subagentSystemPrompt,
-          model: modelResult.model,
-          sandboxPolicy: currentSandboxPolicy,
-          subagentPool: this.subagentPool,
-          subagentSettings,
-          subagentRuntime: this.subagentRuntime,
-          beforeToolCall: (context, signal) =>
-            beforeToolCallWithGuard(this, context, signal, subagentMode, cwd),
-          afterToolCall: async (context) => afterToolCallWithGuard(this, context),
-          preToolUse: (context, signal) => dispatchPreToolUse(this, context, cwd, signal),
-          postToolUse: (context, signal) => dispatchPostToolUse(this, context, cwd, signal),
-          getCwd: () => this.cwd ?? cwd,
-          recordChildCall: (parentToolCallId, child) =>
-            this.turnStore.recordChildCall(parentToolCallId, child),
-        },
-        {
-          askQuestion: (questions, toolCallId, signal) =>
-            questionManager.ask(questions, this.currentSessionId, toolCallId, signal),
-        },
-        {
-          lspManager,
-          getSessionId: () => this.currentSessionId,
-          cwd,
-        },
-        {
-          getSessionId: () => this.currentSessionId,
-          supportsImages: () =>
-            modelSupportsImageInput(modelResult.model.provider, modelResult.model.id),
-        },
-      )
+      this.subagentRuntime = subagentRuntime
       const previousMessages = this.agent?.state.messages ?? []
-      const agent = new Agent({
-        streamFn: createAiSdkStreamFn({
-          purpose: "chat",
-          getSessionId: () => this.currentSessionId,
-        }),
-        beforeToolCall: async (context, signal) => {
-          this.currentTurnContext?.recordToolCall()
-          return beforeToolCallWithGuard(this, context, signal, this.collaborationMode, cwd)
-        },
-        afterToolCall: async (context) => afterToolCallWithGuard(this, context),
-        preToolUse: (context, signal) => dispatchPreToolUse(this, context, cwd, signal),
-        postToolUse: (context, signal) => dispatchPostToolUse(this, context, cwd, signal),
-        onAgentStop: async () => {
-          const messages = this.agent?.state.messages ?? []
-          const lastAssistant = [...messages]
-            .reverse()
-            .find((message) => message.role === "assistant")
-          const lastAssistantMessage =
-            lastAssistant?.role === "assistant"
-              ? lastAssistant.content
-                  .filter((block) => block.type === "text")
-                  .map((block) => block.text)
-                  .join("\n")
-              : ""
-          const result = await hooksManager.dispatch({
-            event: "Stop",
-            sessionId: this.currentSessionId,
-            cwd: this.cwd,
-            model: this.agent?.state.model.id,
-            payload: { last_assistant_message: lastAssistantMessage },
-          })
-          return hookResultMessages(result)
-        },
-        transformContext: async (messages) => {
-          const prunedMessages = pruneHistoricalToolOutputs(messages)
-          const todoList = this.turnStore.getTodo()
-          const todoMessage = todoList.length > 0 ? [createTodoStateMessage(todoList)] : []
-          const boundary = this.compactor.getBoundary()
-          if (!boundary) return [...todoMessage, ...prunedMessages]
-          const messageSeqs = this.turnStore.getMessageSeqs()
-          const kept = prunedMessages.filter((_, index) => {
-            const seq = messageSeqs[index] ?? -1
-            return seq < 0 || seq >= boundary.firstKeptSeq
-          })
-          return [
-            ...todoMessage,
-            createCompactionSummaryMessage(
-              boundary.summary,
-              boundary.tokensBefore,
-              boundary.manual,
-              boundary.model,
-            ),
-            ...kept,
-          ]
-        },
-        initialState: {
-          systemPrompt,
-          model: modelResult.model,
-          tools: registry.getActive(),
-        },
-      })
       agent.state.messages = previousMessages
       if (this.unsubscribe) {
         this.unsubscribe()
