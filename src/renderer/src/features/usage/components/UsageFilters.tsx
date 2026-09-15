@@ -1,6 +1,4 @@
-import { RefreshCw } from "lucide-react"
 import { useMemo } from "react"
-import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { useTranslation } from "@/i18n"
 import type { UsageFilterOptions, UsageTimeRange } from "../types"
@@ -12,7 +10,6 @@ export interface UsageFiltersProps {
   projectId?: string
   sessionId?: string
   filterOptions: UsageFilterOptions
-  isLoading: boolean
   refreshIntervalMs: number
   onRangeChange: (range: UsageTimeRange) => void
   onProviderChange: (provider?: string) => void
@@ -20,7 +17,6 @@ export interface UsageFiltersProps {
   onProjectChange: (projectId?: string) => void
   onSessionChange: (sessionId?: string) => void
   onRefreshIntervalChange: (intervalMs: number) => void
-  onRefresh: () => void
 }
 
 const ALL_VALUE = "__all__"
@@ -29,7 +25,7 @@ const ALL_VALUE = "__all__"
 const REFRESH_INTERVAL_OPTIONS_MS = [0, 5000, 10000, 30000] as const
 
 /**
- * 用量页筛选栏：时间预设、Provider / Model / 项目 / 会话筛选与手动刷新。
+ * 用量页筛选栏：时间预设、Provider / Model / 项目 / 会话筛选。
  */
 export const UsageFilters = ({
   range,
@@ -38,7 +34,6 @@ export const UsageFilters = ({
   projectId,
   sessionId,
   filterOptions,
-  isLoading,
   refreshIntervalMs,
   onRangeChange,
   onProviderChange,
@@ -46,7 +41,6 @@ export const UsageFilters = ({
   onProjectChange,
   onSessionChange,
   onRefreshIntervalChange,
-  onRefresh,
 }: UsageFiltersProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -146,15 +140,6 @@ export const UsageFilters = ({
           onChange={(value) => onRefreshIntervalChange(Number(value))}
         />
       </div>
-      <LxIconButton
-        size="small"
-        aria-label={t("usage.refresh")}
-        aria-busy={isLoading}
-        title={{ content: t("usage.refresh"), placement: "top" }}
-        onClick={onRefresh}
-      >
-        <RefreshCw className={`${isLoading ? "animate-spin" : ""}`} />
-      </LxIconButton>
     </div>
   )
 }

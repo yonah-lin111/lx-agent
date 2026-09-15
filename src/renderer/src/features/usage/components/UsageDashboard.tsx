@@ -1,4 +1,6 @@
+import { RefreshCw } from "lucide-react"
 import { useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { useUsageData } from "../hooks/useUsageData"
@@ -36,14 +38,25 @@ export const UsageDashboard = (): React.JSX.Element => {
         text="Loading usage..."
       />
 
-      <div className="mb-4 flex min-w-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-theme-text)]">
-            {t("usage.title")}
-          </h1>
-          <p className="truncate text-sm text-[var(--color-theme-text-muted)]">
-            {t("usage.subtitle")}
-          </p>
+      <div className="mb-4 flex min-w-0 flex-col gap-3">
+        <div className="flex min-w-0 items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-theme-text)]">
+              {t("usage.title")}
+            </h1>
+            <p className="truncate text-sm text-[var(--color-theme-text-muted)]">
+              {t("usage.subtitle")}
+            </p>
+          </div>
+          <LxIconButton
+            size="small"
+            aria-label={t("usage.refresh")}
+            aria-busy={usage.isLoading}
+            title={{ content: t("usage.refresh"), placement: "top" }}
+            onClick={usage.refresh}
+          >
+            <RefreshCw className={`${usage.isLoading ? "animate-spin" : ""}`} />
+          </LxIconButton>
         </div>
         <UsageFilters
           range={usage.range}
@@ -52,7 +65,6 @@ export const UsageDashboard = (): React.JSX.Element => {
           projectId={usage.projectId}
           sessionId={usage.sessionId}
           filterOptions={usage.filterOptions}
-          isLoading={usage.isLoading}
           refreshIntervalMs={usage.refreshIntervalMs}
           onRangeChange={usage.setRange}
           onProviderChange={usage.setProvider}
@@ -60,7 +72,6 @@ export const UsageDashboard = (): React.JSX.Element => {
           onProjectChange={usage.setProjectId}
           onSessionChange={usage.setSessionId}
           onRefreshIntervalChange={usage.setRefreshIntervalMs}
-          onRefresh={usage.refresh}
         />
       </div>
 
