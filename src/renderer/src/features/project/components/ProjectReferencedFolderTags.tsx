@@ -334,12 +334,12 @@ const ProjectReferencedFolderTagsContent = ({
               <LxIconButton
                 key={folder.path}
                 variant="ghost"
-                size="medium"
+                size="small"
                 iconOnly={false}
                 textClass=""
                 showHoverBg={false}
                 hoverTextClass=""
-                className="project-referenced-tag h-7 shrink-0 cursor-pointer border border-[#d97706] bg-[rgba(217,119,6,0.12)] px-2.5 font-semibold text-[#d97706] select-none"
+                className="project-referenced-tag shrink-0 cursor-pointer border border-[#d97706] bg-[rgba(217,119,6,0.12)] px-2 font-semibold text-[#d97706] select-none"
                 icon={
                   <span className="flex shrink-0 items-center justify-center text-current/60">
                     <Folder className="h-3 w-3" />

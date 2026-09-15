@@ -78,7 +78,7 @@ describe("AgentExecutionFlowHeader 筛选 Tab", () => {
     expect(activeClasses).not.toContain("hover:bg-amber-500/10")
   })
 
-  it("筛选 Tab 芯片统一 default 档尺寸：h-7 + text-sm", () => {
+  it("筛选 Tab 芯片统一 small 档尺寸：h-6 + text-xs", () => {
     const { container } = render(
       <AgentExecutionFlowHeader
         stepsCount={3}
@@ -94,8 +94,8 @@ describe("AgentExecutionFlowHeader 筛选 Tab", () => {
     )
     expect(tabClasses.length).toBeGreaterThan(0)
     for (const className of tabClasses) {
-      expect(className).toContain("h-7")
-      expect(className).toContain("text-sm")
+      expect(className).toContain("h-6")
+      expect(className).toContain("text-xs")
     }
   })
 

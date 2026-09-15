@@ -61,11 +61,12 @@ describe("AgentTabBar 芯片迁移", () => {
     mockedAbort.mockClear()
   })
 
-  it("标签芯片按 LxIconButton 芯片渲染：h-7 尺寸并保留激活态 aria-selected", () => {
+  it("标签芯片按 LxIconButton small 档渲染：h-6 + text-xs 并保留激活态 aria-selected", () => {
     const { container } = renderTabBar()
     const tab = container.querySelector("button[aria-selected]") as HTMLElement
     expect(tab).not.toBeNull()
-    expect(tab.className).toContain("h-7")
+    expect(tab.className).toContain("h-6")
+    expect(tab.className).toContain("text-xs")
     expect(tab.getAttribute("aria-selected")).toBe("true")
   })
 

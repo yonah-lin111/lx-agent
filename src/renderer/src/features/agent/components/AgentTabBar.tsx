@@ -210,7 +210,7 @@ export const AgentTabBar = (): React.JSX.Element => {
               >
                 <LxIconButton
                   iconOnly={false}
-                  size="medium"
+                  size="small"
                   textClass=""
                   showHoverBg={false}
                   hoverTextClass=""
@@ -236,7 +236,7 @@ export const AgentTabBar = (): React.JSX.Element => {
                         : () => handleCloseTab(tab.id)
                       : undefined
                   }
-                  className={`h-7 max-w-[140px] border px-2.5 cursor-pointer ${
+                  className={`max-w-[140px] border px-2 cursor-pointer ${
                     isStreaming
                       ? isActive
                         ? "border-amber-500/50 bg-amber-500/20 text-amber-200 font-medium shadow-sm"

@@ -145,6 +145,8 @@ export interface LxIconButtonProps
   shape?: LxIconButtonShape
   // 外观变体：ghost 时不带边框/底色，主题不得强制浮雕。默认 solid。
   variant?: LxIconButtonVariant
+  // 尺寸档位：同时决定容器高度与字号。调用点不要再传 h-*/text-* 覆盖：同优先级下由 Tailwind 输出顺序裁决，
+  // 覆盖类会静默压掉档位（如 h-7 令 small 失去 h-6），导致 small 与 medium 表现一致。
   size?: LxIconButtonSize
   // 内置 Tooltip 配置。
   title?: LxIconButtonTooltip

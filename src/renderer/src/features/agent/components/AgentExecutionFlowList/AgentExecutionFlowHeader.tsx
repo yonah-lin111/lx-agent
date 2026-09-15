@@ -229,7 +229,7 @@ export const AgentExecutionFlowHeader = ({
       <LxIconButton
         key={kind}
         iconOnly={false}
-        size="medium"
+        size="small"
         highlighted={isActive}
         onClick={() => onFilterChange(kind)}
         textClass={TAB_INACTIVE_TEXT_CLASS}
@@ -237,9 +237,7 @@ export const AgentExecutionFlowHeader = ({
         hoverTextClass={tabColor.hoverText}
         highlightBgClass={tabColor.highlightBg}
         highlightTextClass={tabColor.highlightText}
-        className={`h-7 shrink-0 px-2.5 font-mono ${
-          isActive ? (tabColor.highlightExtra ?? "") : ""
-        }`}
+        className={`shrink-0 px-2 font-mono ${isActive ? (tabColor.highlightExtra ?? "") : ""}`}
         icon={
           tabColor.dot ? (
             <span
