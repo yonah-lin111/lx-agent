@@ -186,7 +186,7 @@ export const AgentTabBar = (): React.JSX.Element => {
         onClick={() => handleTabScroll("left")}
         className="shrink-0 text-white/50 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft />
       </LxIconButton>
 
       {/* 横向滚动标签容器 */}
@@ -273,7 +273,7 @@ export const AgentTabBar = (): React.JSX.Element => {
           title={{ content: t("agent.newTab"), placement: "bottom" }}
           className="shrink-0"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus />
         </LxIconButton>
       </div>
 
@@ -285,7 +285,7 @@ export const AgentTabBar = (): React.JSX.Element => {
         onClick={() => handleTabScroll("right")}
         className="shrink-0 text-white/50 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
       >
-        <ArrowRight className="h-3.5 w-3.5" />
+        <ArrowRight />
       </LxIconButton>
     </div>
   )

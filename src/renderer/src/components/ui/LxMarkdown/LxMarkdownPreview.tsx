@@ -93,7 +93,7 @@ const CodeBlockCopyButton = (): React.JSX.Element => {
       }}
       onClick={copyCode}
     >
-      {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+      {isCopied ? <Check className="text-emerald-400" /> : <Copy />}
     </LxIconButton>
   )
 }
@@ -142,7 +142,7 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
       }}
       onClick={toggleContent}
     >
-      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      {isExpanded ? <ChevronUp /> : <ChevronDown />}
     </LxIconButton>
   )
 }

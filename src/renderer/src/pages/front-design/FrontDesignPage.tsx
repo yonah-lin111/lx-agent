@@ -755,7 +755,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
             aria-label={t("frontDesign.refreshPreview")}
             title={{ content: t("frontDesign.refreshPreview"), placement: "bottom" }}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw />
           </LxIconButton>
         </div>
 
@@ -775,7 +775,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
               aria-label={t("frontDesign.viewportDesktop")}
               title={{ content: t("frontDesign.viewportDesktop"), placement: "bottom" }}
             >
-              <Laptop className="h-3.5 w-3.5" />
+              <Laptop />
             </LxIconButton>
             <LxIconButton
               size="small"
@@ -784,7 +784,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
               aria-label={t("frontDesign.viewportTablet")}
               title={{ content: t("frontDesign.viewportTablet"), placement: "bottom" }}
             >
-              <Tablet className="h-3.5 w-3.5" />
+              <Tablet />
             </LxIconButton>
             <LxIconButton
               size="small"
@@ -793,7 +793,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
               aria-label={t("frontDesign.viewportMobile")}
               title={{ content: t("frontDesign.viewportMobile"), placement: "bottom" }}
             >
-              <Smartphone className="h-3.5 w-3.5" />
+              <Smartphone />
             </LxIconButton>
           </div>
         </div>
@@ -813,7 +813,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
                 placement: "bottom",
               }}
             >
-              <MousePointerClick className="h-3.5 w-3.5" />
+              <MousePointerClick />
             </LxIconButton>
           )}
 
@@ -830,7 +830,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
               aria-label={t("frontDesign.openDesignDir")}
               title={{ content: t("frontDesign.openDesignDir"), placement: "bottom" }}
             >
-              <FolderOpen className="h-3.5 w-3.5" />
+              <FolderOpen />
             </LxIconButton>
           )}
 
@@ -868,7 +868,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
             }}
           >
             <LxIconButton aria-label={t("frontDesign.theme")} size="small">
-              <Palette className="h-3.5 w-3.5" />
+              <Palette />
             </LxIconButton>
           </LxTooltip>
 
@@ -885,11 +885,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
             aria-label={t("frontDesign.copyCode")}
             title={{ content: t("frontDesign.copyCode"), placement: "bottom" }}
           >
-            {copied ? (
-              <Check className="h-3.5 w-3.5 text-emerald-400" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
+            {copied ? <Check className="text-emerald-400" /> : <Copy />}
           </LxIconButton>
 
           {/* 清空画布 */}
@@ -900,7 +896,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
             aria-label={t("frontDesign.clearCanvas")}
             title={{ content: t("frontDesign.clearCanvas"), placement: "bottom" }}
           >
-            <Eraser className="h-3.5 w-3.5" />
+            <Eraser />
           </LxIconButton>
         </div>
       </header>

@@ -124,7 +124,7 @@ export const BottomSideBar = ({
         }}
         size="small"
       >
-        <TerminalIcon className="h-3.5 w-3.5" />
+        <TerminalIcon />
       </LxIconButton>
 
       <LxIconButton
@@ -144,9 +144,7 @@ export const BottomSideBar = ({
         }}
         size="small"
       >
-        <Activity
-          className={`h-3.5 w-3.5 ${runningJobs.length > 0 ? "text-sky-400 animate-pulse" : ""}`}
-        />
+        <Activity className={`${runningJobs.length > 0 ? "text-sky-400 animate-pulse" : ""}`} />
       </LxIconButton>
     </div>
   )
@@ -171,11 +169,7 @@ export const BottomSideBar = ({
         onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
         size="small"
       >
-        {isCoveringRightSideBar ? (
-          <ChevronsRightLeft className="h-3.5 w-3.5" />
-        ) : (
-          <ChevronsLeftRight className="h-3.5 w-3.5" />
-        )}
+        {isCoveringRightSideBar ? <ChevronsRightLeft /> : <ChevronsLeftRight />}
       </LxIconButton>
 
       <LxIconButton
@@ -184,7 +178,7 @@ export const BottomSideBar = ({
         onClick={() => onExpandedChange(false)}
         size="small"
       >
-        <ChevronDown className="h-3.5 w-3.5" />
+        <ChevronDown />
       </LxIconButton>
     </div>
   )
@@ -258,11 +252,7 @@ export const BottomSideBar = ({
                 onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
                 size="small"
               >
-                {isCoveringRightSideBar ? (
-                  <ChevronsRightLeft className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronsLeftRight className="h-3.5 w-3.5" />
-                )}
+                {isCoveringRightSideBar ? <ChevronsRightLeft /> : <ChevronsLeftRight />}
               </LxIconButton>
 
               <LxIconButton
@@ -271,7 +261,7 @@ export const BottomSideBar = ({
                 onClick={() => onExpandedChange(true)}
                 size="small"
               >
-                <ChevronUp className="h-3.5 w-3.5" />
+                <ChevronUp />
               </LxIconButton>
             </div>
           </div>

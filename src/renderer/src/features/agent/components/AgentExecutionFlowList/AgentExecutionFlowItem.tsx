@@ -393,7 +393,7 @@ export const AgentExecutionFlowItem = ({
               title={{ content: "Running", placement: "left" }}
               className="text-sky-400"
             >
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400" />
+              <Loader2 className="animate-spin text-sky-400" />
             </LxIconButton>
           )}
           {step.status === "error" && (
@@ -403,7 +403,7 @@ export const AgentExecutionFlowItem = ({
               title={{ content: "Error", placement: "left" }}
               className="text-rose-400"
             >
-              <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
+              <AlertCircle className="text-rose-400" />
             </LxIconButton>
           )}
           {step.status === "done" && (
@@ -413,7 +413,7 @@ export const AgentExecutionFlowItem = ({
               title={{ content: "Done", placement: "left" }}
               className="text-emerald-400/80"
             >
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400/80" />
+              <CheckCircle2 className="text-emerald-400/80" />
             </LxIconButton>
           )}
 
@@ -429,9 +429,9 @@ export const AgentExecutionFlowItem = ({
               onClick={(e) => void handleCopy(e, copyPayload)}
             >
               {isCopied ? (
-                <Check className="h-3 w-3 text-emerald-400" />
+                <Check className="text-emerald-400" />
               ) : (
-                <Copy className="h-3 w-3 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]" />
+                <Copy className="text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]" />
               )}
             </LxIconButton>
           )}

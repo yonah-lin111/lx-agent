@@ -51,11 +51,7 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
         onClick={() => setIsCollapsed((currentValue) => !currentValue)}
         size="small"
       >
-        {isCollapsed ? (
-          <ChevronRight className="h-3.5 w-3.5" />
-        ) : (
-          <ChevronLeft className="h-3.5 w-3.5" />
-        )}
+        {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
       </LxIconButton>
       <div
         className={`mt-2 flex shrink-0 gap-1 transition-transform duration-300 ease-in-out ${
@@ -77,7 +73,7 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
               onClick={() => navigate(path)}
               size="small"
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon />
             </LxIconButton>
           )
         })}

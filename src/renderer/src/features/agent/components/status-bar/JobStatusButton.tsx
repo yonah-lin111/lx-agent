@@ -73,9 +73,9 @@ export const JobStatusButton = ({
         }`}
         icon={
           runningCount > 0 ? (
-            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-400" />
+            <Loader2 className="shrink-0 animate-spin text-sky-400" />
           ) : (
-            <Terminal className="h-3.5 w-3.5 shrink-0" />
+            <Terminal className="shrink-0" />
           )
         }
       >

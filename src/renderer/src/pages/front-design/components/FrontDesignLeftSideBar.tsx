@@ -246,7 +246,7 @@ export const FrontDesignLeftSideBar = ({
             aria-label={t("frontDesign.clearHistory")}
             title={{ content: t("frontDesign.clearHistory"), placement: "bottom" }}
           >
-            <Trash2 className="h-3.5 w-3.5 text-white/40 hover:text-red-400" />
+            <Trash2 className="text-white/40 hover:text-red-400" />
           </LxIconButton>
         )}
       </div>
@@ -405,7 +405,7 @@ export const FrontDesignLeftSideBar = ({
                                       placement: "top",
                                     }}
                                   >
-                                    <Trash2 className="h-3 w-3 text-white/40 hover:text-red-400" />
+                                    <Trash2 className="text-white/40 hover:text-red-400" />
                                   </LxIconButton>
                                 </div>
                               </>

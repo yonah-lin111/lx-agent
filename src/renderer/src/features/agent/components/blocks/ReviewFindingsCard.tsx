@@ -81,13 +81,7 @@ const FindingItemCard = ({
             onClick={() => onToggleSelect(item.id)}
             textClass={isSelected ? "text-violet-400" : "text-white/40"}
             className="review-finding-select mt-0.5"
-            icon={
-              isSelected ? (
-                <CheckSquare className="h-3.5 w-3.5" />
-              ) : (
-                <Square className="h-3.5 w-3.5" />
-              )
-            }
+            icon={isSelected ? <CheckSquare /> : <Square />}
           />
 
           <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -110,7 +104,7 @@ const FindingItemCard = ({
               onClick={() => onOpenFile(item.location.filePath, item.location.lineStart)}
               textClass="text-cyan-400/80"
               className="review-finding-file-link max-w-full text-left text-xs font-mono"
-              icon={<ExternalLink className="h-3 w-3 shrink-0" />}
+              icon={<ExternalLink className="shrink-0" />}
             >
               <span className="break-all">
                 {item.location.filePath}:{item.location.lineStart}
@@ -143,11 +137,11 @@ const FindingItemCard = ({
                   icon={
                     <>
                       {isExpanded ? (
-                        <ChevronDown className="h-3 w-3 shrink-0" />
+                        <ChevronDown className="shrink-0" />
                       ) : (
-                        <ChevronRight className="h-3 w-3 shrink-0" />
+                        <ChevronRight className="shrink-0" />
                       )}
-                      <Sparkles className="h-3 w-3 shrink-0" />
+                      <Sparkles className="shrink-0" />
                     </>
                   }
                 >
@@ -320,11 +314,7 @@ export const ReviewFindingsCard = ({
           onClick={handleCopy}
           className="review-findings-copy-btn shrink-0"
         >
-          {copied ? (
-            <Check className="h-3.5 w-3.5 text-violet-400" />
-          ) : (
-            <Copy className="h-3.5 w-3.5" />
-          )}
+          {copied ? <Check className="text-violet-400" /> : <Copy />}
         </LxIconButton>
       </div>
 
@@ -395,9 +385,9 @@ export const ReviewFindingsCard = ({
               className="review-findings-select-all"
               icon={
                 selectedIds.size === findings.length ? (
-                  <CheckSquare className="h-3.5 w-3.5 text-violet-400" />
+                  <CheckSquare className="text-violet-400" />
                 ) : (
-                  <Square className="h-3.5 w-3.5" />
+                  <Square />
                 )
               }
             >
@@ -478,9 +468,9 @@ export const ReviewFindingsCard = ({
                 className="review-findings-apply-btn bg-violet-600 px-3 py-1 text-xs font-medium max-w-full"
                 icon={
                   isExecutionDisabled ? (
-                    <Check className="h-3.5 w-3.5 shrink-0 text-white/30" />
+                    <Check className="shrink-0 text-white/30" />
                   ) : (
-                    <Wrench className="h-3 w-3 shrink-0" />
+                    <Wrench className="shrink-0" />
                   )
                 }
               >

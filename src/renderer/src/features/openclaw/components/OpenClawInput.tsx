@@ -601,7 +601,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         hoverBgClass="hover:bg-white/90"
         className="agent-input-action-btn agent-input-stop-btn bg-white !text-black shadow-sm"
       >
-        <Square className="h-3 w-3 fill-current" />
+        <Square className="fill-current" />
       </LxIconButton>
     ) : (
       <LxIconButton
@@ -613,7 +613,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         hoverBgClass="hover:bg-white/90"
         className="agent-input-action-btn agent-input-send-btn bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
       >
-        <Send className="h-3.5 w-3.5" />
+        <Send />
       </LxIconButton>
     )
 

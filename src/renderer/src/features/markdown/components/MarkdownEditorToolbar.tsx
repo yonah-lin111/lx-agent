@@ -402,7 +402,7 @@ export const MarkdownEditorToolbar = ({
         title={{ content: t("markdown.previousPage") }}
         onClick={() => onPageChange?.(activePageIndex - 1)}
       >
-        <ChevronLeft className="h-3.5 w-3.5" />
+        <ChevronLeft />
       </LxIconButton>
       <span
         aria-label={t("markdown.pageIndicator", {
@@ -420,7 +420,7 @@ export const MarkdownEditorToolbar = ({
         title={{ content: t("markdown.nextPage") }}
         onClick={() => onPageChange?.(activePageIndex + 1)}
       >
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight />
       </LxIconButton>
     </div>
   )
@@ -591,7 +591,7 @@ export const MarkdownEditorToolbar = ({
           title={{ content: label }}
           onClick={onClick}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon />
         </LxIconButton>
       ))}
       <LxTooltip
@@ -607,7 +607,7 @@ export const MarkdownEditorToolbar = ({
           onClick={() => setTableSize(null)}
           onMouseEnter={() => setTableSize(null)}
         >
-          <Table2 className="h-3.5 w-3.5" />
+          <Table2 />
         </LxIconButton>
       </LxTooltip>
       <LxTooltip
@@ -622,7 +622,7 @@ export const MarkdownEditorToolbar = ({
         }}
       >
         <LxIconButton aria-label={t("markdown.shortcutsHint")} size="small">
-          <Keyboard className="h-3.5 w-3.5" />
+          <Keyboard />
         </LxIconButton>
       </LxTooltip>
       <LxTooltip
@@ -637,7 +637,7 @@ export const MarkdownEditorToolbar = ({
         }}
       >
         <LxIconButton aria-label={t("markdown.pageVariables")} size="small">
-          <Braces className="h-3.5 w-3.5" />
+          <Braces />
         </LxIconButton>
       </LxTooltip>
 
@@ -654,7 +654,7 @@ export const MarkdownEditorToolbar = ({
           title={{ content: label }}
           onClick={onClick}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon />
         </LxIconButton>
       ))}
 

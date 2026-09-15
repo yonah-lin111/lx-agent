@@ -560,9 +560,9 @@ export const ModelProviderSettings = ({
                     }}
                   >
                     {isEnabled ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400/80" />
+                      <CheckCircle2 className="text-emerald-400/80" />
                     ) : (
-                      <Circle className="h-3.5 w-3.5 text-white/30" />
+                      <Circle className="text-white/30" />
                     )}
                   </LxIconButton>
                   <span className="min-w-0 flex-1 truncate select-none">
@@ -661,7 +661,7 @@ export const ModelProviderSettings = ({
                     disabled={isFetchingModels}
                     onClick={() => void fetchProviderModels(selectedProviderId)}
                   >
-                    <Download className="h-3 w-3" />
+                    <Download />
                   </LxIconButton>
                   <LxIconButton
                     preset="add"
@@ -727,7 +727,7 @@ export const ModelProviderSettings = ({
                             content={renderFetchedModelsContent(selectedProviderId, modelKey)}
                           >
                             <LxIconButton aria-label={`${model.id} ${t("settings.modelsList")}`}>
-                              <Bot className="h-3.5 w-3.5" />
+                              <Bot />
                             </LxIconButton>
                           </LxTooltip>
                         ) : null}
@@ -743,14 +743,14 @@ export const ModelProviderSettings = ({
                             }))
                           }
                         >
-                          <SlidersHorizontal className="h-3.5 w-3.5" />
+                          <SlidersHorizontal />
                         </LxIconButton>
                         <LxIconButton
                           aria-label={`${t("common.copy")} ${model.id}`}
                           title={{ content: t("common.copy"), placement: "top" }}
                           onClick={() => duplicateModel(selectedProviderId, modelKey)}
                         >
-                          <Copy className="h-3.5 w-3.5" />
+                          <Copy />
                         </LxIconButton>
                         <LxIconButton
                           preset="delete"

@@ -285,7 +285,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
         size="small"
         onClick={() => handleScroll("left")}
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft />
       </LxIconButton>
       <div
         ref={scrollRef}
@@ -367,7 +367,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
           onConfirm: clearRecent,
         }}
       >
-        <BrushCleaning className="h-3.5 w-3.5" />
+        <BrushCleaning />
       </LxIconButton>
       <LxIconButton
         aria-label={t("project.scrollRight")}
@@ -375,7 +375,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
         size="small"
         onClick={() => handleScroll("right")}
       >
-        <ArrowRight className="h-3.5 w-3.5" />
+        <ArrowRight />
       </LxIconButton>
     </div>
   )

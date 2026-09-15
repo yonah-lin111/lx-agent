@@ -300,7 +300,7 @@ export const SkillSettings = (): React.JSX.Element => {
             disabled={refreshing || loading}
             onClick={() => void handleRefresh()}
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin text-white" : ""}`} />
+            <RefreshCw className={`${refreshing ? "animate-spin text-white" : ""}`} />
           </LxIconButton>
         </div>
 
@@ -399,7 +399,7 @@ export const SkillSettings = (): React.JSX.Element => {
                               onClick={(e) => e.stopPropagation()}
                               className="text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))] hover:text-rose-400"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 />
                             </LxIconButton>
                           </LxTooltip>
                         ) : (
@@ -413,7 +413,7 @@ export const SkillSettings = (): React.JSX.Element => {
                                 disabled
                                 className="opacity-30"
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Trash2 />
                               </LxIconButton>
                             </span>
                           </LxTooltip>
@@ -525,11 +525,7 @@ export const SkillSettings = (): React.JSX.Element => {
                       aria-label={t("common.copy")}
                       onClick={() => handleCopyPath(selectedSkill.filePath)}
                     >
-                      {copiedPath ? (
-                        <Check className="h-3 w-3 text-emerald-400" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
+                      {copiedPath ? <Check className="text-emerald-400" /> : <Copy />}
                     </LxIconButton>
                   </LxTooltip>
                 </div>

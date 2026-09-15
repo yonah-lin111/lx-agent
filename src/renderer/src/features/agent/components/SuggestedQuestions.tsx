@@ -51,7 +51,7 @@ export const SuggestedQuestions = ({
                 onClick={() => onEcho(question)}
                 className="mt-1 opacity-0 transition-opacity group-hover/item:opacity-100 focus-visible:opacity-100"
               >
-                <CornerDownLeft className="h-3 w-3" />
+                <CornerDownLeft />
               </LxIconButton>
             </div>
           ))}

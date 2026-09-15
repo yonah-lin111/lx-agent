@@ -198,7 +198,7 @@ export const RightSideBar = (): React.JSX.Element => {
       size="small"
       className="shrink-0"
     >
-      <Plus className="h-3.5 w-3.5" />
+      <Plus />
     </LxIconButton>
   )
 
@@ -233,7 +233,7 @@ export const RightSideBar = (): React.JSX.Element => {
             onClick={() => setIsCollapsed(false)}
             size="small"
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
+            <ChevronLeft />
           </LxIconButton>
         </div>
       ) : (
@@ -253,7 +253,7 @@ export const RightSideBar = (): React.JSX.Element => {
                 size="small"
                 className="shrink-0"
               >
-                <History className="h-3.5 w-3.5" />
+                <History />
               </LxIconButton>
 
               <LxIconButton
@@ -266,11 +266,7 @@ export const RightSideBar = (): React.JSX.Element => {
                 size="small"
                 className="shrink-0"
               >
-                {viewMode === "flow" ? (
-                  <MessageSquare className="h-3.5 w-3.5" />
-                ) : (
-                  <Workflow className="h-3.5 w-3.5" />
-                )}
+                {viewMode === "flow" ? <MessageSquare /> : <Workflow />}
               </LxIconButton>
             </div>
 
@@ -284,7 +280,7 @@ export const RightSideBar = (): React.JSX.Element => {
                 onClick={() => setIsCollapsed(true)}
                 size="small"
               >
-                <ChevronRight className="h-3.5 w-3.5" />
+                <ChevronRight />
               </LxIconButton>
             </div>
           </div>

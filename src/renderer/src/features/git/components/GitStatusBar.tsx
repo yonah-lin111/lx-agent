@@ -252,12 +252,10 @@ export const GitStatusBar = ({
         } ${isUnimported ? "opacity-75" : ""}`}
         icon={
           isUnimported ? (
-            <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+            <FolderGit className="shrink-0 text-white/40" />
           ) : (
             <Folder
-              className={`h-3.5 w-3.5 shrink-0 ${
-                isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
-              }`}
+              className={`shrink-0 ${isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"}`}
             />
           )
         }
@@ -474,7 +472,7 @@ export const GitStatusBar = ({
         <LxIconButton
           textClass="text-white/70"
           className="shrink-0 px-1 py-0.5 text-xs"
-          icon={<GitBranch className="h-3.5 w-3.5 text-emerald-400" />}
+          icon={<GitBranch className="text-emerald-400" />}
         >
           <span>{displayBranch}</span>
         </LxIconButton>
@@ -584,7 +582,7 @@ export const GitStatusBar = ({
         <LxIconButton
           textClass="text-white/70"
           className="shrink-0 px-1 py-0.5 text-xs"
-          icon={<GitFork className="h-3.5 w-3.5 text-amber-400" />}
+          icon={<GitFork className="text-amber-400" />}
         >
           <span>{displayWorktree}</span>
         </LxIconButton>

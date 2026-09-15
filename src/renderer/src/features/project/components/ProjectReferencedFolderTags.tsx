@@ -320,7 +320,7 @@ const ProjectReferencedFolderTagsContent = ({
           size="small"
           onClick={() => handleScroll("left")}
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft />
         </LxIconButton>
         <div
           ref={scrollRef}
@@ -430,7 +430,7 @@ const ProjectReferencedFolderTagsContent = ({
           size="small"
           onClick={() => handleScroll("right")}
         >
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowRight />
         </LxIconButton>
         <LxIconButton
           aria-label={t("project.addFolder")}
@@ -438,7 +438,7 @@ const ProjectReferencedFolderTagsContent = ({
           title={{ content: t("project.addFolder"), placement: "top" }}
           onClick={() => void handlePickFolder()}
         >
-          <FolderPlus className="h-3.5 w-3.5 text-white/60 hover:text-white" />
+          <FolderPlus className="text-white/60 hover:text-white" />
         </LxIconButton>
       </div>
       {folderPanel && (

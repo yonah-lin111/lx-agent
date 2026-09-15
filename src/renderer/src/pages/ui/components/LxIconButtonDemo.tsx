@@ -100,7 +100,7 @@ export const LxIconButtonDemo = (): React.JSX.Element => {
             title={{ content: "highlighted", placement: "bottom" }}
           />
           <LxIconButton aria-label="Star" title={{ content: "Star", placement: "bottom" }}>
-            <Star className="h-4 w-4" />
+            <Star />
           </LxIconButton>
         </div>
       </UiPreviewSection>

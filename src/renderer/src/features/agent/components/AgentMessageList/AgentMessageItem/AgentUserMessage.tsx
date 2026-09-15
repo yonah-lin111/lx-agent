@@ -242,7 +242,7 @@ export const AgentUserMessage = ({
                 title={{ content: t("common.cancel"), placement: "top" }}
                 onClick={handleCancelEdit}
               >
-                <X className="h-3.5 w-3.5" />
+                <X />
               </LxIconButton>
               <LxIconButton
                 size="small"
@@ -251,7 +251,7 @@ export const AgentUserMessage = ({
                 disabled={!editText.trim() || editText.trim() === userText.trim()}
                 onClick={handleSaveEdit}
               >
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <Check className="text-emerald-400" />
               </LxIconButton>
             </div>
           </div>
@@ -330,11 +330,7 @@ export const AgentUserMessage = ({
                   }}
                   onClick={toggleExpand}
                 >
-                  {isExpanded ? (
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  )}
+                  {isExpanded ? <ChevronUp /> : <ChevronDown />}
                 </LxIconButton>
               )}
               {!readOnly &&
@@ -348,7 +344,7 @@ export const AgentUserMessage = ({
                     title={{ content: t("agent.forkFromHere"), placement: "top" }}
                     onClick={() => onFork(messageTimestamp)}
                   >
-                    <GitBranch className="h-3.5 w-3.5" />
+                    <GitBranch />
                   </LxIconButton>
                 )}
               {!readOnly && !message.isSteer && !message.command && (
@@ -358,7 +354,7 @@ export const AgentUserMessage = ({
                   title={{ content: t("agent.editMessage"), placement: "top" }}
                   onClick={handleStartEdit}
                 >
-                  <Pencil className="h-3.5 w-3.5" />
+                  <Pencil />
                 </LxIconButton>
               )}
               <LxIconButton
@@ -370,11 +366,7 @@ export const AgentUserMessage = ({
                 }}
                 onClick={copyMessageContent}
               >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-400" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
+                {copied ? <Check className="text-emerald-400" /> : <Copy />}
               </LxIconButton>
             </div>
           </div>

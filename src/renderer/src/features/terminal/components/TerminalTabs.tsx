@@ -107,7 +107,7 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
         size="small"
         onClick={() => handleScroll("left")}
       >
-        <ChevronLeft className="h-3.5 w-3.5" />
+        <ChevronLeft />
       </LxIconButton>
 
       {/* 中间：水平滚动标签列表 */}
@@ -209,7 +209,7 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
         title={{ content: t("terminal.newTab"), placement: "top" }}
         onClick={onAddTab}
       >
-        <Plus className="h-3.5 w-3.5 text-white/60 hover:text-white" />
+        <Plus className="text-white/60 hover:text-white" />
       </LxIconButton>
 
       {/* 最右侧：向右滚动按钮 */}
@@ -219,7 +219,7 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
         size="small"
         onClick={() => handleScroll("right")}
       >
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight />
       </LxIconButton>
 
       {/* 右侧扩展操作按钮（如折叠底边栏、覆盖右侧栏等） */}

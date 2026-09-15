@@ -220,7 +220,7 @@ export const LspSettings = (): React.JSX.Element => {
           disabled={refreshing}
           onClick={() => void loadData(true)}
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin text-white" : ""}`} />
+          <RefreshCw className={`${refreshing ? "animate-spin text-white" : ""}`} />
         </LxIconButton>
       </div>
 
@@ -330,9 +330,9 @@ export const LspSettings = (): React.JSX.Element => {
                           aria-label={t("settings.lspManualInstall")}
                         >
                           {isInstalling ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
+                            <Loader2 className="animate-spin text-white" />
                           ) : (
-                            <Download className="h-3.5 w-3.5 text-white/80" />
+                            <Download className="text-white/80" />
                           )}
                         </LxIconButton>
                         <LxIconButton
@@ -341,7 +341,7 @@ export const LspSettings = (): React.JSX.Element => {
                           title={{ content: t("settings.lspCopyInstallCommand"), placement: "top" }}
                           aria-label={t("settings.lspCopyInstallCommand")}
                         >
-                          <Copy className="h-3.5 w-3.5 text-white/80" />
+                          <Copy className="text-white/80" />
                         </LxIconButton>
                       </>
                     )}
@@ -355,7 +355,7 @@ export const LspSettings = (): React.JSX.Element => {
                       textClass="text-white/50"
                       hoverTextClass="hover:text-white/80"
                       className="cursor-pointer"
-                      icon={<FolderOpen className="h-3 w-3" />}
+                      icon={<FolderOpen />}
                     >
                       <span>
                         {isCustomOpen ? t("settings.lspHideCustom") : t("settings.lspShowCustom")}

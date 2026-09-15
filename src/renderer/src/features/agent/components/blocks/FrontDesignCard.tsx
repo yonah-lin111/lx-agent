@@ -229,7 +229,7 @@ export const FrontDesignCard = ({
               onClick={handleOpenDirectory}
               textClass="text-white/80"
               className="front-design-dir-btn border border-white/10 px-2.5 py-1 text-xs max-w-full"
-              icon={<FolderOpen className="h-3 w-3 shrink-0" />}
+              icon={<FolderOpen className="shrink-0" />}
             >
               <span className="break-words">{t("frontDesign.openDesignDir")}</span>
             </LxIconButton>
@@ -241,7 +241,7 @@ export const FrontDesignCard = ({
             textClass="text-pink-300"
             hoverBgClass="hover:bg-pink-500/20"
             className="front-design-iterate-btn border border-pink-500/30 bg-pink-500/10 px-2.5 py-1 text-xs font-medium max-w-full"
-            icon={<GitBranch className="h-3 w-3 shrink-0" />}
+            icon={<GitBranch className="shrink-0" />}
           >
             <span className="break-words">{t("frontDesign.iterateAction")}</span>
           </LxIconButton>
@@ -251,7 +251,7 @@ export const FrontDesignCard = ({
             textClass="text-white"
             hoverBgClass="hover:bg-pink-500"
             className="front-design-open-btn bg-pink-600 px-3 py-1 text-xs font-medium max-w-full"
-            icon={<ExternalLink className="h-3 w-3 shrink-0" />}
+            icon={<ExternalLink className="shrink-0" />}
           >
             <span className="break-words">{t("frontDesign.openDesignPage")}</span>
           </LxIconButton>

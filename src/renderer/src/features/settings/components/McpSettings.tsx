@@ -307,7 +307,7 @@ export const McpSettings = (): React.JSX.Element => {
             disabled={refreshing}
             onClick={() => void handleReconnectAll()}
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin text-white" : ""}`} />
+            <RefreshCw className={`${refreshing ? "animate-spin text-white" : ""}`} />
           </LxIconButton>
 
           <LxIconButton
@@ -316,7 +316,7 @@ export const McpSettings = (): React.JSX.Element => {
             textClass="text-white/75"
             hoverBgClass="hover:bg-white/[0.08]"
             className="rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 cursor-pointer hover:border-white/20"
-            icon={<Plus className="h-3.5 w-3.5" />}
+            icon={<Plus />}
           >
             <span>{t("settings.mcpAddServer")}</span>
           </LxIconButton>
@@ -343,7 +343,7 @@ export const McpSettings = (): React.JSX.Element => {
                 textClass="text-white/75"
                 hoverBgClass="hover:bg-white/[0.08]"
                 className="rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 cursor-pointer hover:border-white/20"
-                icon={<Plus className="h-3.5 w-3.5" />}
+                icon={<Plus />}
               >
                 <span>{t("settings.mcpAddServer")}</span>
               </LxIconButton>
@@ -420,7 +420,7 @@ export const McpSettings = (): React.JSX.Element => {
                       title={{ content: t("settings.edit"), placement: "top" }}
                       aria-label={t("settings.edit")}
                     >
-                      <Edit2 className="h-3.5 w-3.5 text-white/70" />
+                      <Edit2 className="text-white/70" />
                     </LxIconButton>
 
                     <LxIconButton
@@ -429,7 +429,7 @@ export const McpSettings = (): React.JSX.Element => {
                       title={{ content: t("settings.delete"), placement: "top" }}
                       aria-label={t("settings.delete")}
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-red-400/80 hover:text-red-400" />
+                      <Trash2 className="text-red-400/80 hover:text-red-400" />
                     </LxIconButton>
 
                     <div className="h-3.5 w-px bg-white/10" />
@@ -491,13 +491,7 @@ export const McpSettings = (): React.JSX.Element => {
                       textClass="text-white/50"
                       hoverTextClass="hover:text-white/80"
                       className="cursor-pointer"
-                      icon={
-                        isExpandedTools ? (
-                          <ChevronDown className="h-3 w-3" />
-                        ) : (
-                          <ChevronRight className="h-3 w-3" />
-                        )
-                      }
+                      icon={isExpandedTools ? <ChevronDown /> : <ChevronRight />}
                     >
                       <span>{t("settings.mcpRegisteredTools", { count: tools.length })}</span>
                     </LxIconButton>
@@ -598,7 +592,7 @@ export const McpSettings = (): React.JSX.Element => {
                 onClick={() => setFormEnvRows((prev) => [...prev, { key: "", value: "" }])}
                 textClass="text-white/60"
                 className="cursor-pointer"
-                icon={<Plus className="h-3 w-3" />}
+                icon={<Plus />}
               >
                 <span>{t("settings.mcpAddEnvRow")}</span>
               </LxIconButton>
@@ -634,7 +628,7 @@ export const McpSettings = (): React.JSX.Element => {
                   title={{ content: t("settings.delete"), placement: "top" }}
                   aria-label={t("settings.delete")}
                 >
-                  <X className="h-3.5 w-3.5 text-white/50" />
+                  <X className="text-white/50" />
                 </LxIconButton>
               </div>
             ))}

@@ -441,11 +441,7 @@ export const AgentAssistantMessage = ({
                 }}
                 onClick={copyMessageContent}
               >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-400" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
+                {copied ? <Check className="text-emerald-400" /> : <Copy />}
               </LxIconButton>
               {!readOnly && onDelete && (
                 <LxTooltip
@@ -460,7 +456,7 @@ export const AgentAssistantMessage = ({
                   }}
                 >
                   <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 />
                   </LxIconButton>
                 </LxTooltip>
               )}

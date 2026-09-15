@@ -201,7 +201,7 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
             title={{ content: t("common.zoomOut"), placement: "bottom" }}
             onClick={() => changeScale(-SCALE_STEP)}
           >
-            <ZoomOut className="h-3.5 w-3.5" />
+            <ZoomOut />
           </LxIconButton>
           <LxIconButton
             aria-label={t("common.zoomIn")}
@@ -210,7 +210,7 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
             title={{ content: t("common.zoomIn"), placement: "bottom" }}
             onClick={() => changeScale(SCALE_STEP)}
           >
-            <ZoomIn className="h-3.5 w-3.5" />
+            <ZoomIn />
           </LxIconButton>
           <LxIconButton
             aria-label={t("common.resetView")}
@@ -219,7 +219,7 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
             title={{ content: t("common.resetView"), placement: "bottom" }}
             onClick={resetTransform}
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw />
           </LxIconButton>
           <LxIconButton
             aria-label={isLocked ? t("common.unlock") : t("common.lock")}
@@ -231,7 +231,7 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
             }}
             onClick={() => setIsLocked((current) => !current)}
           >
-            {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+            {isLocked ? <Lock /> : <Unlock />}
           </LxIconButton>
           <LxIconButton
             aria-label={isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent")}
@@ -243,11 +243,7 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
             }}
             onClick={toggleContent}
           >
-            {isExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
+            {isExpanded ? <ChevronUp /> : <ChevronDown />}
           </LxIconButton>
         </div>
       </div>

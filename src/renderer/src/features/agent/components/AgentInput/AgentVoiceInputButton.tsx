@@ -190,7 +190,7 @@ export const AgentVoiceInputButton = forwardRef<
         title={{ content: t("agent.voiceTranscribing"), placement: "top" }}
         className="agent-input-voice-btn !text-white/40"
       >
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <Loader2 className="animate-spin" />
       </LxIconButton>
     )
   }
@@ -204,7 +204,7 @@ export const AgentVoiceInputButton = forwardRef<
         className="agent-input-voice-btn relative !bg-rose-500/20 !text-rose-400 border border-rose-500/30 animate-pulse"
         onClick={handleClick}
       >
-        <Square className="h-3 w-3 fill-current" />
+        <Square className="fill-current" />
       </LxIconButton>
     )
   }
@@ -218,7 +218,7 @@ export const AgentVoiceInputButton = forwardRef<
       disabled={disabled}
       onClick={handleClick}
     >
-      <Mic className="h-3.5 w-3.5" />
+      <Mic />
     </LxIconButton>
   )
 })

@@ -379,7 +379,7 @@ export const OpenClawPage = (): React.JSX.Element => {
           disabled={!selectedInstanceId}
           onClick={handleReconnect}
         >
-          <RefreshCw className="h-3.5 w-3.5" />
+          <RefreshCw />
         </LxIconButton>
         <LxIconButton
           size="small"
@@ -388,7 +388,7 @@ export const OpenClawPage = (): React.JSX.Element => {
           disabled={!selectedInstanceId || agents.length === 0}
           onClick={openSessionPicker}
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus />
         </LxIconButton>
       </div>
 

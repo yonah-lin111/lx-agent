@@ -166,7 +166,7 @@ export const MarkdownEditorToolbar = ({
           title={{ content: label }}
           onClick={onClick}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon />
         </LxIconButton>
       ))}
       <LxTooltip
@@ -182,7 +182,7 @@ export const MarkdownEditorToolbar = ({
           onClick={() => setTableSize(null)}
           onMouseEnter={() => setTableSize(null)}
         >
-          <Table2 className="h-3.5 w-3.5" />
+          <Table2 />
         </LxIconButton>
       </LxTooltip>
       <LxTooltip
@@ -197,7 +197,7 @@ export const MarkdownEditorToolbar = ({
         }}
       >
         <LxIconButton aria-label={t("markdown.shortcutsHint")} size="small">
-          <Keyboard className="h-3.5 w-3.5" />
+          <Keyboard />
         </LxIconButton>
       </LxTooltip>
 
@@ -212,7 +212,7 @@ export const MarkdownEditorToolbar = ({
           title={{ content: label }}
           onClick={onClick}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon />
         </LxIconButton>
       ))}
 

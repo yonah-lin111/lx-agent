@@ -348,7 +348,7 @@ export const ChatHistoryPanel = ({
                         size="small"
                         title={{ content: t("common.more"), placement: "bottom" }}
                       >
-                        <MoreHorizontal className="h-3.5 w-3.5" />
+                        <MoreHorizontal />
                       </LxIconButton>
                     </LxTooltip>
                   )

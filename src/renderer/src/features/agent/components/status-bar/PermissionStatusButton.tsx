@@ -242,7 +242,7 @@ export const PermissionStatusButton = ({
           textClass="text-amber-300/90"
           className="shrink-0"
         >
-          <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+          <ShieldAlert className="shrink-0" />
         </LxIconButton>
       </LxTooltip>
     )

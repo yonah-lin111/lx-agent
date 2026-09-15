@@ -121,11 +121,7 @@ export const LxCodeBlock = ({
                   }}
                   onClick={handleCopy}
                 >
-                  {isCopied ? (
-                    <Check className="h-3 w-3 text-emerald-400" />
-                  ) : (
-                    <Copy className="h-3 w-3" />
-                  )}
+                  {isCopied ? <Check className="text-emerald-400" /> : <Copy />}
                 </LxIconButton>
               </span>
             )}
@@ -145,11 +141,7 @@ export const LxCodeBlock = ({
                   }}
                   onClick={handleToggleCollapse}
                 >
-                  {!isCollapsed ? (
-                    <ChevronUp className="h-3 w-3" />
-                  ) : (
-                    <ChevronDown className="h-3 w-3" />
-                  )}
+                  {!isCollapsed ? <ChevronUp /> : <ChevronDown />}
                 </LxIconButton>
               </span>
             )}

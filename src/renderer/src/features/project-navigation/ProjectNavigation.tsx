@@ -816,7 +816,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               onClick={() => locatePrompt(activePromptId)}
               size="small"
             >
-              <Locate className="h-3.5 w-3.5" />
+              <Locate />
             </LxIconButton>
             <LxIconButton
               aria-label={isAllCollapsed ? t("project.expandAll") : t("project.collapseAll")}
@@ -828,11 +828,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               onClick={toggleCollapseAll}
               size="small"
             >
-              {isAllCollapsed ? (
-                <ChevronsDownUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronsUpDown className="h-3.5 w-3.5" />
-              )}
+              {isAllCollapsed ? <ChevronsDownUp /> : <ChevronsUpDown />}
             </LxIconButton>
             <LxTooltip
               content={filterPanel}
@@ -841,7 +837,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               trigger="hover"
             >
               <LxIconButton aria-label={t("project.filterItems")} size="small">
-                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <SlidersHorizontal />
               </LxIconButton>
             </LxTooltip>
             <LxTooltip
@@ -851,7 +847,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               trigger="hover"
             >
               <LxIconButton aria-label={t("project.sortItems")} size="small">
-                <ArrowUpDown className="h-3.5 w-3.5" />
+                <ArrowUpDown />
               </LxIconButton>
             </LxTooltip>
             <LxTooltip
@@ -862,7 +858,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               closeOnContentClick
             >
               <LxIconButton aria-label={t("project.createOrImportProject")} size="small">
-                <Plus className="h-3.5 w-3.5" />
+                <Plus />
               </LxIconButton>
             </LxTooltip>
           </div>

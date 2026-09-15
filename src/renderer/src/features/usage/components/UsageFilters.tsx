@@ -133,7 +133,7 @@ export const UsageFilters = ({
         title={{ content: t("usage.refresh"), placement: "top" }}
         onClick={onRefresh}
       >
-        <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+        <RefreshCw className={`${isLoading ? "animate-spin" : ""}`} />
       </LxIconButton>
     </div>
   )

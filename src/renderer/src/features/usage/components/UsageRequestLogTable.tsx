@@ -131,7 +131,7 @@ export const UsageRequestLogTable = ({
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
+            <ChevronLeft />
           </LxIconButton>
           <span className="tabular-nums">
             {t("usage.pagination.pageInfo", { page, total: totalPages })}
@@ -143,7 +143,7 @@ export const UsageRequestLogTable = ({
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
           >
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronRight />
           </LxIconButton>
         </div>
       </div>

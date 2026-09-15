@@ -999,7 +999,7 @@ export const AgentExecutionFlowList = forwardRef<
                                 aria-label={t("agent.deleteTurn")}
                                 className="h-5 w-5 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] hover:text-red-400"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <Trash2 />
                               </LxIconButton>
                             </LxTooltip>
                           )}
@@ -1105,7 +1105,7 @@ export const AgentExecutionFlowList = forwardRef<
               className="pointer-events-auto border border-[var(--color-theme-border-subtle,rgba(255,255,255,0.12))] bg-[var(--color-theme-surface-elevated,#212121)] text-[var(--color-theme-text-secondary,rgba(255,255,255,0.6))] shadow-lg backdrop-blur hover:border-[var(--color-theme-border-hover,rgba(255,255,255,0.25))] hover:bg-[var(--color-theme-surface-hover,#2a2a2a)] hover:text-[var(--color-theme-text-primary,#fff)]"
               onClick={scrollToBottom}
             >
-              <ArrowDownToLine className="h-3.5 w-3.5" />
+              <ArrowDownToLine />
             </LxIconButton>
           </div>
         )}

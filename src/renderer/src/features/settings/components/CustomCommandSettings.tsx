@@ -491,7 +491,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
               title={{ content: t("settings.addCustomCommand"), placement: "top" }}
               onClick={handleStartCreate}
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus />
             </LxIconButton>
           </div>
 
@@ -538,7 +538,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                           handleDeleteDraft()
                         }}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 />
                       </LxIconButton>
                     </div>
                   </LxNavItem>
@@ -587,7 +587,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                             className="opacity-0 group-hover:opacity-100"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 />
                           </LxIconButton>
                         </LxTooltip>
                       </div>
@@ -610,7 +610,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                 textClass="text-white"
                 hoverBgClass="hover:bg-white/15"
                 className="rounded-[6px] bg-white/10 px-3 cursor-pointer"
-                icon={<Plus className="h-3.5 w-3.5" />}
+                icon={<Plus />}
               >
                 {t("settings.addCustomCommand")}
               </LxIconButton>

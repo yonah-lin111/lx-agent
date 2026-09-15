@@ -117,11 +117,7 @@ export const ProposedPlanCard = ({
           onClick={handleCopy}
           className="proposed-plan-copy-btn shrink-0"
         >
-          {copied ? (
-            <Check className="h-3.5 w-3.5 text-emerald-400" />
-          ) : (
-            <Copy className="h-3.5 w-3.5" />
-          )}
+          {copied ? <Check className="text-emerald-400" /> : <Copy />}
         </LxIconButton>
       </div>
 
@@ -203,9 +199,9 @@ export const ProposedPlanCard = ({
               className="proposed-plan-accept-btn bg-emerald-600 px-3 py-1 text-xs font-medium max-w-full"
               icon={
                 isExecutionDisabled ? (
-                  <Check className="h-3.5 w-3.5 shrink-0 text-white/30" />
+                  <Check className="shrink-0 text-white/30" />
                 ) : (
-                  <Play className="h-3 w-3 shrink-0 fill-current" />
+                  <Play className="shrink-0 fill-current" />
                 )
               }
             >

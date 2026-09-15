@@ -78,7 +78,7 @@ export const FlowToolSearch = ({ content }: FlowToolSearchProps): React.JSX.Elem
                   aria-label="Open"
                   className="text-white/30 hover:text-white/70"
                 >
-                  <ExternalLink className="h-3 w-3" />
+                  <ExternalLink />
                 </LxIconButton>
               </div>
             ))}

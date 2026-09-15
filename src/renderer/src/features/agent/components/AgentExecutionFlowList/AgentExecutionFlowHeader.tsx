@@ -269,7 +269,7 @@ export const AgentExecutionFlowHeader = ({
             size="small"
             onClick={() => handleTabScroll("left")}
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft />
           </LxIconButton>
           <div
             ref={tabScrollRef}
@@ -309,7 +309,7 @@ export const AgentExecutionFlowHeader = ({
             size="small"
             onClick={() => handleTabScroll("right")}
           >
-            <ArrowRight className="h-3.5 w-3.5" />
+            <ArrowRight />
           </LxIconButton>
         </div>
       ) : (
@@ -349,7 +349,7 @@ export const AgentExecutionFlowHeader = ({
             }
           >
             <LxIconButton size="small" aria-label={t("agent.viewStats")}>
-              <BarChart3 className="h-3.5 w-3.5" />
+              <BarChart3 />
             </LxIconButton>
           </LxTooltip>
         )}

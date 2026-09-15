@@ -432,11 +432,7 @@ export const OpenClawSettings = (): React.JSX.Element => {
                       if (selectedId) void handleTestConnection(selectedId)
                     }}
                   >
-                    {testingId === selectedId ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Activity className="h-3.5 w-3.5" />
-                    )}
+                    {testingId === selectedId ? <Loader2 className="animate-spin" /> : <Activity />}
                   </LxIconButton>
                   <LxIconButton
                     aria-label={t("settings.openclawFetchAgents")}
@@ -447,9 +443,9 @@ export const OpenClawSettings = (): React.JSX.Element => {
                     }}
                   >
                     {fetchingId === selectedId ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="animate-spin" />
                     ) : (
-                      <RefreshCw className="h-3.5 w-3.5" />
+                      <RefreshCw />
                     )}
                   </LxIconButton>
                 </div>
@@ -497,9 +493,9 @@ export const OpenClawSettings = (): React.JSX.Element => {
                           }}
                         >
                           {sessionLoadingKey === sessionKey ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <Loader2 className="animate-spin" />
                           ) : (
-                            <RefreshCw className="h-3.5 w-3.5" />
+                            <RefreshCw />
                           )}
                         </LxIconButton>
                       </div>
@@ -521,7 +517,7 @@ export const OpenClawSettings = (): React.JSX.Element => {
                   },
                 }}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 />
               </LxIconButton>
             </div>
           </div>

@@ -205,7 +205,7 @@ export const AgentHistoryPanel = ({
           title={{ content: t("agent.collapsePanel"), placement: "bottom" }}
           onClick={onClose}
         >
-          <X className="h-3.5 w-3.5" />
+          <X />
         </LxIconButton>
       </div>
 

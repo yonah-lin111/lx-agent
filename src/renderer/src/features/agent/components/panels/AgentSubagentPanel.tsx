@@ -206,7 +206,7 @@ export const AgentSubagentPanel = ({
               }
             >
               <LxIconButton size="small" aria-label={t("agent.viewStats")}>
-                <BarChart3 className="h-3.5 w-3.5" />
+                <BarChart3 />
               </LxIconButton>
             </LxTooltip>
           )}
@@ -216,7 +216,7 @@ export const AgentSubagentPanel = ({
             title={{ content: t("agent.collapsePanel"), placement: "bottom" }}
             onClick={onClose}
           >
-            <X className="h-3.5 w-3.5" />
+            <X />
           </LxIconButton>
         </div>
       </div>

@@ -234,7 +234,7 @@ export const HeaderSideBar = ({
               onClick={handleToggleRecentTags}
               size="small"
             >
-              <Tags className="h-3.5 w-3.5" />
+              <Tags />
             </LxIconButton>
             <LxTooltip
               hover={{
@@ -269,7 +269,7 @@ export const HeaderSideBar = ({
               }}
             >
               <LxIconButton aria-label={t("header.switchTheme")} size="small">
-                <Palette className="h-3.5 w-3.5" />
+                <Palette />
               </LxIconButton>
             </LxTooltip>
             <LxIconButton
@@ -281,11 +281,7 @@ export const HeaderSideBar = ({
               }}
               onClick={() => onExpandedChange(!isExpanded)}
             >
-              {isExpanded ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
+              {isExpanded ? <ChevronUp /> : <ChevronDown />}
             </LxIconButton>
           </div>
         </div>

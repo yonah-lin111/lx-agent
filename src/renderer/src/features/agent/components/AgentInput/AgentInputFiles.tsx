@@ -79,7 +79,7 @@ export const AgentInputFiles = ({
         size="small"
         onClick={() => handleScroll("left")}
       >
-        <ChevronLeft className="h-3 w-3" />
+        <ChevronLeft />
       </LxIconButton>
 
       <div
@@ -135,7 +135,7 @@ export const AgentInputFiles = ({
         size="small"
         onClick={() => handleScroll("right")}
       >
-        <ChevronRight className="h-3 w-3" />
+        <ChevronRight />
       </LxIconButton>
     </div>
   )

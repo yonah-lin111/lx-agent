@@ -226,7 +226,7 @@ export const HooksSettings = (): React.JSX.Element => {
           textClass="text-[var(--color-theme-text,rgba(255,255,255,0.8))]"
           hoverBgClass="hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))]"
           className="shrink-0 rounded-[6px] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.15))] bg-[var(--color-theme-surface,rgba(255,255,255,0.04))] px-2.5 cursor-pointer"
-          icon={<Plus className="h-3.5 w-3.5" />}
+          icon={<Plus />}
         >
           <span>{t("settings.hooksAdd")}</span>
         </LxIconButton>
@@ -274,7 +274,7 @@ export const HooksSettings = (): React.JSX.Element => {
                         title={{ content: t("settings.hooksMoveUp"), placement: "top" }}
                         aria-label={t("settings.hooksMoveUp")}
                       >
-                        <ArrowUp className="h-3.5 w-3.5 text-white/70" />
+                        <ArrowUp className="text-white/70" />
                       </LxIconButton>
                       <LxIconButton
                         preset="default"
@@ -283,7 +283,7 @@ export const HooksSettings = (): React.JSX.Element => {
                         title={{ content: t("settings.hooksMoveDown"), placement: "top" }}
                         aria-label={t("settings.hooksMoveDown")}
                       >
-                        <ArrowDown className="h-3.5 w-3.5 text-white/70" />
+                        <ArrowDown className="text-white/70" />
                       </LxIconButton>
                       <LxIconButton
                         preset="default"
@@ -291,7 +291,7 @@ export const HooksSettings = (): React.JSX.Element => {
                         title={{ content: t("settings.edit"), placement: "top" }}
                         aria-label={t("settings.edit")}
                       >
-                        <Edit2 className="h-3.5 w-3.5 text-white/70" />
+                        <Edit2 className="text-white/70" />
                       </LxIconButton>
                       <LxIconButton
                         preset="default"
@@ -299,7 +299,7 @@ export const HooksSettings = (): React.JSX.Element => {
                         title={{ content: t("settings.delete"), placement: "top" }}
                         aria-label={t("settings.delete")}
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-red-400/80 hover:text-red-400" />
+                        <Trash2 className="text-red-400/80 hover:text-red-400" />
                       </LxIconButton>
                     </div>
                   </div>

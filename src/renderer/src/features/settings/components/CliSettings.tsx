@@ -218,7 +218,7 @@ export const CliSettings = (): React.JSX.Element => {
           disabled={refreshing}
           onClick={() => void loadData(true)}
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin text-white" : ""}`} />
+          <RefreshCw className={`${refreshing ? "animate-spin text-white" : ""}`} />
         </LxIconButton>
       </div>
 
@@ -272,7 +272,7 @@ export const CliSettings = (): React.JSX.Element => {
                         className="shrink-0"
                         onClick={() => handleOpenHomepage(tool.homepage)}
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <ExternalLink />
                       </LxIconButton>
                     ) : null}
                   </div>
@@ -367,9 +367,9 @@ export const CliSettings = (): React.JSX.Element => {
                         className="settings-cli-action-btn px-2 font-medium bg-purple-500/20 cursor-pointer"
                         icon={
                           operating === "update" ? (
-                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                            <Loader2 className="animate-spin" />
                           ) : (
-                            <ArrowUpCircle className="h-2.5 w-2.5" />
+                            <ArrowUpCircle />
                           )
                         }
                       >
@@ -389,9 +389,9 @@ export const CliSettings = (): React.JSX.Element => {
                         className="settings-cli-action-btn border border-white/10 bg-white/[0.03] px-2 font-medium cursor-pointer hover:border-white/20"
                         icon={
                           operating === "install" ? (
-                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                            <Loader2 className="animate-spin" />
                           ) : (
-                            <Download className="h-2.5 w-2.5" />
+                            <Download />
                           )
                         }
                       >
@@ -408,7 +408,7 @@ export const CliSettings = (): React.JSX.Element => {
                         aria-label={t("settings.cliCopyInstallCommand")}
                         onClick={() => void handleCopyInstallCommand(tool.id)}
                       >
-                        <Copy className="h-3 w-3 text-white/50" />
+                        <Copy className="text-white/50" />
                       </LxIconButton>
                     </LxTooltip>
 
@@ -423,7 +423,7 @@ export const CliSettings = (): React.JSX.Element => {
                           }))
                         }
                       >
-                        <FolderOpen className="h-3 w-3" />
+                        <FolderOpen />
                       </LxIconButton>
                     </LxTooltip>
                   </div>

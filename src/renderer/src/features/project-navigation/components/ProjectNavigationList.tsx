@@ -117,11 +117,11 @@ export const ProjectNavigationList = ({
         }}
       >
         {prompt.status === "completed" ? (
-          <CheckCircle2 className={`h-3.5 w-3.5 ${className}`} />
+          <CheckCircle2 className={`${className}`} />
         ) : prompt.status === "in_progress" ? (
           <span aria-hidden="true" className="h-2 w-2 rounded-full bg-amber-400/80" />
         ) : (
-          <Circle className="h-3.5 w-3.5 text-white/30" />
+          <Circle className="text-white/30" />
         )}
       </LxIconButton>
     )

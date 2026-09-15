@@ -57,7 +57,7 @@ export const OpenClawLeftSideBar = ({
               highlighted={id === selectedInstanceId}
               onClick={() => handleSelectOffice(id, instance.agents[0]?.id)}
             >
-              <Network className="h-3.5 w-3.5" />
+              <Network />
             </LxIconButton>
           ))}
         </nav>

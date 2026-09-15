@@ -50,7 +50,7 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
             onClick={handleOpenFile}
             className="text-white/40 hover:text-white/80"
           >
-            <ExternalLink className="h-3 w-3" />
+            <ExternalLink />
           </LxIconButton>
         )}
       </div>

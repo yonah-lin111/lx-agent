@@ -183,7 +183,7 @@ export const AgentJobsMonitorView = ({
           size="small"
           onClick={() => handleScroll("left")}
         >
-          <ChevronLeft className="h-3.5 w-3.5" />
+          <ChevronLeft />
         </LxIconButton>
 
         {/* 中间：可滚动的任务 Tab 列表 */}
@@ -281,7 +281,7 @@ export const AgentJobsMonitorView = ({
           size="small"
           onClick={() => handleScroll("right")}
         >
-          <ChevronRight className="h-3.5 w-3.5" />
+          <ChevronRight />
         </LxIconButton>
 
         {/* 右侧：单任务操作与全局 Actions */}
@@ -312,11 +312,7 @@ export const AgentJobsMonitorView = ({
                   size="small"
                   onClick={() => void handleCopyLogs()}
                 >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5 text-emerald-400" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
+                  {copied ? <Check className="text-emerald-400" /> : <Copy />}
                 </LxIconButton>
               </LxTooltip>
 
@@ -326,7 +322,7 @@ export const AgentJobsMonitorView = ({
                   size="small"
                   onClick={() => void refreshJobs()}
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw />
                 </LxIconButton>
               </LxTooltip>
             </>
@@ -339,7 +335,7 @@ export const AgentJobsMonitorView = ({
                 size="small"
                 onClick={() => void handleClearSettled()}
               >
-                <Trash2 className="h-3.5 w-3.5 text-white/60 hover:text-white/90" />
+                <Trash2 className="text-white/60 hover:text-white/90" />
               </LxIconButton>
             </LxTooltip>
           )}
