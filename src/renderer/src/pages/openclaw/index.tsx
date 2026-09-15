@@ -397,7 +397,6 @@ export const OpenClawPage = (): React.JSX.Element => {
         <OpenClawMessageList
           timeline={timeline}
           agents={conversationAgents}
-          streamingAgentIds={streamingAgentIds}
           sessionStats={sessionStats}
         />
       </div>

@@ -1,11 +1,10 @@
-import type { OpenClawSessionStats } from "@shared/contracts/openclaw"
 import type React from "react"
 import { useRef } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
-import type { ConversationAgent } from "./types"
+import type { ConversationAgent, OpenClawMessageStats } from "./types"
 
 export interface OpenClawAssistantMessageProps {
   agentId: string
@@ -13,12 +12,11 @@ export interface OpenClawAssistantMessageProps {
   error?: string
   agent?: ConversationAgent
   isStreaming?: boolean
-  // 会话级模型与上下文用量；仅最新一条 AI 消息传入。
-  stats?: OpenClawSessionStats
+  stats?: OpenClawMessageStats
 }
 
 // 上下文占用百分比；容量缺失或非法时返回 null。
-const contextPercentOf = (stats: OpenClawSessionStats): number | null => {
+const contextPercentOf = (stats: OpenClawMessageStats): number | null => {
   const { contextUsed, contextWindow } = stats
   if (contextUsed === undefined || contextWindow === undefined || contextWindow <= 0) return null
   return Math.min(100, Math.max(0, Math.round((contextUsed / contextWindow) * 100)))
@@ -69,6 +67,9 @@ export const OpenClawAssistantMessage = ({
               <div>
                 {t("openclaw.contextCapacity", { total: formatCount(stats.contextWindow) })}
               </div>
+            ) : null}
+            {stats.outputTokens !== undefined ? (
+              <div>{t("openclaw.outputTokens", { count: formatCount(stats.outputTokens) })}</div>
             ) : null}
           </div>
         }

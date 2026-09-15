@@ -1,20 +1,41 @@
-import type { OpenClawSessionStats } from "@shared/contracts/openclaw"
+import type { OpenClawChatMessage, OpenClawSessionStats } from "@shared/contracts/openclaw"
 import { ArrowDownToLine } from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useTranslation } from "@/i18n"
 import type { OfficeTimelineMessage } from "../../hooks/useOpenClawOffice"
-import { type ConversationAgent, OpenClawMessageItem } from "./OpenClawMessageItem"
+import {
+  type ConversationAgent,
+  OpenClawMessageItem,
+  type OpenClawMessageStats,
+} from "./OpenClawMessageItem"
 
 // 视为"在底部附近"的滚动余量（px）。
 const NEAR_BOTTOM_THRESHOLD = 150
 
+// 组装单条消息的展示统计：优先该条消息记录值，缺失时回退会话级实时值。
+const resolveMessageStats = (
+  message: OpenClawChatMessage,
+  session: OpenClawSessionStats | undefined,
+): OpenClawMessageStats | undefined => {
+  const model = message.model ?? session?.model
+  const modelProvider = message.modelProvider ?? session?.modelProvider
+  const contextUsed = message.usage?.input ?? session?.contextUsed
+  const stats: OpenClawMessageStats = {
+    ...(model ? { model } : {}),
+    ...(modelProvider ? { modelProvider } : {}),
+    ...(contextUsed !== undefined ? { contextUsed } : {}),
+    ...(session?.contextWindow !== undefined ? { contextWindow: session.contextWindow } : {}),
+    ...(message.usage?.output !== undefined ? { outputTokens: message.usage.output } : {}),
+  }
+  return Object.keys(stats).length > 0 ? stats : undefined
+}
+
 export interface OpenClawMessageListProps {
   timeline: OfficeTimelineMessage[]
   agents: ConversationAgent[]
-  streamingAgentIds: string[]
-  // 各 Agent 的会话级模型与上下文用量；仅各 Agent 最新一条 AI 消息展示。
+  // 各 Agent 的会话级模型与上下文用量（流式消息回退展示）。
   sessionStats?: Record<string, OpenClawSessionStats | undefined>
 }
 
@@ -24,7 +45,6 @@ export interface OpenClawMessageListProps {
 export const OpenClawMessageList = ({
   timeline,
   agents,
-  streamingAgentIds,
   sessionStats,
 }: OpenClawMessageListProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -41,21 +61,28 @@ export const OpenClawMessageList = ({
 
   const agentMap = useMemo(() => new Map(agents.map((agent) => [agent.agentId, agent])), [agents])
 
-  // 每个 Agent 的最新一条 AI 消息 id：仅该条承载会话级模型与上下文概要。
-  const latestAssistantIds = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const item of timeline) {
-      if (item.message.role === "assistant") map.set(item.agentId, item.message.id)
-    }
-    return map
-  }, [timeline])
-
   // 切换办公区/员工集合时重置为吸底。
   useEffect(() => {
     stickToBottomRef.current = true
     lastScrollTopRef.current = null
     setShowScrollToBottom(false)
   }, [agents])
+
+  // 用户发送新消息后平滑滚动到底部（对齐 AgentMessageList）。
+  const prevMessageIdsRef = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    const previousIds = prevMessageIdsRef.current
+    prevMessageIdsRef.current = new Set(timeline.map((item) => item.message.id))
+    if (!previousIds) return
+    const hasNewUserMessage = timeline.some(
+      (item) => item.message.role === "user" && !previousIds.has(item.message.id),
+    )
+    if (!hasNewUserMessage) return
+    stickToBottomRef.current = true
+    setShowScrollToBottom(false)
+    const container = scrollRef.current
+    if (container) container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
+  }, [timeline])
 
   // 新消息或流式增量时：仅在吸底状态下跟随到底部。
   useLayoutEffect(() => {
@@ -112,7 +139,6 @@ export const OpenClawMessageList = ({
                   .map((id) => agentMap.get(id))
                   .filter((a): a is ConversationAgent => Boolean(a))
               : undefined
-            const isStreaming = streamingAgentIds.includes(agentId)
 
             return (
               <OpenClawMessageItem
@@ -121,26 +147,15 @@ export const OpenClawMessageList = ({
                 message={message}
                 agent={agent}
                 targetAgents={targetAgents}
-                isStreaming={isStreaming}
+                isStreaming={message.status === "streaming"}
                 stats={
-                  latestAssistantIds.get(agentId) === message.id
-                    ? sessionStats?.[agentId]
+                  message.role === "assistant"
+                    ? resolveMessageStats(message, sessionStats?.[agentId])
                     : undefined
                 }
               />
             )
           })}
-
-          {streamingAgentIds.length > 0 && (
-            <div className="flex items-center gap-1.5 px-1 py-1 text-[11px] text-white/40">
-              <span className="flex gap-1">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-400/80" />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-400/80 [animation-delay:150ms]" />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-400/80 [animation-delay:300ms]" />
-              </span>
-              <span>{t("openclaw.workingCount", { count: streamingAgentIds.length })}</span>
-            </div>
-          )}
         </div>
       </div>
 
