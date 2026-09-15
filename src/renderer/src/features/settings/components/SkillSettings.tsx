@@ -295,7 +295,6 @@ export const SkillSettings = (): React.JSX.Element => {
           />
           <LxIconButton
             preset="default"
-            size="small"
             aria-label={t("common.refresh")}
             title={{ content: t("common.refresh"), placement: "bottom" }}
             disabled={refreshing || loading}
@@ -396,7 +395,6 @@ export const SkillSettings = (): React.JSX.Element => {
                             onConfirm={() => void handleConfirmDelete(skill)}
                           >
                             <LxIconButton
-                              size="small"
                               aria-label={t("common.delete")}
                               onClick={(e) => e.stopPropagation()}
                               className="text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))] hover:text-rose-400"
@@ -411,7 +409,6 @@ export const SkillSettings = (): React.JSX.Element => {
                           >
                             <span className="cursor-not-allowed">
                               <LxIconButton
-                                size="small"
                                 aria-label={t("common.delete")}
                                 disabled
                                 className="opacity-30"
@@ -525,7 +522,6 @@ export const SkillSettings = (): React.JSX.Element => {
                     placement="top"
                   >
                     <LxIconButton
-                      size="small"
                       aria-label={t("common.copy")}
                       onClick={() => handleCopyPath(selectedSkill.filePath)}
                     >

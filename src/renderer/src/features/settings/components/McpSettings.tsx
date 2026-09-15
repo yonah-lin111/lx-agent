@@ -310,14 +310,16 @@ export const McpSettings = (): React.JSX.Element => {
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin text-white" : ""}`} />
           </LxIconButton>
 
-          <button
-            type="button"
+          <LxIconButton
+            iconOnly={false}
             onClick={handleOpenAdd}
-            className="flex items-center gap-1.5 rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-white/75 hover:border-white/20 hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer"
+            textClass="text-white/75"
+            hoverBgClass="hover:bg-white/[0.08]"
+            className="rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 cursor-pointer hover:border-white/20"
+            icon={<Plus className="h-3.5 w-3.5" />}
           >
-            <Plus className="h-3.5 w-3.5" />
             <span>{t("settings.mcpAddServer")}</span>
-          </button>
+          </LxIconButton>
         </div>
       </div>
 
@@ -335,14 +337,16 @@ export const McpSettings = (): React.JSX.Element => {
           <div className="flex flex-col items-center justify-center gap-2.5 py-12 text-xs text-white/40 border border-dashed border-white/10 rounded-[6px]">
             <span>{searchQuery ? t("settings.mcpNoMatches") : t("settings.mcpNoServers")}</span>
             {!searchQuery && (
-              <button
-                type="button"
+              <LxIconButton
+                iconOnly={false}
                 onClick={handleOpenAdd}
-                className="flex items-center gap-1 rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-white/75 hover:border-white/20 hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer"
+                textClass="text-white/75"
+                hoverBgClass="hover:bg-white/[0.08]"
+                className="rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 cursor-pointer hover:border-white/20"
+                icon={<Plus className="h-3.5 w-3.5" />}
               >
-                <Plus className="h-3.5 w-3.5" />
                 <span>{t("settings.mcpAddServer")}</span>
-              </button>
+              </LxIconButton>
             )}
           </div>
         ) : (
@@ -412,7 +416,6 @@ export const McpSettings = (): React.JSX.Element => {
                   <div className="flex shrink-0 items-center gap-1.5">
                     <LxIconButton
                       preset="default"
-                      size="small"
                       onClick={() => handleOpenEdit(name, config)}
                       title={{ content: t("settings.edit"), placement: "top" }}
                       aria-label={t("settings.edit")}
@@ -422,7 +425,6 @@ export const McpSettings = (): React.JSX.Element => {
 
                     <LxIconButton
                       preset="default"
-                      size="small"
                       onClick={() => handleDeleteServer(name)}
                       title={{ content: t("settings.delete"), placement: "top" }}
                       aria-label={t("settings.delete")}
@@ -480,20 +482,25 @@ export const McpSettings = (): React.JSX.Element => {
                 {/* 工具列表抽屉 */}
                 {tools.length > 0 && (
                   <div className="border-t border-white/5 pt-1.5">
-                    <button
-                      type="button"
+                    <LxIconButton
+                      iconOnly={false}
+                      showHoverBg={false}
                       onClick={() =>
                         setExpandedToolsMap((prev) => ({ ...prev, [name]: !prev[name] }))
                       }
-                      className="flex items-center gap-1 text-xs text-white/50 hover:text-white/80 transition-colors cursor-pointer"
+                      textClass="text-white/50"
+                      hoverTextClass="hover:text-white/80"
+                      className="cursor-pointer"
+                      icon={
+                        isExpandedTools ? (
+                          <ChevronDown className="h-3 w-3" />
+                        ) : (
+                          <ChevronRight className="h-3 w-3" />
+                        )
+                      }
                     >
-                      {isExpandedTools ? (
-                        <ChevronDown className="h-3 w-3" />
-                      ) : (
-                        <ChevronRight className="h-3 w-3" />
-                      )}
                       <span>{t("settings.mcpRegisteredTools", { count: tools.length })}</span>
-                    </button>
+                    </LxIconButton>
 
                     {isExpandedTools && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5 rounded-[6px] bg-black/20 p-2 border border-white/5">
@@ -585,14 +592,16 @@ export const McpSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <span className="font-medium text-white/70">{t("settings.mcpEnvironment")}</span>
-              <button
-                type="button"
+              <LxIconButton
+                iconOnly={false}
+                showHoverBg={false}
                 onClick={() => setFormEnvRows((prev) => [...prev, { key: "", value: "" }])}
-                className="flex items-center gap-1 text-xs text-white/60 hover:text-white transition-colors cursor-pointer"
+                textClass="text-white/60"
+                className="cursor-pointer"
+                icon={<Plus className="h-3 w-3" />}
               >
-                <Plus className="h-3 w-3" />
                 <span>{t("settings.mcpAddEnvRow")}</span>
-              </button>
+              </LxIconButton>
             </div>
 
             {formEnvRows.map((row, idx) => (
@@ -619,7 +628,6 @@ export const McpSettings = (): React.JSX.Element => {
                 />
                 <LxIconButton
                   preset="default"
-                  size="small"
                   onClick={() => {
                     setFormEnvRows((prev) => prev.filter((_, i) => i !== idx))
                   }}
@@ -644,20 +652,23 @@ export const McpSettings = (): React.JSX.Element => {
 
           {/* 底部按钮栏 */}
           <div className="mt-2 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
-            <button
-              type="button"
+            <LxIconButton
+              iconOnly={false}
               onClick={() => setModalOpen(false)}
-              className="rounded-[6px] border border-white/10 px-3 py-1.5 text-xs text-white/70 hover:bg-white/5 transition-colors cursor-pointer"
+              textClass="text-white/70"
+              className="border border-white/10 px-3 cursor-pointer"
             >
               {t("settings.cancel")}
-            </button>
-            <button
-              type="button"
+            </LxIconButton>
+            <LxIconButton
+              iconOnly={false}
               onClick={handleSaveModal}
-              className="rounded-[6px] border border-white/15 bg-white/[0.08] px-3.5 py-1.5 text-xs font-medium text-white hover:bg-white/[0.12] transition-colors cursor-pointer"
+              textClass="text-white"
+              hoverBgClass="hover:bg-white/[0.12]"
+              className="border border-white/15 bg-white/[0.08] px-3.5 font-medium cursor-pointer"
             >
               {t("settings.confirm")}
-            </button>
+            </LxIconButton>
           </div>
         </div>
       </LxModal>

@@ -114,7 +114,7 @@ export const AgentInputFiles = ({
             <LxTooltip key={file.id} content={tooltipContent} placement="top" multiline>
               <div className="agent-input-file-item flex shrink-0 items-center">
                 <LxTag
-                  size="default"
+                  size="medium"
                   color={isImage ? "blue" : "teal"}
                   prefix={prefixIcon}
                   onClose={() => onRemove(file.id)}

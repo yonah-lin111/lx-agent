@@ -85,7 +85,7 @@ export const ProjectModal = ({
             required
             aria-label={t("project.projectName")}
             placeholder={t("project.inputProjectName")}
-            size="sm"
+            size="medium"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
@@ -95,7 +95,7 @@ export const ProjectModal = ({
           <LxInput
             aria-label={t("project.projectPathOptional")}
             placeholder={t("project.projectPathPlaceholder")}
-            size="sm"
+            size="medium"
             value={path}
             onChange={(event) => setPath(event.target.value)}
           />

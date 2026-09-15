@@ -12,6 +12,7 @@ export const LxRadioDemo = (): React.JSX.Element => {
   const { t } = useTranslation()
   const [value, setValue] = useState("option-a")
   const [themeValue, setThemeValue] = useState("dark")
+  const [sizeValue, setSizeValue] = useState("medium")
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -40,6 +41,23 @@ export const LxRadioDemo = (): React.JSX.Element => {
           <LxRadio value="system" label={t("uiPreview.demos.followSystem")} />
           <LxRadio value="light" label={t("uiPreview.demos.light")} />
           <LxRadio value="dark" label={t("uiPreview.demos.dark")} />
+        </LxRadioGroup>
+      </UiPreviewSection>
+      <UiPreviewSection
+        title={t("uiPreview.demos.radioSizes")}
+        description={t("uiPreview.demos.radioSizesDesc")}
+      >
+        <LxRadioGroup name="preview-radio-sizes" value={sizeValue} onChange={setSizeValue}>
+          <div className="flex flex-wrap items-center gap-4">
+            {(["small", "medium", "large"] as const).map((size) => (
+              <LxRadio
+                key={size}
+                value={size}
+                size={size}
+                label={t(`uiPreview.demos.${size}Size`)}
+              />
+            ))}
+          </div>
         </LxRadioGroup>
       </UiPreviewSection>
       <UiPreviewSection

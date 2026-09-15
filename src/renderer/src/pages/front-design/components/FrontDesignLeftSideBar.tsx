@@ -259,7 +259,7 @@ export const FrontDesignLeftSideBar = ({
           placeholder={t("frontDesign.searchDesigns")}
           aria-label={t("frontDesign.searchDesigns")}
           prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/25" />}
-          size="sm"
+          size="medium"
           onChange={(e) => setSearchKeyword(e.target.value)}
           clear
         />

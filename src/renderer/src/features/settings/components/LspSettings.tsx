@@ -324,7 +324,6 @@ export const LspSettings = (): React.JSX.Element => {
                       <>
                         <LxIconButton
                           preset="default"
-                          size="small"
                           disabled={isInstalling}
                           onClick={() => void handleInstall(item)}
                           title={{ content: t("settings.lspManualInstall"), placement: "top" }}
@@ -338,7 +337,6 @@ export const LspSettings = (): React.JSX.Element => {
                         </LxIconButton>
                         <LxIconButton
                           preset="default"
-                          size="small"
                           onClick={() => void handleCopyInstallCommand(item.packageName)}
                           title={{ content: t("settings.lspCopyInstallCommand"), placement: "top" }}
                           aria-label={t("settings.lspCopyInstallCommand")}
@@ -348,18 +346,21 @@ export const LspSettings = (): React.JSX.Element => {
                       </>
                     )}
 
-                    <button
-                      type="button"
+                    <LxIconButton
+                      iconOnly={false}
+                      showHoverBg={false}
                       onClick={() =>
                         setShowCustomConfigMap((prev) => ({ ...prev, [item.id]: !prev[item.id] }))
                       }
-                      className="flex items-center gap-1 text-xs text-white/50 hover:text-white/80 transition-colors cursor-pointer"
+                      textClass="text-white/50"
+                      hoverTextClass="hover:text-white/80"
+                      className="cursor-pointer"
+                      icon={<FolderOpen className="h-3 w-3" />}
                     >
-                      <FolderOpen className="h-3 w-3" />
                       <span>
                         {isCustomOpen ? t("settings.lspHideCustom") : t("settings.lspShowCustom")}
                       </span>
-                    </button>
+                    </LxIconButton>
                   </div>
                 </div>
 

@@ -549,7 +549,6 @@ export const ModelProviderSettings = ({
                   }}
                 >
                   <LxIconButton
-                    size="small"
                     shape="circle"
                     showHoverBg={false}
                     aria-label={isEnabled ? t("common.enabled") : t("common.disabled")}
@@ -657,7 +656,6 @@ export const ModelProviderSettings = ({
                 <h3 className="text-sm font-medium text-white">{t("settings.modelsList")}</h3>
                 <div className="flex items-center gap-1">
                   <LxIconButton
-                    size="small"
                     aria-label={t("settings.fetchModels")}
                     title={{ content: t("settings.fetchModels"), placement: "top" }}
                     disabled={isFetchingModels}
@@ -667,7 +665,6 @@ export const ModelProviderSettings = ({
                   </LxIconButton>
                   <LxIconButton
                     preset="add"
-                    size="small"
                     aria-label={t("settings.addModel")}
                     title={{ content: t("settings.addModel"), placement: "top" }}
                     onClick={() => addModel(selectedProviderId)}
@@ -1156,7 +1153,6 @@ export const ModelProviderSettings = ({
                                       </div>
                                       <LxIconButton
                                         preset="delete"
-                                        size="small"
                                         aria-label={`${t("common.delete")} ${vKey}`}
                                         title={{ content: t("common.delete"), placement: "top" }}
                                         onClick={() => {

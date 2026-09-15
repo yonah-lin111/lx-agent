@@ -392,14 +392,16 @@ export const SubagentSettings = (): React.JSX.Element => {
           <h3 className="text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.85))]">
             {t("settings.subagentsUserRoles")}
           </h3>
-          <button
-            type="button"
+          <LxIconButton
+            iconOnly={false}
             onClick={handleOpenAdd}
-            className="flex shrink-0 items-center gap-1 rounded-[6px] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.15))] bg-[var(--color-theme-surface,rgba(255,255,255,0.04))] px-2.5 py-1.5 text-xs text-[var(--color-theme-text,rgba(255,255,255,0.8))] transition-colors hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] cursor-pointer"
+            textClass="text-[var(--color-theme-text,rgba(255,255,255,0.8))]"
+            hoverBgClass="hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))]"
+            className="shrink-0 rounded-[6px] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.15))] bg-[var(--color-theme-surface,rgba(255,255,255,0.04))] px-2.5 cursor-pointer"
+            icon={<Plus className="h-3.5 w-3.5" />}
           >
-            <Plus className="h-3.5 w-3.5" />
             <span>{t("settings.subagentsAddRole")}</span>
-          </button>
+          </LxIconButton>
         </div>
 
         {roleEntries.length === 0 ? (
@@ -425,7 +427,6 @@ export const SubagentSettings = (): React.JSX.Element => {
                   <div className="flex shrink-0 items-center gap-1.5">
                     <LxIconButton
                       preset="default"
-                      size="small"
                       onClick={() => handleOpenEdit(name, config)}
                       title={{ content: t("settings.edit"), placement: "top" }}
                       aria-label={t("settings.edit")}
@@ -434,7 +435,6 @@ export const SubagentSettings = (): React.JSX.Element => {
                     </LxIconButton>
                     <LxIconButton
                       preset="default"
-                      size="small"
                       onClick={() => handleDelete(name)}
                       title={{ content: t("settings.delete"), placement: "top" }}
                       aria-label={t("settings.delete")}
@@ -558,20 +558,23 @@ export const SubagentSettings = (): React.JSX.Element => {
           </div>
 
           <div className="mt-2 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
-            <button
-              type="button"
+            <LxIconButton
+              iconOnly={false}
               onClick={() => setModalOpen(false)}
-              className="rounded-[6px] border border-white/10 px-3 py-1.5 text-xs text-white/70 hover:bg-white/5 transition-colors cursor-pointer"
+              textClass="text-white/70"
+              className="border border-white/10 px-3 cursor-pointer"
             >
               {t("settings.cancel")}
-            </button>
-            <button
-              type="button"
+            </LxIconButton>
+            <LxIconButton
+              iconOnly={false}
               onClick={handleConfirm}
-              className="rounded-[6px] border border-white/15 bg-white/[0.08] px-3.5 py-1.5 text-xs font-medium text-white hover:bg-white/[0.12] transition-colors cursor-pointer"
+              textClass="text-white"
+              hoverBgClass="hover:bg-white/[0.12]"
+              className="border border-white/15 bg-white/[0.08] px-3.5 font-medium cursor-pointer"
             >
               {t("settings.confirm")}
-            </button>
+            </LxIconButton>
           </div>
         </div>
       </LxModal>

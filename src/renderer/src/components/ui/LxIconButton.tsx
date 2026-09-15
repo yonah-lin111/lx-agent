@@ -39,16 +39,26 @@ const SIZE_CONTAINER_CLASSES: Record<LxIconButtonSize, string> = {
   large: "h-8 w-8",
 }
 
+// 文本/芯片模式容器高度：与图标模式档位一致，调用点无需显式设置高度。
+const SIZE_HEIGHT_CLASSES: Record<LxIconButtonSize, string> = {
+  small: "h-6",
+  medium: "h-7",
+  large: "h-8",
+}
+
 const SIZE_ICON_CLASSES: Record<LxIconButtonSize, string> = {
   small: "h-3.5 w-3.5",
   medium: "h-4 w-4",
   large: "h-[18px] w-[18px]",
 }
 
-const SIZE_CHIP_ICON_CLASSES: Record<LxIconButtonSize, string> = {
-  small: "h-2.5 w-2.5",
-  medium: "h-3.5 w-3.5",
-  large: "h-4 w-4",
+// 图标尺寸统一映射：只作用于按钮自身的直接子级 svg（icon prop / children 图标）按 size 档位强制尺寸；
+// 该直接子级选择器优先级高于 svg 自带尺寸类，调用点的尺寸声明会被覆盖。
+// 包装层内的装饰性 svg（状态点、徽标）与嵌套按钮的图标不受影响，尾部关闭图标也因包裹层而天然豁免。
+const SIZE_ICON_FORCE_CLASSES: Record<LxIconButtonSize, string> = {
+  small: "[&>svg]:h-3.5 [&>svg]:w-3.5",
+  medium: "[&>svg]:h-4 [&>svg]:w-4",
+  large: "[&>svg]:h-[18px] [&>svg]:w-[18px]",
 }
 
 // 带文字按钮的字号：small=xs，medium/large=sm。
@@ -165,7 +175,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       shape = "square",
       variant = "solid",
       showHoverBg = true,
-      size = "small",
+      size = "medium",
       disabled,
       title,
       ...props
@@ -183,7 +193,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     const sizeStyles =
       iconOnly && !hasIconAndLabel && !hasSuffix
         ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0`
-        : SIZE_FONT_CLASSES[size]
+        : `${SIZE_HEIGHT_CLASSES[size]} ${SIZE_FONT_CLASSES[size]}`
     const finalHoverBg = showHoverBg
       ? (hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/10"))
       : ""
@@ -218,7 +228,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     } else if (PresetIcon && !iconOnly && children) {
       renderContent = (
         <>
-          <PresetIcon className={`${SIZE_CHIP_ICON_CLASSES[size]} flex-shrink-0`} />
+          <PresetIcon className={`${SIZE_ICON_CLASSES[size]} flex-shrink-0`} />
           {children}
         </>
       )
@@ -276,7 +286,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
         type={type}
         data-highlighted={highlighted ? "true" : undefined}
         data-variant={variant}
-        className={`${baseStyles} ${hasIconAndLabel || hasSuffix ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${stateStyles} ${className}`}
+        className={`${baseStyles} ${hasIconAndLabel || hasSuffix ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${SIZE_ICON_FORCE_CLASSES[size]} ${stateStyles} ${className}`}
         disabled={disabled}
         {...props}
       >
