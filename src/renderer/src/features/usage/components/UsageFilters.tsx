@@ -10,6 +10,7 @@ export interface UsageFiltersProps {
   provider?: string
   model?: string
   projectId?: string
+  sessionId?: string
   filterOptions: UsageFilterOptions
   isLoading: boolean
   refreshIntervalMs: number
@@ -17,6 +18,7 @@ export interface UsageFiltersProps {
   onProviderChange: (provider?: string) => void
   onModelChange: (model?: string) => void
   onProjectChange: (projectId?: string) => void
+  onSessionChange: (sessionId?: string) => void
   onRefreshIntervalChange: (intervalMs: number) => void
   onRefresh: () => void
 }
@@ -27,13 +29,14 @@ const ALL_VALUE = "__all__"
 const REFRESH_INTERVAL_OPTIONS_MS = [0, 5000, 10000, 30000] as const
 
 /**
- * 用量页筛选栏：时间预设、Provider / Model / 项目级联筛选与手动刷新。
+ * 用量页筛选栏：时间预设、Provider / Model / 项目 / 会话筛选与手动刷新。
  */
 export const UsageFilters = ({
   range,
   provider,
   model,
   projectId,
+  sessionId,
   filterOptions,
   isLoading,
   refreshIntervalMs,
@@ -41,6 +44,7 @@ export const UsageFilters = ({
   onProviderChange,
   onModelChange,
   onProjectChange,
+  onSessionChange,
   onRefreshIntervalChange,
   onRefresh,
 }: UsageFiltersProps): React.JSX.Element => {
@@ -89,6 +93,14 @@ export const UsageFilters = ({
     [filterOptions.projects, t],
   )
 
+  const sessionOptions: LxSelectOption<string>[] = useMemo(
+    () => [
+      { value: ALL_VALUE, label: t("usage.allSessions") },
+      ...filterOptions.sessions.map((session) => ({ value: session.id, label: session.name })),
+    ],
+    [filterOptions.sessions, t],
+  )
+
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <div className="w-32 shrink-0">
@@ -116,6 +128,14 @@ export const UsageFilters = ({
           value={projectId ?? ALL_VALUE}
           options={projectOptions}
           onChange={(value) => onProjectChange(value === ALL_VALUE ? undefined : value)}
+        />
+      </div>
+      <div className="w-52 shrink-0">
+        <LxSelect
+          size="small"
+          value={sessionId ?? ALL_VALUE}
+          options={sessionOptions}
+          onChange={(value) => onSessionChange(value === ALL_VALUE ? undefined : value)}
         />
       </div>
       <div className="w-28 shrink-0">

@@ -75,6 +75,7 @@ export interface UsageQuery {
   provider?: string
   model?: string
   projectId?: string
+  sessionId?: string
 }
 
 // 汇总统计。
@@ -143,6 +144,8 @@ export interface UsageFilterOptions {
   providers: string[]
   models: string[]
   projects: { id: string; name: string }[]
+  // 当前查询范围（时间 + 项目）内有记录的会话，按最近使用时间倒序。
+  sessions: { id: string; name: string }[]
 }
 
 // 时间范围预设解析结果（all 无边界）。

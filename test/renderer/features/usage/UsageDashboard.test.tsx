@@ -77,6 +77,16 @@ const filterOptions: UsageFilterOptions = {
   providers: ["anthropic"],
   models: ["claude-sonnet-4"],
   projects: [{ id: "p1", name: "Alpha Project" }],
+  sessions: [{ id: "s1", name: "会话一" }],
+}
+
+// 取标题所在汇总卡（图表图例同名文本不带 usage-stat-card 容器）。
+const findStatCard = (titleRe: RegExp): Element | null => {
+  for (const node of screen.queryAllByText(titleRe)) {
+    const card = node.closest(".usage-stat-card")
+    if (card) return card
+  }
+  return null
 }
 
 const logPage: UsageLogPage = {
@@ -139,14 +149,15 @@ describe("UsageDashboard", () => {
       expect(screen.getByText(/Usage|用量统计/)).toBeDefined()
     })
 
-    // 汇总卡数值。
-    expect(screen.getByText("3")).toBeDefined()
+    // 汇总卡数值：新增输入 850（1000 - 100 - 50）/ 命中率 10.0%。
+    expect(findStatCard(/Fresh Input|新增输入/)?.textContent).toContain("850")
+    expect(findStatCard(/Cache Hit Rate|缓存命中率/)?.textContent).toContain("10.0%")
     expect(screen.getAllByText("$0.0123").length).toBeGreaterThan(0)
 
     // 图表区域。
     expect(screen.getByText(/Token \/ Cost Trend|Token \/ 成本趋势/)).toBeDefined()
     expect(screen.getByText(/Daily Requests|每日请求数/)).toBeDefined()
-    expect(screen.getAllByText(/Total Cost|总成本/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Token Composition|Token 构成/)).toBeDefined()
 
     // 请求日志表（默认 Tab）。
     expect(await screen.findByText("claude-sonnet-4")).toBeDefined()
@@ -177,6 +188,22 @@ describe("UsageDashboard", () => {
     fireEvent.click(screen.getByLabelText(/Refresh|刷新/))
     await waitFor(() => {
       expect(usageMock.getSummary.mock.calls.length).toBeGreaterThan(callsBefore)
+    })
+  })
+
+  it("选择会话后按 sessionId 重新查询", async () => {
+    render(<UsageDashboard />)
+    await screen.findByText("claude-sonnet-4")
+
+    fireEvent.click(screen.getByRole("button", { name: /All Sessions|全部会话/ }))
+    fireEvent.mouseDown(screen.getByRole("option", { name: "会话一" }))
+
+    await waitFor(() => {
+      expect(usageMock.listLogs).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sessionId: "s1" }),
+        1,
+        50,
+      )
     })
   })
 

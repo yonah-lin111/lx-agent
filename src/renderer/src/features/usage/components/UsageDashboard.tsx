@@ -50,6 +50,7 @@ export const UsageDashboard = (): React.JSX.Element => {
           provider={usage.provider}
           model={usage.model}
           projectId={usage.projectId}
+          sessionId={usage.sessionId}
           filterOptions={usage.filterOptions}
           isLoading={usage.isLoading}
           refreshIntervalMs={usage.refreshIntervalMs}
@@ -57,6 +58,7 @@ export const UsageDashboard = (): React.JSX.Element => {
           onProviderChange={usage.setProvider}
           onModelChange={usage.setModel}
           onProjectChange={usage.setProjectId}
+          onSessionChange={usage.setSessionId}
           onRefreshIntervalChange={usage.setRefreshIntervalMs}
           onRefresh={usage.refresh}
         />

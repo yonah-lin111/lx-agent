@@ -61,9 +61,21 @@ describe("usage IPC handlers", () => {
     registerUsageHandlers(() => undefined)
 
     const listLogs = handlers.get(USAGE_CHANNELS.listLogs)!
-    listLogs({}, { startTime: 100, endTime: 200, provider: " p1 ", projectId: "proj" }, 2, 10)
+    listLogs(
+      {},
+      { startTime: 100, endTime: 200, provider: " p1 ", projectId: "proj", sessionId: " sess-1 " },
+      2,
+      10,
+    )
     expect(usageLogService.listLogs).toHaveBeenCalledWith(
-      { startTime: 100, endTime: 200, provider: "p1", model: undefined, projectId: "proj" },
+      {
+        startTime: 100,
+        endTime: 200,
+        provider: "p1",
+        model: undefined,
+        projectId: "proj",
+        sessionId: "sess-1",
+      },
       2,
       10,
     )
@@ -76,6 +88,7 @@ describe("usage IPC handlers", () => {
       provider: undefined,
       model: undefined,
       projectId: undefined,
+      sessionId: undefined,
     })
 
     const getDaily = handlers.get(USAGE_CHANNELS.getDaily)!
@@ -87,6 +100,7 @@ describe("usage IPC handlers", () => {
         provider: "p1",
         model: undefined,
         projectId: undefined,
+        sessionId: undefined,
       },
       "hour",
     )
