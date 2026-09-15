@@ -23,7 +23,7 @@
 
 ### 2.1 Usage 扩展
 
-`src/shared/contracts/agent.ts` 的 `Usage` 增加 `cacheWrite`。AI SDK v6 中 `inputTokens` 是**总量**（含 `cacheRead` + `cacheWrite`），读取时同步取 `inputTokenDetails.cacheWriteTokens`。
+`src/shared/contracts/agent/primitives.ts` 的 `Usage` 增加 `cacheWrite`。AI SDK v6 中 `inputTokens` 是**总量**（含 `cacheRead` + `cacheWrite`），读取时同步取 `inputTokenDetails.cacheWriteTokens`。
 
 ```ts
 export interface Usage {

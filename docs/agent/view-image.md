@@ -54,7 +54,7 @@ flowchart TD
 - 摘要文本（英文）包含：绝对路径、`detail`、原图尺寸、发送尺寸、是否重编码，供通用渲染器与模型自述。
 - 错误语义：文件不存在 / 非文件 / 无法解码 / 超过硬上限 / 非视觉模型，均 `throw new Error(英文消息)`，由 agent-loop 统一封装为 `isError: true` 的工具结果回灌（与 `webfetch` 一致）。
 
-`ViewImageDetails`（`src/shared/contracts/agent.ts`）：
+`ViewImageDetails`（`src/shared/contracts/agent/tools.ts`）：
 
 ```typescript
 export interface ViewImageDetails {

@@ -142,7 +142,7 @@ src/main/agent/
 
 ---
 
-## 3. 核心消息模型 (`src/shared/contracts/agent.ts`)
+## 3. 核心消息模型 (`src/shared/contracts/agent/messages.ts`)
 
 ```typescript
 type ContentBlock = TextContent | ThinkingContent | ToolCall | ImageContent
