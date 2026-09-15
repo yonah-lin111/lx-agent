@@ -177,7 +177,7 @@ export const AgentTabBar = (): React.JSX.Element => {
   }
 
   return (
-    <div className="agent-tab-bar flex h-7 min-w-0 flex-1 items-center gap-0.5 overflow-hidden px-0.5 select-none">
+    <div className="agent-tab-bar flex h-6 min-w-0 flex-1 items-center gap-0.5 overflow-hidden px-0.5 select-none">
       {/* 左翻页按钮 */}
       <LxIconButton
         size="small"

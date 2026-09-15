@@ -257,7 +257,7 @@ export const AgentExecutionFlowHeader = ({
   }
 
   return (
-    <div className="agent-execution-flow-header flex shrink-0 items-center justify-between gap-2 border-b border-[var(--color-theme-border,rgba(255,255,255,0.08))] bg-[var(--color-theme-bg,#000000)]/40 px-2 py-1.5 select-none">
+    <div className="agent-execution-flow-header flex shrink-0 items-center justify-between gap-2 border-b border-[var(--color-theme-border,rgba(255,255,255,0.08))] bg-[var(--color-theme-bg,#000000)]/40 px-2 py-1 select-none">
       {/* 左侧筛选 Tab 栏 */}
       {stepsCount > 0 ? (
         <div className="flex min-w-0 flex-1 items-center gap-1">
