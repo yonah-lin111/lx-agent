@@ -1,7 +1,7 @@
 import { FileText, Folder } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPanel"
 import { LxTag } from "@/components/ui/LxTag"
 import type { MarkdownTemplateFileKind } from "@/features/markdown/commands/markdownTemplateFileCommands"
 import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
@@ -28,6 +28,10 @@ interface FileMentionCommandMenuProps {
   onSelect?: (file: MarkdownFileMentionEntry) => void
 }
 
+// 选项 DOM id：按来源类型分段，避免同路径多来源并存时 id 冲突。
+const getOptionId = (idPrefix: string, file: MarkdownFileMentionEntry): string =>
+  `${idPrefix}-${file.source}-${file.templateKind ? `${file.templateKind}-` : ""}${file.mentionPath}`
+
 /**
  * 渲染 Markdown 编辑器的项目文件命令面板（@ 提及 / 模板块文件快捷输入）。
  */
@@ -40,166 +44,96 @@ export const FileMentionCommandMenu = ({
   idPrefix = "markdown-file-mention",
   onSelect,
 }: FileMentionCommandMenuProps): React.JSX.Element | null => {
-  const [shouldRender, setShouldRender] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
-
-  const lastDataRef = useRef<{
-    files: MarkdownFileMentionEntry[]
-    activeIndex: number
-    position: CSSProperties
-  } | null>(null)
-
-  if (visible && files && position) {
-    lastDataRef.current = { files, activeIndex, position }
-  }
-
-  // 选项 DOM id：按来源类型分段，避免同路径多来源并存时 id 冲突。
-  const getOptionId = (file: MarkdownFileMentionEntry): string =>
-    `${idPrefix}-${file.source}-${file.templateKind ? `${file.templateKind}-` : ""}${file.mentionPath}`
-
-  useEffect(() => {
-    if (visible) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-      return
-    }
-    if (!shouldRender) return
-
-    setIsAnimatingOut(true)
-    const timer = setTimeout(() => {
-      setShouldRender(false)
-      setIsAnimatingOut(false)
-    }, 120)
-    return () => clearTimeout(timer)
-  }, [visible, shouldRender])
-
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const displayData =
-    visible && files && position ? { files, activeIndex, position } : lastDataRef.current
-
-  const activeFile = displayData
-    ? (displayData.files[displayData.activeIndex] ?? displayData.files[0])
-    : null
-
-  useLayoutEffect(() => {
-    if (!shouldRender) return
-    const container = containerRef.current
-    if (!container || !activeFile) return
-
-    const activeElement = container.querySelector(
-      `[id="${getOptionId(activeFile)}"]`,
-    ) as HTMLElement
-    if (!activeElement) return
-
-    // 激活项与面板边缘保持间距，避免上下键移动时被裁切。
-    const scrollPadding = 4
-    const containerRect = container.getBoundingClientRect()
-    const activeRect = activeElement.getBoundingClientRect()
-
-    if (activeRect.top < containerRect.top + scrollPadding) {
-      container.scrollTop -= containerRect.top + scrollPadding - activeRect.top
-    } else if (activeRect.bottom > containerRect.bottom - scrollPadding) {
-      container.scrollTop += activeRect.bottom - (containerRect.bottom - scrollPadding)
-    }
-  }, [activeFile, displayData?.activeIndex, shouldRender])
-
-  if (!shouldRender || !displayData) return null
-
-  const {
-    files: displayFiles,
-    activeIndex: displayActiveIndex,
-    position: displayPosition,
-  } = displayData
+  const panelData = files && position ? { position, activeIndex, files } : null
 
   return (
-    <div
-      ref={containerRef}
-      aria-label={label}
-      aria-activedescendant={activeFile ? getOptionId(activeFile) : undefined}
-      className={`markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-        isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaActiveDescendant={(data) => {
+        const activeFile = data.files[data.activeIndex] ?? data.files[0]
+        return activeFile ? getOptionId(idPrefix, activeFile) : undefined
+      }}
+      ariaLabel={label}
+      className="markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      data={panelData}
+      scrollActiveItem
+      visible={visible}
     >
-      {displayFiles.map((file, index) => {
-        const normalizedPath = file.path.replace(/\/$/, "")
-        const slashIndex = normalizedPath.lastIndexOf("/")
-        const name = normalizedPath.slice(slashIndex + 1)
-        const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
-        const referenceProjectName = file.projectPath?.split("/").filter(Boolean).at(-1)
-        const Icon = file.isDirectory ? Folder : FileText
-        const iconClassName = file.templateKind
-          ? templateFileKindIconColors[file.templateKind]
-          : file.source === "reference"
-            ? "text-violet-300"
-            : "text-[#eab308]"
-        const isActive = index === displayActiveIndex
-        const optionId = getOptionId(file)
-        const directoryTag = getMentionDirectoryTag(file.path)
+      {(displayData) => (
+        <>
+          {displayData.files.map((file, index) => {
+            const normalizedPath = file.path.replace(/\/$/, "")
+            const slashIndex = normalizedPath.lastIndexOf("/")
+            const name = normalizedPath.slice(slashIndex + 1)
+            const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
+            const referenceProjectName = file.projectPath?.split("/").filter(Boolean).at(-1)
+            const Icon = file.isDirectory ? Folder : FileText
+            const iconClassName = file.templateKind
+              ? templateFileKindIconColors[file.templateKind]
+              : file.source === "reference"
+                ? "text-violet-300"
+                : "text-[#eab308]"
+            const isActive = index === displayData.activeIndex
+            const optionId = getOptionId(idPrefix, file)
+            const directoryTag = getMentionDirectoryTag(file.path)
 
-        return (
-          <div
-            key={optionId}
-            id={optionId}
-            aria-selected={isActive}
-            className={`relative flex min-h-11 w-full cursor-pointer rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-            }`}
-            role="option"
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(file)
-            }}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex min-h-8 items-center gap-2">
-                <Icon className={`h-4 w-4 shrink-0 ${iconClassName}`} />
+            return (
+              <LxCommandPanelItem
+                key={optionId}
+                active={isActive}
+                className="relative flex min-h-11 px-2 py-1 text-xs"
+                id={optionId}
+                index={index}
+                onSelect={() => onSelect?.(file)}
+              >
                 <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <div
-                      className={`min-w-0 flex-1 truncate ${isActive ? "text-white" : "text-white/75"}`}
-                    >
-                      {file.isDirectory ? `${name}/` : name}
+                  <div className="flex min-h-8 items-center gap-2">
+                    <Icon className={`h-4 w-4 shrink-0 ${iconClassName}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <div
+                          className={`min-w-0 flex-1 truncate ${isActive ? "text-white" : "text-white/75"}`}
+                        >
+                          {file.isDirectory ? `${name}/` : name}
+                        </div>
+                        {file.source === "reference" && (
+                          <LxTag
+                            bgClass="border-violet-400/20 bg-violet-400/10 text-violet-300"
+                            className="pointer-events-none shrink-0"
+                            size="small"
+                          >
+                            {referenceProjectName ?? "refer-project"}
+                          </LxTag>
+                        )}
+                        {directoryTag && (
+                          <LxTag
+                            bgClass={directoryTag.bgClass}
+                            className="pointer-events-none shrink-0"
+                            size="small"
+                          >
+                            {directoryTag.label}
+                          </LxTag>
+                        )}
+                        {file.source === "current" && file.worktreeName && (
+                          <LxTag
+                            bgClass="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                            className="pointer-events-none shrink-0"
+                            size="small"
+                          >
+                            {file.worktreeName}
+                          </LxTag>
+                        )}
+                      </div>
+                      {directory && (
+                        <div className="truncate text-[12px] text-white/40">{directory}</div>
+                      )}
                     </div>
-                    {file.source === "reference" && (
-                      <LxTag
-                        bgClass="border-violet-400/20 bg-violet-400/10 text-violet-300"
-                        className="pointer-events-none shrink-0"
-                        size="small"
-                      >
-                        {referenceProjectName ?? "refer-project"}
-                      </LxTag>
-                    )}
-                    {directoryTag && (
-                      <LxTag
-                        bgClass={directoryTag.bgClass}
-                        className="pointer-events-none shrink-0"
-                        size="small"
-                      >
-                        {directoryTag.label}
-                      </LxTag>
-                    )}
-                    {file.source === "current" && file.worktreeName && (
-                      <LxTag
-                        bgClass="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                        className="pointer-events-none shrink-0"
-                        size="small"
-                      >
-                        {file.worktreeName}
-                      </LxTag>
-                    )}
                   </div>
-                  {directory && (
-                    <div className="truncate text-[12px] text-white/40">{directory}</div>
-                  )}
                 </div>
-              </div>
-            </div>
-          </div>
-        )
-      })}
-    </div>
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }

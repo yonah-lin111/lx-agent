@@ -3,6 +3,11 @@ import { Check, Copy, FileText, Folder, Search } from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import {
+  LxCommandPanel,
+  LxCommandPanelItem,
+  scrollActiveItemIntoView,
+} from "@/components/ui/LxCommandPanel"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { createMarkdownReference } from "@/features/markdown/commands/markdownReferenceCommands"
@@ -29,36 +34,18 @@ export const ReferencedFolderCommandMenu = ({
   const [query, setQuery] = useState("")
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
   const [isFolderPathCopied, setIsFolderPathCopied] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
+  const [isOpen, setIsOpen] = useState(true)
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const closeTimeoutRef = useRef<number | null>(null)
 
+  /**
+   * 请求关闭：由面板壳播放退场动画，结束后回调父级卸载。
+   */
   const handleClose = (): void => {
-    if (isAnimatingOut) return
-    setIsAnimatingOut(true)
-    closeTimeoutRef.current = window.setTimeout(() => {
-      onClose()
-    }, 120)
+    setIsOpen(false)
   }
-
-  useEffect(() => {
-    if (closeTimeoutRef.current !== null) {
-      window.clearTimeout(closeTimeoutRef.current)
-      closeTimeoutRef.current = null
-    }
-    setIsAnimatingOut(false)
-  }, [folderPath])
-
-  useEffect(() => {
-    return () => {
-      if (closeTimeoutRef.current !== null) {
-        window.clearTimeout(closeTimeoutRef.current)
-      }
-    }
-  }, [])
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -114,20 +101,7 @@ export const ReferencedFolderCommandMenu = ({
   useLayoutEffect(() => {
     const container = listRef.current
     if (!container || files.length === 0) return
-    const activeElement = container.querySelector(
-      `[id="folder-file-${files[activeIndex]?.path}"]`,
-    ) as HTMLElement | null
-    if (!activeElement) return
-
-    const scrollPadding = 4
-    const containerRect = container.getBoundingClientRect()
-    const activeRect = activeElement.getBoundingClientRect()
-
-    if (activeRect.top < containerRect.top + scrollPadding) {
-      container.scrollTop -= containerRect.top + scrollPadding - activeRect.top
-    } else if (activeRect.bottom > containerRect.bottom - scrollPadding) {
-      container.scrollTop += activeRect.bottom - (containerRect.bottom - scrollPadding)
-    }
+    scrollActiveItemIntoView(container, activeIndex)
   }, [activeIndex, files])
 
   useEffect(() => {
@@ -143,7 +117,7 @@ export const ReferencedFolderCommandMenu = ({
       document.removeEventListener("keydown", closeOnEscape)
       document.removeEventListener("mousedown", closeOnOutsideClick)
     }
-  }, [onClose, isAnimatingOut])
+  }, [])
 
   /**
    * 复制可直接粘贴进 Markdown 编辑器的引用文本。
@@ -166,104 +140,107 @@ export const ReferencedFolderCommandMenu = ({
   }
 
   return createPortal(
-    <div
-      ref={panelRef}
-      aria-label={t("project.referencedFolderContent")}
-      className={`markdown-command-menu markdown-command-menu--file fixed z-50 flex h-[var(--markdown-command-menu-file-max-height)] w-80 flex-col overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
-        isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={position}
+    <LxCommandPanel
+      ariaLabel={t("project.referencedFolderContent")}
+      className="markdown-command-menu markdown-command-menu--file fixed z-50 flex h-[var(--markdown-command-menu-file-max-height)] w-80 flex-col overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
+      data={{ position, activeIndex }}
+      onExited={onClose}
+      panelRef={panelRef}
+      visible={isOpen}
     >
-      <div className="flex items-center gap-1.5 border-b border-white/10 px-2 py-1.5 text-xs text-white/60">
-        <Folder className="h-3.5 w-3.5 shrink-0 text-[#d97706]" />
-        <span
-          className="min-w-0 flex-1 truncate font-mono text-[11px] text-white/70 select-all"
-          title={folderPath}
-        >
-          {folderPath}
-        </span>
-        <LxTooltip
-          content={isFolderPathCopied ? t("common.copied") : t("project.copyPath")}
-          placement="top"
-        >
-          <button
-            aria-label={t("project.copyFolderPath")}
-            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors ${
-              isFolderPathCopied ? "text-emerald-400" : "text-white/40 hover:text-white/80"
-            }`}
-            type="button"
-            onClick={() => void copyFolderPath()}
-          >
-            {isFolderPathCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          </button>
-        </LxTooltip>
-      </div>
-      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
-        {files.map((file, index) => {
-          const normalizedPath = file.path.replace(/\/$/, "")
-          const slashIndex = normalizedPath.lastIndexOf("/")
-          const name = normalizedPath.slice(slashIndex + 1)
-          const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
-          const Icon = file.isDirectory ? Folder : FileText
-          const isCopied = copiedPath === file.path
-          const isActive = index === activeIndex
-
-          return (
-            <div
-              key={file.path}
-              id={`folder-file-${file.path}`}
-              aria-selected={isActive}
-              className={`relative flex min-h-11 w-full cursor-pointer items-center rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-              }`}
-              role="option"
-              onMouseDown={(event) => {
-                event.preventDefault()
-                void copyReference(file)
-              }}
+      {() => (
+        <>
+          <div className="flex items-center gap-1.5 border-b border-white/10 px-2 py-1.5 text-xs text-white/60">
+            <Folder className="h-3.5 w-3.5 shrink-0 text-[#d97706]" />
+            <span
+              className="min-w-0 flex-1 truncate font-mono text-[11px] text-white/70 select-all"
+              title={folderPath}
             >
-              <Icon className="h-4 w-4 shrink-0 text-violet-300" />
-              <div className="ml-2 min-w-0 flex-1">
-                <div className="truncate">{file.isDirectory ? `${name}/` : name}</div>
-                {directory && <div className="truncate text-[12px] text-white/40">{directory}</div>}
-              </div>
-              <LxTooltip
-                content={isCopied ? t("common.copied") : t("project.copyRef")}
-                placement="top"
+              {folderPath}
+            </span>
+            <LxTooltip
+              content={isFolderPathCopied ? t("common.copied") : t("project.copyPath")}
+              placement="top"
+            >
+              <button
+                aria-label={t("project.copyFolderPath")}
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors ${
+                  isFolderPathCopied ? "text-emerald-400" : "text-white/40 hover:text-white/80"
+                }`}
+                type="button"
+                onClick={() => void copyFolderPath()}
               >
-                <button
-                  aria-label={t("project.copyRef")}
-                  className={`ml-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] transition-colors ${
-                    isCopied
-                      ? "text-emerald-400"
-                      : "text-white/40 hover:bg-white/8 hover:text-white/80"
-                  }`}
-                  type="button"
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onClick={() => void copyReference(file)}
+                {isFolderPathCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              </button>
+            </LxTooltip>
+          </div>
+          <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
+            {files.map((file, index) => {
+              const normalizedPath = file.path.replace(/\/$/, "")
+              const slashIndex = normalizedPath.lastIndexOf("/")
+              const name = normalizedPath.slice(slashIndex + 1)
+              const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
+              const Icon = file.isDirectory ? Folder : FileText
+              const isCopied = copiedPath === file.path
+              const isActive = index === activeIndex
+
+              return (
+                <LxCommandPanelItem
+                  key={file.path}
+                  active={isActive}
+                  className="relative flex min-h-11 items-center px-2 py-1 text-xs"
+                  index={index}
+                  leading={<Icon className="h-4 w-4 shrink-0 text-violet-300" />}
+                  onSelect={() => void copyReference(file)}
                 >
-                  {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                </button>
-              </LxTooltip>
-            </div>
-          )
-        })}
-      </div>
-      <div>
-        <LxInput
-          ref={inputRef}
-          aria-label={t("project.searchFolderContent")}
-          placeholder={t("project.searchFolderContent")}
-          prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/40" />}
-          size="small"
-          value={query}
-          variant="simple"
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={handleInputKeyDown}
-        />
-      </div>
-    </div>,
+                  <div className="ml-2 min-w-0 flex-1">
+                    <div className="truncate">{file.isDirectory ? `${name}/` : name}</div>
+                    {directory && (
+                      <div className="truncate text-[12px] text-white/40">{directory}</div>
+                    )}
+                  </div>
+                  <LxTooltip
+                    content={isCopied ? t("common.copied") : t("project.copyRef")}
+                    placement="top"
+                  >
+                    <button
+                      aria-label={t("project.copyRef")}
+                      className={`ml-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] transition-colors ${
+                        isCopied
+                          ? "text-emerald-400"
+                          : "text-white/40 hover:bg-white/8 hover:text-white/80"
+                      }`}
+                      type="button"
+                      onMouseDown={(event) => event.stopPropagation()}
+                      onClick={() => void copyReference(file)}
+                    >
+                      {isCopied ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </LxTooltip>
+                </LxCommandPanelItem>
+              )
+            })}
+          </div>
+          <div>
+            <LxInput
+              ref={inputRef}
+              aria-label={t("project.searchFolderContent")}
+              placeholder={t("project.searchFolderContent")}
+              prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/40" />}
+              size="small"
+              value={query}
+              variant="simple"
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={handleInputKeyDown}
+            />
+          </div>
+        </>
+      )}
+    </LxCommandPanel>,
     document.body,
   )
 }

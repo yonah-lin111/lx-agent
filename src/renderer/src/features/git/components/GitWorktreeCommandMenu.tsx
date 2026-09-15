@@ -1,6 +1,6 @@
 import { GitBranch } from "lucide-react"
 import type { CSSProperties } from "react"
-import { useEffect, useRef, useState } from "react"
+import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPanel"
 import type { GitWorktreeOption } from "@/features/git"
 import { useTranslation } from "@/i18n"
 
@@ -25,94 +25,54 @@ export const GitWorktreeCommandMenu = ({
   onSelect,
 }: GitWorktreeCommandMenuProps): React.JSX.Element | null => {
   const { t } = useTranslation()
-  const [shouldRender, setShouldRender] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
-
-  const lastDataRef = useRef<{
-    options: GitWorktreeOption[]
-    activeIndex: number
-    position: CSSProperties
-  } | null>(null)
-
-  if (visible && options && position) {
-    lastDataRef.current = { options, activeIndex, position }
-  }
-
-  useEffect(() => {
-    if (visible) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-      return
-    }
-    if (!shouldRender) return
-
-    setIsAnimatingOut(true)
-    const timer = setTimeout(() => {
-      setShouldRender(false)
-      setIsAnimatingOut(false)
-    }, 120)
-    return () => clearTimeout(timer)
-  }, [visible, shouldRender])
-
-  if (!shouldRender) return null
-
-  const displayData =
-    visible && options && position ? { options, activeIndex, position } : lastDataRef.current
-  if (!displayData) return null
-
-  const {
-    options: displayOptions,
-    activeIndex: displayActiveIndex,
-    position: displayPosition,
-  } = displayData
+  const panelData = options && position ? { position, activeIndex, options } : null
 
   return (
-    <div
-      aria-label={t("git.selectWorktree")}
-      className={`markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-sm shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
-        isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaLabel={t("git.selectWorktree")}
+      className="markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-sm shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
+      data={panelData}
+      visible={visible}
     >
-      {displayOptions.map((option, index) => {
-        const isActive = index === displayActiveIndex
-        const isCurrent = option.isCurrent
+      {(displayData) => (
+        <>
+          {displayData.options.map((option, index) => {
+            const isActive = index === displayData.activeIndex
+            const isCurrent = option.isCurrent
 
-        return (
-          <div
-            key={`${option.isDefault ? "default" : option.path}`}
-            aria-selected={isActive}
-            className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-            }`}
-            role="option"
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(option)
-            }}
-          >
-            <span
-              className={`flex h-6 w-6 flex-none items-center justify-center rounded-[4px] ${
-                isCurrent ? "bg-white/10 text-white" : "bg-white/5 text-white/70"
-              }`}
-            >
-              <GitBranch className="h-3 w-3" />
-            </span>
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="shrink-0 text-sm leading-none text-white">{option.name}</span>
-              <span className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-white/45">
-                {option.isDefault ? t("git.defaultWorktree") : option.path}
-              </span>
-              {isCurrent && (
-                <span className="shrink-0 text-xs leading-none text-emerald-400">
-                  {t("git.current")}
+            return (
+              <LxCommandPanelItem
+                key={`${option.isDefault ? "default" : option.path}`}
+                active={isActive}
+                className="flex min-h-11 items-center gap-2 px-2 text-xs"
+                index={index}
+                leading={
+                  <span
+                    className={`flex h-6 w-6 flex-none items-center justify-center rounded-[4px] ${
+                      isCurrent ? "bg-white/10 text-white" : "bg-white/5 text-white/70"
+                    }`}
+                  >
+                    <GitBranch className="h-3 w-3" />
+                  </span>
+                }
+                onSelect={() => onSelect?.(option)}
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="shrink-0 text-sm leading-none text-white">{option.name}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-white/45">
+                    {option.isDefault ? t("git.defaultWorktree") : option.path}
+                  </span>
+                  {isCurrent && (
+                    <span className="shrink-0 text-xs leading-none text-emerald-400">
+                      {t("git.current")}
+                    </span>
+                  )}
                 </span>
-              )}
-            </span>
-          </div>
-        )
-      })}
-    </div>
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }

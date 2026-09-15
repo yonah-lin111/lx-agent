@@ -9,8 +9,6 @@ export {
   type ClawMentionCandidate,
   getAgentPanelPosition,
   panelClassName,
-  useActiveItemScrollIntoView,
-  usePanelAnimation,
 } from "./AgentInputCommandPanels"
 export { type AgentInputFile, AgentInputFiles } from "./AgentInputFiles"
 export {
