@@ -455,7 +455,7 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     })
   })
 
-  it("opencode Go Provider 注入 x-opencode-session 会话头与客户端 UA", async () => {
+  it("opencode Go Provider 不再注入任何附加请求头", async () => {
     async function* createMockStream() {
       yield {
         type: "finish" as const,
@@ -489,14 +489,8 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     }
     await stream.result()
 
-    expect(mockStreamText).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        headers: {
-          "x-opencode-session": "ses_lx_42",
-          "user-agent": expect.stringMatching(/^lx-agent\//),
-        },
-      }),
-    )
+    const lastOptions = mockStreamText.mock.calls.at(-1)?.[0] as { headers?: unknown }
+    expect(lastOptions.headers).toBeUndefined()
   })
 
   it("非 opencode Go Provider 不额外注入请求头", async () => {
