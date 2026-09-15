@@ -25,6 +25,11 @@ import { getDefaultCapabilities } from "@/services/capabilityService"
 import { projectService } from "@/services/projectService"
 import { getSubagentSettings } from "@/services/settingsService"
 import { getAppDataRoot } from "../paths"
+import type { QueuedMessage, SessionRunnerOptions } from "./sessionRunner.types"
+import { clearQueue, enqueueMessage, kickDrain } from "./sessionRunnerQueue"
+
+export type { SessionRunnerOptions } from "./sessionRunner.types"
+
 import { ALL_TOOL_NAMES, buildSystemPromptSync, createRegistry, resolveCwd } from "./assembly"
 import { createCompactionSummaryMessage } from "./compaction"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
@@ -66,22 +71,6 @@ import { generateSessionTitle } from "./titleGenerator"
 import { ToolRegistry } from "./tools/registry"
 import { type AttachedFile, isOverflowFailure, type SessionBinding, TurnStore } from "./turnStore"
 
-// 排队消息上限（流式中入队；超限明确报错，不覆盖、不静默丢）。
-const MAX_QUEUE = 20
-
-// 排队消息：文本 + 完整发送上下文（附件/cwd），drain 时与直接发送语义一致。
-interface QueuedMessage {
-  text: string
-  context?: AgentSendContext
-}
-
-export interface SessionRunnerOptions {
-  sessionId: string | null
-  tabId?: string
-  eventSink?: (event: AgentEvent) => void
-  onSessionCreated?: (runner: AgentSessionRunner, oldKey: string, newSessionId: string) => void
-}
-
 /**
  * 单会话 Agent 实例运行器：负责单个会话/标签页的状态机循环、工具注册、上下文管理与事件分发。
  */
@@ -107,8 +96,9 @@ export class AgentSessionRunner {
   private builtSignature = ""
   // SessionStart 每个会话只派发一次（会话切换/销毁后重置）。
   private sessionStartFired = false
-  private messageQueue: QueuedMessage[] = []
-  private draining = false
+  // 内部协作面：排队状态由 sessionRunnerQueue 模块读写（禁止外部调用）。
+  public messageQueue: QueuedMessage[] = []
+  public draining = false
   // 本会话待附加的重复调用提醒（toolCallId → reminder，afterToolCall 附加后清除）。
   private readonly guardReminders = new Map<string, string>()
   private onSessionCreatedCallback?: (
@@ -596,51 +586,6 @@ export class AgentSessionRunner {
     this.activeSkills = cwd ? resolveInjectedSkills(cwd) : []
   }
 
-  private enqueueMessage(text: string, context?: AgentSendContext): AgentSendResult {
-    if (this.messageQueue.length >= MAX_QUEUE) {
-      return {
-        ok: false,
-        error: `消息队列已满（最多 ${MAX_QUEUE} 条），请等待当前回复完成后发送。`,
-      }
-    }
-    this.messageQueue.push({ text, ...(context ? { context } : {}) })
-    this.emitQueueChanged()
-    return {
-      ok: true,
-      queued: true,
-      queueLength: this.messageQueue.length,
-      sessionId: this.currentSessionId ?? "",
-    }
-  }
-
-  private emitQueueChanged(): void {
-    this.emitEvent({
-      type: "queue_changed",
-      length: this.messageQueue.length,
-      messages: this.messageQueue.map((item) => item.text),
-    })
-  }
-
-  private clearQueue(): void {
-    if (this.messageQueue.length === 0) return
-    this.messageQueue = []
-    this.emitQueueChanged()
-  }
-
-  private async kickDrain(): Promise<void> {
-    if (this.draining) return
-    this.draining = true
-    try {
-      while (this.messageQueue.length > 0) {
-        const item = this.messageQueue.shift()!
-        this.emitQueueChanged()
-        await this.runOne(item.text, item.context?.files, item.context?.cwd)
-      }
-    } finally {
-      this.draining = false
-    }
-  }
-
   public async send(
     text: string,
     selection?: ModelSelection,
@@ -704,18 +649,19 @@ export class AgentSessionRunner {
     }
 
     if (this.isBusy()) {
-      return this.enqueueMessage(processedText, context)
+      return enqueueMessage(this, processedText, context)
     }
     const ready = this.ensureReady()
     if ("error" in ready) {
       return { ok: false, error: ready.error }
     }
     const result = await this.runOne(processedText, context?.files, context?.cwd)
-    void this.kickDrain()
+    void kickDrain(this)
     return result
   }
 
-  private async runOne(
+  // 轮次执行入口：队列 drain 与 send 共用（实现随后续增量搬移至 sessionRunnerTurns.ts）。
+  public async runOne(
     text: string,
     files?: AttachedFile[],
     overrideCwd?: string,
@@ -899,20 +845,20 @@ export class AgentSessionRunner {
       this.discardPendingTurn()
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
-    void this.kickDrain()
+    void kickDrain(this)
     return { ok: true, sessionId: this.currentSessionId }
   }
 
   public abort(): void {
     this.agent?.abort()
     this.currentTurnContext = undefined
-    this.clearQueue()
+    clearQueue(this)
   }
 
   public restoreMessages(messages: AgentMessage[]): void {
     this.discardPendingTurn()
     this.agent?.abort()
-    this.clearQueue()
+    clearQueue(this)
     const ready = this.ensureReady()
     if ("error" in ready) return
     ready.agent.state.messages = [...messages]
@@ -941,7 +887,7 @@ export class AgentSessionRunner {
   ): Promise<void> {
     this.discardPendingTurn()
     this.agent?.abort()
-    this.clearQueue()
+    clearQueue(this)
     await mcpManager.ensureConnected()
     this.setSessionId(sessionId)
     this.sessionBinding = {
@@ -979,7 +925,7 @@ export class AgentSessionRunner {
     if (this.isBusy()) {
       return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
     }
-    this.clearQueue()
+    clearQueue(this)
     this.requestedCwd = path
     if (this.currentSessionId) {
       agentSessionService.updateSessionCwd(this.currentSessionId, path, new Date().toISOString())
@@ -991,7 +937,7 @@ export class AgentSessionRunner {
     if (this.isBusy()) {
       return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
     }
-    this.clearQueue()
+    clearQueue(this)
     this.requestedCwd = path
     const normalizedProjectId = projectId || undefined
     if (this.sessionBinding) {
