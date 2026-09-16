@@ -1,6 +1,6 @@
 import type { ArcadeGame, ArcadeGameId } from "../types"
+import { createCakeGame } from "./cake/game"
 import { createDodgeGame } from "./dodge/game"
-import { createHopGame } from "./hop/game"
 import { createTetrisGame } from "./tetris/game"
 
 /**
@@ -8,6 +8,6 @@ import { createTetrisGame } from "./tetris/game"
  */
 export const createArcadeGame = (gameId: ArcadeGameId): ArcadeGame => {
   if (gameId === "dodge") return createDodgeGame()
-  if (gameId === "hop") return createHopGame()
+  if (gameId === "cake") return createCakeGame()
   return createTetrisGame()
 }

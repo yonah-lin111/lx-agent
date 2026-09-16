@@ -40,7 +40,7 @@ describe("ArcadeStage", () => {
 
     expect(screen.getByText("Tetris")).toBeDefined()
     expect(screen.getByText("Stardust Dodge")).toBeDefined()
-    expect(screen.getByText("Hop")).toBeDefined()
+    expect(screen.getByText("Cake Stack")).toBeDefined()
     expect(screen.getByText("Best: 90")).toBeDefined()
     expect(screen.getAllByText("Best: 0").length).toBeGreaterThanOrEqual(1)
 
@@ -79,13 +79,13 @@ describe("ArcadeStage", () => {
   it("游戏结束展示得分与新纪录，并写入 localStorage 最高分", () => {
     render(<ArcadeStage onExit={() => {}} />)
 
-    fireEvent.click(screen.getByRole("button", { name: /Hop/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Cake Stack/ }))
     fireEvent.click(screen.getByText("finish-game"))
 
     expect(screen.getByText("Run finished")).toBeDefined()
     expect(screen.getByText("120")).toBeDefined()
     expect(screen.getByText("New best!")).toBeDefined()
-    expect(JSON.parse(localStorage.getItem("lx_arcade_best_v1") ?? "{}")).toEqual({ hop: 120 })
+    expect(JSON.parse(localStorage.getItem("lx_arcade_best_v1") ?? "{}")).toEqual({ cake: 120 })
   })
 
   it("选择页按 ESC 退出游戏厅", () => {

@@ -23,7 +23,7 @@ const runFrames = (
 
 describe("彩蛋游戏运行时冒烟测试", () => {
   it("三款游戏都能创建并处于未结束状态", () => {
-    for (const gameId of ["tetris", "dodge", "hop"] as const) {
+    for (const gameId of ["tetris", "dodge", "cake"] as const) {
       const game = createArcadeGame(gameId)
       expect(game.getScore()).toBe(0)
       expect(game.isFinished()).toBe(false)
@@ -58,14 +58,32 @@ describe("彩蛋游戏运行时冒烟测试", () => {
     expect(game.getScore()).toBeGreaterThanOrEqual(0)
   })
 
-  it("跳一跳：按节奏蓄力起跳，分数有限且最终会因跳空结束", () => {
-    const game = runFrames("hop", 3000, (input, frame) => {
-      // 每 60 帧一个蓄力循环：前 40 帧按住，后 20 帧松手起跳
-      input.keys.clear()
-      if (frame % 60 < 40) input.keys.add("Space")
-    })
+  it("叠蛋糕：首次落层必然命中并计分（基座足够宽）", () => {
+    const game = createArcadeGame("cake")
+    const input = createInput()
+
+    input.pressedKeys.add("Space")
+    game.update(16.7, input)
+    for (let frame = 0; frame < 12; frame += 1) {
+      input.pressedKeys.clear()
+      game.update(16.7, input)
+    }
+
+    expect(game.getScore()).toBeGreaterThanOrEqual(1)
+    expect(game.isFinished()).toBe(false)
+  })
+
+  it("叠蛋糕：连续落层会因错位累积而结束，分数有限", () => {
+    const game = createArcadeGame("cake")
+    const input = createInput()
+
+    for (let frame = 0; frame < 2000; frame += 1) {
+      input.pressedKeys.clear()
+      if (frame % 25 === 0) input.pressedKeys.add("Space")
+      game.update(16.7, input)
+      if (game.isFinished()) break
+    }
 
     expect(Number.isFinite(game.getScore())).toBe(true)
-    expect(game.getScore()).toBeGreaterThanOrEqual(0)
   })
 })

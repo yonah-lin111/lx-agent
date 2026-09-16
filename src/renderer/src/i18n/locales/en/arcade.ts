@@ -42,20 +42,20 @@ Survive **60 seconds** of bullet storms with 3 hit points.
 
 **Scoring:** 10 per survived second + 25 per starlight collected.`,
     },
-    hop: {
-      name: "Hop",
-      description: "Charge, jump, land on the next platform — hit the center for bonus.",
-      controls: "Hold Space / press and hold to charge · release to jump",
-      info: `### Hop
+    cake: {
+      name: "Cake Stack",
+      description: "Stack the layers, slice the overhang, keep the tower alive.",
+      controls: "Click / Space to drop · perfect alignment keeps the width",
+      info: `### Cake Stack
 
-Hold to charge, release to jump. Land on the next platform or the run ends.
+A cake layer swings above the tower — press **click / Space** to drop it.
 
-- **Hold Space / press and hold** to build power, release to jump
-- Landing anywhere on the platform scores 1 point
-- Landing within 10px of its center scores 2 points
-- Platforms always spawn within reach of a full charge
+- The part hanging over the layer below is **sliced off**, so the tower gets narrower
+- Landing within 4px of a perfect match keeps the full width and scores 2
+- Missing the layer below ends the run
+- Layers swing faster as the tower grows
 
-**Scoring:** 1 point per platform, 2 for a perfect landing.`,
+**Scoring:** 1 point per layer, 2 for a perfect drop.`,
     },
   },
   paused: "Paused",

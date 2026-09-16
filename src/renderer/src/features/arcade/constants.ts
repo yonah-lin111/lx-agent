@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { Blocks, Rabbit, Sparkles } from "lucide-react"
+import { Blocks, Cake, Sparkles } from "lucide-react"
 import type { TranslationKey } from "@/i18n"
 import type { ArcadeGameId } from "./types"
 
@@ -42,12 +42,12 @@ export const ARCADE_GAMES: ArcadeGameMeta[] = [
     iconClassName: "text-sky-400",
   },
   {
-    id: "hop",
-    nameKey: "arcade.games.hop.name",
-    descriptionKey: "arcade.games.hop.description",
-    controlsKey: "arcade.games.hop.controls",
-    infoKey: "arcade.games.hop.info",
-    icon: Rabbit,
+    id: "cake",
+    nameKey: "arcade.games.cake.name",
+    descriptionKey: "arcade.games.cake.description",
+    controlsKey: "arcade.games.cake.controls",
+    infoKey: "arcade.games.cake.info",
+    icon: Cake,
     iconClassName: "text-amber-400",
   },
 ]
