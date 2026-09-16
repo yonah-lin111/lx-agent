@@ -1416,11 +1416,9 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 }
 
 /* ========================================================
- * 主页概览视图（Overview Dashboard & Productivity Heatmap）
+ * 主页索引视图（App Index Hero & Activity Heatmap）
  * ======================================================== */
-[data-theme="minecraft"] .overview-metric-card,
-[data-theme="minecraft"] .overview-summary-card,
-[data-theme="minecraft"] .overview-heatmap-card,
+[data-theme="minecraft"] .activity-heatmap-card,
 [data-theme="minecraft"] .usage-stat-card,
 [data-theme="minecraft"] .lx-chart-card,
 [data-theme="minecraft"] .usage-table-card {
@@ -1434,8 +1432,6 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   font-family: var(--theme-font-family) !important;
 }
 
-[data-theme="minecraft"] .overview-metric-card:hover,
-[data-theme="minecraft"] .overview-summary-card:hover,
 [data-theme="minecraft"] .usage-stat-card:hover,
 [data-theme="minecraft"] .lx-chart-card:hover {
   background-color: #242434 !important;
@@ -1445,38 +1441,13 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     2px 2px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .overview-metric-icon {
-  border-radius: 0px !important;
-  border: 1px solid #000000 !important;
-  background-color: #14141c !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
-    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.06) !important;
-}
-
-[data-theme="minecraft"] .overview-summary-item {
-  border-radius: 0px !important;
-  border: 1px solid #000000 !important;
-  background-color: #14141c !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
-    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.06) !important;
-}
-
-[data-theme="minecraft"] .overview-badge {
-  border-radius: 0px !important;
-  border: 1px solid #000000 !important;
-  font-family: var(--theme-font-family) !important;
-  text-shadow: 1px 1px 0px #000000;
-}
-
 /* 绿墙热力图像素风格单元格：经典 Minecraft 绿色阶梯与立体像素槽 */
-[data-theme="minecraft"] .overview-heatmap-cell {
+[data-theme="minecraft"] .activity-heatmap-cell {
   border-radius: 0px !important;
   image-rendering: pixelated !important;
 }
 
-[data-theme="minecraft"] .overview-heatmap-cell[data-level="0"] {
+[data-theme="minecraft"] .activity-heatmap-cell[data-level="0"] {
   background-color: #272738 !important;
   border: 1px solid #14141e !important;
   box-shadow:
@@ -1484,12 +1455,12 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.12) !important;
 }
 
-[data-theme="minecraft"] .overview-heatmap-cell[data-level="0"]:hover {
+[data-theme="minecraft"] .activity-heatmap-cell[data-level="0"]:hover {
   background-color: #323248 !important;
   border-color: rgba(255, 255, 255, 0.35) !important;
 }
 
-[data-theme="minecraft"] .overview-heatmap-cell[data-level="1"] {
+[data-theme="minecraft"] .activity-heatmap-cell[data-level="1"] {
   background-color: #1a4d23 !important;
   border: 1px solid #0f3016 !important;
   box-shadow:
@@ -1497,7 +1468,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.5) !important;
 }
 
-[data-theme="minecraft"] .overview-heatmap-cell[data-level="2"] {
+[data-theme="minecraft"] .activity-heatmap-cell[data-level="2"] {
   background-color: #2c7a35 !important;
   border: 1px solid #1c5223 !important;
   box-shadow:
@@ -1505,7 +1476,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.5) !important;
 }
 
-[data-theme="minecraft"] .overview-heatmap-cell[data-level="3"] {
+[data-theme="minecraft"] .activity-heatmap-cell[data-level="3"] {
   background-color: #38ab44 !important;
   border: 1px solid #24752d !important;
   box-shadow:
@@ -1513,13 +1484,13 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.45) !important;
 }
 
-[data-theme="minecraft"] .overview-heatmap-cell[data-level="3"]:hover {
+[data-theme="minecraft"] .activity-heatmap-cell[data-level="3"]:hover {
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.4),
     0px 0px 6px rgba(56, 171, 68, 0.4) !important;
 }
 
-[data-theme="minecraft"] .overview-heatmap-cell[data-level="4"] {
+[data-theme="minecraft"] .activity-heatmap-cell[data-level="4"] {
   background-color: #55ff55 !important;
   border: 1px solid #2fa83a !important;
   box-shadow:
@@ -1527,7 +1498,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.4) !important;
 }
 
-[data-theme="minecraft"] .overview-heatmap-cell[data-level="4"]:hover {
+[data-theme="minecraft"] .activity-heatmap-cell[data-level="4"]:hover {
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.7),
     0px 0px 8px rgba(85, 255, 85, 0.8) !important;

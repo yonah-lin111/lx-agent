@@ -1,12 +1,12 @@
 /// <reference types="vite/client" />
 
 import type { ClipboardApi } from "@shared/clipboard"
+import type { ActivityApi } from "@shared/contracts/activity"
 import type { AgentApi } from "@shared/contracts/agent"
 import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
-import type { OverviewApi } from "@shared/contracts/overview"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { ScheduleApi } from "@shared/contracts/schedule"
 import type { TerminalApi } from "@shared/contracts/terminal"
@@ -32,7 +32,7 @@ declare global {
       GitApi &
       PromptHistoryApi &
       TerminalApi &
-      OverviewApi &
+      ActivityApi &
       UsageApi &
       ScheduleApi &
       OpenClawApi

@@ -1,4 +1,4 @@
-import { OVERVIEW_CHANNELS } from "@shared/ipc/overviewChannels"
+import { ACTIVITY_CHANNELS } from "@shared/ipc/activityChannels"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const exposeInMainWorld = vi.fn()
@@ -9,7 +9,7 @@ vi.mock("electron", () => ({
   ipcRenderer: { invoke },
 }))
 
-describe("preload overview API", () => {
+describe("preload activity API", () => {
   beforeEach(async () => {
     vi.resetModules()
     exposeInMainWorld.mockClear()
@@ -17,13 +17,12 @@ describe("preload overview API", () => {
     await import("../../src/preload/index")
   })
 
-  it("暴露 overview API 并转发参数到共享 channel", async () => {
+  it("暴露 activity API 并转发到共享 channel", async () => {
     const api = exposeInMainWorld.mock.calls[0]?.[1]
-    const input = { projectId: "project-abc" }
 
-    await api.overview.getStats(input)
+    await api.activity.getDaily()
 
     expect(exposeInMainWorld).toHaveBeenCalledWith("api", expect.any(Object))
-    expect(invoke).toHaveBeenCalledWith(OVERVIEW_CHANNELS.getStats, input)
+    expect(invoke).toHaveBeenCalledWith(ACTIVITY_CHANNELS.getDaily)
   })
 })

@@ -1,18 +1,15 @@
 import { Activity } from "lucide-react"
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
-import type { ActivityDayEntry, HeatmapCell, HeatmapMonth } from "../types"
+import { formatWeekdayShort } from "@/lib/date"
+import type { DailyActivity, HeatmapCell, HeatmapMonth } from "../types"
 import { buildHeatmapMonths } from "../utils"
 
 // 活动热力图属性。
 export interface ActivityHeatmapProps {
-  entries: ActivityDayEntry[]
-  selectedProjectId?: string
-  projectOptions?: LxSelectOption<string>[]
-  onProjectChange?: (projectId: string) => void
+  entries: DailyActivity[]
 }
 
 const LEVEL_CLASS_MAP: Record<HeatmapCell["level"], string> = {
@@ -23,7 +20,6 @@ const LEVEL_CLASS_MAP: Record<HeatmapCell["level"], string> = {
   4: "bg-[#22c55e] border border-[#4ade80] hover:brightness-110 hover:shadow-xs hover:shadow-emerald-500/25",
 }
 
-const WEEKDAY_SHORT_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 const DAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", ""]
 
 interface HeatmapDayCellProps {
@@ -53,7 +49,7 @@ const HeatmapDayCell = React.memo(
         onMouseLeave={onLeave}
         onFocus={(e) => onHover(day, e.currentTarget.getBoundingClientRect())}
         onBlur={onLeave}
-        className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 cursor-pointer rounded-[2px] hover:transition-colors hover:duration-75 ${LEVEL_CLASS_MAP[day.level]}`}
+        className={`activity-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 cursor-pointer rounded-[2px] hover:transition-colors hover:duration-75 ${LEVEL_CLASS_MAP[day.level]}`}
       />
     )
   },
@@ -76,7 +72,7 @@ const MonthBlock = React.memo(
     return (
       <div
         data-month-key={month.monthKey}
-        className="overview-month-block flex items-start gap-1.5 shrink-0 [contain:layout_paint] [will-change:transform]"
+        className="activity-heatmap-month flex items-start gap-1.5 shrink-0 [contain:layout_paint] [will-change:transform]"
       >
         {/* 当处于当前行行首时，显示星期基准标签（严格对齐 Mon..Sun 7 天基线） */}
         {showWeekdayLabels && (
@@ -119,24 +115,16 @@ const MonthBlock = React.memo(
 MonthBlock.displayName = "MonthBlock"
 
 /**
- * 渲染生产力绿墙热力图：
+ * 渲染年度会话活跃度绿墙：
  * 1. 宽度足够时全月单行平铺，宽度不足时逐月自适应折行，杜绝横向滚动条；
- * 2. 统一使用项目标准 LxTooltip 组件，以单例控制器挂载，彻底清除 9,400+ 个 Hook 造成的渲染颠簸；
+ * 2. 统一使用项目标准 LxTooltip 组件，以单例控制器挂载，彻底清除数千个 Hook 造成的渲染颠簸；
  * 3. 严格对齐 Mon..Sun 7 天垂直基线，单元格放大至 14px。
  */
-export const ActivityHeatmap = ({
-  entries,
-  selectedProjectId,
-  projectOptions,
-  onProjectChange,
-}: ActivityHeatmapProps): React.JSX.Element => {
-  const { t } = useTranslation()
-  const { months, maxCount } = useMemo(() => buildHeatmapMonths(entries), [entries])
+export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.Element => {
+  const { t, locale } = useTranslation()
+  const { months } = useMemo(() => buildHeatmapMonths(entries), [entries])
 
-  const totalYearActivities = useMemo(
-    () => entries.reduce((acc, curr) => acc + curr.count, 0),
-    [entries],
-  )
+  const totalSessions = useMemo(() => entries.reduce((acc, curr) => acc + curr.count, 0), [entries])
 
   const [activeTooltip, setActiveTooltip] = useState<{
     day: HeatmapCell
@@ -150,7 +138,7 @@ export const ActivityHeatmap = ({
 
   const updateRowStarts = useCallback(() => {
     if (!containerRef.current) return
-    const blocks = containerRef.current.querySelectorAll<HTMLElement>(".overview-month-block")
+    const blocks = containerRef.current.querySelectorAll<HTMLElement>(".activity-heatmap-month")
     if (blocks.length === 0) return
 
     const newStarts = new Set<string>()
@@ -218,53 +206,31 @@ export const ActivityHeatmap = ({
   const tooltipContent = useMemo(() => {
     if (!activeTooltip) return null
     const { day } = activeTooltip
-    const dateObj = new Date(`${day.date}T00:00:00`)
-    const weekday = WEEKDAY_SHORT_NAMES[dateObj.getDay()]
+    const weekday = formatWeekdayShort(day.date, locale)
 
     return day.count > 0
-      ? `${day.date} (${weekday}): ${t("home.heatmap.activitiesDetail", {
-          count: day.count,
-          turns: day.turns,
-          toolCalls: day.toolCalls,
-        })}`
+      ? `${day.date} (${weekday}): ${t("home.heatmap.activities", { count: day.count })}`
       : `${day.date} (${weekday}): ${t("home.heatmap.noActivity")}`
-  }, [activeTooltip, t])
+  }, [activeTooltip, locale, t])
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      {/* 头部标题与统计及项目切换（位于卡片外部） */}
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border border-[#1b582e] bg-[#144222] text-emerald-400">
-            <Activity className="h-3.5 w-3.5" />
-          </div>
-          <h3 className="truncate text-sm font-semibold text-white/90">
-            {t("home.heatmap.title")}
-          </h3>
-          <div className="font-mono text-sm text-white/60">
-            <span className="font-semibold text-emerald-400">
-              {t("home.heatmap.activities", { count: totalYearActivities })}
-            </span>
-            {maxCount > 0 && (
-              <span className="ml-1.5 text-xs text-white/35">(Max: {maxCount}/day)</span>
-            )}
-          </div>
+      {/* 头部标题与年度会话总数 */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border border-[#1b582e] bg-[#144222] text-emerald-400">
+          <Activity className="h-3.5 w-3.5" />
         </div>
-
-        {projectOptions && onProjectChange && (
-          <div className="w-40 sm:w-48 shrink-0">
-            <LxSelect
-              size="small"
-              value={selectedProjectId ?? "all"}
-              options={projectOptions}
-              onChange={onProjectChange}
-            />
-          </div>
-        )}
+        <h2 className="truncate text-sm font-semibold text-white/90">{t("home.index.activity")}</h2>
+        <p className="truncate text-xs text-white/40">{t("home.index.activityDescription")}</p>
+        <div className="font-mono text-sm text-white/60">
+          <span className="font-semibold text-emerald-400">
+            {t("home.heatmap.activities", { count: totalSessions })}
+          </span>
+        </div>
       </div>
 
       {/* 绿墙热力图卡片主体 */}
-      <div className="overview-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-[#333333] bg-[#1e1e1e] p-4 [contain:layout_paint_style] [transform:translateZ(0)]">
+      <div className="activity-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-[#333333] bg-[#1e1e1e] p-4 [contain:layout_paint_style] [transform:translateZ(0)]">
         {/* 绿墙热力图主体：按月流式自适应折行，每行行首自适应展示星期基准标签 */}
         <div
           ref={containerRef}
@@ -286,23 +252,23 @@ export const ActivityHeatmap = ({
           <span>{t("home.heatmap.less")}</span>
           <div className="flex items-center gap-1 px-1">
             <span
-              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[0]}`}
+              className={`activity-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[0]}`}
               data-level="0"
             />
             <span
-              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[1]}`}
+              className={`activity-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[1]}`}
               data-level="1"
             />
             <span
-              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[2]}`}
+              className={`activity-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[2]}`}
               data-level="2"
             />
             <span
-              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[3]}`}
+              className={`activity-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[3]}`}
               data-level="3"
             />
             <span
-              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[4]}`}
+              className={`activity-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[4]}`}
               data-level="4"
             />
           </div>

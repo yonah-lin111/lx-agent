@@ -174,13 +174,30 @@ select {
   animation: header-breadcrumb-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes app-index-entry-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-app-index-entry-in {
+  animation: app-index-entry-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .animate-sidebar-content-slide-in {
   animation: sidebar-slide-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-sidebar-content-slide-in,
-  .animate-header-breadcrumb-in {
+  .animate-header-breadcrumb-in,
+  .animate-app-index-entry-in {
     animation: none;
   }
 }

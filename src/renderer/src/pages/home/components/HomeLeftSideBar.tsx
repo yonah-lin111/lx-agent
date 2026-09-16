@@ -19,8 +19,8 @@ interface HomeNavItem {
 
 const HOME_NAV_ITEMS: HomeNavItem[] = [
   {
-    view: "overview",
-    labelKey: "home.overview",
+    view: "index",
+    labelKey: "home.index.label",
     icon: LayoutDashboard,
     iconClassName: "text-sky-400",
   },
@@ -39,7 +39,7 @@ const HOME_NAV_ITEMS: HomeNavItem[] = [
 ]
 
 /**
- * 渲染主页专属左侧栏内容（概览 / 日程 / 用量统计，参考 SettingsLeftSideBar 布局规范）。
+ * 渲染主页专属左侧栏内容（索引 / 日程 / 用量统计，参考 SettingsLeftSideBar 布局规范）。
  */
 export const HomeLeftSideBar = ({
   isCollapsed = false,
@@ -50,7 +50,7 @@ export const HomeLeftSideBar = ({
   const activeView: HomeView = parseHomeView(searchParams.get(HOME_VIEW_QUERY_KEY))
 
   const handleSelect = (view: HomeView): void => {
-    navigate(view === "overview" ? "/" : `/?view=${view}`)
+    navigate(view === "index" ? "/" : `/?view=${view}`)
   }
 
   if (isCollapsed) {

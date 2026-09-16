@@ -49,9 +49,7 @@ describe("usage Minecraft 主题适配", () => {
 
   it("概览与用量卡片移除马赛克底纹，保留实体底色与像素浮雕", () => {
     const selector =
-      '[data-theme="minecraft"] .overview-metric-card,\n' +
-      '[data-theme="minecraft"] .overview-summary-card,\n' +
-      '[data-theme="minecraft"] .overview-heatmap-card,\n' +
+      '[data-theme="minecraft"] .activity-heatmap-card,\n' +
       '[data-theme="minecraft"] .usage-stat-card,\n' +
       '[data-theme="minecraft"] .lx-chart-card,\n' +
       '[data-theme="minecraft"] .usage-table-card {'

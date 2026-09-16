@@ -1,10 +1,10 @@
 import type { ClipboardApi } from "@shared/clipboard"
+import type { ActivityApi } from "@shared/contracts/activity"
 import type { AgentApi } from "@shared/contracts/agent"
 import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
-import type { OverviewApi } from "@shared/contracts/overview"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { ScheduleApi } from "@shared/contracts/schedule"
 import type { TerminalApi } from "@shared/contracts/terminal"
@@ -15,12 +15,12 @@ import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
 import type { ProjectApi } from "@shared/project"
 import type { SettingsApi } from "@shared/settings"
 import { contextBridge, ipcRenderer, webUtils } from "electron"
+import { activityApi } from "./api/activity"
 import { agentApi } from "./api/agent"
 import { customCommandApi } from "./api/customCommand"
 import { gitApi } from "./api/git"
 import { markdownApi } from "./api/markdown"
 import { openclawApi } from "./api/openclaw"
-import { overviewApi } from "./api/overview"
 import { promptHistoryApi } from "./api/promptHistory"
 import { scheduleApi } from "./api/schedule"
 import { terminalApi } from "./api/terminal"
@@ -35,7 +35,7 @@ const api: ProjectApi &
   GitApi &
   PromptHistoryApi &
   TerminalApi &
-  OverviewApi &
+  ActivityApi &
   UsageApi &
   ScheduleApi &
   OpenClawApi = {
@@ -126,7 +126,7 @@ const api: ProjectApi &
   markdown: markdownApi,
   customCommand: customCommandApi,
   git: gitApi,
-  overview: overviewApi,
+  activity: activityApi,
   usage: usageApi,
   schedule: scheduleApi,
   promptHistory: promptHistoryApi,

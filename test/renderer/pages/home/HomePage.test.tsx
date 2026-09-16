@@ -10,8 +10,8 @@ const { mockParams } = vi.hoisted(() => ({
 vi.mock("react-router-dom", () => ({
   useSearchParams: () => [mockParams.value],
 }))
-vi.mock("@/features/overview", () => ({
-  OverviewDashboard: (): React.JSX.Element => <div>overview-view</div>,
+vi.mock("@/features/app-index", () => ({
+  AppIndexDashboard: (): React.JSX.Element => <div>index-view</div>,
 }))
 vi.mock("@/features/usage", () => ({
   UsageDashboard: (): React.JSX.Element => <div>usage-view</div>,
@@ -29,9 +29,9 @@ afterEach(() => {
 })
 
 describe("HomePage", () => {
-  it("默认渲染概览视图", () => {
+  it("默认渲染索引视图", () => {
     render(<HomePage />)
-    expect(screen.getByText("overview-view")).toBeDefined()
+    expect(screen.getByText("index-view")).toBeDefined()
     expect(screen.queryByText("usage-view")).toBeNull()
     expect(screen.queryByText("schedule-view")).toBeNull()
   })
@@ -40,14 +40,14 @@ describe("HomePage", () => {
     mockParams.value = new URLSearchParams("view=usage")
     render(<HomePage />)
     expect(screen.getByText("usage-view")).toBeDefined()
-    expect(screen.queryByText("overview-view")).toBeNull()
+    expect(screen.queryByText("index-view")).toBeNull()
   })
 
   it("view=schedule 时渲染日程组件（不切换路由）", () => {
     mockParams.value = new URLSearchParams("view=schedule")
     render(<HomePage />)
     expect(screen.getByText("schedule-view")).toBeDefined()
-    expect(screen.queryByText("overview-view")).toBeNull()
+    expect(screen.queryByText("index-view")).toBeNull()
     expect(screen.queryByText("usage-view")).toBeNull()
   })
 })

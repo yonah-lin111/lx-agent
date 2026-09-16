@@ -8,13 +8,13 @@ import { agentRunner } from "@/agent/agentRunner"
 import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { initDatabase } from "@/db"
+import { registerActivityHandlers } from "@/ipc/activityHandlers"
 import { registerAgentHandlers } from "@/ipc/agentHandlers"
 import { registerClipboardHandlers } from "@/ipc/clipboardHandlers"
 import { registerCustomCommandHandlers } from "@/ipc/customCommandHandlers"
 import { registerGitHandlers } from "@/ipc/gitHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
 import { registerOpenClawHandlers } from "@/ipc/openclawHandlers"
-import { registerOverviewHandlers } from "@/ipc/overviewHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
 import { registerScheduleHandlers } from "@/ipc/scheduleHandlers"
@@ -78,7 +78,7 @@ app.whenReady().then(() => {
   initDatabase()
   registerLocalImageProtocol()
   registerFrontDesignProtocol()
-  registerOverviewHandlers()
+  registerActivityHandlers()
   registerScheduleHandlers()
   registerProjectHandlers()
   registerClipboardHandlers()
