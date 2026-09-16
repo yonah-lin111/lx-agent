@@ -206,7 +206,6 @@ export const LxSelect = <T extends string>({
       <LxMenuItem
         key={option.value}
         active={isSelected}
-        muted={isUnimported}
         className={`${isUnimported ? "opacity-75" : ""} ${
           isGrouped ? SIZE_GROUPED_INDENT_CLASSES[LIST_SIZE] : ""
         } ${option.className ?? ""}`}
@@ -221,7 +220,11 @@ export const LxSelect = <T extends string>({
           onChange(option.value)
         }}
       >
-        {option.label}
+        {isUnimported ? (
+          <span className="text-white/40 font-normal">{option.label}</span>
+        ) : (
+          option.label
+        )}
       </LxMenuItem>
     )
   }

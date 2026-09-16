@@ -99,24 +99,6 @@ describe("LxMenuItem", () => {
     expect(radioEl?.getAttribute("aria-checked")).toBe("true")
   })
 
-  it("muted 弱化态保留选中底色但弱化文字与字重", () => {
-    const idle = render(<LxMenuItem muted>item</LxMenuItem>)
-    const idleEl = idle.container.querySelector<HTMLElement>(".lx-menu-item")
-    expect(idleEl?.classList.contains("text-white/40")).toBe(true)
-    expect(idleEl?.classList.contains("font-normal")).toBe(true)
-
-    const active = render(
-      <LxMenuItem active muted>
-        item
-      </LxMenuItem>,
-    )
-    const activeEl = active.container.querySelector<HTMLElement>(".lx-menu-item")
-    expect(activeEl?.classList.contains("bg-white/10")).toBe(true)
-    expect(activeEl?.classList.contains("text-white/40")).toBe(true)
-    expect(activeEl?.classList.contains("font-normal")).toBe(true)
-    expect(activeEl?.classList.contains("font-medium")).toBe(false)
-  })
-
   it("danger 区分未确认态与确认态颜色", () => {
     const idle = render(<LxMenuItem danger>item</LxMenuItem>)
     expect(idle.container.querySelector(".lx-menu-item")?.className).toContain("text-rose-400/80")

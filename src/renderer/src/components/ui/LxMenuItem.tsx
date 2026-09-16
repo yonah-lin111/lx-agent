@@ -16,8 +16,6 @@ export interface LxMenuItemProps extends React.ButtonHTMLAttributes<HTMLButtonEl
   leading?: React.ReactNode
   trailing?: React.ReactNode
   active?: boolean
-  // 弱化态：保留选中底色但文字弱化，用于未导入等次级内容。
-  muted?: boolean
   danger?: boolean
   size?: LxMenuItemSize
   align?: LxMenuItemAlign
@@ -52,25 +50,13 @@ const ALIGN_CLASSES: Record<LxMenuItemAlign, string> = {
   right: "text-right",
 }
 
-// 状态色：选中高亮内置，危险态区分确认前后，弱化态不受选中态强调。
-const STATE_CLASSES: Record<
-  "idle" | "active" | "idleMuted" | "activeMuted" | "danger" | "dangerActive",
-  string
-> = {
+// 状态色：选中高亮内置，危险态区分确认前后。
+const STATE_CLASSES: Record<"idle" | "active" | "danger" | "dangerActive", string> = {
   idle: "text-white/70 hover:bg-white/5 hover:text-white focus-visible:outline-white/45",
   active: "bg-white/10 text-white font-medium",
-  idleMuted: "text-white/40 font-normal hover:bg-white/5",
-  activeMuted: "bg-white/10 text-white/40 font-normal",
   danger:
     "text-rose-400/80 hover:bg-rose-400/10 hover:text-rose-300 focus-visible:outline-rose-400/45",
   dangerActive: "bg-rose-600 text-white hover:bg-rose-500 focus-visible:outline-rose-400/45",
-}
-
-// 解析状态色：危险态优先，其次选中态；弱化态覆盖文字与字重。
-const resolveStateClass = (active: boolean, danger: boolean, muted: boolean): string => {
-  if (danger) return active ? STATE_CLASSES.dangerActive : STATE_CLASSES.danger
-  if (active) return muted ? STATE_CLASSES.activeMuted : STATE_CLASSES.active
-  return muted ? STATE_CLASSES.idleMuted : STATE_CLASSES.idle
 }
 
 /**
@@ -82,7 +68,6 @@ export const LxMenuItem = forwardRef<HTMLButtonElement, LxMenuItemProps>(functio
     leading,
     trailing,
     active = false,
-    muted = false,
     danger = false,
     size = "medium",
     align = "left",
@@ -93,7 +78,13 @@ export const LxMenuItem = forwardRef<HTMLButtonElement, LxMenuItemProps>(functio
   },
   ref,
 ): React.JSX.Element {
-  const stateClass = resolveStateClass(active, danger, muted)
+  const stateClass = danger
+    ? active
+      ? STATE_CLASSES.dangerActive
+      : STATE_CLASSES.danger
+    : active
+      ? STATE_CLASSES.active
+      : STATE_CLASSES.idle
 
   return (
     <button

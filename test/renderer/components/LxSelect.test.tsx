@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 
@@ -30,11 +30,12 @@ describe("LxSelect", () => {
 
     // 检查第 1 项（已导入）
     expect(optionElements[0].getAttribute("data-unimported")).toBeNull()
-    expect(optionElements[0].className).not.toContain("text-white/40")
+    expect(within(optionElements[0]).getByText("全部项目").className).not.toContain("text-white/40")
 
-    // 检查第 3 项（未导入）
+    // 检查第 3 项（未导入：行内弱化标记 + 标签文字弱化）
     expect(optionElements[2].getAttribute("data-unimported")).toBe("true")
-    expect(optionElements[2].className).toContain("text-white/40")
+    expect(optionElements[2].className).toContain("opacity-75")
+    expect(within(optionElements[2]).getByText("未导入项目").className).toContain("text-white/40")
 
     // 点击选择第一项
     fireEvent.mouseDown(optionElements[0])
