@@ -1,3 +1,4 @@
+import type { OpenClawChatMessage } from "@shared/contracts/openclaw"
 import { ArrowDownToLine } from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
@@ -12,6 +13,8 @@ const NEAR_BOTTOM_THRESHOLD = 150
 export interface OpenClawMessageListProps {
   timeline: OfficeTimelineMessage[]
   agents: ConversationAgent[]
+  // 删除某轮问答（云端 rewind），仅在每条会话最后一条非流式 AI 消息上提供入口。
+  onDeleteTurn?: (agentId: string, messageId: string) => void
 }
 
 /**
@@ -20,9 +23,23 @@ export interface OpenClawMessageListProps {
 export const OpenClawMessageList = ({
   timeline,
   agents,
+  onDeleteTurn,
 }: OpenClawMessageListProps): React.JSX.Element => {
   const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement | null>(null)
+
+  // 每个 Agent 最后一条非流式 assistant 消息才提供删除入口（对齐 AgentMessageList 的轮次删除规则）。
+  const deletableAssistantIds = useMemo(() => {
+    const lastByAgent = new Map<string, OpenClawChatMessage>()
+    for (const item of timeline) {
+      if (item.message.role === "assistant") lastByAgent.set(item.agentId, item.message)
+    }
+    const ids = new Set<string>()
+    for (const message of lastByAgent.values()) {
+      if (message.status !== "streaming") ids.add(message.id)
+    }
+    return ids
+  }, [timeline])
 
   // 吸底状态：用户主动上滚后释放，滚回底部附近后恢复。
   const stickToBottomRef = useRef(true)
@@ -122,6 +139,11 @@ export const OpenClawMessageList = ({
                 agent={agent}
                 targetAgents={targetAgents}
                 isStreaming={message.status === "streaming"}
+                onDelete={
+                  onDeleteTurn && deletableAssistantIds.has(message.id)
+                    ? (messageId) => onDeleteTurn(agentId, messageId)
+                    : undefined
+                }
               />
             )
           })}

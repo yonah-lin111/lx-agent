@@ -21,6 +21,8 @@ export const openclawApi = {
     window.api.openclaw.createSession(instanceId, agentId),
   sendMessage: (input: OpenClawSendMessageInput): Promise<void> =>
     window.api.openclaw.sendMessage(input),
+  deleteTurn: (instanceId: string, agentId: string, assistantMessageId: string): Promise<void> =>
+    window.api.openclaw.deleteTurn(instanceId, agentId, assistantMessageId),
   abort: (instanceId: string, agentId: string): Promise<void> =>
     window.api.openclaw.abort(instanceId, agentId),
   onEvent: (handler: (event: OpenClawSessionEvent) => void): (() => void) =>

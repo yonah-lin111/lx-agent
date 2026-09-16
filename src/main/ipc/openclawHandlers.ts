@@ -63,6 +63,15 @@ export const registerOpenClawHandlers = (resolveSender: () => WebContents | unde
   ipcMain.handle(OPENCLAW_CHANNELS.sendMessage, (_, input: unknown) =>
     openClawClientManager.sendMessage(parseSendMessageInput(input)),
   )
+  ipcMain.handle(
+    OPENCLAW_CHANNELS.deleteTurn,
+    (_, instanceId: unknown, agentId: unknown, messageId: unknown) =>
+      openClawClientManager.deleteTurn(
+        requireString(instanceId, "INSTANCE_ID"),
+        requireString(agentId, "AGENT_ID"),
+        requireString(messageId, "MESSAGE_ID"),
+      ),
+  )
   ipcMain.handle(OPENCLAW_CHANNELS.abort, (_, instanceId: unknown, agentId: unknown) =>
     openClawClientManager.abort(
       requireString(instanceId, "INSTANCE_ID"),

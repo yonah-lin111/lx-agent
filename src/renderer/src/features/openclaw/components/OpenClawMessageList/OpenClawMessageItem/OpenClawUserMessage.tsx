@@ -1,4 +1,7 @@
+import { Check, Copy } from "lucide-react"
 import type React from "react"
+import { useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useTranslation } from "@/i18n"
 import type { ConversationAgent } from "./types"
 
@@ -12,9 +15,20 @@ export const OpenClawUserMessage = ({
   targetAgents = [],
 }: OpenClawUserMessageProps): React.JSX.Element => {
   const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+
+  const copyMessageContent = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   return (
-    <div className="flex flex-col items-end gap-1.5">
+    <div className="group flex flex-col items-end gap-1.5">
       {targetAgents.length > 0 ? (
         <div className="flex flex-wrap items-center justify-end gap-1.5 px-1 leading-none">
           <span className="text-[11px] text-white/40">{t("openclaw.targetLabel")}</span>
@@ -37,6 +51,19 @@ export const OpenClawUserMessage = ({
         className="openclaw-user-bubble bg-user-bubble max-w-[85%] whitespace-pre-wrap break-words rounded-[18px] rounded-br-[4px] bg-[#253347] px-3.5 py-2.5 text-[13px] leading-relaxed text-white/90 shadow-sm"
       >
         {content}
+      </div>
+      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <LxIconButton
+          size="small"
+          aria-label={t("openclaw.copyMessage")}
+          title={{
+            content: copied ? t("common.copied") : t("openclaw.copyMessage"),
+            placement: "top",
+          }}
+          onClick={copyMessageContent}
+        >
+          {copied ? <Check className="text-emerald-400" /> : <Copy />}
+        </LxIconButton>
       </div>
     </div>
   )

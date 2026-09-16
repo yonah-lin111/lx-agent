@@ -95,6 +95,12 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
 
 `pendingDispatch` 用于跨页委派：主输入框写入后跳转，页面挂载时消费并执行。
 
+### 4.5 消息操作
+
+- 用户消息提供复制；AI 消息提供复制与删除。
+- 删除 = 云端 `sessions.rewind`：以该轮用户消息为回退点，删除该轮问答及其后的全部消息；entryId 解析顺序为直传 id → 最新 `chat.history` 中按 id / runId / 内容+时间戳匹配，成功后本地截断投影并重新水合。
+- 删除入口仅出现在每个 Agent 最后一条非流式 AI 消息上；流式中不提供入口，权限不足时由 Gateway 拒绝并提示错误。
+
 ## 5. 输入框与命令
 
 ### 5.1 复用策略
@@ -132,12 +138,13 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
 ## 7. 安全与错误处理
 
 - **Token 保护**：仅主进程用于握手，不进入渲染进程长期存储。
+- **权限范围**：客户端申请 `operator.read/write/approvals/admin`；删除轮次依赖 `sessions.rewind`（要求 admin），设备配对模式在新增该 scope 后需在 Gateway 侧重新审批一次。
 - **连接容错**：断线显示「未连接 / 连接中」，支持手动重连；配对待审批时展示审批指引与 `requestId`。
 - **国际化与主题**：全部文案经 `useTranslation` 输出（中/英），样式使用项目主题 Token 与 `bg-white/[0.0x]`、`border-white/8` 等约定，禁止硬编码中文字符串与原生 `title` 属性。
 
 ## 8. 测试与已知限制
 
-- **测试覆盖**：纯逻辑单测——`agentStatus`（状态映射）、`clawMention`（提及解析/删除范围/扇出目标）、`mergeOfficeTimeline`（时间线合并）、`openclawCommands`（命令匹配）、`openclawOfficeStore`（办公区/员工选中与派发）；组件渲染测试——`OpenClawConversationView`（多 Agent 交错消息流）、`OpenClawLeftSideBar`（办公区/名册/选中交互）。
+- **测试覆盖**：纯逻辑单测——`agentStatus`（状态映射）、`clawMention`（提及解析/删除范围/扇出目标）、`mergeOfficeTimeline`（时间线合并）、`openclawCommands`（命令匹配）、`openclawOfficeStore`（办公区/员工选中与派发）；主进程行为测试——连接生命周期、会话绑定、token 用量、轮次删除（rewind entryId 解析、失败保留原错误、流式拒绝）；组件渲染测试——`OpenClawConversationView`（多 Agent 交错消息流）、`OpenClawLeftSideBar`（办公区/名册/选中交互）、消息操作按钮（复制/删除可见性与二次确认）。
 - **已知限制**：
   - 真实 Gateway 的连接、流式与重连行为需在 Electron 真机环境人工验证；
   - 员工数量很大时名册仅靠滚动承载，暂未虚拟化或分组；

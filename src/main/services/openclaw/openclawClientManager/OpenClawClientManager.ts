@@ -18,6 +18,7 @@ import { emitSnapshot, handleEvent, toSnapshot } from "./eventProjection"
 import {
   abort,
   createSession,
+  deleteTurn,
   fetchAgents,
   findSessionByKey,
   getSnapshot,
@@ -108,6 +109,10 @@ export class OpenClawClientManager implements OpenClawClientManagerHost {
 
   async abort(instanceId: string, agentId: string): Promise<void> {
     await abort(this, instanceId, agentId)
+  }
+
+  async deleteTurn(instanceId: string, agentId: string, assistantMessageId: string): Promise<void> {
+    await deleteTurn(this, instanceId, agentId, assistantMessageId)
   }
 
   disposeAll(): void {

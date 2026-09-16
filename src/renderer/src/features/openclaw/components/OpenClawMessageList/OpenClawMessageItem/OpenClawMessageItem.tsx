@@ -10,6 +10,7 @@ export const OpenClawMessageItem = ({
   agent,
   targetAgents,
   isStreaming = false,
+  onDelete,
 }: OpenClawMessageItemProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -39,6 +40,7 @@ export const OpenClawMessageItem = ({
       agent={agent}
       isStreaming={isStreaming}
       model={message.model}
+      onDelete={onDelete ? () => onDelete(message.id) : undefined}
     />
   )
 }
