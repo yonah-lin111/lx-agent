@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxBreadcrumbToast, useLxBreadcrumbToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -247,19 +248,14 @@ export const HeaderSideBar = ({
                     {THEME_OPTIONS.map((opt) => {
                       const isSelected = theme === opt.id
                       return (
-                        <button
+                        <LxMenuItem
                           key={opt.id}
-                          type="button"
+                          active={isSelected}
+                          trailing={isSelected ? <Check className="text-emerald-400" /> : null}
                           onClick={() => setTheme(opt.id)}
-                          className={`theme-menu-option flex w-full cursor-pointer items-center justify-between gap-3 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                            isSelected
-                              ? "bg-white/10 font-semibold text-white"
-                              : "text-white/70 hover:bg-white/5 hover:text-white"
-                          }`}
                         >
-                          <span>{opt.label}</span>
-                          {isSelected && <Check className="h-3 w-3 shrink-0 text-emerald-400" />}
-                        </button>
+                          {opt.label}
+                        </LxMenuItem>
                       )
                     })}
                   </div>

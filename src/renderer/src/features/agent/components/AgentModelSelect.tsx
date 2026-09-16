@@ -2,7 +2,7 @@ import { Check, ChevronDown, ChevronRight } from "lucide-react"
 import type React from "react"
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { LxMenuItem } from "@/components/ui/LxMenu"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import type { LxSelectGroup, LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip, TooltipLayerContext } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
@@ -252,7 +252,6 @@ export const AgentModelSelect = ({
               <LxMenuItem
                 key="__default__"
                 active={isDefaultActive}
-                className={isDefaultActive ? "!bg-white/10 !text-white font-medium" : ""}
                 trailing={isDefaultActive ? <Check className="h-3 w-3 text-sky-400" /> : null}
                 onClick={(event) => {
                   event.stopPropagation()
@@ -269,7 +268,6 @@ export const AgentModelSelect = ({
                   <LxMenuItem
                     key={v}
                     active={isVariantActive}
-                    className={isVariantActive ? "!bg-white/10 !text-white font-medium" : ""}
                     trailing={isVariantActive ? <Check className="h-3 w-3 text-sky-400" /> : null}
                     onClick={(event) => {
                       event.stopPropagation()
@@ -283,50 +281,42 @@ export const AgentModelSelect = ({
             </div>
           }
         >
-          <button
-            type="button"
-            role="option"
-            aria-selected={isSelected}
-            className={`group flex h-7 w-full items-center justify-between rounded-[4px] px-2.5 text-left text-sm transition-colors ${
-              isSelected
-                ? "bg-white/10 text-white font-medium shadow-xs"
-                : "text-white/70 hover:bg-white/5 hover:text-white"
-            } ${isGrouped ? "pl-5" : ""}`}
+          <LxMenuItem
+            active={isSelected}
+            className={`group ${isGrouped ? "pl-5" : ""}`}
+            menuRole="option"
+            trailing={
+              <>
+                {isSelected ? <Check className="text-white" /> : null}
+                <ChevronRight className="text-white/35 transition-colors group-hover:text-white/70" />
+              </>
+            }
             onMouseDown={(event) => {
               event.preventDefault()
               const chosenVar = isSelected ? (variant ?? defaultVar) : defaultVar
               handleSelect(item.value, chosenVar)
             }}
           >
-            <span className="min-w-0 flex-1 truncate">{item.label}</span>
-            <div className="ml-2 flex shrink-0 items-center gap-1">
-              {isSelected ? <Check className="h-3.5 w-3.5 text-white" /> : null}
-              <ChevronRight className="h-3.5 w-3.5 text-white/35 transition-colors group-hover:text-white/70" />
-            </div>
-          </button>
+            {item.label}
+          </LxMenuItem>
         </LxTooltip>
       )
     }
 
     return (
-      <button
+      <LxMenuItem
         key={item.value}
-        type="button"
-        role="option"
-        aria-selected={isSelected}
-        className={`flex h-7 w-full items-center justify-between rounded-[4px] px-2.5 text-left text-sm transition-colors ${
-          isSelected
-            ? "bg-white/10 text-white font-medium shadow-xs"
-            : "text-white/70 hover:bg-white/5 hover:text-white"
-        } ${isGrouped ? "pl-5" : ""}`}
+        active={isSelected}
+        className={isGrouped ? "pl-5" : ""}
+        menuRole="option"
+        trailing={isSelected ? <Check className="text-white" /> : null}
         onMouseDown={(event) => {
           event.preventDefault()
           handleSelect(item.value, undefined)
         }}
       >
-        <span className="min-w-0 flex-1 truncate">{item.label}</span>
-        {isSelected ? <Check className="ml-2 h-3.5 w-3.5 shrink-0" /> : null}
-      </button>
+        {item.label}
+      </LxMenuItem>
     )
   }
 

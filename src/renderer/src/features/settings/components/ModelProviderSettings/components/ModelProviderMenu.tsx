@@ -1,6 +1,7 @@
 import { Check, Copy, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxMenu, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { useTranslation } from "@/i18n"
 import type { ModelProviderMenuProps } from "../types"
 

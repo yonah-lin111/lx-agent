@@ -81,16 +81,16 @@ describe("控件尺寸阶梯对齐", () => {
     expect(container.querySelector(".lx-select-trigger")?.className).toContain(height)
   })
 
-  it.each(HEIGHT_STEPS)("LxSelect $size 展开列表项固定默认档 h-7", async ({ size }) => {
+  it.each(HEIGHT_STEPS)("LxSelect $size 展开列表项固定默认档内边距", async ({ size }) => {
     render(
       <LxSelect value="a" onChange={() => {}} options={[{ value: "a", label: "A" }]} size={size} />,
     )
     fireEvent.click(document.querySelector(".lx-select-trigger") as HTMLElement)
     const option = await screen.findByRole("option")
-    expect(option.className).toContain("h-7")
-    expect(option.className).not.toContain("h-6")
-    expect(option.className).not.toContain("h-8")
-    expect(option.className).toContain("text-sm")
+    expect(option.classList.contains("py-1.5")).toBe(true)
+    expect(option.classList.contains("py-1")).toBe(false)
+    expect(option.classList.contains("py-2")).toBe(false)
+    expect(option.classList.contains("text-sm")).toBe(true)
   })
 
   it.each(INPUT_HEIGHT_STEPS)("LxInput $size 单行高度为 $height", ({ size, height }) => {

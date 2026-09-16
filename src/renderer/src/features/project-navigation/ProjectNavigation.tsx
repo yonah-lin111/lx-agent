@@ -13,8 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
-import { LxMenuItem } from "@/components/ui/LxMenu"
-import { LxTag } from "@/components/ui/LxTag"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useRecentItemsStore } from "@/features/project/recentItemsStore"
@@ -523,22 +522,14 @@ export const ProjectNavigation = (): React.JSX.Element => {
       {sortOptions.map(({ key, label }) => {
         const isSelected = sort.key === key
         return (
-          <LxTag
+          <LxMenuItem
             key={key}
-            highlighted={isSelected}
-            suffix={
-              isSelected ? (
-                sort.direction === "asc" ? (
-                  <ArrowUp className="h-2.5 w-2.5" />
-                ) : (
-                  <ArrowDown className="h-2.5 w-2.5" />
-                )
-              ) : undefined
-            }
+            active={isSelected}
+            trailing={isSelected ? sort.direction === "asc" ? <ArrowUp /> : <ArrowDown /> : null}
             onClick={() => toggleSort(key)}
           >
             {label}
-          </LxTag>
+          </LxMenuItem>
         )
       })}
     </div>

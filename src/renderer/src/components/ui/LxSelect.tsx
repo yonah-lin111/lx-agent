@@ -2,6 +2,7 @@ import { Check, ChevronDown } from "lucide-react"
 import type React from "react"
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { TooltipLayerContext } from "./LxTooltip"
 
 // 下拉选项。
@@ -202,36 +203,29 @@ export const LxSelect = <T extends string>({
     const isUnimported = option.isImported === false
 
     return (
-      <button
+      <LxMenuItem
         key={option.value}
-        type="button"
-        role="option"
-        aria-selected={isSelected}
+        active={isSelected}
+        className={`${isUnimported ? "opacity-75" : ""} ${
+          isGrouped ? SIZE_GROUPED_INDENT_CLASSES[LIST_SIZE] : ""
+        } ${option.className ?? ""}`}
         data-unimported={isUnimported ? "true" : undefined}
-        className={`flex w-full items-center justify-between rounded-[6px] text-left transition-colors ${
-          SIZE_ROW_CLASSES[LIST_SIZE]
-        } ${isSelected ? "bg-white/10 font-medium shadow-xs" : "hover:bg-white/5"} ${
-          isUnimported
-            ? "text-white/40 font-normal opacity-75"
-            : isSelected
-              ? "text-white"
-              : "text-white/70 hover:text-white"
-        } ${isGrouped ? SIZE_GROUPED_INDENT_CLASSES[LIST_SIZE] : ""} ${option.className ?? ""}`}
+        menuRole="option"
+        trailing={
+          isSelected ? <Check className={isUnimported ? "text-white/40" : "text-white"} /> : null
+        }
         onMouseDown={(event) => {
           event.preventDefault()
           setIsOpen(false)
           onChange(option.value)
         }}
       >
-        <span
-          className={`min-w-0 flex-1 truncate ${isUnimported ? "text-white/40 font-normal" : ""}`}
-        >
-          {option.label}
-        </span>
-        {isSelected ? (
-          <Check className={`ml-2 shrink-0 ${SIZE_CHEVRON_CLASSES[LIST_SIZE]}`} />
-        ) : null}
-      </button>
+        {isUnimported ? (
+          <span className="text-white/40 font-normal">{option.label}</span>
+        ) : (
+          option.label
+        )}
+      </LxMenuItem>
     )
   }
 

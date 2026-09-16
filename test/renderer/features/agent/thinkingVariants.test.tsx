@@ -128,6 +128,39 @@ describe("Thinking Variants Display & Components", () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it("AgentModelSelect 二级菜单选中项使用 LxMenuItem 内置选中态，不叠加 important 工具类覆盖", async () => {
+    const options = [
+      {
+        value: "anthropic::claude-3-7-sonnet",
+        label: "Claude 3.7 Sonnet",
+        variants: ["low", "medium", "high"],
+        defaultVariant: "medium",
+      },
+    ]
+
+    render(
+      <AgentModelSelect
+        value="anthropic::claude-3-7-sonnet"
+        variant="low"
+        onChange={vi.fn()}
+        onVariantChange={vi.fn()}
+        options={options}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /claude 3\.7 sonnet/i }))
+    fireEvent.mouseEnter(screen.getByRole("option", { name: /claude 3\.7 sonnet/i }))
+
+    const lowItem = (await screen.findByText("low")).closest<HTMLElement>(".lx-menu-item")
+    expect(lowItem?.getAttribute("data-active")).toBe("true")
+    expect(lowItem?.className).toContain("bg-white/10")
+    expect(lowItem?.className).not.toContain("!bg-")
+    expect(lowItem?.className).not.toContain("!text-")
+
+    const mediumItem = (await screen.findByText("medium")).closest<HTMLElement>(".lx-menu-item")
+    expect(mediumItem?.getAttribute("data-active")).toBeNull()
+  })
+
   it("AgentModelSelect 在未选中模型的二级菜单选择思考等级时只触发 onChange", async () => {
     const onChange = vi.fn()
     const onVariantChange = vi.fn()

@@ -12,7 +12,8 @@ import {
 import type React from "react"
 import { useState } from "react"
 
-import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxMenu, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { useTranslation } from "@/i18n"
 import { UiActionButton } from "@/pages/ui/components/UiActionButton"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
