@@ -1,5 +1,6 @@
 export { ScheduleDashboard } from "./components/ScheduleDashboard"
 export { useScheduleItems } from "./hooks/useScheduleItems"
 export { useScheduleMutations } from "./hooks/useScheduleMutations"
+export { useScheduleRollover } from "./hooks/useScheduleRollover"
 export { useScheduleStats } from "./hooks/useScheduleStats"
 export * from "./types"
