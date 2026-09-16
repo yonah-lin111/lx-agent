@@ -39,11 +39,11 @@ const SIZE_CONTAINER_CLASSES: Record<LxIconButtonSize, string> = {
   large: "h-8 w-8",
 }
 
-// 文本/芯片模式容器高度：与图标模式档位一致，调用点无需显式设置高度。
-const SIZE_HEIGHT_CLASSES: Record<LxIconButtonSize, string> = {
-  small: "h-6",
-  medium: "h-7",
-  large: "h-8",
+// 文本/芯片模式容器度量：高度与左右内边距对齐 LxNavItem 档位，调用点无需再传 px-*/p-* 覆盖。
+const SIZE_TEXT_CONTAINER_CLASSES: Record<LxIconButtonSize, string> = {
+  small: "h-6 px-2",
+  medium: "h-7 px-2.5",
+  large: "h-8 px-3",
 }
 
 const SIZE_ICON_CLASSES: Record<LxIconButtonSize, string> = {
@@ -145,7 +145,7 @@ export interface LxIconButtonProps
   shape?: LxIconButtonShape
   // 外观变体：ghost 时不带边框/底色，主题不得强制浮雕。默认 solid。
   variant?: LxIconButtonVariant
-  // 尺寸档位：同时决定容器高度与字号。调用点不要再传 h-*/text-* 覆盖：同优先级下由 Tailwind 输出顺序裁决，
+  // 尺寸档位：同时决定容器高度、文本模式左右内边距与字号。调用点不要再传 h-*/px-*/text-* 覆盖：同优先级下由 Tailwind 输出顺序裁决，
   // 覆盖类会静默压掉档位（如 h-7 令 small 失去 h-6），导致 small 与 medium 表现一致。
   size?: LxIconButtonSize
   // 内置 Tooltip 配置。
@@ -195,7 +195,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     const sizeStyles =
       iconOnly && !hasIconAndLabel && !hasSuffix
         ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0`
-        : `${SIZE_HEIGHT_CLASSES[size]} ${SIZE_FONT_CLASSES[size]}`
+        : `${SIZE_TEXT_CONTAINER_CLASSES[size]} ${SIZE_FONT_CLASSES[size]}`
     const finalHoverBg = showHoverBg
       ? (hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/10"))
       : ""

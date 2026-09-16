@@ -68,9 +68,7 @@ export const JobStatusButton = ({
         onClick={handleClick}
         iconOnly={false}
         textClass={runningCount > 0 ? "text-sky-300" : "text-white/50"}
-        className={`shrink-0 px-1.5 py-0.5 text-xs ${
-          runningCount > 0 ? "bg-sky-500/10 font-medium" : ""
-        }`}
+        className={`shrink-0 py-0.5 text-xs ${runningCount > 0 ? "bg-sky-500/10 font-medium" : ""}`}
         icon={
           runningCount > 0 ? (
             <Loader2 className="shrink-0 animate-spin text-sky-400" />

@@ -26,6 +26,7 @@ describe("LxModal", () => {
     expect(backdrop?.getAttribute("role")).toBe("dialog")
     expect(backdrop?.className).toContain("fixed")
     expect(backdrop?.className).toContain("inset-0")
+    expect(document.querySelector(".lx-modal-panel")).not.toBeNull()
     expect(screen.getByText("测试弹窗")).not.toBeNull()
     expect(screen.getByText("弹窗内容")).not.toBeNull()
   })

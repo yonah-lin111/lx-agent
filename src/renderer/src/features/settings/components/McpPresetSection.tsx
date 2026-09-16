@@ -172,7 +172,7 @@ export const McpPresetSection = ({
                       onClick={() => onInstall(preset)}
                       textClass="text-white/70"
                       hoverBgClass="hover:bg-white/[0.08]"
-                      className="border border-white/10 bg-white/[0.03] px-2 font-medium cursor-pointer hover:border-white/20"
+                      className="border border-white/10 bg-white/[0.03] font-medium cursor-pointer hover:border-white/20"
                       icon={installing ? <Loader2 className="animate-spin" /> : <Download />}
                     >
                       <span>

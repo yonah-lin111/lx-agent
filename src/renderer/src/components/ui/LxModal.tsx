@@ -116,7 +116,7 @@ export const LxModal = ({
     >
       <section
         aria-labelledby="lx-modal-title"
-        className={`relative z-[999999] flex flex-col overflow-hidden rounded-[6px] bg-[#303030] p-4 text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)] select-text ${animationClass}`}
+        className={`lx-modal-panel relative z-[999999] flex flex-col overflow-hidden rounded-[6px] bg-[#303030] p-4 text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)] select-text ${animationClass}`}
         style={{ width, height, minWidth, maxWidth, minHeight, maxHeight }}
       >
         <header className="mb-3 flex shrink-0 items-center justify-between gap-3">

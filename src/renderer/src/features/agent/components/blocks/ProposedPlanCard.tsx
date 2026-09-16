@@ -196,7 +196,7 @@ export const ProposedPlanCard = ({
               onClick={handleAccept}
               textClass="text-white"
               hoverBgClass="hover:bg-emerald-500"
-              className="proposed-plan-accept-btn bg-emerald-600 px-3 py-1 text-xs font-medium max-w-full"
+              className="proposed-plan-accept-btn bg-emerald-600 py-1 text-xs font-medium max-w-full"
               icon={
                 isExecutionDisabled ? (
                   <Check className="shrink-0 text-white/30" />

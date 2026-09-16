@@ -337,7 +337,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                     hoverTextClass=""
                     highlightBgClass={chrome.activeBg}
                     highlightTextClass={chrome.activeText}
-                    className={`project-recent-tag cursor-pointer border px-2 font-semibold select-none ${
+                    className={`project-recent-tag cursor-pointer border font-semibold select-none ${
                       isActive
                         ? `${chrome.activeBorder} ${chrome.activeBg} ${chrome.activeText}`
                         : chrome.idle

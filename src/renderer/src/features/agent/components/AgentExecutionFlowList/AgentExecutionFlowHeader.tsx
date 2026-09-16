@@ -253,7 +253,7 @@ export const AgentExecutionFlowHeader = ({
         hoverTextClass={tabColor.hoverText}
         highlightBgClass={tabColor.highlightBg}
         highlightTextClass={tabColor.highlightText}
-        className={`shrink-0 px-2 font-mono ${isActive ? (tabColor.highlightExtra ?? "") : ""}`}
+        className={`shrink-0 font-mono ${isActive ? (tabColor.highlightExtra ?? "") : ""}`}
         icon={
           tabColor.dot ? (
             <span

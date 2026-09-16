@@ -452,7 +452,7 @@ export const ReviewFindingsCard = ({
                 disabled={selectedFindings.length === 0}
                 onClick={handleFillInput}
                 textClass="text-white/80"
-                className="review-findings-fill-btn border border-white/10 px-2.5 py-1 text-xs max-w-full"
+                className="review-findings-fill-btn border border-white/10 py-1 text-xs max-w-full"
               >
                 <span className="break-words">{t("agent.review.fillInput")}</span>
               </LxIconButton>
@@ -465,7 +465,7 @@ export const ReviewFindingsCard = ({
                 onClick={handleApplyFixes}
                 textClass="text-white"
                 hoverBgClass="hover:bg-violet-500"
-                className="review-findings-apply-btn bg-violet-600 px-3 py-1 text-xs font-medium max-w-full"
+                className="review-findings-apply-btn bg-violet-600 py-1 text-xs font-medium max-w-full"
                 icon={
                   isExecutionDisabled ? (
                     <Check className="shrink-0 text-white/30" />

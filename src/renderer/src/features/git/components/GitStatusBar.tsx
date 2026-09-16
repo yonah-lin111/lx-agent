@@ -247,7 +247,7 @@ export const GitStatusBar = ({
               ? "text-violet-300"
               : "text-white/50"
         }
-        className={`min-w-0 px-1.5 py-0.5 text-xs ${
+        className={`min-w-0 py-0.5 text-xs ${
           isCurrentPathDesktop ? "font-medium" : ""
         } ${isUnimported ? "opacity-75" : ""}`}
         icon={
@@ -471,7 +471,7 @@ export const GitStatusBar = ({
       >
         <LxIconButton
           textClass="text-white/70"
-          className="shrink-0 px-1 py-0.5 text-xs"
+          className="shrink-0 py-0.5 text-xs"
           icon={<GitBranch className="text-emerald-400" />}
         >
           <span>{displayBranch}</span>
@@ -581,7 +581,7 @@ export const GitStatusBar = ({
       >
         <LxIconButton
           textClass="text-white/70"
-          className="shrink-0 px-1 py-0.5 text-xs"
+          className="shrink-0 py-0.5 text-xs"
           icon={<GitFork className="text-amber-400" />}
         >
           <span>{displayWorktree}</span>

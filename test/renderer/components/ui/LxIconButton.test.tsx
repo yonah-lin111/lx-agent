@@ -98,6 +98,36 @@ describe("LxIconButton", () => {
     expect(large.container.querySelector("button")?.className).toContain("h-8")
   })
 
+  it("带文字按钮按尺寸档位托管左右内边距，对齐 LxNavItem：small=px-2，medium=px-2.5，large=px-3", () => {
+    const small = render(
+      <LxIconButton icon={<span />} iconOnly={false} size="small" aria-label="pad-small">
+        label
+      </LxIconButton>,
+    )
+    const smallClasses = small.container.querySelector("button")?.classList
+    expect(smallClasses?.contains("px-2")).toBe(true)
+    expect(smallClasses?.contains("px-2.5")).toBe(false)
+
+    const medium = render(
+      <LxIconButton icon={<span />} iconOnly={false} size="medium" aria-label="pad-medium">
+        label
+      </LxIconButton>,
+    )
+    expect(medium.container.querySelector("button")?.classList.contains("px-2.5")).toBe(true)
+
+    const large = render(
+      <LxIconButton icon={<span />} iconOnly={false} size="large" aria-label="pad-large">
+        label
+      </LxIconButton>,
+    )
+    expect(large.container.querySelector("button")?.classList.contains("px-3")).toBe(true)
+
+    const iconOnly = render(<LxIconButton aria-label="pad-icon-only" />)
+    const iconOnlyClasses = iconOnly.container.querySelector("button")?.classList
+    expect(iconOnlyClasses?.contains("w-7")).toBe(true)
+    expect(iconOnlyClasses?.contains("px-2.5")).toBe(false)
+  })
+
   it("图标尺寸统一映射：按钮直接子级 svg 按 size 档位强制尺寸", () => {
     const small = render(
       <LxIconButton size="small" aria-label="icon-small">

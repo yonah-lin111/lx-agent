@@ -236,7 +236,7 @@ export const AgentTabBar = (): React.JSX.Element => {
                         : () => handleCloseTab(tab.id)
                       : undefined
                   }
-                  className={`max-w-[140px] border px-2 cursor-pointer ${
+                  className={`max-w-[140px] border cursor-pointer ${
                     isStreaming
                       ? isActive
                         ? "border-amber-500/50 bg-amber-500/20 text-amber-200 font-medium shadow-sm"
