@@ -1,7 +1,13 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
 import { cleanUserPrompt } from "./components/AgentMessageList/AgentMessageItem/utils"
 import { getModelDisplayName } from "./hooks/modelsStore"
-import type { ChatBlock, ChatMessage, ExecutionStep, ExecutionStepStatus } from "./types"
+import type {
+  ChatBlock,
+  ChatMessage,
+  ExecutionStep,
+  ExecutionStepStatus,
+  TokenSaverHit,
+} from "./types"
 
 /**
  * 截断文本为单行预览。
@@ -59,6 +65,18 @@ export const buildExecutionSteps = (
     for (const block of message.blocks) {
       if (block.kind === "toolResult") {
         toolResultsByCallId.set(block.toolCallId, { block, timestamp: message.timestamp })
+      }
+    }
+  }
+
+  // Token Saver 逐工具命中：压缩发生在工具结果之后的下一轮请求，命中记录挂在其后的 assistant 消息上；
+  // 同一输出在后续请求会被重复压缩，取首次命中为准。
+  const tokenSaverHitByToolCallId = new Map<string, TokenSaverHit>()
+  for (const message of messages) {
+    if (message.role !== "assistant") continue
+    for (const hit of message.tokenSaver?.hits ?? []) {
+      if (!tokenSaverHitByToolCallId.has(hit.toolCallId)) {
+        tokenSaverHitByToolCallId.set(hit.toolCallId, hit)
       }
     }
   }
@@ -469,6 +487,7 @@ export const buildExecutionSteps = (
               : toolTokens
                 ? message.tokenSaver
                 : undefined,
+            tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
             subagentContent: {
               name: subagentName,
               subagent: subagentData,
@@ -502,6 +521,7 @@ export const buildExecutionSteps = (
             parallel: parallelMeta,
             tokens: toolTokens,
             tokenSaver: toolTokens ? message.tokenSaver : undefined,
+            tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
             toolContent: {
               toolName: block.toolName,
               toolCallId: block.toolCallId,

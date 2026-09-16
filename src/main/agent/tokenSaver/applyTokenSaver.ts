@@ -4,8 +4,11 @@ import type { TokenSaverRun } from "@shared/contracts/agent"
 import type { TokenSaverSettings } from "@shared/settings"
 import type { LlmMessage } from "@/agent/core/types"
 import { buildTokenSaverPromptSuffix } from "./prompts"
-import type { RtkCompressionStats } from "./rtk/applyFilter"
-import { compressToolResultMessages } from "./rtk/compress"
+import {
+  compressToolResultMessages,
+  createRtkCompressionStats,
+  type RtkCompressionStats,
+} from "./rtk/compress"
 
 // 出站请求载荷。
 export interface TokenSaverRequest {
@@ -27,6 +30,7 @@ const buildRunRecord = (
   if (stats.filters.size > 0) {
     run.rtkFilters = [...stats.filters]
     run.rtkSavedChars = stats.savedChars
+    run.hits = stats.hits
   }
   if (settings.cavemanEnabled) run.cavemanLevel = settings.cavemanLevel
   if (settings.ponytailEnabled) run.ponytailLevel = settings.ponytailLevel
@@ -39,7 +43,7 @@ export const applyTokenSaver = (
   settings: TokenSaverSettings,
 ): TokenSaverTransformResult => {
   try {
-    const stats: RtkCompressionStats = { filters: new Set(), savedChars: 0 }
+    const stats = createRtkCompressionStats()
     const messages = settings.rtkEnabled
       ? compressToolResultMessages(request.messages, stats)
       : request.messages

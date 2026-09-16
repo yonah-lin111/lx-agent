@@ -1,19 +1,55 @@
-import type { TokenSaverRun } from "@shared/contracts/agent"
+import type { TokenSaverHit, TokenSaverRun } from "@shared/contracts/agent"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 import { formatTokensShort } from "./types"
 
 export interface FlowItemTokenSaverBadgeProps {
-  run: TokenSaverRun
+  // 请求级生效记录（RTK 汇总 + 风格提示词档位）。
+  run?: TokenSaverRun
+  // 单条工具输出的 RTK 命中记录（存在时优先展示，避免与请求级汇总重复）。
+  hit?: TokenSaverHit
 }
 
 /**
- * 渲染请求级 Token Saver 生效标注（RTK 工具输出压缩 / Caveman / Ponytail 风格提示词）。
+ * 渲染请求级 / 单工具级 Token Saver 生效标注（RTK 工具输出压缩 / Caveman / Ponytail 风格提示词）。
  */
 export const FlowItemTokenSaverBadge = ({
   run,
+  hit,
 }: FlowItemTokenSaverBadgeProps): React.JSX.Element | null => {
   const { t } = useTranslation()
+
+  // 单工具命中：只展示该条输出的压缩收益。
+  if (hit) {
+    return (
+      <LxTooltip
+        placement="top"
+        className="min-w-0 max-w-full"
+        content={
+          <div className="flex flex-col gap-0.5 font-mono text-xs">
+            <div className="border-b border-white/10 pb-0.5 text-white/60">
+              {t("agent.tokenSaverTitle")}
+            </div>
+            <span>
+              {t("agent.tokenSaverRtkDetail", {
+                filters: hit.filter,
+                saved: hit.savedChars.toLocaleString(),
+              })}
+            </span>
+          </div>
+        }
+      >
+        <span
+          data-testid="flow-item-token-saver"
+          className="inline-block min-w-0 max-w-full truncate leading-none text-white/35 select-text tabular-nums cursor-default hover:text-white/60 transition-colors"
+        >
+          {t("agent.tokenSaverRtkBadge", { saved: formatTokensShort(hit.savedChars) })}
+        </span>
+      </LxTooltip>
+    )
+  }
+
+  if (!run) return null
 
   // 标注片段：RTK 携带节省字符数，风格提示词携带档位。
   const parts: string[] = []

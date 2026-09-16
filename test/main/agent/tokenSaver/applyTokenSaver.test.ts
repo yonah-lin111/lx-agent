@@ -19,13 +19,21 @@ const makeLongDiff = (): string => {
   return lines.join("\n")
 }
 
-const makeToolResult = (text: string, isError = false): LlmMessage => ({
+const makeToolResult = (text: string, isError = false, toolCallId = "call_1"): LlmMessage => ({
   role: "toolResult",
-  toolCallId: "call_1",
+  toolCallId,
   toolName: "bash",
   content: [{ type: "text", text }],
   isError,
 })
+
+const makeGrepOutput = (): string => {
+  const lines: string[] = []
+  for (let i = 1; i <= 40; i++) {
+    lines.push(`src/foo.js:${i}:const x${i} = "some value here with padding text padding text"`)
+  }
+  return lines.join("\n")
+}
 
 const toolResultText = (message: LlmMessage): string => {
   if (message.role !== "toolResult") throw new Error("not a toolResult message")
@@ -109,6 +117,26 @@ describe("applyTokenSaver 工具输出压缩", () => {
     expect(out.run?.rtkSavedChars).toBeGreaterThan(0)
     expect(out.run?.cavemanLevel).toBeUndefined()
     expect(out.run?.ponytailLevel).toBeUndefined()
+  })
+
+  it("逐工具输出记录命中明细（按 toolCallId 归因）", () => {
+    const request = {
+      systemPrompt: "sys",
+      messages: [
+        makeToolResult(makeLongDiff(), false, "call_diff"),
+        makeToolResult(makeGrepOutput(), false, "call_grep"),
+      ],
+    }
+    const out = applyTokenSaver(request, withSettings({ rtkEnabled: true }))
+    expect(out.run?.hits).toHaveLength(2)
+    expect(out.run?.hits?.[0]).toMatchObject({
+      toolCallId: "call_diff",
+      toolName: "bash",
+      filter: RTK_FILTER_NAMES.GIT_DIFF,
+    })
+    expect(out.run?.hits?.[0]?.savedChars).toBeGreaterThan(0)
+    expect(out.run?.hits?.[1]?.toolCallId).toBe("call_grep")
+    expect(out.run?.hits?.[1]?.filter).toBe(RTK_FILTER_NAMES.GREP)
   })
 
   it("RTK 未命中任何过滤器时不记录生效记录", () => {

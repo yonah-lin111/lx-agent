@@ -611,9 +611,9 @@ export const AgentExecutionFlowItem = ({
               </LxTooltip>
             ) : null}
 
-            {/* 请求级 Token Saver 生效标注（RTK / Caveman / Ponytail） */}
-            {!isRunning && step.tokenSaver ? (
-              <FlowItemTokenSaverBadge run={step.tokenSaver} />
+            {/* 请求级 / 单工具级 Token Saver 生效标注（RTK / Caveman / Ponytail） */}
+            {!isRunning && (step.tokenSaverHit || step.tokenSaver) ? (
+              <FlowItemTokenSaverBadge run={step.tokenSaver} hit={step.tokenSaverHit} />
             ) : null}
 
             {/* Subagent 步骤下的 Detail 按钮 */}

@@ -383,7 +383,7 @@ describe("safeApplyFilter 与 compressToolOutputText", () => {
     }
     try {
       expect(safeApplyFilter(RTK_FILTER_NAMES.GREP, "a.js:1:hello")).toBe("a.js:1:hello")
-      expect(compressToolOutputText(makeGrepOutput())).toBe(makeGrepOutput())
+      expect(compressToolOutputText(makeGrepOutput()).text).toBe(makeGrepOutput())
     } finally {
       RTK_FILTERS[RTK_FILTER_NAMES.GREP] = original
     }
@@ -391,12 +391,12 @@ describe("safeApplyFilter 与 compressToolOutputText", () => {
 
   it("低于最小压缩阈值不处理", () => {
     const small = "diff --git a/x b/x\n@@ -1 +1 @@\n+a"
-    expect(compressToolOutputText(small)).toBe(small)
+    expect(compressToolOutputText(small).text).toBe(small)
   })
 
   it("压缩后无收益时返回原文", () => {
     const input = "a".repeat(1000)
-    expect(compressToolOutputText(input)).toBe(input)
+    expect(compressToolOutputText(input).text).toBe(input)
   })
 
   it("全部过滤器名称均可命中注册表", () => {

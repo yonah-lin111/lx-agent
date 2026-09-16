@@ -12,6 +12,7 @@ import type {
   QuestionRequest,
   StopReason,
   SubagentData,
+  TokenSaverHit,
   TokenSaverRun,
   Usage,
   UserMessageCommand,
@@ -40,6 +41,8 @@ export type {
   StopReason,
   SubagentData,
   SubagentStep,
+  TokenSaverHit,
+  TokenSaverRun,
   ToolResultMessage,
   UndoSummaryMessage,
   Usage,
@@ -277,6 +280,8 @@ export interface ExecutionStep {
   }
   // 本轮请求实际生效的 Token Saver 记录（请求级，与 tokens 同点位展示）。
   tokenSaver?: TokenSaverRun
+  // 本条工具输出的 RTK 压缩命中（按 toolCallId 归因；优先于请求级记录展示）。
+  tokenSaverHit?: TokenSaverHit
   // 并行调用元数据（单次模型响应并发触发多个工具调用时存在）。
   parallel?: ExecutionStepParallel
   // 系统提示词与注入配置内容。

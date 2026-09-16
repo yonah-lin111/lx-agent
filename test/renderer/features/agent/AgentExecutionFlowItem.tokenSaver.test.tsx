@@ -56,6 +56,33 @@ describe("AgentExecutionFlowItem - Token Saver 底部标注", () => {
     expect(screen.getByTestId("flow-item-token-saver").textContent).toBe("Ponytail full")
   })
 
+  it("单工具命中优先展示过滤器级标注（不与请求级汇总重复）", () => {
+    render(
+      <AgentExecutionFlowItem
+        step={makeStep({
+          kind: "tool",
+          title: "bash",
+          tokens: { input: 4200, output: 180, total: 4380 },
+          tokenSaver: {
+            rtkFilters: ["git-log"],
+            rtkSavedChars: 1341,
+            cavemanLevel: "full",
+          },
+          tokenSaverHit: {
+            toolCallId: "call-1",
+            toolName: "bash",
+            filter: "git-log",
+            savedChars: 1341,
+          },
+        })}
+        isExpanded={false}
+        onToggleExpand={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId("flow-item-token-saver").textContent).toBe("RTK −1.3k")
+  })
+
   it("无 Token Saver 记录时不渲染标注", () => {
     render(
       <AgentExecutionFlowItem
