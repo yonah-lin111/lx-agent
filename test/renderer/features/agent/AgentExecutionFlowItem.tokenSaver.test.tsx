@@ -21,7 +21,7 @@ describe("AgentExecutionFlowItem - Token Saver 底部标注", () => {
     cleanup()
   })
 
-  it("RTK 命中与风格提示词生效时展示底部标注", () => {
+  it("回复步骤只展示风格提示词，不重复展示 RTK", () => {
     render(
       <AgentExecutionFlowItem
         step={makeStep({
@@ -38,7 +38,22 @@ describe("AgentExecutionFlowItem - Token Saver 底部标注", () => {
     )
 
     const badge = screen.getByTestId("flow-item-token-saver")
-    expect(badge.textContent).toBe("RTK −86k · Caveman ultra")
+    expect(badge.textContent).toBe("Caveman ultra")
+  })
+
+  it("回复步骤仅有 RTK 记录时不渲染标注（RTK 归工具步骤）", () => {
+    render(
+      <AgentExecutionFlowItem
+        step={makeStep({
+          tokens: { input: 4200, output: 180, total: 4380 },
+          tokenSaver: { rtkFilters: ["git-diff"], rtkSavedChars: 86412 },
+        })}
+        isExpanded={false}
+        onToggleExpand={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByTestId("flow-item-token-saver")).toBeNull()
   })
 
   it("Ponytail 档位展示在标注中", () => {

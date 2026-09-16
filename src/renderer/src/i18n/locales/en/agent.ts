@@ -195,7 +195,6 @@ export const agent = {
   parallelBatchTokenNotice:
     "Total token consumption for this parallel batch ({{total}} items, settled on last item)",
   tokenSaverTitle: "Token Saver",
-  tokenSaverRtk: "RTK",
   tokenSaverRtkBadge: "RTK −{{saved}}",
   tokenSaverRtkDetail: "RTK: {{filters}} — saved {{saved}} chars",
   tokenSaverCavemanBadge: "Caveman {{level}}",

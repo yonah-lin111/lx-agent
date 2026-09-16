@@ -482,11 +482,6 @@ export const buildExecutionSteps = (
                   total: subagentData.usage.totalTokens,
                 }
               : toolTokens,
-            tokenSaver: subagentData?.usage
-              ? undefined
-              : toolTokens
-                ? message.tokenSaver
-                : undefined,
             tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
             subagentContent: {
               name: subagentName,
@@ -520,7 +515,6 @@ export const buildExecutionSteps = (
             durationMs: toolDuration,
             parallel: parallelMeta,
             tokens: toolTokens,
-            tokenSaver: toolTokens ? message.tokenSaver : undefined,
             tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
             toolContent: {
               toolName: block.toolName,
@@ -770,6 +764,7 @@ export const buildExecutionSteps = (
           startedAt: orphanStartedAt,
           completedAt: message.timestamp,
           durationMs: block.durationMs,
+          tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
           toolContent: {
             toolName: block.toolName,
             toolCallId: block.toolCallId,

@@ -105,7 +105,7 @@
 - **提示词**：RTK 与 Caveman（Ultra）开启状态下发送 `执行 git log -p -5 并总结改动`
 - **验证步骤**：打开该轮的执行流程（AgentExecutionFlowList）→ 观察被压缩的工具步骤底栏（如 `bash` 的 git log 调用）→ 再观察最终回复步骤底栏 → 悬停两处标注查看明细 → 完全退出应用后重开，恢复该会话并再次观察同一轮。
 
-- **期望**：被压缩的**工具步骤**底栏显示 `RTK −86k` 这类标注（Tooltip：`RTK: git-log — saved 86,412 chars`），归因到该次工具调用；**回复步骤**底栏显示请求级汇总（`RTK −总计 · Caveman ultra · Ponytail full`）；同一请求不会在同一卡片的工具级与请求级之间重复展示 RTK 数值；RTK 未命中（短输出/RTK 关闭）或仅非 chat 请求（标题、建议问题、compact）时不显示标注；**重启应用恢复会话后标注仍在**（随 assistant 消息 entry payload 落库，工具步骤按 toolCallId 归因取首次命中）。
+- **期望**：被压缩的**工具步骤**底栏显示 `RTK −86k` 这类标注（Tooltip：`RTK: git-log — saved 86,412 chars`），归因到该次工具调用；**回复步骤**底栏只显示风格提示词（`Caveman ultra · Ponytail full`），不重复出现 RTK 数值；RTK 未命中（短输出/RTK 关闭）或仅非 chat 请求（标题、建议问题、compact）时不显示标注；**重启应用恢复会话后标注仍在**（随 assistant 消息 entry payload 落库，工具步骤按 toolCallId 归因取首次命中）。
 
 ---
 

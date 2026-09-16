@@ -922,8 +922,7 @@ describe("executionFlow", () => {
       })
     })
 
-    it("仅承载消息用量的工具步骤才标注，无用量时不标注", () => {
-      const tokenSaver = { rtkFilters: ["git-log"], rtkSavedChars: 1024 }
+    it("工具步骤只承载命中归因，未命中的工具步骤无标注", () => {
       const messages: ChatMessage[] = [
         {
           id: "a1",
@@ -940,7 +939,7 @@ describe("executionFlow", () => {
           isStreaming: false,
           timestamp: 1010,
           usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
-          tokenSaver,
+          tokenSaver: { rtkFilters: ["git-log"], rtkSavedChars: 1024 },
         },
         {
           id: "t1",
@@ -961,7 +960,9 @@ describe("executionFlow", () => {
 
       const steps = buildExecutionSteps(messages)
       const toolStep = steps.find((step) => step.kind === "tool")
-      expect(toolStep?.tokenSaver).toEqual(tokenSaver)
+      // 请求级记录不挂工具步骤；无后续命中映射时不产生工具级标注。
+      expect(toolStep?.tokenSaver).toBeUndefined()
+      expect(toolStep?.tokenSaverHit).toBeUndefined()
     })
 
     it("无 Token Saver 记录的消息不产生标注", () => {

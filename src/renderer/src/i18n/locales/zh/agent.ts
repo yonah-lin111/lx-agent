@@ -185,7 +185,6 @@ export const agent = {
   parallelBatchTotal: "并行总计",
   parallelBatchTokenNotice: "本次并发调用的整批总消耗（共 {{total}} 项，于末项统一结算）",
   tokenSaverTitle: "Token 节省",
-  tokenSaverRtk: "RTK",
   tokenSaverRtkBadge: "RTK −{{saved}}",
   tokenSaverRtkDetail: "RTK：{{filters}} — 节省 {{saved}} 字符",
   tokenSaverCavemanBadge: "Caveman {{level}}",

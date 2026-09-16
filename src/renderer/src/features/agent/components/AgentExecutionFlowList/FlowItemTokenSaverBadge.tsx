@@ -4,22 +4,26 @@ import { useTranslation } from "@/i18n"
 import { formatTokensShort } from "./types"
 
 export interface FlowItemTokenSaverBadgeProps {
-  // 请求级生效记录（RTK 汇总 + 风格提示词档位）。
-  run?: TokenSaverRun
-  // 单条工具输出的 RTK 命中记录（存在时优先展示，避免与请求级汇总重复）。
+  // 单条工具输出的 RTK 命中记录（工具步骤专用）。
   hit?: TokenSaverHit
+  // 请求级生效记录（回复步骤专用，仅展示输出风格提示词）。
+  run?: TokenSaverRun
 }
 
+// 标注基础样式。
+const BADGE_CLASS =
+  "inline-block min-w-0 max-w-full truncate leading-none text-white/35 select-text tabular-nums cursor-default hover:text-white/60 transition-colors"
+
 /**
- * 渲染请求级 / 单工具级 Token Saver 生效标注（RTK 工具输出压缩 / Caveman / Ponytail 风格提示词）。
+ * 渲染 Token Saver 生效标注：工具步骤展示 RTK 压缩命中，回复步骤展示输出风格提示词。
  */
 export const FlowItemTokenSaverBadge = ({
-  run,
   hit,
+  run,
 }: FlowItemTokenSaverBadgeProps): React.JSX.Element | null => {
   const { t } = useTranslation()
 
-  // 单工具命中：只展示该条输出的压缩收益。
+  // 工具级：只展示该条输出的压缩收益。
   if (hit) {
     return (
       <LxTooltip
@@ -39,32 +43,19 @@ export const FlowItemTokenSaverBadge = ({
           </div>
         }
       >
-        <span
-          data-testid="flow-item-token-saver"
-          className="inline-block min-w-0 max-w-full truncate leading-none text-white/35 select-text tabular-nums cursor-default hover:text-white/60 transition-colors"
-        >
+        <span data-testid="flow-item-token-saver" className={BADGE_CLASS}>
           {t("agent.tokenSaverRtkBadge", { saved: formatTokensShort(hit.savedChars) })}
         </span>
       </LxTooltip>
     )
   }
 
-  if (!run) return null
-
-  // 标注片段：RTK 携带节省字符数，风格提示词携带档位。
+  // 请求级：风格提示词档位（RTK 已在工具步骤归因，此处不重复）。
   const parts: string[] = []
-  const hasRtk = Boolean(run.rtkFilters && run.rtkFilters.length > 0)
-  if (hasRtk) {
-    parts.push(
-      run.rtkSavedChars !== undefined
-        ? t("agent.tokenSaverRtkBadge", { saved: formatTokensShort(run.rtkSavedChars) })
-        : t("agent.tokenSaverRtk"),
-    )
-  }
-  if (run.cavemanLevel) {
+  if (run?.cavemanLevel) {
     parts.push(t("agent.tokenSaverCavemanBadge", { level: run.cavemanLevel }))
   }
-  if (run.ponytailLevel) {
+  if (run?.ponytailLevel) {
     parts.push(t("agent.tokenSaverPonytailBadge", { level: run.ponytailLevel }))
   }
   if (parts.length === 0) return null
@@ -78,27 +69,16 @@ export const FlowItemTokenSaverBadge = ({
           <div className="border-b border-white/10 pb-0.5 text-white/60">
             {t("agent.tokenSaverTitle")}
           </div>
-          {hasRtk && run.rtkFilters ? (
-            <span>
-              {t("agent.tokenSaverRtkDetail", {
-                filters: run.rtkFilters.join(", "),
-                saved: (run.rtkSavedChars ?? 0).toLocaleString(),
-              })}
-            </span>
-          ) : null}
-          {run.cavemanLevel ? (
+          {run?.cavemanLevel ? (
             <span>{t("agent.tokenSaverCavemanDetail", { level: run.cavemanLevel })}</span>
           ) : null}
-          {run.ponytailLevel ? (
+          {run?.ponytailLevel ? (
             <span>{t("agent.tokenSaverPonytailDetail", { level: run.ponytailLevel })}</span>
           ) : null}
         </div>
       }
     >
-      <span
-        data-testid="flow-item-token-saver"
-        className="inline-block min-w-0 max-w-full truncate leading-none text-white/35 select-text tabular-nums cursor-default hover:text-white/60 transition-colors"
-      >
+      <span data-testid="flow-item-token-saver" className={BADGE_CLASS}>
         {parts.join(" · ")}
       </span>
     </LxTooltip>
