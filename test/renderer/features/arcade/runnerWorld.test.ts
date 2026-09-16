@@ -60,19 +60,26 @@ describe("剪影跃迁世界规则", () => {
 
   it("碰撞检测：贴地障碍站立即撞、悬空障碍站立安全但起跳会撞", () => {
     const groundObstacle = { x: 200, width: 40, height: 50, elevation: 0 }
-    expect(hasRunnerCollision(standingPlayer, groundObstacle)).toBe(true)
+    expect(hasRunnerCollision(standingPlayer, groundObstacle, 0)).toBe(true)
 
     const airObstacle = { x: 200, width: 40, height: 30, elevation: 78 }
-    expect(hasRunnerCollision(standingPlayer, airObstacle)).toBe(false)
+    expect(hasRunnerCollision(standingPlayer, airObstacle, 0)).toBe(false)
 
     const jumpingPlayer: RunnerPlayerBox = {
       ...standingPlayer,
       y: standingPlayer.y - 34,
     }
-    expect(hasRunnerCollision(jumpingPlayer, airObstacle)).toBe(true)
+    expect(hasRunnerCollision(jumpingPlayer, airObstacle, 0)).toBe(true)
 
     const farObstacle = { x: 900, width: 40, height: 50, elevation: 0 }
-    expect(hasRunnerCollision(standingPlayer, farObstacle)).toBe(false)
+    expect(hasRunnerCollision(standingPlayer, farObstacle, 0)).toBe(false)
+  })
+
+  it("碰撞检测按镜头距离换算世界坐标（障碍走到玩家所在屏幕位置才判定相交）", () => {
+    const obstacle = { x: 5000, width: 40, height: 50, elevation: 0 }
+    expect(hasRunnerCollision(standingPlayer, obstacle, 0)).toBe(false)
+    expect(hasRunnerCollision(standingPlayer, obstacle, 5000 - standingPlayer.x)).toBe(true)
+    expect(hasRunnerCollision(standingPlayer, obstacle, 5000 - standingPlayer.x + 4000)).toBe(false)
   })
 
   it("山脊采样确定性且首尾对齐形成可循环地形", () => {

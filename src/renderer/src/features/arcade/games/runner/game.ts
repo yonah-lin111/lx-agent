@@ -174,12 +174,13 @@ export const createRunnerGame = (): ArcadeGame => {
 
       spawnWorld()
 
-      // 玩家与障碍碰撞（只检测屏幕附近）
+      // 玩家与障碍碰撞（障碍为世界坐标，只检测屏幕附近的）
       const box = playerBox()
       for (const obstacle of obstacles) {
-        if (obstacle.x + obstacle.width < box.x) continue
-        if (obstacle.x > box.x + box.width + ARCADE_WIDTH) break
-        if (hasRunnerCollision(box, obstacle)) {
+        const screenX = obstacle.x - distance
+        if (screenX + obstacle.width < -40) continue
+        if (screenX > ARCADE_WIDTH + 40) break
+        if (hasRunnerCollision(box, obstacle, distance)) {
           finished = true
           hitFlashUntil = elapsed + 320
           burst(RUNNER_PLAYER_X + RUNNER_PLAYER_WIDTH, RUNNER_GROUND_Y - 30, 26)

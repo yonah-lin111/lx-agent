@@ -57,16 +57,22 @@ export const getRunnerSpawnGap = (random: () => number, speed: number): number =
   300 + random() * 260 + speed * 0.42
 
 /**
- * 轴对齐碰撞检测。
+ * 轴对齐碰撞检测：障碍为世界坐标，cameraDistance 为镜头已推进距离，
+ * 由本函数统一换算到屏幕空间（玩家碰撞盒一直位于固定屏幕位置）。
  */
-export const hasRunnerCollision = (player: RunnerPlayerBox, obstacle: RunnerObstacle): boolean => {
+export const hasRunnerCollision = (
+  player: RunnerPlayerBox,
+  obstacle: RunnerObstacle,
+  cameraDistance: number,
+): boolean => {
+  const obstacleLeft = obstacle.x - cameraDistance
+  const obstacleRight = obstacleLeft + obstacle.width
   const playerRight = player.x + player.width
   const playerBottom = player.y + player.height
-  const obstacleRight = obstacle.x + obstacle.width
   const obstacleBottom = RUNNER_GROUND_Y - obstacle.elevation
   const obstacleTop = obstacleBottom - obstacle.height
 
-  if (playerRight <= obstacle.x || player.x >= obstacleRight) return false
+  if (playerRight <= obstacleLeft || player.x >= obstacleRight) return false
   return player.y < obstacleBottom && playerBottom > obstacleTop
 }
 
