@@ -10,7 +10,6 @@ export const OpenClawMessageItem = ({
   agent,
   targetAgents,
   isStreaming = false,
-  stats,
 }: OpenClawMessageItemProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -39,7 +38,6 @@ export const OpenClawMessageItem = ({
       error={message.status === "error" ? message.error : undefined}
       agent={agent}
       isStreaming={isStreaming}
-      stats={stats}
     />
   )
 }

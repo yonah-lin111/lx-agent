@@ -110,75 +110,23 @@ describe("OpenClawMessageList & OpenClawMessageItem", () => {
     expect(screen.queryByText(/coworker/)).toBeNull()
   })
 
-  it("每条 AI 消息展示各自记录的模型与该轮上下文用量", () => {
+  it("消息头部不再渲染模型与上下文统计", () => {
     const timeline: OfficeTimelineMessage[] = [
       { agentId: "lily", message: user("u1", "assign", 100) },
       {
         agentId: "lily",
-        message: assistant("a1", "first", 200, {
+        message: assistant("a1", "reply", 200, {
           model: "gpt-5.2",
           modelProvider: "openai",
           usage: { input: 100000, output: 10 },
         }),
       },
-      {
-        agentId: "lily",
-        message: assistant("a2", "second", 300, {
-          model: "gemini-3.8-flash",
-          modelProvider: "google",
-          usage: { input: 250000, output: 20 },
-        }),
-      },
-    ]
-
-    render(
-      <OpenClawMessageList
-        timeline={timeline}
-        agents={agents}
-        sessionStats={{ lily: { contextWindow: 1000000 } }}
-      />,
-    )
-
-    expect(screen.getByText("gpt-5.2")).not.toBeNull()
-    expect(screen.getByText("10%")).not.toBeNull()
-    expect(screen.getByText("gemini-3.8-flash")).not.toBeNull()
-    expect(screen.getByText("25%")).not.toBeNull()
-  })
-
-  it("流式消息无记录值时回退展示会话级实时模型与上下文", () => {
-    const timeline: OfficeTimelineMessage[] = [
-      { agentId: "lily", message: user("u1", "assign", 100) },
-      { agentId: "lily", message: { ...assistant("a1", "", 200), status: "streaming" } },
-    ]
-
-    render(
-      <OpenClawMessageList
-        timeline={timeline}
-        agents={agents}
-        sessionStats={{
-          lily: {
-            model: "gemini-3.8-flash",
-            modelProvider: "google",
-            contextUsed: 250000,
-            contextWindow: 1000000,
-          },
-        }}
-      />,
-    )
-
-    expect(screen.getByText("gemini-3.8-flash")).not.toBeNull()
-    expect(screen.getByText("25%")).not.toBeNull()
-  })
-
-  it("无统计信息时不在名称右侧渲染模型与上下文", () => {
-    const timeline: OfficeTimelineMessage[] = [
-      { agentId: "lily", message: user("u1", "assign", 100) },
-      { agentId: "lily", message: assistant("a1", "reply", 200) },
     ]
 
     render(<OpenClawMessageList timeline={timeline} agents={agents} />)
 
-    expect(screen.queryByText("gemini-3.8-flash")).toBeNull()
+    expect(screen.getByText("reply")).not.toBeNull()
+    expect(screen.queryByText("gpt-5.2")).toBeNull()
     expect(screen.queryByText(/^\d+%$/)).toBeNull()
   })
 

@@ -1,42 +1,17 @@
-import type { OpenClawChatMessage, OpenClawSessionStats } from "@shared/contracts/openclaw"
 import { ArrowDownToLine } from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useTranslation } from "@/i18n"
 import type { OfficeTimelineMessage } from "../../hooks/useOpenClawOffice"
-import {
-  type ConversationAgent,
-  OpenClawMessageItem,
-  type OpenClawMessageStats,
-} from "./OpenClawMessageItem"
+import { type ConversationAgent, OpenClawMessageItem } from "./OpenClawMessageItem"
 
 // 视为"在底部附近"的滚动余量（px）。
 const NEAR_BOTTOM_THRESHOLD = 150
 
-// 组装单条消息的展示统计：优先该条消息记录值，缺失时回退会话级实时值。
-const resolveMessageStats = (
-  message: OpenClawChatMessage,
-  session: OpenClawSessionStats | undefined,
-): OpenClawMessageStats | undefined => {
-  const model = message.model ?? session?.model
-  const modelProvider = message.modelProvider ?? session?.modelProvider
-  const contextUsed = message.usage?.input ?? session?.contextUsed
-  const stats: OpenClawMessageStats = {
-    ...(model ? { model } : {}),
-    ...(modelProvider ? { modelProvider } : {}),
-    ...(contextUsed !== undefined ? { contextUsed } : {}),
-    ...(session?.contextWindow !== undefined ? { contextWindow: session.contextWindow } : {}),
-    ...(message.usage?.output !== undefined ? { outputTokens: message.usage.output } : {}),
-  }
-  return Object.keys(stats).length > 0 ? stats : undefined
-}
-
 export interface OpenClawMessageListProps {
   timeline: OfficeTimelineMessage[]
   agents: ConversationAgent[]
-  // 各 Agent 的会话级模型与上下文用量（流式消息回退展示）。
-  sessionStats?: Record<string, OpenClawSessionStats | undefined>
 }
 
 /**
@@ -45,7 +20,6 @@ export interface OpenClawMessageListProps {
 export const OpenClawMessageList = ({
   timeline,
   agents,
-  sessionStats,
 }: OpenClawMessageListProps): React.JSX.Element => {
   const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -148,11 +122,6 @@ export const OpenClawMessageList = ({
                 agent={agent}
                 targetAgents={targetAgents}
                 isStreaming={message.status === "streaming"}
-                stats={
-                  message.role === "assistant"
-                    ? resolveMessageStats(message, sessionStats?.[agentId])
-                    : undefined
-                }
               />
             )
           })}
