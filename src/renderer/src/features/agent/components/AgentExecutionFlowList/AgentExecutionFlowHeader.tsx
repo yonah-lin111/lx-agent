@@ -63,6 +63,22 @@ const FILTER_TAB_COLORS: Record<
     highlightExtra: "font-semibold ring-1 ring-amber-500/30",
     dot: "bg-amber-400",
   },
+  mcp: {
+    highlightBg: "bg-teal-500/20",
+    highlightText: "text-cyan-300",
+    hoverBg: "hover:bg-teal-500/10",
+    hoverText: "hover:text-cyan-300",
+    highlightExtra: "font-semibold ring-1 ring-cyan-500/30",
+    dot: "bg-cyan-400",
+  },
+  webSearch: {
+    highlightBg: "bg-sky-500/20",
+    highlightText: "text-sky-300",
+    hoverBg: "hover:bg-sky-500/10",
+    hoverText: "hover:text-sky-300",
+    highlightExtra: "font-semibold ring-1 ring-sky-500/30",
+    dot: "bg-sky-400",
+  },
   thinking: {
     highlightBg: "bg-purple-500/20",
     highlightText: "text-purple-300",
@@ -279,6 +295,9 @@ export const AgentExecutionFlowHeader = ({
             {filterCounts.system > 0 &&
               renderTab("system", t("agent.filterSystem"), filterCounts.system)}
             {filterCounts.tool > 0 && renderTab("tool", t("agent.filterTools"), filterCounts.tool)}
+            {filterCounts.mcp > 0 && renderTab("mcp", t("agent.filterMcp"), filterCounts.mcp)}
+            {filterCounts.webSearch > 0 &&
+              renderTab("webSearch", t("agent.filterWebSearch"), filterCounts.webSearch)}
             {filterCounts.thinking > 0 &&
               renderTab("thinking", t("agent.filterThinking"), filterCounts.thinking)}
             {filterCounts.subagent > 0 &&

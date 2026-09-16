@@ -1,8 +1,9 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { isMcpToolCall } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import { buildExecutionSteps, reuseExecutionSteps } from "@/features/agent/executionFlow"
 import type { ChatMessage, ExecutionStep } from "@/features/agent/types"
-import type { FilterKind, FlowRenderElement } from "../types"
+import { type FilterKind, type FlowRenderElement, isWebSearchTool } from "../types"
 
 type UseFlowStepsOptions = {
   messages: readonly ChatMessage[]
@@ -186,6 +187,27 @@ export const useFlowSteps = ({
     if (activeFilter === "all") return steps
     if (activeFilter === "calls") {
       return steps.filter((step) => step.kind === "tool" || step.kind === "subagent")
+    }
+    if (activeFilter === "mcp") {
+      return steps.filter((step) => {
+        if (step.kind !== "tool") return false
+        const toolName = step.toolContent?.toolName || step.title
+        return isMcpToolCall(toolName)
+      })
+    }
+    if (activeFilter === "webSearch") {
+      return steps.filter((step) => {
+        if (step.kind !== "tool") return false
+        const toolName = step.toolContent?.toolName || step.title
+        return isWebSearchTool(toolName)
+      })
+    }
+    if (activeFilter === "tool") {
+      return steps.filter((step) => {
+        if (step.kind !== "tool") return false
+        const toolName = step.toolContent?.toolName || step.title
+        return !isMcpToolCall(toolName) && !isWebSearchTool(toolName)
+      })
     }
     return steps.filter((step) => step.kind === activeFilter)
   }, [steps, activeFilter])

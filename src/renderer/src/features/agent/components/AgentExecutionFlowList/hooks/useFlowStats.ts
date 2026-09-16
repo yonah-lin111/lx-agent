@@ -1,6 +1,7 @@
 import { useMemo } from "react"
+import { isMcpToolCall } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import type { ExecutionStep } from "@/features/agent/types"
-import type { ExecutionFlowStats, FilterKind, TurnStats } from "../types"
+import { type ExecutionFlowStats, type FilterKind, isWebSearchTool, type TurnStats } from "../types"
 
 type UseFlowStatsOptions = {
   steps: ExecutionStep[]
@@ -192,6 +193,8 @@ export const useFlowStats = ({
       user: 0,
       thinking: 0,
       tool: 0,
+      mcp: 0,
+      webSearch: 0,
       subagent: 0,
       compaction: 0,
       undo: 0,
@@ -204,9 +207,21 @@ export const useFlowStats = ({
       error: 0,
     }
     for (const step of steps) {
-      counts[step.kind]++
-      if (step.kind === "tool" || step.kind === "subagent") {
+      if (step.kind === "tool") {
+        const toolName = step.toolContent?.toolName || step.title
+        if (isWebSearchTool(toolName)) {
+          counts.webSearch++
+        } else if (isMcpToolCall(toolName)) {
+          counts.mcp++
+        } else {
+          counts.tool++
+        }
         counts.calls++
+      } else {
+        counts[step.kind]++
+        if (step.kind === "subagent") {
+          counts.calls++
+        }
       }
     }
     return counts

@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import type React from "react"
 import type { LxTagColor } from "@/components/ui/LxTag"
+import { isMcpToolCall } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import type { useModelSettings } from "@/features/agent/hooks/modelsStore"
 import type {
   ChatMessage,
@@ -32,7 +33,10 @@ import type {
 } from "@/features/agent/types"
 import type { TranslationKey } from "@/i18n"
 
-export type FilterKind = "all" | "calls" | ExecutionStepKind
+export type FilterKind = "all" | "calls" | "mcp" | "webSearch" | ExecutionStepKind
+
+export const isWebSearchTool = (toolName: string): boolean =>
+  toolName === "web_search" || toolName === "webfetch"
 
 export interface ExecutionFlowStats {
   turnsCount: number
@@ -177,6 +181,23 @@ export const getKindMeta = (
     case "thinking":
       return { icon: Brain, labelKey: "agent.kindThinking", tagColor: "purple" }
     case "tool": {
+      const toolName = step.toolContent?.toolName || step.title
+      if (isWebSearchTool(toolName)) {
+        return {
+          icon: Search,
+          labelKey: "agent.kindWebSearch",
+          tagColor: "sky",
+          textColor: "text-sky-300",
+        }
+      }
+      if (isMcpToolCall(toolName)) {
+        return {
+          icon: Terminal,
+          labelKey: "agent.kindMcp",
+          tagColor: "teal",
+          textColor: "text-cyan-300",
+        }
+      }
       return {
         labelKey: "agent.kindTool",
         tagColor: "amber",

@@ -10,6 +10,8 @@ const FILTER_COUNTS: Record<FilterKind, number> = {
   calls: 0,
   system: 0,
   tool: 2,
+  mcp: 0,
+  webSearch: 0,
   thinking: 1,
   subagent: 0,
   user: 0,
@@ -112,5 +114,40 @@ describe("AgentExecutionFlowHeader 筛选 Tab", () => {
 
     expect(container.querySelector(".lucide-arrow-left")).not.toBeNull()
     expect(container.querySelector(".lucide-arrow-right")).not.toBeNull()
+  })
+
+  it("mcp 与 webSearch Tab 正常展示并应用对应高亮配色", () => {
+    const counts: Record<FilterKind, number> = {
+      ...FILTER_COUNTS,
+      mcp: 3,
+      webSearch: 2,
+    }
+    const { container, rerender } = render(
+      <AgentExecutionFlowHeader
+        stepsCount={5}
+        activeFilter="mcp"
+        filterCounts={counts}
+        stats={STATS}
+        onFilterChange={() => {}}
+      />,
+    )
+
+    const mcpActive = buttonClasses(container).find((c) => c.includes("bg-teal-500/20"))
+    expect(mcpActive).toBeDefined()
+    expect(mcpActive).toContain("text-cyan-300")
+
+    rerender(
+      <AgentExecutionFlowHeader
+        stepsCount={5}
+        activeFilter="webSearch"
+        filterCounts={counts}
+        stats={STATS}
+        onFilterChange={() => {}}
+      />,
+    )
+
+    const webSearchActive = buttonClasses(container).find((c) => c.includes("bg-sky-500/20"))
+    expect(webSearchActive).toBeDefined()
+    expect(webSearchActive).toContain("text-sky-300")
   })
 })
