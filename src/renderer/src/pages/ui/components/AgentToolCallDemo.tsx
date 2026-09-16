@@ -191,7 +191,7 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
               },
               {
                 type: "mcp",
-                dotColor: "bg-cyan-300",
+                dotColor: "bg-teal-300",
                 node: <AgentMcpCallBlock toolCalls={MCP_CALLS} />,
               },
             ]}
@@ -219,12 +219,12 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
               },
               {
                 type: "mcp",
-                dotColor: "bg-cyan-300",
+                dotColor: "bg-teal-300",
                 node: <AgentMcpCallBlock toolCalls={MCP_CALLS} />,
               },
               {
                 type: "webSearch",
-                dotColor: "bg-emerald-300",
+                dotColor: "bg-sky-300",
                 node: <AgentWebSearchBlock toolCalls={WEB_SEARCH_CALLS} />,
               },
             ]}

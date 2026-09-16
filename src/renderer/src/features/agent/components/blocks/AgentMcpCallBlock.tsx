@@ -54,8 +54,8 @@ export const AgentMcpCallBlock = ({
   return (
     <div className="agent-mcp-call-block my-0.5 min-w-0">
       <div className="agent-mcp-header flex items-center gap-1">
-        <Server className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
-        <span className="agent-mcp-name font-mono text-xs font-bold text-cyan-300">
+        <Server className="h-3.5 w-3.5 shrink-0 text-teal-300" />
+        <span className="agent-mcp-name font-mono text-xs font-bold text-teal-300">
           MCP · {serverName}
         </span>
       </div>

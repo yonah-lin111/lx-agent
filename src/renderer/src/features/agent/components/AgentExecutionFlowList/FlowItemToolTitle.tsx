@@ -1,6 +1,7 @@
 import { Bot, FileCode, Folder, Globe, ListTodo, Search, Sparkles } from "lucide-react"
 import type React from "react"
 import { BUILTIN_UNDERSCORE_TOOLS } from "@/features/agent/components/AgentMessageList/AgentMessageItem/constants"
+import { parseMcpToolName } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import type { ExecutionToolContent } from "@/features/agent/types"
 
 export interface FlowItemToolTitleProps {
@@ -181,7 +182,7 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
     const query = typeof toolContent.args?.query === "string" ? toolContent.args.query.trim() : ""
     return (
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <span className="shrink-0 font-mono text-xs font-medium leading-none text-emerald-300">
+        <span className="shrink-0 font-mono text-xs font-medium leading-none text-sky-300">
           web_search
         </span>
         {query && (
@@ -198,7 +199,7 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
     const url = typeof toolContent.args?.url === "string" ? toolContent.args.url.trim() : ""
     return (
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <span className="shrink-0 font-mono text-xs font-medium leading-none text-emerald-300">
+        <span className="shrink-0 font-mono text-xs font-medium leading-none text-sky-300">
           webfetch
         </span>
         {url && (
@@ -252,12 +253,10 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
   }
 
   if (!BUILTIN_UNDERSCORE_TOOLS.has(toolName) && toolName.includes("_")) {
-    const sepIdx = toolName.indexOf("_")
-    const serverName = toolName.slice(0, sepIdx)
-    const method = toolName.slice(sepIdx + 1)
+    const { serverName, toolName: method } = parseMcpToolName(toolName)
     return (
-      <span className="shrink-0 font-mono text-xs font-medium leading-none text-cyan-300">
-        MCP · {serverName} · {method}
+      <span className="shrink-0 font-mono text-xs font-medium leading-none text-teal-300">
+        {method === serverName ? serverName : `${serverName} · ${method}`}
       </span>
     )
   }

@@ -134,7 +134,9 @@ describe("AgentExecutionFlowHeader 筛选 Tab", () => {
 
     const mcpActive = buttonClasses(container).find((c) => c.includes("bg-teal-500/20"))
     expect(mcpActive).toBeDefined()
-    expect(mcpActive).toContain("text-cyan-300")
+    expect(mcpActive).toContain("text-teal-300")
+    expect(mcpActive).toContain("ring-teal-500/30")
+    expect(mcpActive).not.toContain("text-cyan-300")
 
     rerender(
       <AgentExecutionFlowHeader
@@ -149,5 +151,20 @@ describe("AgentExecutionFlowHeader 筛选 Tab", () => {
     const webSearchActive = buttonClasses(container).find((c) => c.includes("bg-sky-500/20"))
     expect(webSearchActive).toBeDefined()
     expect(webSearchActive).toContain("text-sky-300")
+
+    rerender(
+      <AgentExecutionFlowHeader
+        stepsCount={6}
+        activeFilter="modelSwitch"
+        filterCounts={{ ...counts, modelSwitch: 1 }}
+        stats={STATS}
+        onFilterChange={() => {}}
+      />,
+    )
+
+    const modelSwitchActive = buttonClasses(container).find((c) => c.includes("bg-cyan-500/20"))
+    expect(modelSwitchActive).toBeDefined()
+    expect(modelSwitchActive).toContain("text-cyan-300")
+    expect(modelSwitchActive).not.toContain("text-teal-300")
   })
 })

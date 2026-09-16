@@ -30,7 +30,7 @@ export const TOOL_SOURCE_CATEGORIES: Record<ToolSourceCategoryKey, ToolSourceCat
   mcp: {
     key: "mcp",
     label: "MCP",
-    dotColor: "bg-cyan-400",
+    dotColor: "bg-teal-400",
   },
   skill: {
     key: "skill",
@@ -180,7 +180,7 @@ export const FlowItemSystemContent = ({
                     <div className="flex flex-col gap-1.5 pl-3">
                       {serverGroups.map(({ serverName, tools: serverTools }) => (
                         <div key={serverName} className="flex flex-col gap-1">
-                          <div className="text-xs text-cyan-300/70 font-mono">
+                          <div className="text-xs text-teal-300/70 font-mono">
                             {serverName} ({serverTools.length})
                           </div>
                           <div className="flex flex-wrap gap-1 pl-2">

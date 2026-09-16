@@ -302,7 +302,7 @@ export const AgentAssistantMessage = ({
                   return [
                     {
                       type: "webSearch",
-                      dotColor: "bg-emerald-300",
+                      dotColor: "bg-sky-300",
                       node: <AgentWebSearchBlock key={block.toolCallId} toolCalls={searchGroup} />,
                     },
                   ]
@@ -314,7 +314,7 @@ export const AgentAssistantMessage = ({
                   return [
                     {
                       type: "mcp",
-                      dotColor: "bg-cyan-300",
+                      dotColor: "bg-teal-300",
                       node: <AgentMcpCallBlock key={block.toolCallId} toolCalls={mcpGroup} />,
                     },
                   ]

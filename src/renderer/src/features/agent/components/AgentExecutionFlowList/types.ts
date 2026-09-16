@@ -195,7 +195,7 @@ export const getKindMeta = (
           icon: Terminal,
           labelKey: "agent.kindMcp",
           tagColor: "teal",
-          textColor: "text-cyan-300",
+          textColor: "text-teal-300",
         }
       }
       return {
@@ -216,7 +216,12 @@ export const getKindMeta = (
         textColor: "text-rose-300",
       }
     case "modelSwitch":
-      return { icon: Cpu, labelKey: "agent.kindModelSwitch", tagColor: "teal" }
+      return {
+        icon: Cpu,
+        labelKey: "agent.kindModelSwitch",
+        tagColor: "gray",
+        textColor: "text-cyan-300",
+      }
     case "hook":
       return { icon: Webhook, labelKey: "agent.kindHook", tagColor: "orange" }
     case "assistant":

@@ -2,12 +2,15 @@
 import { cleanup, render, renderHook, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AgentExecutionFlowItem } from "@/features/agent/components/AgentExecutionFlowList/AgentExecutionFlowItem"
+import { TOOL_SOURCE_CATEGORIES } from "@/features/agent/components/AgentExecutionFlowList/FlowItemSystemContent"
 import { useFlowStats } from "@/features/agent/components/AgentExecutionFlowList/hooks/useFlowStats"
 import { useFlowSteps } from "@/features/agent/components/AgentExecutionFlowList/hooks/useFlowSteps"
 import {
   getKindMeta,
   isWebSearchTool,
 } from "@/features/agent/components/AgentExecutionFlowList/types"
+import { AgentMcpCallBlock } from "@/features/agent/components/blocks/AgentMcpCallBlock"
+import { AgentWebSearchBlock } from "@/features/agent/components/blocks/AgentWebSearchBlock"
 import type { ChatMessage, ExecutionStep } from "@/features/agent/types"
 
 describe("AgentExecutionFlow - MCP & Web Search 标签与分类测试", () => {
@@ -38,7 +41,7 @@ describe("AgentExecutionFlow - MCP & Web Search 标签与分类测试", () => {
     const meta = getKindMeta(step)
     expect(meta.tagColor).toBe("teal")
     expect(meta.labelKey).toBe("agent.kindMcp")
-    expect(meta.textColor).toBe("text-cyan-300")
+    expect(meta.textColor).toBe("text-teal-300")
   })
 
   it("getKindMeta 为 Web Search 工具返回 sky 配色与 Web Search 标签 key", () => {
@@ -253,5 +256,109 @@ describe("AgentExecutionFlow - MCP & Web Search 标签与分类测试", () => {
       }),
     )
     expect(toolResult.current.filteredSteps.map((s) => s.toolContent?.toolName)).toEqual(["read"])
+  })
+})
+
+describe("AgentExecutionFlow - MCP 标题解析与配色", () => {
+  afterEach(cleanup)
+
+  it("按 mcp__server__tool 解析并去掉 MCP 前缀", () => {
+    const step: ExecutionStep = {
+      id: "step-mcp-title",
+      turnIndex: 1,
+      stepIndex: 1,
+      kind: "tool",
+      title: "mcp__codebase-memory-mcp__list_projects",
+      status: "done",
+      toolContent: {
+        toolName: "mcp__codebase-memory-mcp__list_projects",
+        toolCallId: "call-title",
+        args: {},
+      },
+    }
+
+    render(<AgentExecutionFlowItem step={step} isExpanded={false} onToggleExpand={vi.fn()} />)
+
+    expect(screen.getByText("codebase-memory-mcp · list_projects")).toBeDefined()
+    expect(screen.queryByText(/MCP ·/)).toBeNull()
+    expect(screen.queryByText(/__codebase/)).toBeNull()
+  })
+
+  it("mcp__server 单段形态不重复渲染名称", () => {
+    const step: ExecutionStep = {
+      id: "step-mcp-solo",
+      turnIndex: 1,
+      stepIndex: 2,
+      kind: "tool",
+      title: "mcp__solo",
+      status: "done",
+      toolContent: {
+        toolName: "mcp__solo",
+        toolCallId: "call-solo",
+        args: {},
+      },
+    }
+
+    render(<AgentExecutionFlowItem step={step} isExpanded={false} onToggleExpand={vi.fn()} />)
+
+    expect(screen.getByText("solo")).toBeDefined()
+  })
+
+  it("modelSwitch 改用 gray tag + cyan 文字，不再占用 teal", () => {
+    const step: ExecutionStep = {
+      id: "step-model-switch",
+      turnIndex: 1,
+      stepIndex: 3,
+      kind: "modelSwitch",
+      title: "Model switched",
+      status: "done",
+    }
+
+    const meta = getKindMeta(step)
+    expect(meta.tagColor).toBe("gray")
+    expect(meta.textColor).toBe("text-cyan-300")
+  })
+
+  it("system item 工具分类圆点：MCP teal / Web Search sky", () => {
+    expect(TOOL_SOURCE_CATEGORIES.mcp.dotColor).toBe("bg-teal-400")
+    expect(TOOL_SOURCE_CATEGORIES.webSearch.dotColor).toBe("bg-sky-400")
+  })
+})
+
+describe("AgentExecutionFlow - 消息流 MCP & Web Search 标识色同步", () => {
+  afterEach(cleanup)
+
+  it("AgentMcpCallBlock 名称使用 teal 标识色", () => {
+    const { container } = render(
+      <AgentMcpCallBlock
+        toolCalls={[
+          {
+            kind: "toolCall",
+            toolCallId: "mcp-call-1",
+            toolName: "mcp__codebase-memory-mcp__list_projects",
+            args: {},
+            status: "done",
+          },
+        ]}
+      />,
+    )
+    expect(container.querySelector(".agent-mcp-name")?.className).toContain("text-teal-300")
+  })
+
+  it("AgentWebSearchBlock 名称使用 sky 标识色", () => {
+    const { container } = render(
+      <AgentWebSearchBlock
+        toolCalls={[
+          {
+            kind: "toolCall",
+            toolCallId: "web-call-1",
+            toolName: "web_search",
+            args: { query: "vitest" },
+            status: "done",
+          },
+        ]}
+      />,
+    )
+    expect(container.querySelector(".agent-web-search-name")?.className).toContain("text-sky-300")
   })
 })

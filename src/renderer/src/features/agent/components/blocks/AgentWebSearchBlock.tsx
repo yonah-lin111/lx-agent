@@ -33,8 +33,8 @@ export const AgentWebSearchBlock = ({
   return (
     <div className="agent-web-search-block my-0.5 min-w-0">
       <div className="agent-web-search-header flex items-center gap-1">
-        <Search className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
-        <span className="agent-web-search-name font-mono text-xs font-bold text-emerald-300">
+        <Search className="h-3.5 w-3.5 shrink-0 text-sky-300" />
+        <span className="agent-web-search-name font-mono text-xs font-bold text-sky-300">
           Web Search
         </span>
         {allFailed && (
