@@ -15,6 +15,7 @@ import { createProjectNavigationTree, projectNavigationApi } from "@/features/pr
 import { SETTINGS_SECTIONS } from "@/features/settings/constants"
 import { UI_SECTIONS } from "@/features/ui-preview"
 import { useTranslation } from "@/i18n"
+import { HOME_VIEW_QUERY_KEY, parseHomeView } from "@/lib/homeView"
 import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { type AppTheme, useAppTheme } from "@/stores/themeStore"
@@ -44,6 +45,7 @@ export const HeaderSideBar = ({
   const itemId = searchParams.get("itemId")
   const settingsSection = searchParams.get("section") ?? SETTINGS_SECTIONS[0].id
   const uiSection = searchParams.get("section") ?? UI_SECTIONS[0].id
+  const homeView = parseHomeView(searchParams.get(HOME_VIEW_QUERY_KEY))
   const [projectBreadcrumb, setProjectBreadcrumb] = useState<ProjectBreadcrumb | null>(null)
   // 是否将顶部行从面包屑切换为最近打开 tag 栏。
   const [showRecentTags, setShowRecentTags] = useState(false)
@@ -150,6 +152,15 @@ export const HeaderSideBar = ({
           projectBreadcrumb.itemName,
         ]
       : [activeNavigationItem.breadcrumbCategory]
+  if (pathname === PAGE_ROUTES.home) {
+    const labelKey =
+      homeView === "schedule"
+        ? "home.schedule"
+        : homeView === "usage"
+          ? "usage.title"
+          : "home.index.label"
+    breadcrumbParts.push(t(labelKey))
+  }
   if (pathname === PAGE_ROUTES.settings) {
     const section = SETTINGS_SECTIONS.find((item) => item.id === settingsSection)
     if (section) breadcrumbParts.push(t(section.labelKey))
@@ -183,7 +194,7 @@ export const HeaderSideBar = ({
               </div>
             ) : (
               <div
-                key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${projectBreadcrumb?.itemName ?? ""}`}
+                key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${homeView}-${projectBreadcrumb?.itemName ?? ""}`}
                 className="header-breadcrumb flex min-w-0 items-center gap-1.5 animate-header-breadcrumb-in"
               >
                 <LxTag
