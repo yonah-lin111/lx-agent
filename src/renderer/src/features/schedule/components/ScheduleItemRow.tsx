@@ -1,12 +1,13 @@
 import type { ScheduleItem } from "@shared/contracts/schedule"
 import { CalendarClock } from "lucide-react"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxDatePicker } from "@/components/ui/LxDatePicker"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
+import { formatDateLabel } from "@/lib/date"
 import { SchedulePriorityChip } from "./SchedulePriorityChip"
 
 // 单条日程行属性。
@@ -20,7 +21,7 @@ export interface ScheduleItemRowProps {
 }
 
 /**
- * 渲染单条日程（单行）：完成勾选、优先级循环、行内编辑、移动到指定日期与删除确认。
+ * 渲染单条日程（单行）：完成勾选、优先级循环、行内编辑、移动日期二次确认与删除确认。
  */
 export const ScheduleItemRow = ({
   item,
@@ -30,10 +31,12 @@ export const ScheduleItemRow = ({
   onMove,
   onDelete,
 }: ScheduleItemRowProps): React.JSX.Element => {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   // 行内编辑草稿；null 表示未处于编辑态。
   const [draft, setDraft] = useState<string | null>(null)
+  // 移动日期流程：气泡开关与已选目标日期（非空时进入二次确认态）。
   const [isMoveOpen, setIsMoveOpen] = useState<boolean>(false)
+  const [moveTargetDate, setMoveTargetDate] = useState<string | null>(null)
 
   const commitDraft = (): void => {
     if (draft === null) return
@@ -43,10 +46,21 @@ export const ScheduleItemRow = ({
     setDraft(null)
   }
 
+  const handleMoveOpenChange = useCallback((nextOpen: boolean): void => {
+    setIsMoveOpen(nextOpen)
+    if (!nextOpen) setMoveTargetDate(null)
+  }, [])
+
+  const handleConfirmMove = (): void => {
+    if (moveTargetDate && moveTargetDate !== item.entryDate) onMove(item, moveTargetDate)
+    handleMoveOpenChange(false)
+  }
+
   return (
     <div
       className="lx-schedule-item group flex h-7 items-center gap-2 rounded-[4px] px-1.5 transition-colors hover:bg-[var(--color-theme-surface-hover)]"
       data-completed={item.completed ? "true" : undefined}
+      data-item-level="2"
     >
       <LxCheckbox
         size="small"
@@ -102,25 +116,35 @@ export const ScheduleItemRow = ({
         <LxTooltip
           trigger="click"
           placement="left"
-          click={{
-            open: isMoveOpen,
-            onOpenChange: setIsMoveOpen,
-            closeOnContentClick: false,
-            content: (
-              <LxDatePicker
-                value={item.entryDate}
-                quickSelects={false}
-                onChange={(targetDate) => {
-                  setIsMoveOpen(false)
-                  if (targetDate !== item.entryDate) onMove(item, targetDate)
-                }}
-              />
-            ),
-          }}
+          click={
+            moveTargetDate
+              ? {
+                  open: isMoveOpen,
+                  onOpenChange: handleMoveOpenChange,
+                  title: t("schedule.moveToDate"),
+                  content: t("schedule.moveToConfirm", {
+                    date: formatDateLabel(moveTargetDate, locale),
+                  }),
+                  onConfirm: handleConfirmMove,
+                  onCancel: () => handleMoveOpenChange(false),
+                }
+              : {
+                  open: isMoveOpen,
+                  onOpenChange: handleMoveOpenChange,
+                  closeOnContentClick: false,
+                  content: (
+                    <LxDatePicker
+                      inline
+                      value={item.entryDate}
+                      quickSelects={false}
+                      onChange={setMoveTargetDate}
+                    />
+                  ),
+                }
+          }
         >
           <LxIconButton
             size="small"
-            variant="ghost"
             aria-label={t("schedule.moveToDate")}
             title={{ content: t("schedule.moveToDate"), placement: "left" }}
           >
@@ -131,7 +155,6 @@ export const ScheduleItemRow = ({
         <LxIconButton
           preset="delete"
           size="small"
-          variant="ghost"
           aria-label={t("schedule.deleteAction")}
           title={{
             content: t("schedule.deleteConfirm"),

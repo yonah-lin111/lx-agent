@@ -63,9 +63,10 @@ export const ScheduleDashboard = (): React.JSX.Element => {
 
   return (
     <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-4 [scrollbar-gutter:stable] xl:flex-row">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+      {/* 窄容器下纵向堆叠（列表自然高度 + 页面滚动），宽容器下左右分栏并让列表内部滚动 */}
+      <div className="flex w-full min-w-0 flex-col gap-3 xl:min-h-0 xl:flex-1">
         {/* 标题与日期导航 */}
-        <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-theme-text)]">
               {t("schedule.title")}
@@ -83,7 +84,7 @@ export const ScheduleDashboard = (): React.JSX.Element => {
         </div>
 
         {/* 单日列表 */}
-        <section className="lx-schedule-board relative flex min-h-0 flex-1 flex-col rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3">
+        <section className="lx-schedule-board relative flex min-h-[360px] flex-col rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3 xl:min-h-0 xl:flex-1">
           <div className="flex items-center justify-between gap-2 border-b border-[var(--color-theme-border)] pb-2">
             <div className="min-w-0">
               <h2 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
@@ -108,7 +109,7 @@ export const ScheduleDashboard = (): React.JSX.Element => {
             <ScheduleComposer onSubmit={mutations.createItem} />
           </div>
 
-          <div className="custom-scrollbar mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-0.5">
+          <div className="custom-scrollbar mt-2 flex flex-col gap-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-0.5">
             {hasError ? (
               <div className="flex items-center justify-between gap-2 rounded-[var(--theme-radius-base)] border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
                 <span>{t("schedule.loadFailed")}</span>
