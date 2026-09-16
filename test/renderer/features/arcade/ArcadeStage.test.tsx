@@ -43,6 +43,9 @@ describe("ArcadeStage", () => {
     expect(screen.getByText("Silhouette Run")).toBeDefined()
     expect(screen.getByText("Best: 90")).toBeDefined()
     expect(screen.getAllByText("Best: 0").length).toBeGreaterThanOrEqual(1)
+
+    // 每张游戏卡片都带说明入口
+    expect(document.querySelectorAll('[aria-label="Info"]')).toHaveLength(3)
   })
 
   it("选择游戏后进入画布并显示工具栏最高分，返回按钮回到选择页", () => {
@@ -51,6 +54,9 @@ describe("ArcadeStage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Stardust Dodge/ }))
     expect(screen.getByText("canvas-host")).toBeDefined()
     expect(screen.getByText("Best: 0")).toBeDefined()
+
+    // 游戏内保留说明入口
+    expect(document.querySelectorAll('[aria-label="Info"]')).toHaveLength(1)
 
     fireEvent.click(screen.getByRole("button", { name: "Back to games" }))
     expect(screen.queryByText("canvas-host")).toBeNull()

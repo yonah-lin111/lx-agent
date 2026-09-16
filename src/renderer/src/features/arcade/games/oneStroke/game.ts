@@ -6,6 +6,10 @@ import { generateOneStrokeLevel, isOrthogonallyAdjacent, type OneStrokeLevel } f
 // 关卡尺寸阶梯（渐进难度）。
 const LEVEL_SIZES = [3, 4, 4, 5, 5, 6, 6, 7]
 
+// 过关倒计时（3-2-1，避免关卡瞬间切换）。
+const COUNTDOWN_STEPS = 3
+const COUNTDOWN_STEP_MS = 600
+
 // 棋盘几何（居中放置）。
 const BOARD_SIZE = 430
 const BOARD_LEFT = (ARCADE_WIDTH - BOARD_SIZE) / 2
@@ -20,6 +24,46 @@ interface CellRect {
   size: number
 }
 
+interface BoardMetrics {
+  gap: number
+  cellSize: number
+  stride: number
+}
+
+const metricsCache = new Map<number, BoardMetrics>()
+
+const getBoardMetrics = (size: number): BoardMetrics => {
+  const cached = metricsCache.get(size)
+  if (cached) return cached
+  const gap = size >= 6 ? 6 : 8
+  const cellSize = (BOARD_SIZE - gap * (size + 1)) / size
+  const metrics: BoardMetrics = { gap, cellSize, stride: cellSize + gap }
+  metricsCache.set(size, metrics)
+  return metrics
+}
+
+/**
+ * 单个格子的逻辑矩形（供绘制与命中检测共用）。
+ */
+export const getOneStrokeCellRect = (size: number, index: number): CellRect => {
+  const { gap, cellSize, stride } = getBoardMetrics(size)
+  const row = Math.floor(index / size)
+  const col = index % size
+  return {
+    x: BOARD_LEFT + gap + col * stride,
+    y: BOARD_TOP + gap + row * stride,
+    size: cellSize,
+  }
+}
+
+/**
+ * 单个格子的逻辑中心点。
+ */
+export const getOneStrokeCellCenter = (size: number, index: number): { x: number; y: number } => {
+  const rect = getOneStrokeCellRect(size, index)
+  return { x: rect.x + rect.size / 2, y: rect.y + rect.size / 2 }
+}
+
 /**
  * 一笔画：在网格上拖拽出一条不重复、不交叉、覆盖全部格子的路径。
  */
@@ -32,29 +76,16 @@ export const createOneStrokeGame = (): ArcadeGame => {
   let clock = 0
   let flashUntil = 0
   let isTracing = false
+  let countdownUntil = 0
 
-  const getCellRect = (size: number, index: number): CellRect => {
-    const gap = size >= 6 ? 6 : 8
-    const cellSize = (BOARD_SIZE - gap * (size + 1)) / size
-    const row = Math.floor(index / size)
-    const col = index % size
-    return {
-      x: BOARD_LEFT + gap + col * (cellSize + gap),
-      y: BOARD_TOP + gap + row * (cellSize + gap),
-      size: cellSize,
-    }
-  }
+  const isCountingDown = (): boolean => clock < countdownUntil
 
-  const cellCenter = (index: number): { x: number; y: number } => {
-    const rect = getCellRect(level.size, index)
-    return { x: rect.x + rect.size / 2, y: rect.y + rect.size / 2 }
-  }
+  const cellCenter = (index: number): { x: number; y: number } =>
+    getOneStrokeCellCenter(level.size, index)
 
   const cellAt = (x: number, y: number): number | null => {
     const { size } = level
-    const gap = size >= 6 ? 6 : 8
-    const cellSize = (BOARD_SIZE - gap * (size + 1)) / size
-    const stride = cellSize + gap
+    const { gap, cellSize, stride } = getBoardMetrics(size)
     if (x < BOARD_LEFT || x > BOARD_LEFT + BOARD_SIZE) return null
     if (y < BOARD_TOP || y > BOARD_TOP + BOARD_SIZE) return null
 
@@ -76,9 +107,11 @@ export const createOneStrokeGame = (): ArcadeGame => {
     }
     level = generateOneStrokeLevel(LEVEL_SIZES[levelIndex])
     path = []
+    countdownUntil = clock + COUNTDOWN_STEPS * COUNTDOWN_STEP_MS
   }
 
   const handleCellInput = (x: number, y: number): void => {
+    if (isCountingDown()) return
     const cell = cellAt(x, y)
     if (cell === null) return
 
@@ -163,6 +196,7 @@ export const createOneStrokeGame = (): ArcadeGame => {
   return {
     update: (dt: number, input: ArcadeInputState): void => {
       clock += dt
+      if (isCountingDown()) return
       if (input.pressedKeys.has("KeyR")) {
         path = []
       }
@@ -200,7 +234,7 @@ export const createOneStrokeGame = (): ArcadeGame => {
 
       // 棋盘格子
       for (let index = 0; index < size * size; index += 1) {
-        const rect = getCellRect(size, index)
+        const rect = getOneStrokeCellRect(size, index)
         const isVisited = pathSet.has(index)
         if (palette.pixel) {
           ctx.fillStyle = isVisited ? palette.accent : palette.surface
@@ -247,7 +281,13 @@ export const createOneStrokeGame = (): ArcadeGame => {
         const center = cellCenter(head)
         const pulse = 1 + Math.sin(clock / 180) * 0.12
         ctx.beginPath()
-        ctx.arc(center.x, center.y, getCellRect(size, head).size * 0.2 * pulse, 0, Math.PI * 2)
+        ctx.arc(
+          center.x,
+          center.y,
+          getOneStrokeCellRect(size, head).size * 0.2 * pulse,
+          0,
+          Math.PI * 2,
+        )
         ctx.fillStyle = palette.background
         ctx.fill()
         ctx.strokeStyle = palette.accent
@@ -264,6 +304,23 @@ export const createOneStrokeGame = (): ArcadeGame => {
         ctx.globalAlpha = remain * 0.9
         ctx.fillRect(0, 0, ARCADE_WIDTH, ARCADE_HEIGHT)
         ctx.globalAlpha = 1
+      }
+
+      // 下一关开场倒计时（3-2-1）
+      if (isCountingDown()) {
+        const remaining = Math.ceil((countdownUntil - clock) / COUNTDOWN_STEP_MS)
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)"
+        ctx.fillRect(0, 0, ARCADE_WIDTH, ARCADE_HEIGHT)
+        ctx.textAlign = "center"
+        ctx.textBaseline = "middle"
+        ctx.fillStyle = palette.accent
+        ctx.font = `700 84px ${palette.fontFamily}`
+        if (palette.glow) {
+          ctx.shadowColor = palette.accent
+          ctx.shadowBlur = 20
+        }
+        ctx.fillText(String(remaining), ARCADE_WIDTH / 2, ARCADE_HEIGHT / 2)
+        ctx.shadowBlur = 0
       }
     },
   }

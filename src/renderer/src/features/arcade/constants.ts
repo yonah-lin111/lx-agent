@@ -16,6 +16,8 @@ export interface ArcadeGameMeta {
   nameKey: TranslationKey
   descriptionKey: TranslationKey
   controlsKey: TranslationKey
+  // 玩法与计分说明（Markdown，供 LxInfoTooltip 展示）。
+  infoKey: TranslationKey
   icon: LucideIcon
   iconClassName: string
 }
@@ -26,6 +28,7 @@ export const ARCADE_GAMES: ArcadeGameMeta[] = [
     nameKey: "arcade.games.oneStroke.name",
     descriptionKey: "arcade.games.oneStroke.description",
     controlsKey: "arcade.games.oneStroke.controls",
+    infoKey: "arcade.games.oneStroke.info",
     icon: Route,
     iconClassName: "text-emerald-400",
   },
@@ -34,6 +37,7 @@ export const ARCADE_GAMES: ArcadeGameMeta[] = [
     nameKey: "arcade.games.dodge.name",
     descriptionKey: "arcade.games.dodge.description",
     controlsKey: "arcade.games.dodge.controls",
+    infoKey: "arcade.games.dodge.info",
     icon: Sparkles,
     iconClassName: "text-sky-400",
   },
@@ -42,6 +46,7 @@ export const ARCADE_GAMES: ArcadeGameMeta[] = [
     nameKey: "arcade.games.runner.name",
     descriptionKey: "arcade.games.runner.description",
     controlsKey: "arcade.games.runner.controls",
+    infoKey: "arcade.games.runner.info",
     icon: Wind,
     iconClassName: "text-amber-400",
   },

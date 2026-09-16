@@ -1,6 +1,7 @@
 import { ArrowLeft, Pause, Play, RotateCcw } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { useTranslation } from "@/i18n"
 import { useAppThemeValue } from "@/stores/themeStore"
 import { ARCADE_GAMES } from "../constants"
@@ -108,6 +109,7 @@ export const ArcadeStage = ({ onExit }: ArcadeStageProps): React.JSX.Element => 
               {t("arcade.picker.best")}: {bestScores[activeGame.id] ?? 0}
             </span>
           ) : null}
+          {activeGame ? <LxInfoTooltip markdown={t(activeGame.infoKey)} /> : null}
         </div>
 
         {activeGame ? (
