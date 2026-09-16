@@ -26,6 +26,8 @@ export type ProviderMenuState = {
   isEnabled: boolean
   x: number
   y: number
+  // 滚动关闭锚点：触发菜单的 Provider 条目节点。
+  anchor: HTMLElement | null
 }
 
 export type ModelProviderMenuProps = {
@@ -34,6 +36,7 @@ export type ModelProviderMenuProps = {
   isEnabled: boolean
   x: number
   y: number
+  anchor?: HTMLElement | null
   onToggleEnabled: (enabled: boolean) => void
   onDuplicate: () => void
   onDelete: () => void
@@ -52,6 +55,7 @@ export type ProviderNavProps = {
     isEnabled: boolean,
     x: number,
     y: number,
+    anchor: HTMLElement | null,
   ) => void
 }
 

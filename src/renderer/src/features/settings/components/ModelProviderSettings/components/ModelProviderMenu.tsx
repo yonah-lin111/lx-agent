@@ -14,6 +14,7 @@ export const ModelProviderMenu = ({
   isEnabled,
   x,
   y,
+  anchor,
   onToggleEnabled,
   onDuplicate,
   onDelete,
@@ -44,6 +45,7 @@ export const ModelProviderMenu = ({
   return (
     <LxMenu
       ariaLabel={t("settings.providerMenu", { name: displayedMenu.providerName })}
+      anchor={anchor ?? null}
       isOpen={isOpen}
       x={displayedMenu.x}
       y={displayedMenu.y}

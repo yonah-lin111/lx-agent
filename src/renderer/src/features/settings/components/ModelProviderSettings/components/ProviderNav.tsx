@@ -41,6 +41,7 @@ export const ProviderNav = ({
                   isEnabled,
                   event.clientX,
                   event.clientY,
+                  event.currentTarget as HTMLElement,
                 )
               }}
             >

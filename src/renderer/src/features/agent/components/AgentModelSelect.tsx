@@ -1,10 +1,15 @@
 import { Check, ChevronDown, ChevronRight } from "lucide-react"
 import type React from "react"
-import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import type { LxSelectGroup, LxSelectOption } from "@/components/ui/LxSelect"
-import { LxTooltip, TooltipLayerContext } from "@/components/ui/LxTooltip"
+import { LxTooltip } from "@/components/ui/LxTooltip"
+import {
+  TooltipLayerContext,
+  useFloatingLayer,
+  useLayerPresence,
+} from "@/components/ui/useFloatingLayer"
 import { useTranslation } from "@/i18n"
 
 // 模型选项扩展类型（携带可选思考等级）。
@@ -68,8 +73,6 @@ export const AgentModelSelect = ({
 }: AgentModelSelectProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
-  const [shouldRender, setShouldRender] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
   const [listboxStyle, setListboxStyle] = useState<{
     left: number
     top: number
@@ -80,78 +83,18 @@ export const AgentModelSelect = ({
   const listboxRef = useRef<HTMLDivElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
 
-  // 嵌套浮层上下文管理，使子级 LxTooltip 气泡不被误判为外部点击
-  const parentTooltipLayer = useContext(TooltipLayerContext)
-  const layerNodesRef = useRef<Set<HTMLElement>>(new Set())
+  // 挂载 / 退场状态机。
+  const { shouldRender, isAnimatingOut } = useLayerPresence(isOpen)
 
-  const registerLayer = (node: HTMLElement): void => {
-    layerNodesRef.current.add(node)
-    parentTooltipLayer?.register(node)
-  }
-
-  const unregisterLayer = (node: HTMLElement): void => {
-    layerNodesRef.current.delete(node)
-    parentTooltipLayer?.unregister(node)
-  }
-
-  const layerContextValue = useMemo(
-    () => ({ register: registerLayer, unregister: unregisterLayer }),
-    [parentTooltipLayer],
-  )
-
-  useEffect(() => {
-    if (!parentTooltipLayer || !shouldRender) return
-    const node = listboxRef.current
-    if (!node) return
-    parentTooltipLayer.register(node)
-    return () => parentTooltipLayer.unregister(node)
-  }, [parentTooltipLayer, shouldRender])
-
-  // 点击外部收起下拉
-  useEffect(() => {
-    const handleClickOutside = (event: PointerEvent): void => {
-      const target = event.target as Node
-      if (
-        containerRef.current?.contains(target) ||
-        listboxRef.current?.contains(target) ||
-        Array.from(layerNodesRef.current).some((node) => node.contains(target))
-      ) {
-        return
-      }
-      setIsOpen(false)
-    }
-    document.addEventListener("pointerdown", handleClickOutside)
-    return () => document.removeEventListener("pointerdown", handleClickOutside)
-  }, [])
-
-  // 滚动时收起下拉（排除自身与子菜单内滚动）
-  useEffect(() => {
-    if (!isOpen) return
-    const handleScroll = (event: Event): void => {
-      const target = event.target as Node
-      if (
-        !containerRef.current?.contains(target) &&
-        !listboxRef.current?.contains(target) &&
-        !Array.from(layerNodesRef.current).some((node) => node.contains(target))
-      ) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("scroll", handleScroll, true)
-    return () => document.removeEventListener("scroll", handleScroll, true)
-  }, [isOpen])
-
-  // Esc 键关闭
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen])
+  // 通用浮层关闭逻辑：外部 pointerdown、Esc 与锚点作用域滚动关闭。
+  const { layerContextValue } = useFloatingLayer({
+    isOpen,
+    active: shouldRender,
+    rootRef: listboxRef,
+    insideRefs: [containerRef],
+    anchorRef: containerRef,
+    onClose: () => setIsOpen(false),
+  })
 
   // 定位计算（默认向上弹出）
   useLayoutEffect(() => {
@@ -172,22 +115,6 @@ export const AgentModelSelect = ({
     window.addEventListener("resize", updatePosition)
     return () => window.removeEventListener("resize", updatePosition)
   }, [shouldRender])
-
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-      return
-    }
-    if (!shouldRender) return
-
-    setIsAnimatingOut(true)
-    const timer = window.setTimeout(() => {
-      setShouldRender(false)
-      setIsAnimatingOut(false)
-    }, 120)
-    return () => window.clearTimeout(timer)
-  }, [isOpen, shouldRender])
 
   // 展开时滚动到选中项
   useEffect(() => {

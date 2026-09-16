@@ -62,7 +62,7 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
 
     fireEvent.click(screen.getByText("触发"))
     expect(screen.getByText("Tip 内容")).not.toBeNull()
-    fireEvent.mouseDown(document.body)
+    fireEvent.pointerDown(document.body)
     flushCloseAnimation()
     expect(screen.queryByText("Tip 内容")).toBeNull()
   })
@@ -78,7 +78,7 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
   it("closeOnOutsideClick=false：点击外部不关闭", () => {
     renderTooltip({ closeOnOutsideClick: false })
     fireEvent.click(screen.getByText("触发"))
-    fireEvent.mouseDown(document.body)
+    fireEvent.pointerDown(document.body)
     flushCloseAnimation()
     expect(screen.getByText("Tip 内容")).not.toBeNull()
   })
@@ -96,7 +96,7 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
 
     // 滚动与外点均不关闭（常驻）
     fireEvent.scroll(document)
-    fireEvent.mouseDown(document.body)
+    fireEvent.pointerDown(document.body)
     flushCloseAnimation()
     expect(screen.getByText("Tip 内容")).not.toBeNull()
 

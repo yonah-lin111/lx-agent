@@ -1,8 +1,12 @@
 import { Check, ChevronDown, Users } from "lucide-react"
 import type React from "react"
-import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { TooltipLayerContext } from "@/components/ui/LxTooltip"
+import {
+  TooltipLayerContext,
+  useFloatingLayer,
+  useLayerPresence,
+} from "@/components/ui/useFloatingLayer"
 import { useTranslation } from "@/i18n"
 
 export interface OpenClawTargetOffice {
@@ -36,8 +40,6 @@ export const OpenClawTargetSelect = ({
 }: OpenClawTargetSelectProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
-  const [shouldRender, setShouldRender] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
   const [listboxStyle, setListboxStyle] = useState<{
     left: number
     top: number
@@ -48,77 +50,18 @@ export const OpenClawTargetSelect = ({
   const listboxRef = useRef<HTMLDivElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
 
-  const parentTooltipLayer = useContext(TooltipLayerContext)
-  const layerNodesRef = useRef<Set<HTMLElement>>(new Set())
+  // 挂载 / 退场状态机。
+  const { shouldRender, isAnimatingOut } = useLayerPresence(isOpen)
 
-  const registerLayer = (node: HTMLElement): void => {
-    layerNodesRef.current.add(node)
-    parentTooltipLayer?.register(node)
-  }
-
-  const unregisterLayer = (node: HTMLElement): void => {
-    layerNodesRef.current.delete(node)
-    parentTooltipLayer?.unregister(node)
-  }
-
-  const layerContextValue = useMemo(
-    () => ({ register: registerLayer, unregister: unregisterLayer }),
-    [parentTooltipLayer],
-  )
-
-  useEffect(() => {
-    if (!parentTooltipLayer || !shouldRender) return
-    const node = listboxRef.current
-    if (!node) return
-    parentTooltipLayer.register(node)
-    return () => parentTooltipLayer.unregister(node)
-  }, [parentTooltipLayer, shouldRender])
-
-  // 点击外部收起
-  useEffect(() => {
-    const handleClickOutside = (event: PointerEvent): void => {
-      const target = event.target as Node
-      if (
-        containerRef.current?.contains(target) ||
-        listboxRef.current?.contains(target) ||
-        Array.from(layerNodesRef.current).some((node) => node.contains(target))
-      ) {
-        return
-      }
-      setIsOpen(false)
-    }
-    document.addEventListener("pointerdown", handleClickOutside)
-    return () => document.removeEventListener("pointerdown", handleClickOutside)
-  }, [])
-
-  // 滚动时收起
-  useEffect(() => {
-    if (!isOpen) return
-    const handleScroll = (event: Event): void => {
-      const target = event.target as Node
-      if (
-        !containerRef.current?.contains(target) &&
-        !listboxRef.current?.contains(target) &&
-        !Array.from(layerNodesRef.current).some((node) => node.contains(target))
-      ) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("scroll", handleScroll, true)
-    return () => document.removeEventListener("scroll", handleScroll, true)
-  }, [isOpen])
-
-  // Esc 键关闭
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen])
+  // 通用浮层关闭逻辑：外部 pointerdown、Esc 与锚点作用域滚动关闭。
+  const { layerContextValue } = useFloatingLayer({
+    isOpen,
+    active: shouldRender,
+    rootRef: listboxRef,
+    insideRefs: [containerRef],
+    anchorRef: containerRef,
+    onClose: () => setIsOpen(false),
+  })
 
   // 定位计算（默认向上弹出，对齐 AgentModelSelect）
   useLayoutEffect(() => {
@@ -139,22 +82,6 @@ export const OpenClawTargetSelect = ({
     window.addEventListener("resize", updatePosition)
     return () => window.removeEventListener("resize", updatePosition)
   }, [shouldRender])
-
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-      return
-    }
-    if (!shouldRender) return
-
-    setIsAnimatingOut(true)
-    const timer = window.setTimeout(() => {
-      setShouldRender(false)
-      setIsAnimatingOut(false)
-    }, 120)
-    return () => window.clearTimeout(timer)
-  }, [isOpen, shouldRender])
 
   const currentOffice = useMemo(
     () => offices.find((o) => o.id === selectedOfficeId),

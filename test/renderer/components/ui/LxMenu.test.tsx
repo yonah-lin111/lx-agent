@@ -4,7 +4,7 @@ import { useContext, useEffect } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { LxMenu } from "@/components/ui/LxMenu/LxMenu"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
-import { TooltipLayerContext } from "@/components/ui/LxTooltip"
+import { TooltipLayerContext } from "@/components/ui/useFloatingLayer"
 
 // 模拟菜单内的嵌套 portal 浮层（如二级子菜单）：向菜单层注册 body 下节点。
 const NestedLayerProbe = (): null => {
@@ -109,10 +109,93 @@ describe("LxMenu nested layers", () => {
       </LxMenu>,
     )
 
-    fireEvent.mouseDown(screen.getByText("nested-layer"))
+    fireEvent.pointerDown(screen.getByText("nested-layer"))
     expect(onClose).not.toHaveBeenCalled()
 
-    fireEvent.mouseDown(document.body)
+    fireEvent.pointerDown(document.body)
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("LxMenu 统一浮层关闭语义", () => {
+  afterEach(cleanup)
+
+  it("菜单内部 pointerdown 不关闭，外部 pointerdown 关闭", () => {
+    const onClose = vi.fn()
+    render(
+      <LxMenu isOpen={true} x={100} y={100} ariaLabel="Pointer Menu" onClose={onClose}>
+        <LxMenuItem>Item 1</LxMenuItem>
+      </LxMenu>,
+    )
+
+    fireEvent.pointerDown(screen.getByRole("menu"))
+    expect(onClose).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(document.body)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it("Esc 关闭菜单", () => {
+    const onClose = vi.fn()
+    render(
+      <LxMenu isOpen={true} x={100} y={100} ariaLabel="Escape Menu" onClose={onClose}>
+        <LxMenuItem>Item 1</LxMenuItem>
+      </LxMenu>,
+    )
+
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it("锚点所在滚动容器滚动时关闭，无关容器滚动不关闭，页面级滚动关闭", () => {
+    const anchor = document.createElement("div")
+    const scrollContainer = document.createElement("div")
+    scrollContainer.appendChild(anchor)
+    const unrelatedContainer = document.createElement("div")
+    document.body.appendChild(scrollContainer)
+    document.body.appendChild(unrelatedContainer)
+
+    const onClose = vi.fn()
+    render(
+      <LxMenu
+        isOpen={true}
+        x={100}
+        y={100}
+        anchor={anchor}
+        ariaLabel="Scroll Menu"
+        onClose={onClose}
+      >
+        <LxMenuItem>Item 1</LxMenuItem>
+      </LxMenu>,
+    )
+
+    fireEvent.scroll(unrelatedContainer)
+    expect(onClose).not.toHaveBeenCalled()
+
+    fireEvent.scroll(scrollContainer)
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    fireEvent.scroll(document)
+    expect(onClose).toHaveBeenCalledTimes(2)
+
+    scrollContainer.remove()
+    unrelatedContainer.remove()
+  })
+
+  it("未提供锚点时任意外部滚动都关闭", () => {
+    const scrollContainer = document.createElement("div")
+    document.body.appendChild(scrollContainer)
+
+    const onClose = vi.fn()
+    render(
+      <LxMenu isOpen={true} x={100} y={100} ariaLabel="No Anchor Menu" onClose={onClose}>
+        <LxMenuItem>Item 1</LxMenuItem>
+      </LxMenu>,
+    )
+
+    fireEvent.scroll(scrollContainer)
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    scrollContainer.remove()
   })
 })

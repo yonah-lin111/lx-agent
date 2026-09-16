@@ -84,8 +84,8 @@ export const ModelProviderSettings = ({
           enabledProviders={settings.enabledProviders}
           onSelect={setSelectedProviderId}
           onToggleEnabled={toggleProviderEnabled}
-          onOpenContextMenu={(providerKey, providerName, isEnabled, x, y) =>
-            setMenuState({ providerKey, providerName, isEnabled, x, y })
+          onOpenContextMenu={(providerKey, providerName, isEnabled, x, y, anchor) =>
+            setMenuState({ providerKey, providerName, isEnabled, x, y, anchor })
           }
         />
 
@@ -160,6 +160,7 @@ export const ModelProviderSettings = ({
         isEnabled={menuState?.isEnabled ?? false}
         x={menuState?.x ?? 0}
         y={menuState?.y ?? 0}
+        anchor={menuState?.anchor ?? null}
         onToggleEnabled={(enabled) => {
           if (menuState) toggleProviderEnabled(menuState.providerKey, enabled)
         }}

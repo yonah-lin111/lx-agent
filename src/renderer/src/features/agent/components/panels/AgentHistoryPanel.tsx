@@ -80,11 +80,12 @@ export const AgentHistoryPanel = ({
   )
   // 正在编辑标题的会话 id（右键菜单进入，行内输入框编辑）。
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
-  // 右键菜单目标：触发会话快照与视口坐标（关闭动画期间保留菜单内容）。
+  // 右键菜单目标：触发会话快照、视口坐标与滚动关闭锚点（关闭动画期间保留菜单内容）。
   const [menuTarget, setMenuTarget] = useState<{
     session: AgentSessionSummary
     x: number
     y: number
+    anchor: HTMLElement | null
   } | null>(null)
   // 右键菜单是否打开。
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -170,7 +171,12 @@ export const AgentHistoryPanel = ({
     event.preventDefault()
     if (pendingSessionIds.has(session.id)) return
     setDeletingSessionId(null)
-    setMenuTarget({ session, x: event.clientX, y: event.clientY })
+    setMenuTarget({
+      session,
+      x: event.clientX,
+      y: event.clientY,
+      anchor: event.currentTarget as HTMLElement,
+    })
     setIsMenuOpen(true)
   }
 
@@ -312,6 +318,7 @@ export const AgentHistoryPanel = ({
       {/* 会话右键菜单：导出子菜单 + 重命名 + 删除（二次确认）。 */}
       <LxMenu
         ariaLabel={t("common.more")}
+        anchor={menuTarget?.anchor ?? null}
         isOpen={isMenuOpen}
         x={menuTarget?.x ?? 0}
         y={menuTarget?.y ?? 0}

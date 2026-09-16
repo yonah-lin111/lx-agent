@@ -20,6 +20,8 @@ export type { ProjectNavigationMenuType, PromptStatus } from "@/features/project
 
 type ProjectNavigationMenuProps = {
   isOpen: boolean
+  // 滚动关闭锚点：触发菜单的条目节点。
+  anchor?: HTMLElement | null
   type: ProjectNavigationMenuType
   title: string
   x: number
@@ -64,6 +66,7 @@ const STATUS_OPTIONS: { value: PromptStatus; labelKey: TranslationKey; className
  */
 export const ProjectNavigationMenu = ({
   isOpen,
+  anchor,
   type,
   title,
   x,
@@ -122,6 +125,7 @@ export const ProjectNavigationMenu = ({
   return (
     <LxMenu
       ariaLabel={`${displayedMenu.title} action menu`}
+      anchor={anchor ?? null}
       isOpen={isOpen}
       x={displayedMenu.x}
       y={displayedMenu.y}

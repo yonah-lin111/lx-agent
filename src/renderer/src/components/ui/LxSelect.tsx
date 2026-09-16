@@ -1,9 +1,9 @@
 import { Check, ChevronDown } from "lucide-react"
 import type React from "react"
-import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
-import { TooltipLayerContext } from "./LxTooltip"
+import { useFloatingLayer, useLayerPresence } from "@/components/ui/useFloatingLayer"
 
 // 下拉选项。
 export interface LxSelectOption<T> {
@@ -83,8 +83,6 @@ export const LxSelect = <T extends string>({
   placeholder,
 }: LxSelectProps<T>): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState<boolean>(false)
-  const [shouldRender, setShouldRender] = useState<boolean>(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState<boolean>(false)
   const [listboxStyle, setListboxStyle] = useState<{
     left: number
     top: number
@@ -93,49 +91,22 @@ export const LxSelect = <T extends string>({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const listboxRef = useRef<HTMLDivElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
-  // 嵌套于 Tooltip 内时，将下拉列表注册为父级浮层的一部分，
-  // 避免点击/滚动下拉被父 Tooltip 误判为外部而关闭。
-  const tooltipLayer = useContext(TooltipLayerContext)
   const selectedOption = options
     .flatMap((item) => (isGroup(item) ? item.options : [item]))
     .find((item) => item.value === value)
 
-  useEffect(() => {
-    // 使用 pointerdown：避免被 preventDefault 抑制的兼容 mousedown 事件导致外部点击无法关闭。
-    // 下拉经 portal 渲染到 body，需将列表自身视为容器内部。
-    const handleClickOutside = (event: PointerEvent): void => {
-      const target = event.target as Node
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(target) &&
-        !listboxRef.current?.contains(target)
-      ) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("pointerdown", handleClickOutside)
-    return () => document.removeEventListener("pointerdown", handleClickOutside)
-  }, [])
+  // 挂载 / 退场状态机。
+  const { shouldRender, isAnimatingOut } = useLayerPresence(isOpen)
 
-  // 滚动时检测：仅当滚动发生在触发按钮的祖先滚动链路（含页面级 document 滚动）时收起下拉，
-  // 无关容器滚动（如消息列表/执行流程列表吸底滚动）不影响下拉；排除自身容器与下拉列表内滚动。
-  useEffect(() => {
-    if (!isOpen) return
-    const handleScroll = (event: Event): void => {
-      const target = event.target as Node
-      if (containerRef.current?.contains(target) || listboxRef.current?.contains(target)) return
-
-      const triggerNode = containerRef.current
-      if (
-        triggerNode &&
-        ((target instanceof Element && target.contains(triggerNode)) || target === document)
-      ) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("scroll", handleScroll, true)
-    return () => document.removeEventListener("scroll", handleScroll, true)
-  }, [isOpen])
+  // 通用浮层关闭逻辑：外部 pointerdown、Esc 与锚点作用域滚动关闭。
+  useFloatingLayer({
+    isOpen,
+    active: shouldRender,
+    rootRef: listboxRef,
+    insideRefs: [containerRef],
+    anchorRef: containerRef,
+    onClose: () => setIsOpen(false),
+  })
 
   // 下拉经 portal 渲染到 body：按触发按钮视口坐标定位，并随视口尺寸变化重算。
   useLayoutEffect(() => {
@@ -172,31 +143,6 @@ export const LxSelect = <T extends string>({
     listbox.scrollTop =
       selectedEl.offsetTop - listbox.clientHeight / 2 + selectedEl.clientHeight / 2
   }, [isOpen, shouldRender, value])
-
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-      return
-    }
-    if (!shouldRender) return
-
-    setIsAnimatingOut(true)
-    const timer = window.setTimeout(() => {
-      setShouldRender(false)
-      setIsAnimatingOut(false)
-    }, 120)
-    return () => window.clearTimeout(timer)
-  }, [isOpen, shouldRender])
-
-  // 注册下拉列表到父级 Tooltip 浮层集合（列表经 portal 渲染到 body，位于父气泡 DOM 之外）。
-  useEffect(() => {
-    if (!tooltipLayer || !shouldRender) return
-    const node = listboxRef.current
-    if (!node) return
-    tooltipLayer.register(node)
-    return () => tooltipLayer.unregister(node)
-  }, [tooltipLayer, shouldRender])
 
   const renderOption = (option: LxSelectOption<T>, isGrouped = false): React.JSX.Element => {
     const isSelected = option.value === value

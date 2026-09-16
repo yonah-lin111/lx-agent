@@ -82,4 +82,31 @@ describe("LxSelect", () => {
 
     unrelatedScrollArea.remove()
   })
+
+  it("外部 pointerdown 关闭、内部 pointerdown 不关闭、Escape 关闭", () => {
+    const handleChange = vi.fn()
+    const options: LxSelectOption<string>[] = [
+      { value: "a", label: "A" },
+      { value: "b", label: "B" },
+    ]
+    render(<LxSelect value="a" onChange={handleChange} options={options} />)
+
+    const trigger = screen.getByRole("button", { expanded: false })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+
+    // 下拉列表内部 pointerdown：不关闭
+    fireEvent.pointerDown(screen.getByRole("listbox"))
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+
+    // 外部 pointerdown：关闭
+    fireEvent.pointerDown(document.body)
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+
+    // Escape：关闭
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+  })
 })

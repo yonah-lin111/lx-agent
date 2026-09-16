@@ -61,6 +61,8 @@ type MenuState = {
   path?: string
   x: number
   y: number
+  // 滚动关闭锚点：触发菜单的条目节点。
+  anchor: HTMLElement | null
 }
 
 // 当前项目弹窗状态。
@@ -206,6 +208,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
       path: item.path,
       x: event.clientX,
       y: event.clientY,
+      anchor: event.currentTarget as HTMLElement,
     })
   }
 
@@ -725,6 +728,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
       </div>
       <ProjectNavigationMenu
         isOpen={menu !== null}
+        anchor={menu?.anchor ?? null}
         type={menu?.type ?? "project"}
         title={menu?.title ?? ""}
         x={menu?.x ?? 0}

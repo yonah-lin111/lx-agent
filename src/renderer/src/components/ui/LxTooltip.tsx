@@ -1,15 +1,11 @@
 import { Check, Minus, X } from "lucide-react"
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import {
+  TooltipLayerContext,
+  useFloatingLayer,
+  useLayerPresence,
+} from "@/components/ui/useFloatingLayer"
 import { useTranslation } from "@/i18n"
 
 // Tooltip 弹出位置。
@@ -67,14 +63,6 @@ export interface LxTooltipProps {
   onCancel?: () => void
 }
 
-// 嵌套浮层注册上下文：portal 渲染到 body 的嵌套组件（LxSelect 下拉、嵌套 Tooltip 气泡等）
-// 通过注册自身根元素，避免被父级 Tooltip 的「点击外部 / 滚动」逻辑误判为外部而关闭。
-interface TooltipLayerContextValue {
-  register: (node: HTMLElement) => void
-  unregister: (node: HTMLElement) => void
-}
-export const TooltipLayerContext = createContext<TooltipLayerContextValue | null>(null)
-
 /**
  * 将节点同时写入 Tooltip 与触发元素原有的 ref。
  */
@@ -126,8 +114,6 @@ const TooltipBubble = ({
   onMouseEnter,
   onMouseLeave,
 }: TooltipBubbleProps): React.JSX.Element | null => {
-  const [shouldRender, setShouldRender] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
   const [activePlacement, setActivePlacement] = useState<LxTooltipPlacement>(placement)
   const [coords, setCoords] = useState<{ left: number; top: number } | null>(null)
   const [arrowOffset, setArrowOffset] = useState(0)
@@ -135,45 +121,20 @@ const TooltipBubble = ({
   const isConfirming = typeof onConfirm === "function"
   const { t } = useTranslation()
 
-  const parentLayer = useContext(TooltipLayerContext)
-  const layerNodesRef = useRef<Set<HTMLElement>>(new Set())
-  const registerLayer = useCallback(
-    (node: HTMLElement): void => {
-      layerNodesRef.current.add(node)
-      parentLayer?.register(node)
-    },
-    [parentLayer],
-  )
-  const unregisterLayer = useCallback(
-    (node: HTMLElement): void => {
-      layerNodesRef.current.delete(node)
-      parentLayer?.unregister(node)
-    },
-    [parentLayer],
-  )
-  const layerContextValue = useMemo(
-    () => ({ register: registerLayer, unregister: unregisterLayer }),
-    [registerLayer, unregisterLayer],
-  )
+  // 挂载 / 退场状态机：退场结束后重置定位坐标。
+  const { shouldRender, isAnimatingOut } = useLayerPresence(isOpen, () => setCoords(null))
 
-  useEffect(() => {
-    if (!parentLayer || !shouldRender || !tooltipRef.current) return
-    const node = tooltipRef.current
-    parentLayer.register(node)
-    return () => parentLayer.unregister(node)
-  }, [parentLayer, shouldRender])
-
-  const isInsideTooltip = useCallback(
-    (target: Node): boolean => {
-      if (containerRef.current?.contains(target) || tooltipRef.current?.contains(target))
-        return true
-      for (const node of layerNodesRef.current) {
-        if (node.contains(target)) return true
-      }
-      return false
-    },
-    [containerRef],
-  )
+  // 通用浮层关闭逻辑：触发元素与气泡自身视为内部，滚动关闭锚点为触发元素。
+  const { layerContextValue } = useFloatingLayer({
+    isOpen,
+    active: shouldRender,
+    rootRef: tooltipRef,
+    insideRefs: [containerRef],
+    anchorRef: containerRef,
+    onClose,
+    closeOnOutsideClick,
+    closeOnScroll,
+  })
 
   const calculatePosition = useCallback((): {
     resolvedPlacement: LxTooltipPlacement
@@ -271,23 +232,6 @@ const TooltipBubble = ({
     setArrowOffset((prev) => (Math.abs(prev - pos.arrowOffset) < 0.5 ? prev : pos.arrowOffset))
   }, [calculatePosition])
 
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-      return
-    }
-    if (!shouldRender) return
-
-    setIsAnimatingOut(true)
-    const timer = setTimeout(() => {
-      setShouldRender(false)
-      setIsAnimatingOut(false)
-      setCoords(null)
-    }, 120)
-    return () => clearTimeout(timer)
-  }, [isOpen])
-
   useLayoutEffect(() => {
     if (!shouldRender) return
     updatePosition()
@@ -306,46 +250,6 @@ const TooltipBubble = ({
       window.removeEventListener("resize", updatePosition)
     }
   }, [shouldRender, updatePosition])
-
-  useEffect(() => {
-    if (!isOpen || !closeOnScroll) return
-    const handleScroll = (event: Event): void => {
-      const target = event.target as Node
-      if (isInsideTooltip(target)) return
-
-      const triggerNode = containerRef.current
-      if (
-        triggerNode &&
-        target instanceof Element &&
-        (target.contains(triggerNode) || target === document.documentElement)
-      ) {
-        onClose()
-      }
-    }
-    document.addEventListener("scroll", handleScroll, true)
-    return () => document.removeEventListener("scroll", handleScroll, true)
-  }, [isOpen, closeOnScroll, isInsideTooltip, containerRef, onClose])
-
-  useEffect(() => {
-    if (!isOpen) return
-    const handleOutsideClick = (event: MouseEvent): void => {
-      const target = event.target as Node
-      if (!isInsideTooltip(target)) {
-        onClose()
-      }
-    }
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        onClose()
-      }
-    }
-    if (closeOnOutsideClick) document.addEventListener("mousedown", handleOutsideClick)
-    document.addEventListener("keydown", handleEscape)
-    return () => {
-      if (closeOnOutsideClick) document.removeEventListener("mousedown", handleOutsideClick)
-      document.removeEventListener("keydown", handleEscape)
-    }
-  }, [isOpen, closeOnOutsideClick, isInsideTooltip, onClose])
 
   if (!shouldRender || (!content && !title)) return null
 

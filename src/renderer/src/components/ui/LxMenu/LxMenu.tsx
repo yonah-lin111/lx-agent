@@ -1,16 +1,12 @@
 import type React from "react"
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
-import { TooltipLayerContext } from "@/components/ui/LxTooltip"
+import {
+  TooltipLayerContext,
+  useFloatingLayer,
+  useLayerPresence,
+} from "@/components/ui/useFloatingLayer"
 
 // 菜单定位坐标。
 type LxMenuPosition = {
@@ -29,6 +25,8 @@ interface LxMenuProps {
   width?: number | "auto"
   minWidth?: number
   maxWidth?: number
+  // 滚动关闭锚点（右键点击的目标元素）：滚动容器包含它或页面级滚动时关闭菜单。
+  anchor?: HTMLElement | null
 }
 
 // 菜单边缘留白。
@@ -47,59 +45,26 @@ export const LxMenu = ({
   width = "auto",
   minWidth = 140,
   maxWidth = 280,
+  anchor,
 }: LxMenuProps): React.JSX.Element | null => {
-  const [isAnimatingOut, setIsAnimatingOut] = useState<boolean>(false)
-  const [shouldRender, setShouldRender] = useState<boolean>(false)
   const [position, setPosition] = useState<LxMenuPosition>({ left: x, top: y })
   const menuRef = useRef<HTMLDivElement>(null)
-  // 父级浮层集合（菜单嵌套在 Tooltip 等浮层内时注册自身，避免被父级误判为外部点击）。
-  const parentLayer = useContext(TooltipLayerContext)
-  // 嵌套浮层节点集合（如菜单内的二级子菜单 portal），外部点击判定需放行。
-  const layerNodesRef = useRef<Set<HTMLElement>>(new Set())
-  const registerLayer = useCallback(
-    (node: HTMLElement): void => {
-      layerNodesRef.current.add(node)
-      parentLayer?.register(node)
-    },
-    [parentLayer],
-  )
-  const unregisterLayer = useCallback(
-    (node: HTMLElement): void => {
-      layerNodesRef.current.delete(node)
-      parentLayer?.unregister(node)
-    },
-    [parentLayer],
-  )
-  const layerContextValue = useMemo(
-    () => ({ register: registerLayer, unregister: unregisterLayer }),
-    [registerLayer, unregisterLayer],
-  )
-
-  // 菜单根节点注册到父级浮层集合。
-  useEffect(() => {
-    if (!parentLayer || !shouldRender || !menuRef.current) return
-    const node = menuRef.current
-    parentLayer.register(node)
-    return () => parentLayer.unregister(node)
-  }, [parentLayer, shouldRender])
+  const anchorRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    let animationTimeout: ReturnType<typeof setTimeout> | undefined
-    if (isOpen) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-    } else if (shouldRender) {
-      setIsAnimatingOut(true)
-      animationTimeout = setTimeout(() => {
-        setShouldRender(false)
-        setIsAnimatingOut(false)
-      }, 120)
-    }
+    anchorRef.current = anchor ?? null
+  }, [anchor])
 
-    return () => {
-      if (animationTimeout) clearTimeout(animationTimeout)
-    }
-  }, [isOpen, shouldRender])
+  const { shouldRender, isAnimatingOut } = useLayerPresence(isOpen)
+
+  // 通用浮层关闭逻辑：外部 pointerdown、Esc 与锚点作用域滚动关闭。
+  const { layerContextValue } = useFloatingLayer({
+    isOpen,
+    active: shouldRender,
+    rootRef: menuRef,
+    anchorRef,
+    onClose,
+  })
 
   useLayoutEffect(() => {
     if (!isOpen) return
@@ -122,29 +87,6 @@ export const LxMenu = ({
       window.removeEventListener("resize", updatePosition)
     }
   }, [isOpen, shouldRender, width, minWidth, maxWidth, x, y])
-
-  useEffect(() => {
-    if (!isOpen) return
-
-    const handlePointerDown = (event: MouseEvent): void => {
-      const target = event.target as Node
-      if (menuRef.current?.contains(target)) return
-      for (const node of layerNodesRef.current) {
-        if (node.contains(target)) return
-      }
-      onClose()
-    }
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") onClose()
-    }
-
-    document.addEventListener("mousedown", handlePointerDown)
-    document.addEventListener("keydown", handleKeyDown)
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown)
-      document.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [isOpen, onClose])
 
   if (!shouldRender) return null
 
