@@ -60,6 +60,9 @@ describe("McpPresetSection", () => {
     expect(screen.getByText("Context7")).toBeTruthy()
     expect(screen.getByText("CodeGraph")).toBeTruthy()
     expect(screen.getByText("Codebase Memory")).toBeTruthy()
+    // 每张预设卡片带"预设"标记与 GitHub 官网入口。
+    expect(screen.getAllByText("Preset")).toHaveLength(3)
+    expect(screen.getByRole("button", { name: "Homepage CodeGraph" })).toBeTruthy()
     // 已安装预设显示探测路径。
     expect(screen.getByText("/usr/local/bin/codegraph")).toBeTruthy()
   })

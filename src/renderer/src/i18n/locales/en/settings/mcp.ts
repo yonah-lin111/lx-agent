@@ -83,6 +83,7 @@ Connect external data sources, local development tools, and custom scripts to yo
   mcpReconnectSuccess: "MCP servers reconnected successfully",
   mcpReconnectFailed: "Failed to reconnect MCP servers",
   mcpPresetsTitle: "Recommended Presets",
+  mcpPresetBadge: "Preset",
   mcpPresetContext7Desc: "Up-to-date library documentation and code examples for any framework",
   mcpPresetCodegraphDesc: "Local code knowledge graph for faster code navigation and review",
   mcpPresetCodebaseMemoryDesc: "Persistent codebase memory and architecture graph for AI agents",

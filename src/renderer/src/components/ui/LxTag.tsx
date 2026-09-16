@@ -216,7 +216,7 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
       data-color={color}
       data-variant={variant}
       data-highlighted={highlighted ? "true" : undefined}
-      className={`lx-tag inline-flex select-none items-center justify-center font-semibold transition-all duration-150 ${
+      className={`lx-tag inline-flex items-center justify-center font-semibold transition-all duration-150 ${
         isGhost ? "" : "border"
       } ${currentStyles.container} ${
         highlighted ? `${activeChrome} ${activeText}` : `${defaultChrome} ${defaultText}`

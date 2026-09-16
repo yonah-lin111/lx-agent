@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { MCP_PRESETS, type McpPresetStatusItem } from "@shared/mcpPresets"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { McpSettings } from "@/features/settings/components/McpSettings"
 import { useSettingsDraftStore } from "@/features/settings/hooks/settingsDraftStore"
@@ -54,7 +54,11 @@ describe("McpSettings 预设流程", () => {
 
     // 预设卡片消失、服务器列表出现对应卡片。
     await waitFor(() => expect(screen.queryByText("CodeGraph")).toBeNull())
-    expect(screen.getByText("codegraph")).toBeTruthy()
+    const mainCard = screen.getByText("codegraph").closest(".settings-item-card") as HTMLElement
+    expect(mainCard).not.toBeNull()
+    // 服务器卡片常驻"预设"标记与 GitHub 官网入口。
+    expect(within(mainCard).getByText("Preset")).toBeTruthy()
+    expect(within(mainCard).getByRole("button", { name: "Homepage CodeGraph" })).toBeTruthy()
     expect(useSettingsDraftStore.getState().isDirty).toBe(true)
 
     const saved = await useSettingsDraftStore.getState().save()

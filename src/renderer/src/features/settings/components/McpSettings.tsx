@@ -1,6 +1,7 @@
 import type { McpServerStatusItem } from "@shared/contracts/agent"
 import {
   MCP_PRESET_DEFAULT_TIMEOUT,
+  MCP_PRESETS,
   type McpPresetDefinition,
   type McpPresetId,
   type McpPresetStatusItem,
@@ -12,6 +13,7 @@ import {
   ChevronRight,
   Edit2,
   FolderOpen,
+  Github,
   Loader2,
   Plug,
   Plus,
@@ -335,6 +337,15 @@ export const McpSettings = (): React.JSX.Element => {
     return map
   }, [statuses])
 
+  // 预设定义映射表（按 server 名匹配，用于标记预设来源与官网入口）
+  const presetMap = useMemo(() => {
+    const map = new Map<string, McpPresetDefinition>()
+    for (const preset of MCP_PRESETS) {
+      map.set(preset.id, preset)
+    }
+    return map
+  }, [])
+
   if (loading && Object.keys(mcpSettings.servers).length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-white/45">
@@ -424,6 +435,7 @@ export const McpSettings = (): React.JSX.Element => {
         ) : (
           serverEntries.map(([name, config]) => {
             const statusItem = statusMap.get(name)
+            const presetDefinition = presetMap.get(name)
             const isConfigDisabled = Boolean(config.disabled)
             const isConnected = !isConfigDisabled && statusItem?.status === "connected"
             const isFailed = !isConfigDisabled && statusItem?.status === "failed"
@@ -447,6 +459,11 @@ export const McpSettings = (): React.JSX.Element => {
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="truncate text-xs font-semibold text-white/90">{name}</span>
+                        {presetDefinition && (
+                          <LxTag size="small" color="indigo">
+                            {t("settings.mcpPresetBadge")}
+                          </LxTag>
+                        )}
                         {isConfigDisabled ? (
                           <LxTag size="small" color="gray">
                             {t("settings.disabled")}
@@ -486,6 +503,17 @@ export const McpSettings = (): React.JSX.Element => {
 
                   {/* 右侧操作按钮 */}
                   <div className="flex shrink-0 items-center gap-1.5">
+                    {presetDefinition && (
+                      <LxIconButton
+                        preset="default"
+                        onClick={() => handleOpenPresetHomepage(presetDefinition.homepage)}
+                        title={{ content: t("settings.mcpPresetHomepage"), placement: "top" }}
+                        aria-label={`${t("settings.mcpPresetHomepage")} ${presetDefinition.displayName}`}
+                      >
+                        <Github className="text-white/70" />
+                      </LxIconButton>
+                    )}
+
                     <LxIconButton
                       preset="default"
                       onClick={() => handleOpenEdit(name, config)}

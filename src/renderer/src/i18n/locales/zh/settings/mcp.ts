@@ -83,6 +83,7 @@ export const mcp = {
   mcpReconnectSuccess: "MCP 服务重连成功",
   mcpReconnectFailed: "MCP 服务重连失败",
   mcpPresetsTitle: "推荐预设",
+  mcpPresetBadge: "预设",
   mcpPresetContext7Desc: "为任意框架提供最新的库文档与代码示例",
   mcpPresetCodegraphDesc: "本地代码知识图谱，加速代码导航与评审",
   mcpPresetCodebaseMemoryDesc: "为 AI Agent 提供持久化代码库记忆与架构图谱",

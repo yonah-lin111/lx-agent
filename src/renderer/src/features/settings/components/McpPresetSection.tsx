@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   Copy,
   Download,
-  ExternalLink,
+  Github,
   Loader2,
   Network,
   XCircle,
@@ -119,6 +119,9 @@ export const McpPresetSection = ({
                   <span className="truncate text-xs font-semibold text-white/90">
                     {preset.displayName}
                   </span>
+                  <LxTag size="small" color="indigo">
+                    {t("settings.mcpPresetBadge")}
+                  </LxTag>
                   {installed ? (
                     <LxTag
                       size="small"
@@ -144,7 +147,7 @@ export const McpPresetSection = ({
                     }}
                     onClick={() => onOpenHomepage(preset.homepage)}
                   >
-                    <ExternalLink className="text-white/60" />
+                    <Github className="text-white/60" />
                   </LxIconButton>
 
                   {preset.installCommand && (
