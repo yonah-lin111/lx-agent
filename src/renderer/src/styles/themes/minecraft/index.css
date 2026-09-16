@@ -558,15 +558,16 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     2px 2px 0px 0px #000000 !important;
 }
 
-/* 高亮态保持凸起浮雕（不凹陷），叠加绿色矿物指示条与微光 */
+/* 高亮态对齐 LxIconButton 选中态：按下凹陷槽 + 绿色矿物指示条与微光 */
 [data-theme="minecraft"] .lx-tag[data-highlighted="true"]:not([data-variant="ghost"]) {
   background-color: #14141c !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
   border-left: 4px solid #55ff55 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
-    2px 2px 0px 0px #000000,
-    0px 0px 6px rgba(85, 255, 85, 0.25) !important;
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
+    0px 0px 8px rgba(85, 255, 85, 0.2) !important;
 }
 
 /* ========================================================
