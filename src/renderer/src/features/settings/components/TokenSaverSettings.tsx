@@ -246,40 +246,48 @@ export const TokenSaverSettings = (): React.JSX.Element => {
               </div>
 
               {meta.key === "caveman" && settings.cavemanEnabled && (
-                <div className="flex items-center gap-2.5 border-t border-white/5 pt-2">
-                  <span className="shrink-0 text-xs text-white/40">
-                    {t("settings.tokenSaverCavemanLevel")}
-                  </span>
-                  <LxSelect
-                    value={effectiveCavemanLevel}
-                    onChange={(level) => setSettings((prev) => ({ ...prev, cavemanLevel: level }))}
-                    options={visibleCavemanLevels.map((level) => ({
-                      value: level,
-                      label: t(CAVEMAN_LEVEL_LABEL_KEYS[level]),
-                    }))}
-                  />
-                  <span className="truncate text-xs text-white/40">
+                <div className="flex flex-col gap-1.5 border-t border-white/5 pt-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="shrink-0 text-xs text-white/40">
+                      {t("settings.tokenSaverCavemanLevel")}
+                    </span>
+                    <LxSelect
+                      value={effectiveCavemanLevel}
+                      onChange={(level) =>
+                        setSettings((prev) => ({ ...prev, cavemanLevel: level }))
+                      }
+                      options={visibleCavemanLevels.map((level) => ({
+                        value: level,
+                        label: t(CAVEMAN_LEVEL_LABEL_KEYS[level]),
+                      }))}
+                    />
+                  </div>
+                  <p className="text-xs leading-relaxed text-white/40">
                     {t(CAVEMAN_LEVEL_DESC_KEYS[effectiveCavemanLevel])}
-                  </span>
+                  </p>
                 </div>
               )}
 
               {meta.key === "ponytail" && settings.ponytailEnabled && (
-                <div className="flex items-center gap-2.5 border-t border-white/5 pt-2">
-                  <span className="shrink-0 text-xs text-white/40">
-                    {t("settings.tokenSaverPonytailLevel")}
-                  </span>
-                  <LxSelect
-                    value={settings.ponytailLevel}
-                    onChange={(level) => setSettings((prev) => ({ ...prev, ponytailLevel: level }))}
-                    options={PONYTAIL_LEVELS.map((level) => ({
-                      value: level,
-                      label: t(PONYTAIL_LEVEL_LABEL_KEYS[level]),
-                    }))}
-                  />
-                  <span className="truncate text-xs text-white/40">
+                <div className="flex flex-col gap-1.5 border-t border-white/5 pt-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="shrink-0 text-xs text-white/40">
+                      {t("settings.tokenSaverPonytailLevel")}
+                    </span>
+                    <LxSelect
+                      value={settings.ponytailLevel}
+                      onChange={(level) =>
+                        setSettings((prev) => ({ ...prev, ponytailLevel: level }))
+                      }
+                      options={PONYTAIL_LEVELS.map((level) => ({
+                        value: level,
+                        label: t(PONYTAIL_LEVEL_LABEL_KEYS[level]),
+                      }))}
+                    />
+                  </div>
+                  <p className="text-xs leading-relaxed text-white/40">
                     {t(PONYTAIL_LEVEL_DESC_KEYS[settings.ponytailLevel])}
-                  </span>
+                  </p>
                 </div>
               )}
             </div>
