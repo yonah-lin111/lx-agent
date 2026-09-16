@@ -35,12 +35,13 @@ export const createActivityService = (getConnection: () => Database.Database) =>
     const days = getDayRange(ACTIVITY_DAYS)
     const startDate = days[0]
 
+    // created_at 为 UTC ISO 字符串（toISOString），按本地日期归档才能在跨零点时对齐绿墙。
     const rows = getConnection()
       .prepare(
-        `SELECT substr(created_at, 1, 10) as day, count(DISTINCT session_id) as count
+        `SELECT strftime('%Y-%m-%d', created_at, 'localtime') as day, count(DISTINCT session_id) as count
          FROM agent_session_entry
-         WHERE substr(created_at, 1, 10) >= ?
-         GROUP BY substr(created_at, 1, 10)`,
+         WHERE strftime('%Y-%m-%d', created_at, 'localtime') >= ?
+         GROUP BY strftime('%Y-%m-%d', created_at, 'localtime')`,
       )
       .all(startDate) as Array<{ day: string; count: number }>
 
