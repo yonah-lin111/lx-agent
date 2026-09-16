@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { Route, Sparkles, Wind } from "lucide-react"
+import { Blocks, Rabbit, Sparkles } from "lucide-react"
 import type { TranslationKey } from "@/i18n"
 import type { ArcadeGameId } from "./types"
 
@@ -24,12 +24,12 @@ export interface ArcadeGameMeta {
 
 export const ARCADE_GAMES: ArcadeGameMeta[] = [
   {
-    id: "oneStroke",
-    nameKey: "arcade.games.oneStroke.name",
-    descriptionKey: "arcade.games.oneStroke.description",
-    controlsKey: "arcade.games.oneStroke.controls",
-    infoKey: "arcade.games.oneStroke.info",
-    icon: Route,
+    id: "tetris",
+    nameKey: "arcade.games.tetris.name",
+    descriptionKey: "arcade.games.tetris.description",
+    controlsKey: "arcade.games.tetris.controls",
+    infoKey: "arcade.games.tetris.info",
+    icon: Blocks,
     iconClassName: "text-emerald-400",
   },
   {
@@ -42,12 +42,12 @@ export const ARCADE_GAMES: ArcadeGameMeta[] = [
     iconClassName: "text-sky-400",
   },
   {
-    id: "runner",
-    nameKey: "arcade.games.runner.name",
-    descriptionKey: "arcade.games.runner.description",
-    controlsKey: "arcade.games.runner.controls",
-    infoKey: "arcade.games.runner.info",
-    icon: Wind,
+    id: "hop",
+    nameKey: "arcade.games.hop.name",
+    descriptionKey: "arcade.games.hop.description",
+    controlsKey: "arcade.games.hop.controls",
+    infoKey: "arcade.games.hop.info",
+    icon: Rabbit,
     iconClassName: "text-amber-400",
   },
 ]

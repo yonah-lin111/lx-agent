@@ -1,5 +1,5 @@
 // 彩蛋游戏标识。
-export type ArcadeGameId = "oneStroke" | "dodge" | "runner"
+export type ArcadeGameId = "tetris" | "dodge" | "hop"
 
 // 主题化游戏色板（默认主题霓虹 / Minecraft 像素）。
 export interface ArcadePalette {
