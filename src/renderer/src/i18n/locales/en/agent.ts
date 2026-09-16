@@ -191,6 +191,9 @@ export const agent = {
   parallelCall: "Parallel {{index}}/{{total}}",
   parallelToolNotice:
     "Parallel call from single model response ({{index}}/{{total}}, shared context)",
+  parallelBatchTotal: "Batch Total",
+  parallelBatchTokenNotice:
+    "Total token consumption for this parallel batch ({{total}} items, settled on last item)",
   copyContent: "Copy Content",
   copyJson: "Copy JSON",
   copied: "Copied",

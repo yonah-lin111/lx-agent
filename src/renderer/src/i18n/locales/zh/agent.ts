@@ -182,6 +182,8 @@ export const agent = {
   toolCallsCount: "共 {{count}} 次工具调用",
   parallelCall: "并行 {{index}}/{{total}}",
   parallelToolNotice: "单次大模型响应并发触发（第 {{index}}/{{total}} 项，共享该次请求的上下文）",
+  parallelBatchTotal: "并行总计",
+  parallelBatchTokenNotice: "本次并发调用的整批总消耗（共 {{total}} 项，于末项统一结算）",
   copyContent: "复制内容",
   copyJson: "复制 JSON",
   copied: "已复制",

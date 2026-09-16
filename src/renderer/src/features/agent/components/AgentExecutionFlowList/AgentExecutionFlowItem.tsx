@@ -89,6 +89,9 @@ export const AgentExecutionFlowItem = ({
   const hasTokenMetrics =
     (step.tokens?.input ?? 0) > 0 || (step.tokens?.output ?? 0) > 0 || (step.tokens?.total ?? 0) > 0
   const showTokenMetrics = !isRunning && hasTokenMetrics
+  const isParallelBatchTotal = Boolean(
+    step.parallel && step.parallel.total > 1 && step.parallel.index === step.parallel.total,
+  )
   const showFooter =
     showTokenMetrics ||
     Boolean(step.parallel) ||
@@ -567,6 +570,11 @@ export const AgentExecutionFlowItem = ({
                 placement="top"
                 content={
                   <div className="flex flex-col gap-0.5 font-mono text-xs">
+                    {isParallelBatchTotal && step.parallel && (
+                      <div className="border-b border-white/10 pb-0.5 text-white/60">
+                        {t("agent.parallelBatchTokenNotice", { total: step.parallel.total })}
+                      </div>
+                    )}
                     <span>Input: {(step.tokens.input ?? 0).toLocaleString()}</span>
                     <span>Output: {(step.tokens.output ?? 0).toLocaleString()}</span>
                     {step.tokens.cacheRead !== undefined && step.tokens.cacheRead > 0 && (
@@ -588,6 +596,14 @@ export const AgentExecutionFlowItem = ({
                       </span>
                       <span>CACHE {formatTokensShort(step.tokens.cacheRead)}</span>
                     </>
+                  )}
+                  {isParallelBatchTotal && (
+                    <span
+                      data-testid="flow-item-parallel-token-total"
+                      className="ml-0.5 text-xs text-white/40"
+                    >
+                      ({t("agent.parallelBatchTotal")})
+                    </span>
                   )}
                 </span>
               </LxTooltip>
