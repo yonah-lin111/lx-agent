@@ -96,7 +96,7 @@ export const ScheduleStatsPanel = ({
   ].filter((slice) => slice.value > 0)
 
   return (
-    <aside className="lx-schedule-stats flex w-full shrink-0 flex-col gap-3 xl:w-[300px]">
+    <aside className="lx-schedule-stats flex w-full shrink-0 flex-col gap-3 xl:h-full xl:min-h-0 xl:w-[300px]">
       {onClose ? (
         <div className="flex items-center justify-between px-1">
           <span className="text-xs font-semibold text-[var(--color-theme-text-muted)]">
@@ -220,8 +220,9 @@ export const ScheduleStatsPanel = ({
         isEmpty={!hasTrendData}
         emptyText={t("schedule.stats.empty")}
         height={TREND_HEIGHT}
+        className="flex min-h-[220px] flex-1 flex-col"
       >
-        <div style={{ height: TREND_HEIGHT }}>
+        <div className="flex h-full min-h-[170px] w-full flex-1">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               accessibilityLayer={false}

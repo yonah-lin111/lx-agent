@@ -1577,10 +1577,29 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 
 /* 日程图表沿用共享 .lx-chart-card / .lx-chart-tooltip 规则（与用量图表同一像素语言） */
 
-/* 日程列表卡片：去掉马赛克底纹，保留石质边框与凹槽 */
-[data-theme="minecraft"] .lx-schedule-board {
+/* 日程列表卡片与周感知带外层容器：去掉马赛克底纹，保留石质边框与凹槽 */
+[data-theme="minecraft"] .lx-schedule-board,
+[data-theme="minecraft"] .lx-schedule-week-strip {
   background-image: none !important;
   background-color: #1e1e2a !important;
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* 昨日未完成顺延提醒条：金矿质感底色 + 像素直角凹槽 */
+[data-theme="minecraft"] .lx-schedule-rollover {
+  background-image: none !important;
+  background-color: #2b2416 !important;
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
 }
 
 /* 统计面板容器退化为纯布局列（与全局 aside nav 同策略） */

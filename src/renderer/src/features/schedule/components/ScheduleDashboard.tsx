@@ -1,7 +1,6 @@
 import { ArrowUpDown, CalendarDays, LayoutGrid, ListTodo, PanelRight } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 import {
   formatDateLabel,
@@ -112,7 +111,6 @@ export const ScheduleDashboard = (): React.JSX.Element => {
     [monthStats],
   )
 
-  const completedCount = items.filter((item) => item.completed).length
   const filteredItems = useMemo(
     () => filterScheduleItems(items, statusFilter),
     [items, statusFilter],
@@ -158,53 +156,16 @@ export const ScheduleDashboard = (): React.JSX.Element => {
 
         {/* 核心工作区卡片 */}
         <section className="lx-schedule-board relative flex min-h-[420px] flex-1 flex-col rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3 xl:min-h-0">
-          {/* 工具条：日期进度 + 视图切换 + 状态过滤 + 排序与洞察面板开关 */}
+          {/* 工具条：日期与过滤药丸 + 排序/视图切换/洞察面板开关 */}
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-theme-border)] pb-2.5">
-            <div className="flex min-w-0 items-center gap-2">
-              <div>
-                <h2 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
-                  {formatDateLabel(entryDate, locale)} · {formatWeekdayShort(entryDate, locale)}
-                </h2>
-                <p className="text-[11px] text-[var(--color-theme-text-muted)]">
-                  {t("schedule.progress", { done: completedCount, total: items.length })}
-                </p>
-              </div>
-            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h2 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
+                {formatDateLabel(entryDate, locale)} · {formatWeekdayShort(entryDate, locale)}
+              </h2>
 
-            <div className="flex items-center gap-2">
-              {/* 视图双模切换：清单 / 四象限 */}
-              <div className="flex items-center rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface-hover)] p-0.5">
-                <button
-                  type="button"
-                  aria-label={t("schedule.viewList")}
-                  className={`flex h-6 items-center gap-1 rounded-[calc(var(--theme-radius-base)-2px)] px-2 text-xs font-medium transition-colors ${
-                    viewMode === "list"
-                      ? "bg-[var(--color-theme-surface)] text-[var(--color-theme-text)] shadow-xs"
-                      : "text-[var(--color-theme-text-muted)] hover:text-[var(--color-theme-text)]"
-                  }`}
-                  onClick={() => handleToggleViewMode("list")}
-                >
-                  <ListTodo className="h-3.5 w-3.5" />
-                  <span>{t("schedule.viewList")}</span>
-                </button>
-                <button
-                  type="button"
-                  aria-label={t("schedule.viewMatrix")}
-                  className={`flex h-6 items-center gap-1 rounded-[calc(var(--theme-radius-base)-2px)] px-2 text-xs font-medium transition-colors ${
-                    viewMode === "matrix"
-                      ? "bg-[var(--color-theme-surface)] text-[var(--color-theme-text)] shadow-xs"
-                      : "text-[var(--color-theme-text-muted)] hover:text-[var(--color-theme-text)]"
-                  }`}
-                  onClick={() => handleToggleViewMode("matrix")}
-                >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  <span>{t("schedule.viewMatrix")}</span>
-                </button>
-              </div>
-
-              {/* 清单视图下的过滤药丸 */}
+              {/* 清单视图下的过滤药丸，紧邻日期展示 */}
               {viewMode === "list" ? (
-                <div className="hidden items-center gap-1 sm:flex">
+                <div className="flex items-center gap-1">
                   {(["all", "pending", "completed"] as const).map((filterKey) => (
                     <button
                       key={filterKey}
@@ -225,7 +186,9 @@ export const ScheduleDashboard = (): React.JSX.Element => {
                   ))}
                 </div>
               ) : null}
+            </div>
 
+            <div className="flex items-center gap-1">
               {/* 优先级重排（仅清单视图） */}
               {viewMode === "list" ? (
                 <LxIconButton
@@ -235,28 +198,35 @@ export const ScheduleDashboard = (): React.JSX.Element => {
                   title={{ content: t("schedule.sortByPriority"), placement: "top" }}
                   onClick={() => void mutations.sortItems()}
                 >
-                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  <ArrowUpDown />
                 </LxIconButton>
               ) : null}
 
-              {/* 洞察面板显隐切换按钮 */}
-              <LxTooltip
-                content={isStatsOpen ? t("schedule.hideStats") : t("schedule.showStats")}
-                placement="top"
+              {/* 视图切换：清单 / 四象限（单 icon 切换，对齐 QA/Flow） */}
+              <LxIconButton
+                size="small"
+                aria-label={viewMode === "list" ? t("schedule.viewMatrix") : t("schedule.viewList")}
+                title={{
+                  content: viewMode === "list" ? t("schedule.viewMatrix") : t("schedule.viewList"),
+                  placement: "top",
+                }}
+                onClick={() => handleToggleViewMode(viewMode === "list" ? "matrix" : "list")}
               >
-                <button
-                  type="button"
-                  aria-label={isStatsOpen ? t("schedule.hideStats") : t("schedule.showStats")}
-                  className={`flex h-7 w-7 items-center justify-center rounded-[var(--theme-radius-base)] border transition-colors ${
-                    isStatsOpen
-                      ? "border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface-hover)] text-[var(--color-theme-text)]"
-                      : "border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] text-[var(--color-theme-text-muted)] hover:text-[var(--color-theme-text)]"
-                  }`}
-                  onClick={handleToggleStats}
-                >
-                  <PanelRight className="h-3.5 w-3.5" />
-                </button>
-              </LxTooltip>
+                {viewMode === "list" ? <LayoutGrid /> : <ListTodo />}
+              </LxIconButton>
+
+              {/* 洞察面板显隐折叠按钮 */}
+              <LxIconButton
+                size="small"
+                aria-label={isStatsOpen ? t("schedule.hideStats") : t("schedule.showStats")}
+                title={{
+                  content: isStatsOpen ? t("schedule.hideStats") : t("schedule.showStats"),
+                  placement: "top",
+                }}
+                onClick={handleToggleStats}
+              >
+                <PanelRight />
+              </LxIconButton>
             </div>
           </div>
 
