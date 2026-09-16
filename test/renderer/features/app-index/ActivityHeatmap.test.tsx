@@ -33,10 +33,12 @@ describe("ActivityHeatmap", () => {
       />,
     )
 
-    // 标题与图标容器（绿墙绿色风格）
+    // 标题与裸图标（无边框容器装饰）
     expect(screen.getByText("home.index.activity")).toBeDefined()
-    const iconContainer = container.querySelector(".text-emerald-400.bg-\\[\\#144222\\]")
-    expect(iconContainer).not.toBeNull()
+    const icon = container.querySelector(".app-index-section-icon--activity")
+    expect(icon).not.toBeNull()
+    expect(icon?.parentElement?.className).toContain("app-index-section-title")
+    expect(icon?.parentElement?.className).not.toContain("border")
 
     // 热力单元按日期渲染并携带会话数
     const cells = container.querySelectorAll(".activity-heatmap-cell[data-date]")

@@ -3,6 +3,7 @@ import {
   Bot,
   Boxes,
   CalendarCheck,
+  Compass,
   Component,
   type LucideIcon,
   MessageSquarePlus,
@@ -133,8 +134,8 @@ export const AppIndexDashboard = (): React.JSX.Element => {
         text={t("home.index.loading")}
       />
 
-      {/* 1. 品牌 Hero：logo + 产品定位说明 */}
-      <section className="app-index-hero flex min-w-0 items-center gap-4 rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-5">
+      {/* 1. 品牌 Hero：logo + 产品定位说明（无卡片容器，直接展示文字） */}
+      <section className="app-index-hero flex min-w-0 items-center gap-4 py-1">
         <img
           src={logoImg}
           alt="LX Agent"
@@ -178,9 +179,12 @@ export const AppIndexDashboard = (): React.JSX.Element => {
 
       {/* 2. 全量页面快速入口（4 × 2 网格，窄屏自动降列） */}
       <section className="mt-5 flex min-w-0 flex-col gap-2">
-        <h2 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
-          {t("home.index.quickEntries")}
-        </h2>
+        <div className="app-index-section-title flex min-w-0 items-center gap-2">
+          <Compass className="app-index-section-icon app-index-section-icon--entries h-4 w-4 shrink-0 text-amber-400" />
+          <h2 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
+            {t("home.index.quickEntries")}
+          </h2>
+        </div>
         <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {QUICK_ENTRIES.map((entry, index) => {
             const Icon = entry.icon
@@ -191,7 +195,7 @@ export const AppIndexDashboard = (): React.JSX.Element => {
                 aria-label={t(entry.labelKey)}
                 onClick={() => handleEntryClick(entry)}
                 style={{ animationDelay: `${index * 24}ms` }}
-                className={`app-index-entry animate-app-index-entry-in group flex min-w-0 items-start gap-2.5 rounded-[6px] border p-3 text-left transition-[border-color,background-color,transform] duration-150 hover:-translate-y-px ${
+                className={`app-index-entry animate-app-index-entry-in group flex min-w-0 items-start gap-2.5 rounded-[6px] border p-3 text-left transition-[border-color,background-color] duration-150 ${
                   entry.isPrimary
                     ? "border-[var(--color-theme-accent)]/45 bg-[var(--color-theme-surface-hover)] hover:border-[var(--color-theme-accent)]"
                     : "border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] hover:border-[var(--color-theme-border-strong)] hover:bg-[var(--color-theme-surface-hover)]"

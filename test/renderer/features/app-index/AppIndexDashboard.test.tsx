@@ -44,12 +44,16 @@ describe("AppIndexDashboard", () => {
   })
 
   it("渲染品牌 Hero、8 个快速入口与年度会话活跃度绿墙", async () => {
-    render(<AppIndexDashboard />)
+    const { container } = render(<AppIndexDashboard />)
 
     // Hero 品牌与文案
     expect(screen.getByAltText("LX Agent")).toBeDefined()
     expect(screen.getByText("LX AGENT")).toBeDefined()
     expect(screen.getByText("Agentic desktop workspace for prompt production")).toBeDefined()
+
+    // 标题行裸图标（快速入口 / 活跃度）
+    expect(container.querySelector(".app-index-section-icon--entries")).not.toBeNull()
+    expect(container.querySelector(".app-index-section-icon--activity")).not.toBeNull()
 
     // 8 个快速入口
     const entries = [

@@ -1418,6 +1418,25 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 /* ========================================================
  * 主页索引视图（App Index Hero & Activity Heatmap）
  * ======================================================== */
+/* 索引页标题行与标题图标：像素描边与 Minecraft 配色 */
+[data-theme="minecraft"] .app-index-section-title {
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .app-index-section-icon {
+  filter: drop-shadow(1px 1px 0px #000000) !important;
+  image-rendering: pixelated !important;
+}
+
+[data-theme="minecraft"] .app-index-section-icon--entries {
+  color: #ffaa00 !important;
+}
+
+[data-theme="minecraft"] .app-index-section-icon--activity {
+  color: #55ff55 !important;
+}
+
 [data-theme="minecraft"] .activity-heatmap-card,
 [data-theme="minecraft"] .usage-stat-card,
 [data-theme="minecraft"] .lx-chart-card,

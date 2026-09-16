@@ -215,11 +215,9 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      {/* 头部标题与年度会话总数 */}
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border border-[#1b582e] bg-[#144222] text-emerald-400">
-          <Activity className="h-3.5 w-3.5" />
-        </div>
+      {/* 头部标题与年度会话总数（无图标容器，直接展示） */}
+      <div className="app-index-section-title flex min-w-0 flex-wrap items-center gap-2">
+        <Activity className="app-index-section-icon app-index-section-icon--activity h-4 w-4 shrink-0 text-emerald-400" />
         <h2 className="truncate text-sm font-semibold text-white/90">{t("home.index.activity")}</h2>
         <p className="truncate text-xs text-white/40">{t("home.index.activityDescription")}</p>
         <div className="font-mono text-sm text-white/60">
