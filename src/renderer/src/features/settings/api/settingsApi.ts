@@ -16,6 +16,7 @@ import type {
   SkillSettings,
   SubagentBuiltinRoleInfo,
   SubagentSettings,
+  TokenSaverSettings,
   TranscribeAudioInput,
   TranscribeAudioResult,
   UiSettings,
@@ -80,4 +81,8 @@ export const settingsApi = {
   getOpenClawSettings: (): Promise<OpenClawSettings> => window.api.settings.getOpenClawSettings(),
   saveOpenClawSettings: (settings: OpenClawSettings): Promise<OpenClawSettings> =>
     window.api.settings.saveOpenClawSettings(settings),
+  getTokenSaverSettings: (): Promise<TokenSaverSettings> =>
+    window.api.settings.getTokenSaverSettings(),
+  saveTokenSaverSettings: (settings: TokenSaverSettings): Promise<TokenSaverSettings> =>
+    window.api.settings.saveTokenSaverSettings(settings),
 }

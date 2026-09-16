@@ -40,6 +40,7 @@ import { FlowItemQuestionContent } from "./FlowItemQuestionContent"
 import { FlowItemSubagentContent } from "./FlowItemSubagentContent"
 import { FlowItemSystemContent } from "./FlowItemSystemContent"
 import { FlowItemThinkingContent } from "./FlowItemThinkingContent"
+import { FlowItemTokenSaverBadge } from "./FlowItemTokenSaverBadge"
 import { FlowItemToolContent } from "./FlowItemToolContent"
 import { FlowItemToolTitle } from "./FlowItemToolTitle"
 import { FlowItemUndoContent } from "./FlowItemUndoContent"
@@ -608,6 +609,11 @@ export const AgentExecutionFlowItem = ({
                   )}
                 </span>
               </LxTooltip>
+            ) : null}
+
+            {/* Token Saver 生效标注：工具步骤展示 RTK 命中，回复步骤展示风格提示词 */}
+            {!isRunning && (step.tokenSaverHit || step.tokenSaver) ? (
+              <FlowItemTokenSaverBadge hit={step.tokenSaverHit} run={step.tokenSaver} />
             ) : null}
 
             {/* Subagent 步骤下的 Detail 按钮 */}

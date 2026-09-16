@@ -12,6 +12,7 @@ export type SettingsDomain =
   | "mcp"
   | "openclaw"
   | "skills"
+  | "tokenSaver"
   | "voice"
 
 type SettingsChangeListener = () => void
@@ -28,6 +29,7 @@ const listeners: Record<SettingsDomain, Set<SettingsChangeListener>> = {
   mcp: new Set(),
   openclaw: new Set(),
   skills: new Set(),
+  tokenSaver: new Set(),
   voice: new Set(),
 }
 

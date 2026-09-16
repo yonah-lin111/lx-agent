@@ -5,6 +5,7 @@ import { mcp } from "./mcp"
 import { models } from "./models"
 import { openclaw } from "./openclaw"
 import { permissions } from "./permissions"
+import { tokenSaver } from "./tokenSaver"
 
 export const settings = {
   ...general,
@@ -14,4 +15,5 @@ export const settings = {
   ...models,
   ...permissions,
   ...openclaw,
+  ...tokenSaver,
 }

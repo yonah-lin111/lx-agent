@@ -13,8 +13,12 @@ import type { Model, StreamFn } from "@/agent/core/types"
 import { DEFAULT_STREAM_IDLE_TIMEOUT_MS, IdleWatchdog } from "@/agent/stream/idleWatchdog"
 import { resolveLanguageModel } from "@/agent/stream/modelFactory"
 import { toAiTools, toModelMessages } from "@/agent/stream/toModelMessages"
+import { applyTokenSaver } from "@/agent/tokenSaver/applyTokenSaver"
 import { recordModelCall, toUsage } from "@/agent/usageRecorder"
-import { getModelProviderSettings } from "@/services/settingsService"
+import { getModelProviderSettings, getTokenSaverSettings } from "@/services/settingsService"
+
+// Token Saver 生效的请求类型：仅真实会话请求（主对话 / 子代理），标题/建议问题/压缩摘要跳过。
+const TOKEN_SAVER_PURPOSES: ReadonlySet<UsagePurpose> = new Set(["chat", "subagent"])
 
 // AI SDK finishReason → 本地 StopReason 映射。
 const mapStopReason = (reason: string): StopReason => {
@@ -234,10 +238,23 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
           }
         }
 
+        // Token Saver 只在出站副本上做压缩与风格注入，DB 与 UI 保持原始内容。
+        const dispatchRequest = TOKEN_SAVER_PURPOSES.has(purpose)
+          ? applyTokenSaver(
+              { systemPrompt: context.systemPrompt, messages: context.messages },
+              getTokenSaverSettings(),
+            )
+          : { systemPrompt: context.systemPrompt, messages: context.messages }
+
+        // 生效记录挂到助手消息上随 turn 落库（执行流程底部标注用）。
+        if (dispatchRequest.run) {
+          partial = { ...partial, tokenSaver: dispatchRequest.run }
+        }
+
         const result = streamText({
           model: languageModel,
-          system: context.systemPrompt || undefined,
-          messages: toModelMessages(context.messages),
+          system: dispatchRequest.systemPrompt || undefined,
+          messages: toModelMessages(dispatchRequest.messages),
           tools: toAiTools(context.tools),
           stopWhen: stepCountIs(1),
           abortSignal: combinedSignal,

@@ -33,4 +33,6 @@ export const SETTINGS_CHANNELS = {
   transcribeAudio: "settings:voice:transcribe",
   getOpenClawSettings: "settings:openclaw:get",
   saveOpenClawSettings: "settings:openclaw:save",
+  getTokenSaverSettings: "settings:token-saver:get",
+  saveTokenSaverSettings: "settings:token-saver:save",
 } as const

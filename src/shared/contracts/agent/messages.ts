@@ -59,6 +59,33 @@ export interface WorkspaceMemorySummary {
   rolloutsCount: number
 }
 
+// 单条工具输出的 RTK 压缩命中记录（按 toolCallId 归因到工具步骤）。
+export interface TokenSaverHit {
+  // 工具调用 ID。
+  toolCallId: string
+  // 工具名。
+  toolName: string
+  // 生效的过滤器名。
+  filter: string
+  // 该条输出节省的字符数。
+  savedChars: number
+}
+
+// Token Saver 出站请求生效记录（随 assistant 消息落库；执行流程底部标注展示）。
+// 档位字段为 settings 中的 CavemanLevel / PonytailLevel 字符串值。
+export interface TokenSaverRun {
+  // RTK：实际生效的过滤器名（去重，按首次生效顺序）。
+  rtkFilters?: string[]
+  // RTK：压缩节省的字符数（整轮汇总）。
+  rtkSavedChars?: number
+  // RTK：逐工具输出的命中明细（按 toolCallId 归因）。
+  hits?: TokenSaverHit[]
+  // Caveman：生效档位。
+  cavemanLevel?: string
+  // Ponytail：生效档位。
+  ponytailLevel?: string
+}
+
 // 助手消息。
 export interface AssistantMessage {
   role: "assistant"
@@ -75,6 +102,8 @@ export interface AssistantMessage {
   firstChunkTimestamp?: number
   durationMs?: number
   citations?: MemoryCitation
+  // 本轮请求实际生效的 Token Saver 记录（未生效时不设置）。
+  tokenSaver?: TokenSaverRun
 }
 
 // 模型切换/初始模型消息：非交互块，记录模型切换及注入的模型厂商自适应提示词。

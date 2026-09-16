@@ -897,4 +897,214 @@ describe("executionFlow", () => {
       expect(designStep.frontDesignContent?.html).toBe('<div class="p-4">Dashboard</div>')
     })
   })
+
+  describe("buildExecutionSteps Token Saver 标注", () => {
+    it("助手回复步骤承载请求级 Token Saver 记录", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "已完成压缩。" }],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
+          tokenSaver: { rtkFilters: ["git-diff"], rtkSavedChars: 86412, cavemanLevel: "ultra" },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(1)
+      expect(steps[0]?.kind).toBe("assistant")
+      expect(steps[0]?.tokenSaver).toEqual({
+        rtkFilters: ["git-diff"],
+        rtkSavedChars: 86412,
+        cavemanLevel: "ultra",
+      })
+    })
+
+    it("工具步骤只承载命中归因，未命中的工具步骤无标注", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "call-1",
+              toolName: "bash",
+              args: { command: "git log" },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
+          tokenSaver: { rtkFilters: ["git-log"], rtkSavedChars: 1024 },
+        },
+        {
+          id: "t1",
+          role: "toolResult",
+          blocks: [
+            {
+              kind: "toolResult",
+              toolCallId: "call-1",
+              toolName: "bash",
+              text: "压缩前输出",
+              isError: false,
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1020,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      const toolStep = steps.find((step) => step.kind === "tool")
+      // 请求级记录不挂工具步骤；无后续命中映射时不产生工具级标注。
+      expect(toolStep?.tokenSaver).toBeUndefined()
+      expect(toolStep?.tokenSaverHit).toBeUndefined()
+    })
+
+    it("无 Token Saver 记录的消息不产生标注", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "普通回复。" }],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps[0]?.tokenSaver).toBeUndefined()
+      expect(steps[0]?.tokenSaverHit).toBeUndefined()
+    })
+
+    it("工具步骤按 toolCallId 归因到后续请求的 RTK 命中", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "call-1",
+              toolName: "bash",
+              args: { command: "git log" },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1000,
+          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
+        },
+        {
+          id: "t1",
+          role: "toolResult",
+          blocks: [
+            {
+              kind: "toolResult",
+              toolCallId: "call-1",
+              toolName: "bash",
+              text: "原始 git log 输出",
+              isError: false,
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+        },
+        {
+          id: "a2",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "已总结。" }],
+          isStreaming: false,
+          timestamp: 1020,
+          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
+          tokenSaver: {
+            rtkFilters: ["git-log"],
+            rtkSavedChars: 1341,
+            hits: [{ toolCallId: "call-1", toolName: "bash", filter: "git-log", savedChars: 1341 }],
+            cavemanLevel: "full",
+          },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      const toolStep = steps.find((step) => step.kind === "tool")
+      expect(toolStep?.tokenSaverHit).toEqual({
+        toolCallId: "call-1",
+        toolName: "bash",
+        filter: "git-log",
+        savedChars: 1341,
+      })
+    })
+
+    it("同一输出被后续请求重复压缩时取首次命中", () => {
+      const firstHit = {
+        toolCallId: "call-1",
+        toolName: "bash",
+        filter: "git-log",
+        savedChars: 1341,
+      }
+      const messages: ChatMessage[] = [
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "call-1",
+              toolName: "bash",
+              args: {},
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1000,
+          usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15 },
+        },
+        {
+          id: "t1",
+          role: "toolResult",
+          blocks: [
+            {
+              kind: "toolResult",
+              toolCallId: "call-1",
+              toolName: "bash",
+              text: "原始输出",
+              isError: false,
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+        },
+        {
+          id: "a2",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "第一次总结。" }],
+          isStreaming: false,
+          timestamp: 1020,
+          usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15 },
+          tokenSaver: { hits: [firstHit] },
+        },
+        {
+          id: "a3",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "第二次总结。" }],
+          isStreaming: false,
+          timestamp: 1030,
+          usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15 },
+          tokenSaver: {
+            hits: [{ toolCallId: "call-1", toolName: "bash", filter: "git-log", savedChars: 9999 }],
+          },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      const toolStep = steps.find((step) => step.kind === "tool")
+      expect(toolStep?.tokenSaverHit).toEqual(firstHit)
+    })
+  })
 })

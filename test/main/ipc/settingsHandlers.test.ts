@@ -22,6 +22,8 @@ vi.mock("@/services/settingsService", () => ({
   deleteSkill: vi.fn(),
   getVoiceSettings: vi.fn(() => ({ model: "whisper-large-v3-turbo" })),
   saveVoiceSettings: vi.fn(),
+  getTokenSaverSettings: vi.fn(() => ({ rtkEnabled: true })),
+  saveTokenSaverSettings: vi.fn(),
 }))
 vi.mock("@/services/voiceService", () => ({
   transcribeAudioWithGroq: vi.fn(),

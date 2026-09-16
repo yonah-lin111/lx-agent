@@ -117,6 +117,9 @@ const api: ProjectApi &
     getOpenClawSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getOpenClawSettings),
     saveOpenClawSettings: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.saveOpenClawSettings, settings),
+    getTokenSaverSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getTokenSaverSettings),
+    saveTokenSaverSettings: (settings) =>
+      ipcRenderer.invoke(SETTINGS_CHANNELS.saveTokenSaverSettings, settings),
   },
 
   agent: agentApi,

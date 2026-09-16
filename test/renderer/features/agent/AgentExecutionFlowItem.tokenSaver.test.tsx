@@ -1,0 +1,128 @@
+// @vitest-environment jsdom
+import { cleanup, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { AgentExecutionFlowItem } from "@/features/agent/components/AgentExecutionFlowList/AgentExecutionFlowItem"
+import type { ExecutionStep } from "@/features/agent/types"
+
+const makeStep = (patch: Partial<ExecutionStep>): ExecutionStep => ({
+  id: "step-1",
+  messageId: "msg-1",
+  turnIndex: 1,
+  stepIndex: 1,
+  kind: "assistant",
+  title: "已完成。",
+  status: "done",
+  timestamp: 1000,
+  ...patch,
+})
+
+describe("AgentExecutionFlowItem - Token Saver 底部标注", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("回复步骤只展示风格提示词，不重复展示 RTK", () => {
+    render(
+      <AgentExecutionFlowItem
+        step={makeStep({
+          tokens: { input: 4200, output: 180, total: 4380 },
+          tokenSaver: {
+            rtkFilters: ["git-diff", "grep"],
+            rtkSavedChars: 86412,
+            cavemanLevel: "ultra",
+          },
+        })}
+        isExpanded={false}
+        onToggleExpand={vi.fn()}
+      />,
+    )
+
+    const badge = screen.getByTestId("flow-item-token-saver")
+    expect(badge.textContent).toBe("Caveman ultra")
+  })
+
+  it("回复步骤仅有 RTK 记录时不渲染标注（RTK 归工具步骤）", () => {
+    render(
+      <AgentExecutionFlowItem
+        step={makeStep({
+          tokens: { input: 4200, output: 180, total: 4380 },
+          tokenSaver: { rtkFilters: ["git-diff"], rtkSavedChars: 86412 },
+        })}
+        isExpanded={false}
+        onToggleExpand={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByTestId("flow-item-token-saver")).toBeNull()
+  })
+
+  it("Ponytail 档位展示在标注中", () => {
+    render(
+      <AgentExecutionFlowItem
+        step={makeStep({
+          tokens: { input: 10, output: 5, total: 15 },
+          tokenSaver: { ponytailLevel: "full" },
+        })}
+        isExpanded={false}
+        onToggleExpand={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId("flow-item-token-saver").textContent).toBe("Ponytail full")
+  })
+
+  it("单工具命中优先展示过滤器级标注（不与请求级汇总重复）", () => {
+    render(
+      <AgentExecutionFlowItem
+        step={makeStep({
+          kind: "tool",
+          title: "bash",
+          tokens: { input: 4200, output: 180, total: 4380 },
+          tokenSaver: {
+            rtkFilters: ["git-log"],
+            rtkSavedChars: 1341,
+            cavemanLevel: "full",
+          },
+          tokenSaverHit: {
+            toolCallId: "call-1",
+            toolName: "bash",
+            filter: "git-log",
+            savedChars: 1341,
+          },
+        })}
+        isExpanded={false}
+        onToggleExpand={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId("flow-item-token-saver").textContent).toBe("RTK −1.3k")
+  })
+
+  it("无 Token Saver 记录时不渲染标注", () => {
+    render(
+      <AgentExecutionFlowItem
+        step={makeStep({ tokens: { input: 10, output: 5, total: 15 } })}
+        isExpanded={false}
+        onToggleExpand={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByTestId("flow-item-token-saver")).toBeNull()
+  })
+
+  it("运行中的步骤不提前展示标注", () => {
+    render(
+      <AgentExecutionFlowItem
+        step={makeStep({
+          status: "running",
+          parallel: { index: 1, total: 2, batchId: "batch-1", batchIndex: 0 },
+          tokenSaver: { rtkFilters: ["git-log"], rtkSavedChars: 2048 },
+        })}
+        isExpanded={false}
+        onToggleExpand={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByTestId("flow-item-token-saver")).toBeNull()
+  })
+})
