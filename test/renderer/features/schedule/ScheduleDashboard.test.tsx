@@ -118,6 +118,38 @@ describe("ScheduleDashboard", () => {
     })
   })
 
+  it("首屏加载时展示整页加载遮罩，数据返回后渲染条目", async () => {
+    const api = createApiMock([])
+    // 同时挂起当日列表与昨日顺延探测两次查询，直到测试显式放行。
+    const pending: Array<{ entryDate: string; resolve: (items: ScheduleItem[]) => void }> = []
+    api.listByDate.mockImplementation(
+      (input: { entryDate: string }) =>
+        new Promise<ScheduleItem[]>((resolve) => {
+          pending.push({ entryDate: input.entryDate, resolve })
+        }),
+    )
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    render(<ScheduleDashboard />)
+
+    // 数据未返回时遮罩可见
+    const overlay = screen.getByRole("status")
+    expect(overlay.getAttribute("aria-label")).toBe("Loading schedule...")
+    expect(overlay.className).toContain("opacity-100")
+
+    const todayKey = toLocalDateKey(new Date())
+    for (const request of pending) {
+      request.resolve(
+        request.entryDate === todayKey ? [createItem({ id: 1, content: "延迟加载任务" })] : [],
+      )
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText("延迟加载任务")).toBeDefined()
+    })
+  })
+
   it("加载失败时展示错误态与重试入口", async () => {
     const api = createApiMock([])
     api.listByDate.mockRejectedValue(new Error("boom"))

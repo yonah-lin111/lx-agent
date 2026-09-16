@@ -1,6 +1,7 @@
 import { ArrowUpDown, CalendarDays, LayoutGrid, ListTodo, PanelRight } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { useTranslation } from "@/i18n"
 import {
   formatDateLabel,
@@ -117,7 +118,10 @@ export const ScheduleDashboard = (): React.JSX.Element => {
   )
 
   return (
-    <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-4 [scrollbar-gutter:stable] xl:flex-row">
+    <div className="custom-scrollbar relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-4 [scrollbar-gutter:stable] xl:flex-row">
+      {/* 首屏（切 tab / 空日期）整页加载遮罩；列表非空时的增量刷新仅显示行内文本 */}
+      <LxLoadingOverlay isLoading={isLoading && items.length === 0} text={t("schedule.loading")} />
+
       <div className="flex w-full min-w-0 flex-1 flex-col gap-3 xl:min-h-0">
         {/* 顶部标题与日期导航 */}
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
