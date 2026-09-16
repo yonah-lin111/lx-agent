@@ -13,7 +13,7 @@ export interface ScheduleComposerProps {
 }
 
 /**
- * 渲染日程快速录入表单：回车保存、Tab 循环优先级、Shift+Enter 换行。
+ * 渲染日程快速录入表单（单行）：回车保存、Tab 循环优先级。
  */
 export const ScheduleComposer = ({ onSubmit }: ScheduleComposerProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -35,14 +35,13 @@ export const ScheduleComposer = ({ onSubmit }: ScheduleComposerProps): React.JSX
   return (
     <LxInput
       ref={inputRef}
-      multiline
       className="lx-schedule-composer"
       placeholder={t("schedule.composerPlaceholder")}
       value={content}
       onChange={(event) => setContent(event.target.value)}
       onKeyDown={(event) => {
         if (event.nativeEvent.isComposing) return
-        if (event.key === "Enter" && !event.shiftKey) {
+        if (event.key === "Enter") {
           event.preventDefault()
           void handleSubmit()
         }

@@ -155,11 +155,6 @@ export const LxDatePicker = ({
     if (isOpen && mode !== "month") onVisibleMonthChange?.(visibleMonth)
   }, [isOpen, mode, visibleMonth, onVisibleMonthChange])
 
-  // 关闭时清空定位，避免下次打开闪现旧坐标。
-  useEffect(() => {
-    if (!isOpen) setPopoverPosition(null)
-  }, [isOpen])
-
   const handleToggle = (): void => {
     if (disabled) return
     setIsOpen((previous) => !previous)
@@ -231,11 +226,7 @@ export const LxDatePicker = ({
             className={`lx-datepicker fixed z-[9999] w-[292px] rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface)] p-3 text-[var(--color-theme-text)] shadow-[0_18px_60px_rgba(0,0,0,0.55)] ${
               isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
             }`}
-            style={{
-              left: popoverPosition?.left ?? 0,
-              top: popoverPosition?.top ?? 0,
-              opacity: popoverPosition ? undefined : 0,
-            }}
+            style={{ ...(popoverPosition ?? undefined) }}
           >
             {mode === "month" ? (
               <>

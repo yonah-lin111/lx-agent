@@ -20,7 +20,7 @@ export interface ScheduleItemRowProps {
 }
 
 /**
- * 渲染单条日程：完成勾选、优先级循环、行内编辑、移动到指定日期与删除确认。
+ * 渲染单条日程（单行）：完成勾选、优先级循环、行内编辑、移动到指定日期与删除确认。
  */
 export const ScheduleItemRow = ({
   item,
@@ -45,30 +45,25 @@ export const ScheduleItemRow = ({
 
   return (
     <div
-      className="lx-schedule-item group flex items-start gap-2 rounded-[var(--theme-radius-base)] border border-transparent px-2 py-1.5 transition-colors hover:border-[var(--color-theme-border)] hover:bg-[var(--color-theme-surface-hover)]"
+      className="lx-schedule-item group flex h-7 items-center gap-2 rounded-[4px] px-1.5 transition-colors hover:bg-[var(--color-theme-surface-hover)]"
       data-completed={item.completed ? "true" : undefined}
     >
-      <span className="pt-0.5">
-        <LxCheckbox
-          size="small"
-          checked={item.completed}
-          aria-label={item.completed ? t("schedule.markUndone") : t("schedule.markDone")}
-          onChange={() => onToggle(item)}
-        />
-      </span>
+      <LxCheckbox
+        size="small"
+        checked={item.completed}
+        aria-label={item.completed ? t("schedule.markUndone") : t("schedule.markDone")}
+        onChange={() => onToggle(item)}
+      />
 
-      <span className="pt-px">
-        <SchedulePriorityChip
-          priority={item.priority}
-          completed={item.completed}
-          label={t("schedule.cyclePriority")}
-          onClick={() => onCyclePriority(item)}
-        />
-      </span>
+      <SchedulePriorityChip
+        priority={item.priority}
+        completed={item.completed}
+        label={t("schedule.cyclePriority")}
+        onClick={() => onCyclePriority(item)}
+      />
 
       {draft !== null ? (
         <LxInput
-          multiline
           autoFocus
           size="small"
           className="lx-schedule-item-editor min-w-0 flex-1"
@@ -77,7 +72,7 @@ export const ScheduleItemRow = ({
           onBlur={commitDraft}
           onKeyDown={(event) => {
             if (event.nativeEvent.isComposing) return
-            if (event.key === "Enter" && !event.shiftKey) {
+            if (event.key === "Enter") {
               event.preventDefault()
               commitDraft()
             }
@@ -91,9 +86,10 @@ export const ScheduleItemRow = ({
       ) : (
         <button
           type="button"
-          className={`min-w-0 flex-1 rounded-[4px] border border-transparent px-1 text-left text-[13px] leading-5 transition-colors ${
+          data-variant="ghost"
+          className={`min-w-0 flex-1 truncate border-none bg-transparent p-0 text-left text-[13px] leading-5 ${
             item.completed
-              ? "text-[var(--color-theme-text-subtle)] line-through decoration-[var(--color-theme-text-subtle)]"
+              ? "text-[var(--color-theme-text-subtle)] line-through"
               : "text-[var(--color-theme-text)]"
           }`}
           onClick={() => setDraft(item.content)}
@@ -111,19 +107,14 @@ export const ScheduleItemRow = ({
             onOpenChange: setIsMoveOpen,
             closeOnContentClick: false,
             content: (
-              <div className="flex w-[292px] flex-col gap-1.5">
-                <span className="text-xs font-semibold text-[var(--color-theme-text-muted)]">
-                  {t("schedule.moveToDate")}
-                </span>
-                <LxDatePicker
-                  value={item.entryDate}
-                  quickSelects={false}
-                  onChange={(targetDate) => {
-                    setIsMoveOpen(false)
-                    if (targetDate !== item.entryDate) onMove(item, targetDate)
-                  }}
-                />
-              </div>
+              <LxDatePicker
+                value={item.entryDate}
+                quickSelects={false}
+                onChange={(targetDate) => {
+                  setIsMoveOpen(false)
+                  if (targetDate !== item.entryDate) onMove(item, targetDate)
+                }}
+              />
             ),
           }}
         >

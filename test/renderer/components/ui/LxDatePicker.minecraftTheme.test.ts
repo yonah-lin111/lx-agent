@@ -50,4 +50,16 @@ describe("我的世界主题日程组件", () => {
     expect(minecraftCss).toContain("--color-schedule-priority-p0: #cc5f5f")
     expect(minecraftCss).toContain("--color-schedule-chart-completed: #4fc94f")
   })
+
+  it("日程卡片去掉马赛克底纹，条目行保持纯平铺", () => {
+    const cardBlock = getRuleBlock('[data-theme="minecraft"] .lx-schedule-board,')
+    expect(cardBlock).toContain("background-image: none !important")
+    expect(cardBlock).toContain("background-color: #1e1e2a !important")
+
+    const statsBlock = getRuleBlock('[data-theme="minecraft"] .lx-schedule-stats {')
+    expect(statsBlock).toContain("background-image: none !important")
+
+    const itemBlock = getRuleBlock('[data-theme="minecraft"] .lx-schedule-item {')
+    expect(itemBlock).toContain("background-image: none !important")
+  })
 })

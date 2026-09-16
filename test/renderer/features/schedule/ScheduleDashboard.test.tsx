@@ -95,7 +95,7 @@ describe("ScheduleDashboard", () => {
     })
     // 创建成功后清空草稿。
     await waitFor(() => {
-      expect((composer as HTMLTextAreaElement).value).toBe("")
+      expect((composer as HTMLInputElement).value).toBe("")
     })
   })
 

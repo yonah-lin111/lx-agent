@@ -1586,3 +1586,27 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   stroke: #000000 !important;
   stroke-width: 2px !important;
 }
+
+/* 日程卡片：去掉马赛克底纹，保留石质边框与凹槽（列表卡片与统计卡片） */
+[data-theme="minecraft"] .lx-schedule-board,
+[data-theme="minecraft"] .lx-schedule-stats section {
+  background-image: none !important;
+  background-color: #1e1e2a !important;
+}
+
+/* 统计面板容器退化为纯布局列（与全局 aside nav 同策略） */
+[data-theme="minecraft"] .lx-schedule-stats {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* 日程条目行：纯平铺行，无底纹无边框（内容文本按钮为 ghost 变体，不受全局按钮浮雕影响） */
+[data-theme="minecraft"] .lx-schedule-item {
+  background-image: none !important;
+}
+
+[data-theme="minecraft"] .lx-schedule-item:hover {
+  background-color: #343448 !important;
+}
