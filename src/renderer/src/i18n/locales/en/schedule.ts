@@ -7,7 +7,6 @@ export const schedule = {
   markDone: "Mark as done",
   markUndone: "Mark as undone",
   moveToDate: "Move to date",
-  moveToConfirm: "Move this task to {{date}}?",
   deleteAction: "Delete task",
   deleteConfirm: "Delete this task?",
   previousDay: "Previous day",

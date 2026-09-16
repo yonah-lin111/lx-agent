@@ -27,7 +27,7 @@ const createHandlers = () => ({
 describe("ScheduleItemRow", () => {
   afterEach(cleanup)
 
-  it("点击日期按钮直接展示日期面板，选中日期后二次确认再移动", () => {
+  it("点击日期按钮直接展示日期面板，选中日期后立即移动", () => {
     const handlers = createHandlers()
     render(<ScheduleItemRow item={item} {...handlers} />)
 
@@ -38,10 +38,9 @@ describe("ScheduleItemRow", () => {
     expect(targetDay).not.toBeNull()
 
     fireEvent.click(targetDay as HTMLElement)
-    expect(screen.getByText(/Move this task to/)).toBeDefined()
-    expect(handlers.onMove).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByLabelText("Confirm"))
+    // 无二次确认，直接切换日期。
+    expect(screen.queryByLabelText("Confirm")).toBeNull()
     expect(handlers.onMove).toHaveBeenCalledWith(item, "2026-09-20")
   })
 

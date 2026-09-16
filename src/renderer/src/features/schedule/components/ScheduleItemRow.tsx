@@ -7,7 +7,6 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
-import { formatDateLabel } from "@/lib/date"
 import { SchedulePriorityChip } from "./SchedulePriorityChip"
 
 // 单条日程行属性。
@@ -31,12 +30,11 @@ export const ScheduleItemRow = ({
   onMove,
   onDelete,
 }: ScheduleItemRowProps): React.JSX.Element => {
-  const { t, locale } = useTranslation()
+  const { t } = useTranslation()
   // 行内编辑草稿；null 表示未处于编辑态。
   const [draft, setDraft] = useState<string | null>(null)
-  // 移动日期流程：气泡开关与已选目标日期（非空时进入二次确认态）。
+  // 移动日期气泡开关。
   const [isMoveOpen, setIsMoveOpen] = useState<boolean>(false)
-  const [moveTargetDate, setMoveTargetDate] = useState<string | null>(null)
 
   const commitDraft = (): void => {
     if (draft === null) return
@@ -48,13 +46,7 @@ export const ScheduleItemRow = ({
 
   const handleMoveOpenChange = useCallback((nextOpen: boolean): void => {
     setIsMoveOpen(nextOpen)
-    if (!nextOpen) setMoveTargetDate(null)
   }, [])
-
-  const handleConfirmMove = (): void => {
-    if (moveTargetDate && moveTargetDate !== item.entryDate) onMove(item, moveTargetDate)
-    handleMoveOpenChange(false)
-  }
 
   return (
     <div
@@ -115,38 +107,28 @@ export const ScheduleItemRow = ({
       <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
         <LxTooltip
           trigger="click"
-          placement="left"
-          click={
-            moveTargetDate
-              ? {
-                  open: isMoveOpen,
-                  onOpenChange: handleMoveOpenChange,
-                  title: t("schedule.moveToDate"),
-                  content: t("schedule.moveToConfirm", {
-                    date: formatDateLabel(moveTargetDate, locale),
-                  }),
-                  onConfirm: handleConfirmMove,
-                  onCancel: () => handleMoveOpenChange(false),
-                }
-              : {
-                  open: isMoveOpen,
-                  onOpenChange: handleMoveOpenChange,
-                  closeOnContentClick: false,
-                  content: (
-                    <LxDatePicker
-                      inline
-                      value={item.entryDate}
-                      quickSelects={false}
-                      onChange={setMoveTargetDate}
-                    />
-                  ),
-                }
-          }
+          placement="top"
+          click={{
+            open: isMoveOpen,
+            onOpenChange: handleMoveOpenChange,
+            closeOnContentClick: false,
+            content: (
+              <LxDatePicker
+                inline
+                value={item.entryDate}
+                quickSelects={false}
+                onChange={(targetDate) => {
+                  setIsMoveOpen(false)
+                  if (targetDate !== item.entryDate) onMove(item, targetDate)
+                }}
+              />
+            ),
+          }}
         >
           <LxIconButton
             size="small"
             aria-label={t("schedule.moveToDate")}
-            title={{ content: t("schedule.moveToDate"), placement: "left" }}
+            title={{ content: t("schedule.moveToDate"), placement: "top" }}
           >
             <CalendarClock className="h-3.5 w-3.5" />
           </LxIconButton>
@@ -158,7 +140,7 @@ export const ScheduleItemRow = ({
           aria-label={t("schedule.deleteAction")}
           title={{
             content: t("schedule.deleteConfirm"),
-            placement: "left",
+            placement: "top",
             onConfirm: () => onDelete(item),
           }}
         />

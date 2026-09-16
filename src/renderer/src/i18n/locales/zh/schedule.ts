@@ -7,7 +7,6 @@ export const schedule = {
   markDone: "标记完成",
   markUndone: "取消完成",
   moveToDate: "移动到指定日期",
-  moveToConfirm: "确认将该待办移动到 {{date}}？",
   deleteAction: "删除待办",
   deleteConfirm: "确认删除该待办？",
   previousDay: "前一天",
