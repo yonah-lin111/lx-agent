@@ -1,31 +1,32 @@
 // Recharts 注入的 tooltip 数据项。
-export interface UsageChartTooltipEntry {
+export interface LxChartTooltipEntry {
   name?: string
   value?: number | string
   color?: string
   dataKey?: string
 }
 
-export interface UsageChartTooltipProps {
+export interface LxChartTooltipProps {
   active?: boolean
-  payload?: UsageChartTooltipEntry[]
+  payload?: LxChartTooltipEntry[]
   label?: string | number
-  valueFormatter?: (entry: UsageChartTooltipEntry) => string
+  valueFormatter?: (entry: LxChartTooltipEntry) => string
 }
 
 /**
- * 用量图表统一 tooltip：主题化外观与可定制数值格式。
+ * 通用图表 tooltip：主题化外观与可定制数值格式。
+ * 颜色走主题 token，Minecraft 等主题通过 .lx-chart-tooltip 类名挂钩覆盖。
  */
-export const UsageChartTooltip = ({
+export const LxChartTooltip = ({
   active,
   payload,
   label,
   valueFormatter,
-}: UsageChartTooltipProps): React.JSX.Element | null => {
+}: LxChartTooltipProps): React.JSX.Element | null => {
   if (!active || !payload || payload.length === 0) return null
 
   return (
-    <div className="usage-chart-tooltip rounded-[6px] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface-hover)] p-2 shadow-lg">
+    <div className="lx-chart-tooltip rounded-[6px] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface-hover)] p-2 shadow-lg">
       {label !== undefined ? (
         <p className="mb-1 text-xs font-medium text-[var(--color-theme-text)]">{label}</p>
       ) : null}

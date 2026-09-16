@@ -1,12 +1,12 @@
 import { useMemo } from "react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { LxChartCard } from "@/components/ui/LxChartCard"
+import { LxChartTooltip, type LxChartTooltipEntry } from "@/components/ui/LxChartTooltip"
 import { useTranslation } from "@/i18n"
 import { useAppThemeValue } from "@/stores/themeStore"
 import { USAGE_CHART_COLORS } from "../constants"
 import type { UsageDailyPoint, UsageGranularity } from "../types"
 import { fillUsageSeries, formatBucketLabel, formatCompact, formatNumber } from "../utils"
-import { UsageChartCard } from "./UsageChartCard"
-import { UsageChartTooltip, type UsageChartTooltipEntry } from "./UsageChartTooltip"
 
 export interface UsageRequestsChartProps {
   daily: UsageDailyPoint[]
@@ -44,11 +44,11 @@ export const UsageRequestsChart = ({
   )
   const hasData = series.some((point) => point.requestCount > 0)
 
-  const formatTooltipValue = (entry: UsageChartTooltipEntry): string =>
+  const formatTooltipValue = (entry: LxChartTooltipEntry): string =>
     formatNumber(Number(entry.value ?? 0))
 
   return (
-    <UsageChartCard
+    <LxChartCard
       title={t("usage.charts.requests")}
       isEmpty={!hasData}
       emptyText={t("usage.empty.noData")}
@@ -81,7 +81,7 @@ export const UsageRequestsChart = ({
               tickFormatter={(value: number) => formatCompact(value)}
             />
             <Tooltip
-              content={<UsageChartTooltip valueFormatter={formatTooltipValue} />}
+              content={<LxChartTooltip valueFormatter={formatTooltipValue} />}
               cursor={{ fill: "var(--color-theme-border)", fillOpacity: 0.35 }}
             />
             <Bar
@@ -93,6 +93,6 @@ export const UsageRequestsChart = ({
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </UsageChartCard>
+    </LxChartCard>
   )
 }

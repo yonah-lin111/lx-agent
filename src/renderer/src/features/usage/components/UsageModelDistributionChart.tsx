@@ -1,12 +1,12 @@
 import { useMemo } from "react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { LxChartCard } from "@/components/ui/LxChartCard"
+import { LxChartTooltip, type LxChartTooltipEntry } from "@/components/ui/LxChartTooltip"
 import { useTranslation } from "@/i18n"
 import { useAppThemeValue } from "@/stores/themeStore"
 import { USAGE_CHART_COLORS } from "../constants"
 import type { UsageModelStats } from "../types"
 import { formatCompact, formatNumber, formatUsd } from "../utils"
-import { UsageChartCard } from "./UsageChartCard"
-import { UsageChartTooltip, type UsageChartTooltipEntry } from "./UsageChartTooltip"
 
 const MAX_MODELS = 8
 
@@ -44,13 +44,13 @@ export const UsageModelDistributionChart = ({
     [visibleStats],
   )
 
-  const formatTooltipValue = (entry: UsageChartTooltipEntry): string =>
+  const formatTooltipValue = (entry: LxChartTooltipEntry): string =>
     entry.dataKey === "cost"
       ? formatUsd(Number(entry.value ?? 0))
       : formatNumber(Number(entry.value ?? 0))
 
   return (
-    <UsageChartCard
+    <LxChartCard
       title={t("usage.charts.modelDistribution")}
       subtitle={hasPricing ? undefined : t("usage.charts.noPricingHint")}
       isEmpty={data.length === 0}
@@ -89,7 +89,7 @@ export const UsageModelDistributionChart = ({
               }
             />
             <Tooltip
-              content={<UsageChartTooltip valueFormatter={formatTooltipValue} />}
+              content={<LxChartTooltip valueFormatter={formatTooltipValue} />}
               cursor={{ fill: "var(--color-theme-border)", fillOpacity: 0.35 }}
             />
             <Bar
@@ -101,6 +101,6 @@ export const UsageModelDistributionChart = ({
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </UsageChartCard>
+    </LxChartCard>
   )
 }

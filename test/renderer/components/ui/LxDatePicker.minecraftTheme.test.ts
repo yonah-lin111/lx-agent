@@ -36,12 +36,12 @@ describe("我的世界主题日程组件", () => {
     expect(block).toContain("border-width: 2px !important")
   })
 
-  it("日程图表沿用用量图表的像素化规则", () => {
+  it("日程图表复用共享 .lx-chart-card 像素化规则", () => {
     expect(minecraftCss).toContain(
-      '[data-theme="minecraft"] .lx-schedule-stats .recharts-bar-rectangle path',
+      '[data-theme="minecraft"] .lx-chart-card .recharts-bar-rectangle path',
     )
     const pieBlock = getRuleBlock(
-      '[data-theme="minecraft"] .lx-schedule-stats .recharts-pie-sector path',
+      '[data-theme="minecraft"] .lx-chart-card .recharts-pie-sector path',
     )
     expect(pieBlock).toContain("shape-rendering: crispEdges !important")
   })
@@ -51,8 +51,8 @@ describe("我的世界主题日程组件", () => {
     expect(minecraftCss).toContain("--color-schedule-chart-completed: #4fc94f")
   })
 
-  it("日程卡片去掉马赛克底纹，条目行保持纯平铺", () => {
-    const cardBlock = getRuleBlock('[data-theme="minecraft"] .lx-schedule-board,')
+  it("日程列表卡片去掉马赛克底纹，条目行保持纯平铺", () => {
+    const cardBlock = getRuleBlock('[data-theme="minecraft"] .lx-schedule-board {')
     expect(cardBlock).toContain("background-image: none !important")
     expect(cardBlock).toContain("background-color: #1e1e2a !important")
 

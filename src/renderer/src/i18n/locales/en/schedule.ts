@@ -29,6 +29,7 @@ export const schedule = {
     trendTitle: "Last 7 Days",
     planned: "Planned",
     completed: "Done",
+    pending: "Pending",
     empty: "No data",
   },
 }

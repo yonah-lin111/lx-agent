@@ -29,6 +29,7 @@ export const schedule = {
     trendTitle: "近 7 日趋势",
     planned: "计划",
     completed: "完成",
+    pending: "待完成",
     empty: "暂无数据",
   },
 }

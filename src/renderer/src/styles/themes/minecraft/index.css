@@ -1355,7 +1355,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 [data-theme="minecraft"] .overview-summary-card,
 [data-theme="minecraft"] .overview-heatmap-card,
 [data-theme="minecraft"] .usage-stat-card,
-[data-theme="minecraft"] .usage-chart-card,
+[data-theme="minecraft"] .lx-chart-card,
 [data-theme="minecraft"] .usage-table-card {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
@@ -1370,7 +1370,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 [data-theme="minecraft"] .overview-metric-card:hover,
 [data-theme="minecraft"] .overview-summary-card:hover,
 [data-theme="minecraft"] .usage-stat-card:hover,
-[data-theme="minecraft"] .usage-chart-card:hover {
+[data-theme="minecraft"] .lx-chart-card:hover {
   background-color: #242434 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
@@ -1508,18 +1508,18 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 }
 
 /* 用量图表像素化：柱形直角由组件按主题传 radius，饼图与网格线去抗锯齿处理 */
-[data-theme="minecraft"] .usage-chart-card .recharts-bar-rectangle path,
-[data-theme="minecraft"] .usage-chart-card .recharts-cartesian-grid line {
+[data-theme="minecraft"] .lx-chart-card .recharts-bar-rectangle path,
+[data-theme="minecraft"] .lx-chart-card .recharts-cartesian-grid line {
   shape-rendering: crispEdges !important;
 }
 
-[data-theme="minecraft"] .usage-chart-card .recharts-pie-sector path {
+[data-theme="minecraft"] .lx-chart-card .recharts-pie-sector path {
   shape-rendering: crispEdges !important;
   stroke: #000000 !important;
   stroke-width: 2px !important;
 }
 
-[data-theme="minecraft"] .usage-chart-tooltip {
+[data-theme="minecraft"] .lx-chart-tooltip {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   box-shadow:
@@ -1575,21 +1575,10 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   font-family: var(--theme-font-family) !important;
 }
 
-/* 日程图表：柱形 / 饼图去抗锯齿，与用量图表保持同一像素语言 */
-[data-theme="minecraft"] .lx-schedule-stats .recharts-bar-rectangle path,
-[data-theme="minecraft"] .lx-schedule-stats .recharts-cartesian-grid line {
-  shape-rendering: crispEdges !important;
-}
+/* 日程图表沿用共享 .lx-chart-card / .lx-chart-tooltip 规则（与用量图表同一像素语言） */
 
-[data-theme="minecraft"] .lx-schedule-stats .recharts-pie-sector path {
-  shape-rendering: crispEdges !important;
-  stroke: #000000 !important;
-  stroke-width: 2px !important;
-}
-
-/* 日程卡片：去掉马赛克底纹，保留石质边框与凹槽（列表卡片与统计卡片） */
-[data-theme="minecraft"] .lx-schedule-board,
-[data-theme="minecraft"] .lx-schedule-stats section {
+/* 日程列表卡片：去掉马赛克底纹，保留石质边框与凹槽 */
+[data-theme="minecraft"] .lx-schedule-board {
   background-image: none !important;
   background-color: #1e1e2a !important;
 }
