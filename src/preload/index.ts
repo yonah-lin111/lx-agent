@@ -101,6 +101,8 @@ const api: ProjectApi &
     getMcpSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getMcpSettings),
     saveMcpSettings: (settings) => ipcRenderer.invoke(SETTINGS_CHANNELS.saveMcpSettings, settings),
     reconnectMcp: () => ipcRenderer.invoke(SETTINGS_CHANNELS.reconnectMcp),
+    getMcpPresetStatus: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getMcpPresetStatus),
+    installMcpPreset: (id) => ipcRenderer.invoke(SETTINGS_CHANNELS.installMcpPreset, id),
     getSkillSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getSkillSettings),
     saveSkillSettings: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.saveSkillSettings, settings),
