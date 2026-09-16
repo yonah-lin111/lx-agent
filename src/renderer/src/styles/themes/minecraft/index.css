@@ -1437,6 +1437,14 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   color: #55ff55 !important;
 }
 
+/* 索引页区块（Hero / 快速入口 / 绿墙）：仅作内容分组，不再作为独立凹凸容器 */
+[data-theme="minecraft"] .app-index-container > section {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
 [data-theme="minecraft"] .activity-heatmap-card,
 [data-theme="minecraft"] .usage-stat-card,
 [data-theme="minecraft"] .lx-chart-card,
