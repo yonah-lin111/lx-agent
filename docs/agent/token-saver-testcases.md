@@ -100,15 +100,23 @@
 
 - **期望**：应用正常启动不崩溃；非法字段回退默认（`rtkEnabled=true`、`cavemanLevel=full`、`ponytailLevel=full`，合法字段 `cavemanEnabled=true` 保留）；设置页回显与默认值一致；保存后写回合法值；`tokenSaver` 节点整个缺失时同样返回全默认。
 
+## 组 10：`执行流程底部 Token Saver 标注（含落库恢复）`
+
+- **提示词**：RTK 与 Caveman（Ultra）开启状态下发送 `执行 git log -p -5 并总结改动`
+- **验证步骤**：打开该轮的执行流程（AgentExecutionFlowList）→ 观察助手回复步骤（纯工具轮为末位工具步骤）底栏 Token 指标旁的标注 → 悬浮标注查看明细 → 完全退出应用后重开，恢复该会话并再次观察同一轮。
+
+- **期望**：底栏出现等宽小字标注（如 `RTK −86k · Caveman ultra`）；悬浮 Tooltip 显示命中的过滤器名与精确节省字符数、Caveman/Ponytail 档位；RTK 未命中（短输出/RTK 关闭）或仅非 chat 请求（标题、建议问题、compact）时不显示标注；同一请求只在承载用量指标的单个步骤上标注、不重复；**重启应用恢复会话后标注仍在**（随 assistant 消息 entry payload 落库）。
+
 ---
 
 ## 附：`限制与自动化覆盖`
 
 - 压缩只作用于出站请求副本：会话历史、界面展示、会话导出始终是原始输出；工具错误结果一律跳过；单条输出小于 500 字符或压缩后无收益时不处理。
+- 执行流程底部标注只在请求实际生效时出现（RTK 至少命中一次过滤器；Caveman/Ponytail 提示词实际注入），随 assistant 消息 entry 落库，恢复会话后照常显示。
 - 未实现 9router 的 Headroom（外部 Python 服务）与 Pxpipe（外部二进制）；官网链接仅作参考，不参与运行。
 - 输入 token 的节省幅度取决于输出形态（git diff/grep/ls/tree/构建日志收益最高）；Caveman/Ponytail 为提示词级引导，效果受模型影响。
-- 自动化回归命令（对应过滤、注入、设置与契约的 170 个用例）：
+- 自动化回归命令（对应过滤、注入、标注、设置与契约的 163 个用例）：
 
   ```bash
-  pnpm test -- test/main/agent/tokenSaver test/main/agent/aiSdkStreamFn.test.ts test/main/services/settingsService.tokenSaver.test.ts test/renderer/features/settings test/preload/tokenSaverSettingsApi.test.ts
+  pnpm test -- test/main/agent/tokenSaver test/main/agent/aiSdkStreamFn.test.ts test/main/services/settingsService.tokenSaver.test.ts test/renderer/features/agent/executionFlow.test.ts test/renderer/features/agent/AgentExecutionFlowItem.tokenSaver.test.tsx test/renderer/features/settings test/preload/tokenSaverSettingsApi.test.ts
   ```

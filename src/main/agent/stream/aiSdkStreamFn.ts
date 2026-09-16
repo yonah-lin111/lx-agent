@@ -246,6 +246,11 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
             )
           : { systemPrompt: context.systemPrompt, messages: context.messages }
 
+        // 生效记录挂到助手消息上随 turn 落库（执行流程底部标注用）。
+        if (dispatchRequest.run) {
+          partial = { ...partial, tokenSaver: dispatchRequest.run }
+        }
+
         const result = streamText({
           model: languageModel,
           system: dispatchRequest.systemPrompt || undefined,

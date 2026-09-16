@@ -12,6 +12,7 @@ import type {
   QuestionRequest,
   StopReason,
   SubagentData,
+  TokenSaverRun,
   Usage,
   UserMessageCommand,
   ViewImageDetails,
@@ -203,6 +204,8 @@ export interface ChatMessage {
   hookStatus?: HookRunStatus
   // 单次生成执行耗时（毫秒）。
   durationMs?: number
+  // 本轮请求实际生效的 Token Saver 记录（执行流程底部标注）。
+  tokenSaver?: TokenSaverRun
 }
 
 // 预设提示词卡片。
@@ -272,6 +275,8 @@ export interface ExecutionStep {
     cacheRead?: number
     total?: number
   }
+  // 本轮请求实际生效的 Token Saver 记录（请求级，与 tokens 同点位展示）。
+  tokenSaver?: TokenSaverRun
   // 并行调用元数据（单次模型响应并发触发多个工具调用时存在）。
   parallel?: ExecutionStepParallel
   // 系统提示词与注入配置内容。

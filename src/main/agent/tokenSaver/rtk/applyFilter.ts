@@ -19,15 +19,29 @@ export const safeApplyFilter = (name: RtkFilterName, input: string): string => {
 export const hasCompressionGain = (original: string, compressed: string): boolean =>
   compressed.length > 0 && compressed.length < original.length
 
+// RTK 压缩统计累加器（随出站请求汇总，供消息落库与执行流程展示）。
+export interface RtkCompressionStats {
+  // 实际生效的过滤器名（去重，按首次生效顺序）。
+  filters: Set<RtkFilterName>
+  // 压缩节省的字符数。
+  savedChars: number
+}
+
 // 压缩单条工具输出文本；过短/过长/无特征/无收益时原样返回。
-export const compressToolOutputText = (text: string): string => {
+export const compressToolOutputText = (text: string, stats?: RtkCompressionStats): string => {
   if (text.length < MIN_COMPRESS_SIZE || text.length > RAW_CAP) return text
 
   const filterName = detectFilter(text)
   if (!filterName) return text
 
   const compressed = safeApplyFilter(filterName, text)
-  return hasCompressionGain(text, compressed) ? compressed : text
+  if (!hasCompressionGain(text, compressed)) return text
+
+  if (stats) {
+    stats.filters.add(filterName)
+    stats.savedChars += text.length - compressed.length
+  }
+  return compressed
 }
 
 // 全部过滤器名称（供测试与调试遍历）。

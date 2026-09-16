@@ -576,10 +576,11 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     for await (const _ of stream) {
       // consume
     }
-    await stream.result()
+    const finalMessage = await stream.result()
 
     const lastOptions = mockStreamText.mock.calls.at(-1)?.[0] as { system?: string }
     expect(lastOptions.system).toBe(`base prompt\n\n${CAVEMAN_PROMPTS.full}`)
+    expect(finalMessage.tokenSaver).toEqual({ cavemanLevel: "full" })
   })
 
   it("非 chat purpose（title）不受 Token Saver 影响", async () => {
@@ -604,13 +605,14 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     for await (const _ of stream) {
       // consume
     }
-    await stream.result()
+    const finalMessage = await stream.result()
 
     const lastOptions = mockStreamText.mock.calls.at(-1)?.[0] as {
       system?: string
       messages: Array<{ role: string; content: Array<Record<string, unknown>> }>
     }
     expect(lastOptions.system).toBe("base prompt")
+    expect(finalMessage.tokenSaver).toBeUndefined()
     const toolMessage = lastOptions.messages.find((message) => message.role === "tool")
     const output = toolMessage?.content[0]?.output as { type: string; value: string }
     expect(output.value.length).toBe(makeLargeDiff().length)
@@ -637,7 +639,7 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     for await (const _ of stream) {
       // consume
     }
-    await stream.result()
+    const finalMessage = await stream.result()
 
     const lastOptions = mockStreamText.mock.calls.at(-1)?.[0] as {
       messages: Array<{ role: string; content: Array<Record<string, unknown>> }>
@@ -645,5 +647,7 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     const toolMessage = lastOptions.messages.find((message) => message.role === "tool")
     const output = toolMessage?.content[0]?.output as { type: string; value: string }
     expect(output.value.length).toBeLessThan(makeLargeDiff().length)
+    expect(finalMessage.tokenSaver?.rtkFilters).toEqual(["git-diff"])
+    expect(finalMessage.tokenSaver?.rtkSavedChars).toBeGreaterThan(0)
   })
 })

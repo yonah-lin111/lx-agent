@@ -656,6 +656,7 @@ export const toChatMessage = (
     variant: message.variant,
     usage: message.usage,
     durationMs: message.durationMs,
+    tokenSaver: message.tokenSaver,
   }
 }
 
@@ -782,6 +783,7 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
         stopReason: message.stopReason ?? "stop",
         errorMessage: message.error,
         timestamp: message.timestamp ?? Date.now(),
+        ...(message.tokenSaver ? { tokenSaver: message.tokenSaver } : {}),
       },
     ]
   })

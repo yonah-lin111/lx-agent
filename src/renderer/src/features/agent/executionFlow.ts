@@ -339,6 +339,9 @@ export const buildExecutionSteps = (
         if (completed !== undefined) {
           currentBlockStartedAt = completed
         }
+        // 请求级用量与 Token Saver 记录同点位承载（避免同一消息重复标注）。
+        const carriesMessageUsage =
+          !hasTextBlock && toolCallBlocksCount === 0 && Boolean(message.usage)
         steps.push({
           id: `step-${stepIndex}-thinking`,
           messageId: message.id,
@@ -355,7 +358,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: thinkingDuration,
           tokens:
-            !hasTextBlock && toolCallBlocksCount === 0 && message.usage
+            carriesMessageUsage && message.usage
               ? {
                   input: message.usage.input,
                   output: message.usage.output,
@@ -363,6 +366,7 @@ export const buildExecutionSteps = (
                   total: message.usage.totalTokens,
                 }
               : undefined,
+          tokenSaver: carriesMessageUsage ? message.tokenSaver : undefined,
           thinkingContent: {
             text: block.text,
           },
@@ -460,6 +464,11 @@ export const buildExecutionSteps = (
                   total: subagentData.usage.totalTokens,
                 }
               : toolTokens,
+            tokenSaver: subagentData?.usage
+              ? undefined
+              : toolTokens
+                ? message.tokenSaver
+                : undefined,
             subagentContent: {
               name: subagentName,
               subagent: subagentData,
@@ -492,6 +501,7 @@ export const buildExecutionSteps = (
             durationMs: toolDuration,
             parallel: parallelMeta,
             tokens: toolTokens,
+            tokenSaver: toolTokens ? message.tokenSaver : undefined,
             toolContent: {
               toolName: block.toolName,
               toolCallId: block.toolCallId,
@@ -547,6 +557,7 @@ export const buildExecutionSteps = (
                 total: message.usage.totalTokens,
               }
             : undefined,
+          tokenSaver: message.usage ? message.tokenSaver : undefined,
           planContent: block.plan,
           assistantContent: {
             text: block.plan.raw,
@@ -598,6 +609,7 @@ export const buildExecutionSteps = (
                 total: message.usage.totalTokens,
               }
             : undefined,
+          tokenSaver: message.usage ? message.tokenSaver : undefined,
           reviewFindingsContent: block.findings,
           assistantContent: {
             text: block.findings.raw,
@@ -650,6 +662,7 @@ export const buildExecutionSteps = (
                 total: message.usage.totalTokens,
               }
             : undefined,
+          tokenSaver: message.usage ? message.tokenSaver : undefined,
           frontDesignContent: block.design,
           assistantContent: {
             text: block.design.raw,
@@ -702,6 +715,7 @@ export const buildExecutionSteps = (
                 total: message.usage.totalTokens,
               }
             : undefined,
+          tokenSaver: message.usage ? message.tokenSaver : undefined,
           assistantContent: {
             text: block.text,
             model: message.model,

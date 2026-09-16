@@ -897,4 +897,87 @@ describe("executionFlow", () => {
       expect(designStep.frontDesignContent?.html).toBe('<div class="p-4">Dashboard</div>')
     })
   })
+
+  describe("buildExecutionSteps Token Saver 标注", () => {
+    it("助手回复步骤承载请求级 Token Saver 记录", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "已完成压缩。" }],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
+          tokenSaver: { rtkFilters: ["git-diff"], rtkSavedChars: 86412, cavemanLevel: "ultra" },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(1)
+      expect(steps[0]?.kind).toBe("assistant")
+      expect(steps[0]?.tokenSaver).toEqual({
+        rtkFilters: ["git-diff"],
+        rtkSavedChars: 86412,
+        cavemanLevel: "ultra",
+      })
+    })
+
+    it("仅承载消息用量的工具步骤才标注，无用量时不标注", () => {
+      const tokenSaver = { rtkFilters: ["git-log"], rtkSavedChars: 1024 }
+      const messages: ChatMessage[] = [
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "call-1",
+              toolName: "bash",
+              args: { command: "git log" },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
+          tokenSaver,
+        },
+        {
+          id: "t1",
+          role: "toolResult",
+          blocks: [
+            {
+              kind: "toolResult",
+              toolCallId: "call-1",
+              toolName: "bash",
+              text: "压缩前输出",
+              isError: false,
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1020,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      const toolStep = steps.find((step) => step.kind === "tool")
+      expect(toolStep?.tokenSaver).toEqual(tokenSaver)
+    })
+
+    it("无 Token Saver 记录的消息不产生标注", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "普通回复。" }],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps[0]?.tokenSaver).toBeUndefined()
+    })
+  })
 })

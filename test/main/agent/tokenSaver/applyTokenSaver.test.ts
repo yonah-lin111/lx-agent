@@ -96,9 +96,40 @@ describe("applyTokenSaver 工具输出压缩", () => {
     try {
       const out = applyTokenSaver(request, withSettings({ rtkEnabled: true }))
       expect(out.messages).toBe(request.messages)
+      expect(out.run).toBeUndefined()
     } finally {
       RTK_FILTERS[RTK_FILTER_NAMES.GIT_DIFF] = original
     }
+  })
+
+  it("记录 RTK 生效的过滤器与节省字符数", () => {
+    const request = { systemPrompt: "sys", messages: [makeToolResult(makeLongDiff())] }
+    const out = applyTokenSaver(request, withSettings({ rtkEnabled: true }))
+    expect(out.run?.rtkFilters).toEqual([RTK_FILTER_NAMES.GIT_DIFF])
+    expect(out.run?.rtkSavedChars).toBeGreaterThan(0)
+    expect(out.run?.cavemanLevel).toBeUndefined()
+    expect(out.run?.ponytailLevel).toBeUndefined()
+  })
+
+  it("RTK 未命中任何过滤器时不记录生效记录", () => {
+    const request = { systemPrompt: "sys", messages: [makeToolResult("plain short output")] }
+    const out = applyTokenSaver(request, withSettings({ rtkEnabled: true }))
+    expect(out.run).toBeUndefined()
+  })
+
+  it("记录 Caveman 与 Ponytail 档位", () => {
+    const request = { systemPrompt: "sys", messages: [] }
+    const out = applyTokenSaver(
+      request,
+      withSettings({
+        rtkEnabled: false,
+        cavemanEnabled: true,
+        cavemanLevel: "wenyan",
+        ponytailEnabled: true,
+        ponytailLevel: "ultra",
+      }),
+    )
+    expect(out.run).toEqual({ cavemanLevel: "wenyan", ponytailLevel: "ultra" })
   })
 })
 
