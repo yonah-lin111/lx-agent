@@ -253,6 +253,23 @@ export const OpenClawPage = (): React.JSX.Element => {
     }
   }, [agentIds, agents, input, runCommand, selectedAgentIds, selectedInstanceId, t, toast])
 
+  const handleDeleteTurn = useCallback(
+    (agentId: string, assistantMessageId: string): void => {
+      if (!selectedInstanceId) return
+      void useOpenClawChatStore
+        .getState()
+        .deleteTurn(selectedInstanceId, agentId, assistantMessageId)
+        .then(() => {
+          toast.success(t("openclaw.deleteTurnSuccess"))
+        })
+        .catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error)
+          toast.error(message || t("openclaw.deleteTurnFailed"))
+        })
+    },
+    [selectedInstanceId, t, toast],
+  )
+
   const picker = useMemo<OpenClawInputPicker | null>(() => {
     // compose 面板由输入文本派生（对齐 /model 二级面板）：`/clear` 即展示员工选择。
     const parsed = parseOpenClawCommand(input)
@@ -387,7 +404,11 @@ export const OpenClawPage = (): React.JSX.Element => {
 
       {/* 视图区：当前办公区内所有员工的消息合流时间线 */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        <OpenClawMessageList timeline={timeline} agents={conversationAgents} />
+        <OpenClawMessageList
+          timeline={timeline}
+          agents={conversationAgents}
+          onDeleteTurn={handleDeleteTurn}
+        />
       </div>
 
       {/* 输入区 */}

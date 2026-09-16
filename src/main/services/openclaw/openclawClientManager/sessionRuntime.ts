@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import type { GatewayClient } from "@openclaw/gateway-client"
 import type {
+  OpenClawChatMessage,
   OpenClawConnectResult,
   OpenClawSendMessageInput,
   OpenClawSessionInfo,
@@ -323,6 +324,109 @@ export async function sendMessage(
       host.emitSnapshot(connection, session)
       void refreshStats(host, connection, session)
     })
+}
+
+/**
+ * 在最新云端历史中解析该轮用户消息的真实 entryId（本地乐观 id 与 runId 均在此兜底）。
+ */
+const resolveRewindEntryId = async (
+  client: GatewayClient,
+  sessionKey: string,
+  userMessage: OpenClawChatMessage,
+  assistantMessageId: string,
+): Promise<string | null> => {
+  const payload = await client.request<unknown>("chat.history", {
+    sessionKey,
+    limit: HISTORY_LIMIT,
+  })
+  const entries = mapHistoryMessages(payload)
+
+  const byId = entries.find((entry) => entry.id === userMessage.id)
+  if (byId) return byId.id
+
+  // 本次运行新产出的助手消息 id 为 runId：定位该 run 的条目，取其之前最近一条用户消息。
+  const runIndex = entries.findIndex((entry) => entry.runId === assistantMessageId)
+  if (runIndex > 0) {
+    const precedingUser = entries.findLast(
+      (entry, index) => index < runIndex && entry.role === "user",
+    )
+    if (precedingUser) return precedingUser.id
+  }
+
+  // 本地乐观用户消息（随机 UUID）：按内容一致 + 时间戳最近匹配。
+  const candidates = entries.filter(
+    (entry) => entry.role === "user" && entry.content === userMessage.content,
+  )
+  if (candidates.length === 0) return null
+  candidates.sort(
+    (a, b) =>
+      Math.abs(a.timestamp - userMessage.timestamp) - Math.abs(b.timestamp - userMessage.timestamp),
+  )
+  return candidates[0].id
+}
+
+/**
+ * 删除指定助手消息所在的一轮问答。
+ *
+ * 云端无单条删除能力：以 sessions.rewind 回退到该轮用户消息的 entry，
+ * 该用户消息及其后的全部消息由云端移除。entryId 先按渲染层 id 直传，
+ * 失败时从最新 chat.history 解析（id → runId → 内容+时间戳）后重试一次。
+ */
+export async function deleteTurn(
+  host: OpenClawClientManagerHost,
+  instanceId: string,
+  agentId: string,
+  assistantMessageId: string,
+): Promise<void> {
+  const connected = await host.connect(instanceId)
+  if (connected.status !== "connected") {
+    throw new Error(connected.error || "OpenClaw connection is not ready")
+  }
+
+  const connection = host.connections.get(instanceId)
+  const client = connection?.client
+  if (!connection || !client) throw new Error("OpenClaw connection is not ready")
+
+  const session = getOrCreateSession(connection, agentId)
+  syncSessionBinding(connection, session)
+  const sessionKey = session.sessionKey
+  if (!sessionKey) throw new Error("OpenClaw session is not bound")
+  if (session.isStreaming) throw new Error("This agent is already running a task")
+
+  const assistantIndex = session.messages.findIndex((message) => message.id === assistantMessageId)
+  if (assistantIndex < 0) throw new Error("Message not found in session")
+  const userIndex = session.messages.findLastIndex(
+    (message, index) => index < assistantIndex && message.role === "user",
+  )
+  if (userIndex < 0) throw new Error("Turn has no user message")
+  const userMessage = session.messages[userIndex]
+
+  const rewind = (entryId: string): Promise<unknown> =>
+    client.request("sessions.rewind", { sessionKey, entryId })
+
+  try {
+    await rewind(userMessage.id)
+  } catch (error) {
+    let resolvedEntryId: string | null = null
+    try {
+      resolvedEntryId = await resolveRewindEntryId(
+        client,
+        sessionKey,
+        userMessage,
+        assistantMessageId,
+      )
+    } catch {
+      resolvedEntryId = null
+    }
+    if (!resolvedEntryId || resolvedEntryId === userMessage.id) throw error
+    await rewind(resolvedEntryId)
+  }
+
+  // 云端已截断：本地同步截断该轮及其后消息，再以最新历史覆盖投影（id 权威化）。
+  session.messages = session.messages.slice(0, userIndex)
+  host.emitSnapshot(connection, session)
+  session.hydrated = false
+  await hydrateSession(host, connection, session)
 }
 
 /**

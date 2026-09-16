@@ -32,6 +32,8 @@ export const openclawApi: OpenClawApi["openclaw"] = {
     ) as Promise<OpenClawSessionInfo>,
   sendMessage: (input: OpenClawSendMessageInput) =>
     ipcRenderer.invoke(OPENCLAW_CHANNELS.sendMessage, input),
+  deleteTurn: (instanceId: string, agentId: string, assistantMessageId: string) =>
+    ipcRenderer.invoke(OPENCLAW_CHANNELS.deleteTurn, instanceId, agentId, assistantMessageId),
   abort: (instanceId: string, agentId: string) =>
     ipcRenderer.invoke(OPENCLAW_CHANNELS.abort, instanceId, agentId),
   onEvent: (handler: (event: OpenClawSessionEvent) => void) => {

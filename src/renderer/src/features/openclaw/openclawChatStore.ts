@@ -28,6 +28,7 @@ interface OpenClawChatState {
   connect: (instanceId: string) => Promise<void>
   loadSession: (instanceId: string, agentId: string) => Promise<void>
   sendMessage: (instanceId: string, agentId: string, message: string) => Promise<void>
+  deleteTurn: (instanceId: string, agentId: string, assistantMessageId: string) => Promise<void>
   abort: (instanceId: string, agentId: string) => Promise<void>
   createSession: (instanceId: string, agentId: string) => Promise<void>
   applyEvent: (event: OpenClawSessionEvent) => void
@@ -70,6 +71,10 @@ export const useOpenClawChatStore = create<OpenClawChatState>((set, get) => ({
 
   sendMessage: async (instanceId, agentId, message) => {
     await openclawApi.sendMessage({ instanceId, agentId, message })
+  },
+
+  deleteTurn: async (instanceId, agentId, assistantMessageId) => {
+    await openclawApi.deleteTurn(instanceId, agentId, assistantMessageId)
   },
 
   abort: async (instanceId, agentId) => {

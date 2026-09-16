@@ -1,7 +1,11 @@
+import { Check, Copy, Trash2 } from "lucide-react"
 import type React from "react"
-import { useRef } from "react"
+import { useRef, useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 import type { ConversationAgent } from "./types"
 
 export interface OpenClawAssistantMessageProps {
@@ -12,6 +16,8 @@ export interface OpenClawAssistantMessageProps {
   isStreaming?: boolean
   // 该条消息生成时的模型（历史水合与 run 结束回填；未记录时不渲染）。
   model?: string
+  // 删除该消息所在的一轮问答（由列表仅对最后一条非流式 AI 消息传入）。
+  onDelete?: () => void
 }
 
 export const OpenClawAssistantMessage = ({
@@ -21,8 +27,21 @@ export const OpenClawAssistantMessage = ({
   agent,
   isStreaming = false,
   model,
+  onDelete,
 }: OpenClawAssistantMessageProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const previewRef = useRef<HTMLElement | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const copyMessageContent = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(content || error || "")
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1.5 px-0">
@@ -66,6 +85,36 @@ export const OpenClawAssistantMessage = ({
 
         {error ? <div className="mt-1 text-xs text-rose-300">{error}</div> : null}
       </div>
+
+      {!isStreaming && (content || error) ? (
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <LxIconButton
+            size="small"
+            aria-label={t("openclaw.copyMessage")}
+            title={{
+              content: copied ? t("common.copied") : t("openclaw.copyMessage"),
+              placement: "top",
+            }}
+            onClick={copyMessageContent}
+          >
+            {copied ? <Check className="text-emerald-400" /> : <Copy />}
+          </LxIconButton>
+          {onDelete ? (
+            <LxTooltip
+              hover={{ content: t("openclaw.deleteTurn"), placement: "top" }}
+              click={{
+                content: t("openclaw.deleteTurnConfirm"),
+                placement: "top",
+                onConfirm: onDelete,
+              }}
+            >
+              <LxIconButton size="small" aria-label={t("openclaw.deleteTurn")}>
+                <Trash2 />
+              </LxIconButton>
+            </LxTooltip>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

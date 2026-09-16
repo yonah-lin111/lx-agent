@@ -116,6 +116,8 @@ export interface OpenClawApi {
     createSession: (instanceId: string, agentId: string) => Promise<OpenClawSessionInfo>
     // 向该 Agent 绑定的会话发送一条任务。
     sendMessage: (input: OpenClawSendMessageInput) => Promise<void>
+    // 删除某条助手消息所在的一轮问答（云端 rewind：该轮用户消息及其后的消息一并删除）。
+    deleteTurn: (instanceId: string, agentId: string, assistantMessageId: string) => Promise<void>
     // 中止该会话进行中的 run。
     abort: (instanceId: string, agentId: string) => Promise<void>
     // 订阅会话事件，返回退订函数。
