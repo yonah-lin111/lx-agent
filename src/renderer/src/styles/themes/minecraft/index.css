@@ -109,6 +109,20 @@
   background-image: none !important;
 }
 
+/* 弹窗面板（LxModal）：纯色实体底 + 保留容器 3D 像素浮雕，仅移除马赛克底纹 */
+[data-theme="minecraft"] .lx-modal-panel {
+  background-color: #222232 !important;
+  background-image: none !important;
+}
+
+/* 弹窗标题行：并入面板平面，不再作为独立凹凸容器 */
+[data-theme="minecraft"] .lx-modal-panel header {
+  border: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
 /* ========================================================
  * 经典 Minecraft 树形导航与多层级阶梯背景（Project / Folder / Prompt / UI Preview）
  * ======================================================== */
@@ -558,16 +572,68 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     2px 2px 0px 0px #000000 !important;
 }
 
-/* 高亮态对齐 LxIconButton 选中态：按下凹陷槽 + 绿色矿物指示条与微光 */
+/* 高亮态：深底 + 白字，保留主题矿石槽外观（无绿条/凹陷/发光） */
 [data-theme="minecraft"] .lx-tag[data-highlighted="true"]:not([data-variant="ghost"]) {
   background-color: #14141c !important;
   color: #ffffff !important;
-  border: 2px solid #000000 !important;
-  border-left: 4px solid #55ff55 !important;
-  box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
-    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
-    0px 0px 8px rgba(85, 255, 85, 0.2) !important;
+}
+
+/* Preset Colors：矿石色板，暗色矿槽底 + 高饱和矿物色文字，拉开各预设区分度。
+   仅作用于使用内置色板的标签（data-chrome="preset"，ghost 与调用点自定义底色不参与）；
+   用 :where 保持低优先级，避免覆盖按场景精细调色的规则（如执行流程步骤头）。 */
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="pink"]) {
+  background-color: #2b1723 !important;
+  color: #f472b6 !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="amber"]) {
+  background-color: #2e2410 !important;
+  color: #ffcc33 !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="blue"]) {
+  background-color: #152040 !important;
+  color: #6ea8fe !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="teal"]) {
+  background-color: #0e2b2b !important;
+  color: #2dd4bf !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="emerald"]) {
+  background-color: #13301c !important;
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="rose"]) {
+  background-color: #2e1418 !important;
+  color: #ff5555 !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="gray"]) {
+  background-color: #26262e !important;
+  color: #9a9aad !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="purple"]) {
+  background-color: #241630 !important;
+  color: #c084fc !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="indigo"]) {
+  background-color: #1c1a3e !important;
+  color: #a5b4fc !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="sky"]) {
+  background-color: #0f2635 !important;
+  color: #55ffff !important;
+}
+
+[data-theme="minecraft"] :where(.lx-tag[data-chrome="preset"][data-color="orange"]) {
+  background-color: #2f1c0e !important;
+  color: #ff8844 !important;
 }
 
 /* ========================================================
@@ -1496,10 +1562,6 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 
 [data-theme="minecraft"] .usage-table tbody tr:last-child td {
   border-bottom: none !important;
-}
-
-[data-theme="minecraft"] .usage-table .lx-tag {
-  opacity: 0.85 !important;
 }
 
 [data-theme="minecraft"] .usage-table-card {

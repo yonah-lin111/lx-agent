@@ -208,6 +208,8 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
     : (highlightBgClass ?? `${activeColorStyle.activeBorder} ${activeColorStyle.activeBg}`)
   const activeText = textClass ?? (!isGhost && highlightBgClass ? "" : activeColorStyle.activeText)
   const resolvedCloseTooltip = closeTooltipContent ?? t("common.confirmDelete")
+  // 调用点未接管底色/文字色时标记为内置色板，供主题按 data-color 调色。
+  const hasPresetChrome = !isGhost && bgClass == null && textClass == null
 
   return (
     <span
@@ -216,6 +218,7 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
       data-color={color}
       data-variant={variant}
       data-highlighted={highlighted ? "true" : undefined}
+      data-chrome={hasPresetChrome ? "preset" : undefined}
       className={`lx-tag inline-flex items-center justify-center font-semibold transition-all duration-150 ${
         isGhost ? "" : "border"
       } ${currentStyles.container} ${
