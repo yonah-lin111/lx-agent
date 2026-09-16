@@ -1,5 +1,6 @@
 export const home = {
   overview: "概览",
+  schedule: "日程",
   overviewSubtitle: "查看 Agent 结对生产力热度与项目核心资产概况",
   allProjects: "全部项目汇总",
   activeProject: "关联项目",

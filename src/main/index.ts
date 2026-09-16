@@ -17,6 +17,7 @@ import { registerOpenClawHandlers } from "@/ipc/openclawHandlers"
 import { registerOverviewHandlers } from "@/ipc/overviewHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
+import { registerScheduleHandlers } from "@/ipc/scheduleHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
@@ -77,6 +78,7 @@ app.whenReady().then(() => {
   registerLocalImageProtocol()
   registerFrontDesignProtocol()
   registerOverviewHandlers()
+  registerScheduleHandlers()
   registerProjectHandlers()
   registerClipboardHandlers()
   registerSettingsHandlers()

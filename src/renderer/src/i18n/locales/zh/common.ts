@@ -49,4 +49,17 @@ export const common = {
   hidePassword: "隐藏密码",
   increaseValue: "增加数值",
   decreaseValue: "减少数值",
+  datePicker: {
+    placeholder: "选择日期",
+    selectDate: "选择日期",
+    selectWeek: "选择周",
+    selectMonth: "选择月份",
+    today: "今天",
+    yesterday: "昨天",
+    tomorrow: "明天",
+    previousMonth: "上个月",
+    nextMonth: "下个月",
+    previousYear: "上一年",
+    nextYear: "下一年",
+  },
 }

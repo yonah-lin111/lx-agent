@@ -32,6 +32,13 @@
   --color-usage-chart-provider-6: #5590cc;
   --color-usage-chart-provider-7: #c9bb70;
   --color-usage-chart-provider-8: #8c8ca0;
+  /* 日程优先级与趋势图配色：矿物色板（红石 / 金 / 钻石 / 安山岩 + 青金石 / 绿宝石）。 */
+  --color-schedule-priority-p0: #cc5f5f;
+  --color-schedule-priority-p1: #cc8a1f;
+  --color-schedule-priority-p2: #4ec5c5;
+  --color-schedule-priority-p3: #8c8ca0;
+  --color-schedule-chart-planned: #5590cc;
+  --color-schedule-chart-completed: #4fc94f;
   --theme-font-family:
     "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, "PingFang SC",
     "Microsoft YaHei", monospace;
@@ -1519,4 +1526,63 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
     2px 2px 0px 0px #000000 !important;
+}
+
+/* ========================================================
+ * 日程模块（Schedule）：日期选择器、优先级徽标与统计图表
+ * ======================================================== */
+/* 日期选择器弹层：复用全局 dialog 石质凹槽，仅补齐内边距与直角 */
+[data-theme="minecraft"] .lx-datepicker {
+  border-radius: 0px !important;
+  padding: 10px !important;
+}
+
+/* 选中日 / 选中月 / 快捷项：经验条荧光绿微光（覆盖全局按钮黑色边框） */
+[data-theme="minecraft"] .lx-datepicker-day[aria-pressed="true"],
+[data-theme="minecraft"] .lx-datepicker-month[aria-pressed="true"],
+[data-theme="minecraft"] .lx-datepicker-quick[aria-pressed="true"] {
+  background-color: #14141c !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
+    0px 0px 8px rgba(85, 255, 85, 0.2) !important;
+}
+
+/* 非当前月补位日期：弱化到接近背景 */
+[data-theme="minecraft"] .lx-datepicker-day[data-outside="true"] {
+  color: #5c5c70 !important;
+}
+
+/* 每日条目角标：像素方形经验条 */
+[data-theme="minecraft"] .lx-datepicker-badge {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  background-color: #55ff55 !important;
+  color: #000000 !important;
+}
+
+[data-theme="minecraft"] .lx-datepicker-today-dot {
+  border-radius: 0px !important;
+  background-color: #55ff55 !important;
+}
+
+/* 优先级徽标：保留矿物语义色，直角 + 像素凸起 */
+[data-theme="minecraft"] .lx-schedule-priority {
+  border-radius: 0px !important;
+  border-width: 2px !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+/* 日程图表：柱形 / 饼图去抗锯齿，与用量图表保持同一像素语言 */
+[data-theme="minecraft"] .lx-schedule-stats .recharts-bar-rectangle path,
+[data-theme="minecraft"] .lx-schedule-stats .recharts-cartesian-grid line {
+  shape-rendering: crispEdges !important;
+}
+
+[data-theme="minecraft"] .lx-schedule-stats .recharts-pie-sector path {
+  shape-rendering: crispEdges !important;
+  stroke: #000000 !important;
+  stroke-width: 2px !important;
 }

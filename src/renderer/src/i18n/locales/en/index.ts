@@ -10,6 +10,7 @@ import { nav } from "./nav"
 import { openclaw } from "./openclaw"
 import { project } from "./project"
 import { rightSidebar } from "./rightSidebar"
+import { schedule } from "./schedule"
 import { settings } from "./settings"
 import { terminal } from "./terminal"
 import { uiPreview } from "./uiPreview"
@@ -20,6 +21,7 @@ export const en = {
   nav,
   home,
   usage,
+  schedule,
   header,
   bottomBar,
   rightSidebar,
