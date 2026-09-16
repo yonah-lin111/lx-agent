@@ -252,7 +252,6 @@ export const AgentModelSelect = ({
               <LxMenuItem
                 key="__default__"
                 active={isDefaultActive}
-                className={isDefaultActive ? "!bg-white/10 !text-white font-medium" : ""}
                 trailing={isDefaultActive ? <Check className="h-3 w-3 text-sky-400" /> : null}
                 onClick={(event) => {
                   event.stopPropagation()
@@ -269,7 +268,6 @@ export const AgentModelSelect = ({
                   <LxMenuItem
                     key={v}
                     active={isVariantActive}
-                    className={isVariantActive ? "!bg-white/10 !text-white font-medium" : ""}
                     trailing={isVariantActive ? <Check className="h-3 w-3 text-sky-400" /> : null}
                     onClick={(event) => {
                       event.stopPropagation()

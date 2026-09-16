@@ -206,7 +206,8 @@ export const LxSelect = <T extends string>({
       <LxMenuItem
         key={option.value}
         active={isSelected}
-        className={`${isUnimported ? "!font-normal !text-white/40 opacity-75" : ""} ${
+        muted={isUnimported}
+        className={`${isUnimported ? "opacity-75" : ""} ${
           isGrouped ? SIZE_GROUPED_INDENT_CLASSES[LIST_SIZE] : ""
         } ${option.className ?? ""}`}
         data-unimported={isUnimported ? "true" : undefined}
