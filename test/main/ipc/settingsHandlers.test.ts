@@ -33,6 +33,10 @@ vi.mock("@/services/cliToolService", () => ({
   getCliVersions: vi.fn(),
   runCliLifecycleAction: vi.fn(),
 }))
+vi.mock("@/services/mcpPresetService", () => ({
+  getMcpPresetStatus: vi.fn(),
+  installMcpPreset: vi.fn(),
+}))
 vi.mock("@/agent/stream/modelFactory", () => ({
   invalidateModelCache: vi.fn(),
 }))

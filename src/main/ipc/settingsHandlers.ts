@@ -1,4 +1,5 @@
 import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
+import type { McpPresetId } from "@shared/mcpPresets"
 import type { FetchModelsInput } from "@shared/settings"
 import { ipcMain } from "electron"
 import { lspManager } from "@/agent/lsp/lspManager"
@@ -6,6 +7,7 @@ import { mcpManager } from "@/agent/mcp/mcpManager"
 import { invalidateModelCache } from "@/agent/stream/modelFactory"
 import { BUILT_IN_AGENT_ROLES } from "@/agent/subagent/agentRoles"
 import { getCliVersions, runCliLifecycleAction } from "@/services/cliToolService"
+import { getMcpPresetStatus, installMcpPreset } from "@/services/mcpPresetService"
 import { fetchProviderModels } from "@/services/modelFetchService"
 import {
   deleteSkill,
@@ -83,6 +85,8 @@ export const registerSettingsHandlers = (): void => {
     return saved
   })
   ipcMain.handle(SETTINGS_CHANNELS.reconnectMcp, () => mcpManager.reloadAndReconnect())
+  ipcMain.handle(SETTINGS_CHANNELS.getMcpPresetStatus, () => getMcpPresetStatus())
+  ipcMain.handle(SETTINGS_CHANNELS.installMcpPreset, (_, id: McpPresetId) => installMcpPreset(id))
   ipcMain.handle(SETTINGS_CHANNELS.getSkillSettings, () => getSkillSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveSkillSettings, (_, input) => saveSkillSettings(input))
   ipcMain.handle(SETTINGS_CHANNELS.deleteSkill, (_, filePath: string) => deleteSkill(filePath))

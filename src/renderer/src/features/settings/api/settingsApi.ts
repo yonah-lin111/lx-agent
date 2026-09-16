@@ -1,4 +1,5 @@
 import type { PermissionSettings } from "@shared/contracts/agent"
+import type { McpPresetId, McpPresetInstallResult, McpPresetStatusItem } from "@shared/mcpPresets"
 import type {
   CliId,
   CliLifecycleResult,
@@ -62,6 +63,10 @@ export const settingsApi = {
   saveMcpSettings: (settings: McpSettings): Promise<McpSettings> =>
     window.api.settings.saveMcpSettings(settings),
   reconnectMcp: (): Promise<void> => window.api.settings.reconnectMcp(),
+  getMcpPresetStatus: (): Promise<McpPresetStatusItem[]> =>
+    window.api.settings.getMcpPresetStatus(),
+  installMcpPreset: (id: McpPresetId): Promise<McpPresetInstallResult> =>
+    window.api.settings.installMcpPreset(id),
   getSkillSettings: (): Promise<SkillSettings> => window.api.settings.getSkillSettings(),
   saveSkillSettings: (settings: SkillSettings): Promise<SkillSettings> =>
     window.api.settings.saveSkillSettings(settings),

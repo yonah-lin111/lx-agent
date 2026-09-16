@@ -65,4 +65,9 @@ describe("LxTag", () => {
     expect(className).toContain("cursor-pointer")
     expect(className).not.toContain("hover:")
   })
+
+  it("标签文字可选中复制（无 select-none 限制）", () => {
+    const { container } = render(<LxTag>copyable</LxTag>)
+    expect(container.querySelector(".lx-tag")?.className).not.toContain("select-none")
+  })
 })

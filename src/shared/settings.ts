@@ -1,5 +1,6 @@
 import type { CollaborationMode, HookEventName, PermissionSettings } from "./contracts/agent"
 import type { ModelPricing } from "./contracts/usage"
+import type { McpPresetId, McpPresetInstallResult, McpPresetStatusItem } from "./mcpPresets"
 
 // Provider 传输格式。
 export type ProviderTransportType = "openai" | "anthropic" | "google" | "openai-compatible"
@@ -386,6 +387,8 @@ export interface SettingsApi {
     getMcpSettings: () => Promise<McpSettings>
     saveMcpSettings: (settings: McpSettings) => Promise<McpSettings>
     reconnectMcp: () => Promise<void>
+    getMcpPresetStatus: () => Promise<McpPresetStatusItem[]>
+    installMcpPreset: (id: McpPresetId) => Promise<McpPresetInstallResult>
     getSkillSettings: () => Promise<SkillSettings>
     saveSkillSettings: (settings: SkillSettings) => Promise<SkillSettings>
     deleteSkill: (filePath: string) => Promise<{ success: boolean; error?: string }>

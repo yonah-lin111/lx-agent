@@ -1,4 +1,11 @@
 import type { McpServerStatusItem } from "@shared/contracts/agent"
+import {
+  MCP_PRESET_DEFAULT_TIMEOUT,
+  MCP_PRESETS,
+  type McpPresetDefinition,
+  type McpPresetId,
+  type McpPresetStatusItem,
+} from "@shared/mcpPresets"
 import type { McpServerConfig, McpSettings as McpSettingsType } from "@shared/settings"
 import {
   AlertTriangle,
@@ -6,6 +13,7 @@ import {
   ChevronRight,
   Edit2,
   FolderOpen,
+  Github,
   Loader2,
   Plug,
   Plus,
@@ -28,6 +36,7 @@ import { settingsApi } from "@/features/settings/api/settingsApi"
 import { useRegisterSettingsSection } from "@/features/settings/hooks/settingsDraftStore"
 import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
+import { McpPresetSection } from "./McpPresetSection"
 
 interface EnvRow {
   key: string
@@ -43,6 +52,8 @@ export const McpSettings = (): React.JSX.Element => {
   const [searchQuery, setSearchQuery] = useState("")
   const [mcpSettings, setMcpSettings] = useState<McpSettingsType>({ servers: {} })
   const [statuses, setStatuses] = useState<McpServerStatusItem[]>([])
+  const [presetStatuses, setPresetStatuses] = useState<McpPresetStatusItem[]>([])
+  const [installingPresetId, setInstallingPresetId] = useState<McpPresetId | null>(null)
   const [expandedToolsMap, setExpandedToolsMap] = useState<Record<string, boolean>>({})
 
   // Modal 弹窗状态
@@ -99,13 +110,15 @@ export const McpSettings = (): React.JSX.Element => {
         if (isManualRefresh) setRefreshing(true)
         else setLoading(true)
 
-        const [settingsRes, statusRes] = await Promise.all([
+        const [settingsRes, statusRes, presetStatusRes] = await Promise.all([
           settingsApi.getMcpSettings(),
           window.api.agent.getMcpStatus(),
+          settingsApi.getMcpPresetStatus(),
         ])
 
         setMcpSettings(settingsRes)
         setStatuses(statusRes)
+        setPresetStatuses(presetStatusRes)
         if (baselineMcpRef.current === null || isManualRefresh) {
           baselineMcpRef.current = JSON.stringify(settingsRes)
         }
@@ -252,6 +265,55 @@ export const McpSettings = (): React.JSX.Element => {
     }
   }
 
+  // 启用预设：写入配置草稿，由底部保存栏统一落盘
+  const handleAddPreset = (preset: McpPresetDefinition) => {
+    setMcpSettings({
+      servers: {
+        ...mcpSettings.servers,
+        [preset.id]: {
+          command: [...preset.command],
+          timeout: MCP_PRESET_DEFAULT_TIMEOUT,
+        },
+      },
+    })
+  }
+
+  // 安装预设（npm 全局安装）并刷新探测状态
+  const handleInstallPreset = async (preset: McpPresetDefinition) => {
+    setInstallingPresetId(preset.id)
+    try {
+      const result = await settingsApi.installMcpPreset(preset.id)
+      if (result.success) {
+        toast.success(t("settings.mcpPresetInstallSuccess", { name: preset.displayName }))
+      } else {
+        console.error("[McpSettings] Install preset failed:", result.detail)
+        toast.error(t("settings.mcpPresetInstallFailed", { name: preset.displayName }))
+      }
+      setPresetStatuses(await settingsApi.getMcpPresetStatus())
+    } catch (err) {
+      console.error("[McpSettings] Failed to install preset:", err)
+      toast.error(t("settings.mcpPresetInstallFailed", { name: preset.displayName }))
+    } finally {
+      setInstallingPresetId(null)
+    }
+  }
+
+  // 复制预设安装命令
+  const handleCopyPresetCommand = async (preset: McpPresetDefinition) => {
+    if (!preset.installCommand) return
+    try {
+      await navigator.clipboard.writeText(preset.installCommand)
+      toast.success(t("settings.mcpPresetCopySuccess"))
+    } catch {
+      toast.error(t("agent.copyFailed"))
+    }
+  }
+
+  // 打开预设官网
+  const handleOpenPresetHomepage = (url: string) => {
+    window.open(url, "_blank")
+  }
+
   // 过滤后的列表
   const serverEntries = useMemo(() => {
     const list = Object.entries(mcpSettings.servers)
@@ -274,6 +336,15 @@ export const McpSettings = (): React.JSX.Element => {
     }
     return map
   }, [statuses])
+
+  // 预设定义映射表（按 server 名匹配，用于标记预设来源与官网入口）
+  const presetMap = useMemo(() => {
+    const map = new Map<string, McpPresetDefinition>()
+    for (const preset of MCP_PRESETS) {
+      map.set(preset.id, preset)
+    }
+    return map
+  }, [])
 
   if (loading && Object.keys(mcpSettings.servers).length === 0) {
     return (
@@ -331,6 +402,18 @@ export const McpSettings = (): React.JSX.Element => {
         </div>
       </div>
 
+      {/* 预设 MCP 推荐区（未添加的预设） */}
+      <McpPresetSection
+        statuses={presetStatuses}
+        servers={mcpSettings.servers}
+        searchQuery={searchQuery}
+        installingId={installingPresetId}
+        onAdd={handleAddPreset}
+        onInstall={handleInstallPreset}
+        onCopyCommand={handleCopyPresetCommand}
+        onOpenHomepage={handleOpenPresetHomepage}
+      />
+
       {/* MCP 服务卡片列表 */}
       <div className="grid grid-cols-1 gap-2.5">
         {serverEntries.length === 0 ? (
@@ -352,6 +435,7 @@ export const McpSettings = (): React.JSX.Element => {
         ) : (
           serverEntries.map(([name, config]) => {
             const statusItem = statusMap.get(name)
+            const presetDefinition = presetMap.get(name)
             const isConfigDisabled = Boolean(config.disabled)
             const isConnected = !isConfigDisabled && statusItem?.status === "connected"
             const isFailed = !isConfigDisabled && statusItem?.status === "failed"
@@ -375,6 +459,11 @@ export const McpSettings = (): React.JSX.Element => {
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="truncate text-xs font-semibold text-white/90">{name}</span>
+                        {presetDefinition && (
+                          <LxTag size="small" color="indigo">
+                            {t("settings.mcpPresetBadge")}
+                          </LxTag>
+                        )}
                         {isConfigDisabled ? (
                           <LxTag size="small" color="gray">
                             {t("settings.disabled")}
@@ -414,6 +503,17 @@ export const McpSettings = (): React.JSX.Element => {
 
                   {/* 右侧操作按钮 */}
                   <div className="flex shrink-0 items-center gap-1.5">
+                    {presetDefinition && (
+                      <LxIconButton
+                        preset="default"
+                        onClick={() => handleOpenPresetHomepage(presetDefinition.homepage)}
+                        title={{ content: t("settings.mcpPresetHomepage"), placement: "top" }}
+                        aria-label={`${t("settings.mcpPresetHomepage")} ${presetDefinition.displayName}`}
+                      >
+                        <Github className="text-white/70" />
+                      </LxIconButton>
+                    )}
+
                     <LxIconButton
                       preset="default"
                       onClick={() => handleOpenEdit(name, config)}

@@ -23,6 +23,8 @@ export const SETTINGS_CHANNELS = {
   getMcpSettings: "settings:mcp:get",
   saveMcpSettings: "settings:mcp:save",
   reconnectMcp: "settings:mcp:reconnect",
+  getMcpPresetStatus: "settings:mcp:get-preset-status",
+  installMcpPreset: "settings:mcp:install-preset",
   getSkillSettings: "settings:skills:get",
   saveSkillSettings: "settings:skills:save",
   deleteSkill: "settings:skills:delete",
