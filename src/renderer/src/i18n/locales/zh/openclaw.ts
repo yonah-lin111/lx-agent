@@ -28,7 +28,7 @@ export const openclaw = {
   scrollToBottom: "回到底部",
   copyMessage: "复制消息",
   deleteTurn: "删除该轮问答",
-  deleteTurnConfirm: "将删除该轮问答及其之后的全部消息，是否继续？",
+  deleteTurnConfirm: "将删除 {{name}} 的这一轮问答及其之后的全部消息，是否继续？",
   deleteTurnSuccess: "已删除该轮问答",
   deleteTurnFailed: "删除该轮问答失败",
   modelLabel: "模型：{{model}}",

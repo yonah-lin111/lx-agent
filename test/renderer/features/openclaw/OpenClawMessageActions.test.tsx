@@ -113,6 +113,8 @@ describe("OpenClaw 消息操作按钮", () => {
 
     render(<OpenClawMessageList timeline={timeline} agents={agents} onDeleteTurn={onDeleteTurn} />)
     fireEvent.click(screen.getByRole("button", { name: "Delete this Q&A turn" }))
+    // 确认文案指名会话所属员工，避免多 Agent 合流下的作用域歧义。
+    expect(screen.getByText(/This deletes Lily's turn and all later messages/)).not.toBeNull()
     // jsdom 中 Tooltip 定位坐标为 0，气泡以 visibility:hidden 挂载：按属性直取确认按钮。
     const confirmButton = document.querySelector(
       'button[aria-label="Confirm"]',

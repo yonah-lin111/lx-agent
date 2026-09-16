@@ -29,7 +29,7 @@ export const openclaw = {
   scrollToBottom: "Scroll to bottom",
   copyMessage: "Copy message",
   deleteTurn: "Delete this Q&A turn",
-  deleteTurnConfirm: "This deletes the turn and every later message. Continue?",
+  deleteTurnConfirm: "This deletes {{name}}'s turn and all later messages. Continue?",
   deleteTurnSuccess: "Q&A turn deleted",
   deleteTurnFailed: "Failed to delete the Q&A turn",
   modelLabel: "Model: {{model}}",

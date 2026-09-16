@@ -32,6 +32,7 @@ export const OpenClawAssistantMessage = ({
   const { t } = useTranslation()
   const previewRef = useRef<HTMLElement | null>(null)
   const [copied, setCopied] = useState(false)
+  const agentName = agent?.name ?? agentId
 
   const copyMessageContent = async (): Promise<void> => {
     try {
@@ -52,7 +53,7 @@ export const OpenClawAssistantMessage = ({
         >
           {(agent?.name ?? agentId).slice(0, 1).toUpperCase()}
         </span>
-        <span className="text-[12px] font-medium text-white/70">{agent?.name ?? agentId}</span>
+        <span className="text-[12px] font-medium text-white/70">{agentName}</span>
         {model ? <span className="shrink-0 text-white/35">{model}</span> : null}
       </div>
 
@@ -103,7 +104,7 @@ export const OpenClawAssistantMessage = ({
             <LxTooltip
               hover={{ content: t("openclaw.deleteTurn"), placement: "top" }}
               click={{
-                content: t("openclaw.deleteTurnConfirm"),
+                content: t("openclaw.deleteTurnConfirm", { name: agentName }),
                 placement: "top",
                 onConfirm: onDelete,
               }}
