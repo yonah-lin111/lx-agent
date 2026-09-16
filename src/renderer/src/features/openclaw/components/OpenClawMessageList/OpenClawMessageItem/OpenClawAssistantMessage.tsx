@@ -2,9 +2,7 @@ import type React from "react"
 import { useRef } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
-import { LxTooltip } from "@/components/ui/LxTooltip"
-import { useTranslation } from "@/i18n"
-import type { ConversationAgent, OpenClawMessageStats } from "./types"
+import type { ConversationAgent } from "./types"
 
 export interface OpenClawAssistantMessageProps {
   agentId: string
@@ -12,21 +10,8 @@ export interface OpenClawAssistantMessageProps {
   error?: string
   agent?: ConversationAgent
   isStreaming?: boolean
-  stats?: OpenClawMessageStats
-}
-
-// 上下文占用百分比；容量缺失或非法时返回 null。
-const contextPercentOf = (stats: OpenClawMessageStats): number | null => {
-  const { contextUsed, contextWindow } = stats
-  if (contextUsed === undefined || contextWindow === undefined || contextWindow <= 0) return null
-  return Math.min(100, Math.max(0, Math.round((contextUsed / contextWindow) * 100)))
-}
-
-// 百分比压力着色：≥90% 红 / ≥75% 琥珀 / 其余弱化。
-const percentTextClass = (percent: number): string => {
-  if (percent >= 90) return "text-rose-300/90"
-  if (percent >= 75) return "text-amber-300/90"
-  return "text-white/35"
+  // 该条消息生成时的模型（历史水合与 run 结束回填；未记录时不渲染）。
+  model?: string
 }
 
 export const OpenClawAssistantMessage = ({
@@ -35,54 +20,9 @@ export const OpenClawAssistantMessage = ({
   error,
   agent,
   isStreaming = false,
-  stats,
+  model,
 }: OpenClawAssistantMessageProps): React.JSX.Element => {
-  const { t } = useTranslation()
   const previewRef = useRef<HTMLElement | null>(null)
-  const percent = stats ? contextPercentOf(stats) : null
-  const formatCount = (value: number): string => Math.max(0, Math.round(value)).toLocaleString()
-
-  // 名称右侧概要：模型名 + 上下文占用百分比（tooltip 展示明细）；均缺失时不渲染。
-  const statsLabel =
-    stats && (stats.model || percent !== null) ? (
-      <LxTooltip
-        placement="top"
-        multiline
-        content={
-          <div className="flex flex-col gap-0.5">
-            {stats.model ? (
-              <div>
-                {t("openclaw.modelLabel", { model: stats.model })}
-                {stats.modelProvider ? ` · ${stats.modelProvider}` : ""}
-              </div>
-            ) : null}
-            {stats.contextUsed !== undefined && stats.contextWindow !== undefined ? (
-              <div>
-                {t("openclaw.contextUsed", {
-                  used: formatCount(stats.contextUsed),
-                  total: formatCount(stats.contextWindow),
-                })}
-              </div>
-            ) : stats.contextWindow !== undefined ? (
-              <div>
-                {t("openclaw.contextCapacity", { total: formatCount(stats.contextWindow) })}
-              </div>
-            ) : null}
-            {stats.outputTokens !== undefined ? (
-              <div>{t("openclaw.outputTokens", { count: formatCount(stats.outputTokens) })}</div>
-            ) : null}
-          </div>
-        }
-      >
-        <span className="flex shrink-0 cursor-default items-center gap-1">
-          {stats.model ? <span className="text-white/35">{stats.model}</span> : null}
-          {stats.model && percent !== null ? <span className="text-white/20">·</span> : null}
-          {percent !== null ? (
-            <span className={`tabular-nums ${percentTextClass(percent)}`}>{percent}%</span>
-          ) : null}
-        </span>
-      </LxTooltip>
-    ) : null
 
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1.5 px-0">
@@ -94,7 +34,7 @@ export const OpenClawAssistantMessage = ({
           {(agent?.name ?? agentId).slice(0, 1).toUpperCase()}
         </span>
         <span className="text-[12px] font-medium text-white/70">{agent?.name ?? agentId}</span>
-        {statsLabel}
+        {model ? <span className="shrink-0 text-white/35">{model}</span> : null}
       </div>
 
       <div

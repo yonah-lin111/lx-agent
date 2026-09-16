@@ -29,7 +29,6 @@ export const openclaw = {
   modelLabel: "模型：{{model}}",
   contextUsed: "上下文：已用 {{used}} / {{total}} tokens",
   contextCapacity: "上下文容量：{{total}} tokens",
-  outputTokens: "输出：{{count}} tokens",
   officePickerTitle: "切换办公区",
   agentPickerTitle: "选择员工",
   targetLabel: "派发目标：",

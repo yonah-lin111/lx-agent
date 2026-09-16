@@ -30,7 +30,6 @@ export const openclaw = {
   modelLabel: "Model: {{model}}",
   contextUsed: "Context: {{used}} / {{total}} tokens",
   contextCapacity: "Context capacity: {{total}} tokens",
-  outputTokens: "Output: {{count}} tokens",
   officePickerTitle: "Switch office",
   agentPickerTitle: "Select coworkers",
   targetLabel: "Targets:",

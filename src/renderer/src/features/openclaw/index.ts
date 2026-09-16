@@ -32,6 +32,7 @@ export {
   type OpenClawTargetOffice,
   OpenClawTargetSelect,
 } from "./components/OpenClawTargetSelect"
+export { useOfficeAgentStats } from "./hooks/useOfficeAgentStats"
 export { useOfficeAgentStatuses } from "./hooks/useOfficeAgentStatuses"
 export { useOpenClawConfig } from "./hooks/useOpenClawConfig"
 export {
