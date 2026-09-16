@@ -420,24 +420,17 @@ export const buildExecutionSteps = (
               }
             : undefined
 
+        const isLastToolCallInBatch =
+          toolCallBlocksCount <= 1 || toolCallIndexInMessage === toolCallBlocksCount
+
         const toolTokens =
-          !hasTextBlock && message.usage
-            ? toolCallBlocksCount > 1
-              ? {
-                  input: Math.round(message.usage.input / toolCallBlocksCount),
-                  output: Math.round(message.usage.output / toolCallBlocksCount),
-                  cacheRead:
-                    message.usage.cacheRead !== undefined
-                      ? Math.round(message.usage.cacheRead / toolCallBlocksCount)
-                      : undefined,
-                  total: Math.round(message.usage.totalTokens / toolCallBlocksCount),
-                }
-              : {
-                  input: message.usage.input,
-                  output: message.usage.output,
-                  cacheRead: message.usage.cacheRead,
-                  total: message.usage.totalTokens,
-                }
+          !hasTextBlock && message.usage && isLastToolCallInBatch
+            ? {
+                input: message.usage.input,
+                output: message.usage.output,
+                cacheRead: message.usage.cacheRead,
+                total: message.usage.totalTokens,
+              }
             : undefined
 
         if (isSubagent) {

@@ -695,7 +695,7 @@ describe("executionFlow", () => {
       expect(steps[1].parallel).toBeUndefined()
     })
 
-    it("当 assistant 消息包含多个并发 toolCall 时，正确标记 parallel 元数据并均匀分摊 tokens", () => {
+    it("当 assistant 消息包含多个并发 toolCall 时，正确标记 parallel 元数据且仅在最后一个 item 结算全部 tokens，前面项不分配", () => {
       const messages: ChatMessage[] = [
         {
           id: "u1",
@@ -745,12 +745,7 @@ describe("executionFlow", () => {
         batchId: "a1",
         batchIndex: 0,
       })
-      expect(steps[1].tokens).toEqual({
-        input: 3700,
-        output: 31,
-        cacheRead: 500,
-        total: 3731,
-      })
+      expect(steps[1].tokens).toBeUndefined()
 
       expect(steps[2].kind).toBe("tool")
       expect(steps[2].parallel).toEqual({
@@ -760,10 +755,10 @@ describe("executionFlow", () => {
         batchIndex: 0,
       })
       expect(steps[2].tokens).toEqual({
-        input: 3700,
-        output: 31,
-        cacheRead: 500,
-        total: 3731,
+        input: 7400,
+        output: 62,
+        cacheRead: 1000,
+        total: 7462,
       })
     })
 
