@@ -17,7 +17,8 @@ export interface ArcadeCanvasHostProps {
 }
 
 /**
- * 小游戏画布宿主：负责 RAF 循环、输入采集、暂停/失焦处理与 DPR 适配。
+ * 小游戏画布宿主：负责 RAF 循环、输入采集、暂停/失焦处理与等比缩放适配。
+ * 游戏统一在 960 × 600 逻辑坐标系内绘制到离屏画布，宿主再按容器尺寸等比缩放并完整显示（永不裁切）。
  */
 export const ArcadeCanvasHost = ({
   gameId,
@@ -44,9 +45,36 @@ export const ArcadeCanvasHost = ({
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
+    // 逻辑画布：游戏只与世界坐标系（960 × 600）打交道，缩放全部由宿主负责。
+    const logicalCanvas = document.createElement("canvas")
+    logicalCanvas.width = ARCADE_WIDTH
+    logicalCanvas.height = ARCADE_HEIGHT
+    const logicalCtx = logicalCanvas.getContext("2d")
+    if (!logicalCtx) return
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    canvas.width = ARCADE_WIDTH * dpr
-    canvas.height = ARCADE_HEIGHT * dpr
+    // 等比 contain 适配：cssScale 为单个逻辑像素对应的 CSS 像素，offset 为居中留白。
+    const fit = { cssScale: 1, offsetX: 0, offsetY: 0, isDirty: true }
+
+    const syncCanvasSize = (): void => {
+      fit.isDirty = false
+      const rect = canvas.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return
+
+      const cssScale = Math.min(rect.width / ARCADE_WIDTH, rect.height / ARCADE_HEIGHT)
+      fit.cssScale = cssScale
+      fit.offsetX = (rect.width - ARCADE_WIDTH * cssScale) / 2
+      fit.offsetY = (rect.height - ARCADE_HEIGHT * cssScale) / 2
+
+      // 位图按显示尺寸分配，保证任意缩放档位下像素密度都与屏幕一致。
+      const bitmapWidth = Math.max(1, Math.round(ARCADE_WIDTH * cssScale * dpr))
+      const bitmapHeight = Math.max(1, Math.round(ARCADE_HEIGHT * cssScale * dpr))
+      if (canvas.width !== bitmapWidth || canvas.height !== bitmapHeight) {
+        canvas.width = bitmapWidth
+        canvas.height = bitmapHeight
+      }
+    }
+    syncCanvasSize()
 
     const game = createArcadeGame(gameId)
     const input: ArcadeInputState = { keys: new Set(), pressedKeys: new Set() }
@@ -57,14 +85,14 @@ export const ArcadeCanvasHost = ({
     const toLogical = (clientX: number, clientY: number): { x: number; y: number } => {
       const rect = canvas.getBoundingClientRect()
       return {
-        x: ((clientX - rect.left) / rect.width) * ARCADE_WIDTH,
-        y: ((clientY - rect.top) / rect.height) * ARCADE_HEIGHT,
+        x: (clientX - rect.left - fit.offsetX) / fit.cssScale,
+        y: (clientY - rect.top - fit.offsetY) / fit.cssScale,
       }
     }
 
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
-        // 游戏运行中由游戏层接管 ESC（暂停）；暂停后放行给弹窗关闭。
+        // 游戏运行中由游戏层接管 ESC（暂停）；暂停后放行给页面层退出。
         if (!isPausedRef.current && !finished) {
           event.preventDefault()
           event.stopPropagation()
@@ -106,6 +134,7 @@ export const ArcadeCanvasHost = ({
       const dt = Math.min(now - lastFrameAt, 50)
       lastFrameAt = now
       if (!Number.isFinite(dt) || dt <= 0) return
+      if (fit.isDirty) syncCanvasSize()
 
       if (!isPausedRef.current && !finished) {
         game.update(dt, input)
@@ -118,9 +147,18 @@ export const ArcadeCanvasHost = ({
         input.pressedKeys.clear()
       }
 
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      game.render(ctx, paletteRef.current)
+      game.render(logicalCtx, paletteRef.current)
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.imageSmoothingEnabled = !paletteRef.current.pixel
+      ctx.drawImage(logicalCanvas, 0, 0, canvas.width, canvas.height)
     }
+
+    const resizeObserver = new ResizeObserver(() => {
+      fit.isDirty = true
+    })
+    resizeObserver.observe(canvas)
 
     window.addEventListener("keydown", handleKeyDown, true)
     window.addEventListener("keyup", handleKeyUp, true)
@@ -133,6 +171,7 @@ export const ArcadeCanvasHost = ({
 
     return () => {
       cancelAnimationFrame(rafId)
+      resizeObserver.disconnect()
       window.removeEventListener("keydown", handleKeyDown, true)
       window.removeEventListener("keyup", handleKeyUp, true)
       window.removeEventListener("blur", handleWindowBlur)
@@ -145,11 +184,11 @@ export const ArcadeCanvasHost = ({
   }, [gameId, runId])
 
   return (
-    <canvas
-      ref={canvasRef}
-      aria-label={gameId}
-      className="h-auto w-full max-w-full rounded-[var(--theme-radius-base)] bg-[var(--color-theme-bg)]"
-      style={{ aspectRatio: `${ARCADE_WIDTH} / ${ARCADE_HEIGHT}` }}
-    />
+    <div
+      className="flex h-full w-full items-center justify-center overflow-hidden rounded-[var(--theme-radius-base)]"
+      style={{ backgroundColor: palette.background }}
+    >
+      <canvas ref={canvasRef} aria-label={gameId} className="h-full w-full object-contain" />
+    </div>
   )
 }

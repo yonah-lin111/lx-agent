@@ -13,8 +13,7 @@ vi.mock("react-router-dom", () => ({
 }))
 
 vi.mock("@/features/arcade", () => ({
-  ArcadeModal: ({ isOpen }: { isOpen: boolean }): React.JSX.Element | null =>
-    isOpen ? <div>arcade-modal</div> : null,
+  ArcadeStage: (): React.JSX.Element => <div>arcade-stage</div>,
 }))
 
 vi.stubGlobal(
@@ -99,14 +98,15 @@ describe("AppIndexDashboard", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/settings")
   })
 
-  it("点击 logo 打开彩蛋游戏厅", () => {
+  it("点击 logo 在索引页内整页打开彩蛋游戏厅", () => {
     render(<AppIndexDashboard />)
 
-    expect(screen.queryByText("arcade-modal")).toBeNull()
+    expect(screen.queryByText("arcade-stage")).toBeNull()
 
     fireEvent.click(screen.getByRole("button", { name: "Feeling lucky?" }))
 
-    expect(screen.getByText("arcade-modal")).toBeDefined()
+    expect(screen.getByText("arcade-stage")).toBeDefined()
+    expect(screen.queryByText("Quick Entries")).toBeNull()
   })
 
   it("点击新建对话入口创建 Agent Tab 而不跳转路由", () => {

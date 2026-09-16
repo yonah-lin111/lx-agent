@@ -2,10 +2,10 @@ export const arcade = {
   title: "Arcade",
   logoHint: "Feeling lucky?",
   backToList: "Back to games",
+  backToIndex: "Back to index",
   pause: "Pause",
   resume: "Resume",
   restart: "Restart",
-  close: "Close",
   picker: {
     subtitle: "Three tiny games drawn purely with code. Best scores are kept on this device.",
     best: "Best",

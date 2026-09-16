@@ -2,10 +2,10 @@ export const arcade = {
   title: "彩蛋游戏厅",
   logoHint: "要不要来一局？",
   backToList: "返回游戏列表",
+  backToIndex: "返回索引",
   pause: "暂停",
   resume: "继续",
   restart: "重新开始",
-  close: "关闭",
   picker: {
     subtitle: "三款纯代码绘制的小游戏，最高分保存在本机。",
     best: "最高分",

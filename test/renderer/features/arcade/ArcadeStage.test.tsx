@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { ArcadeModal } from "@/features/arcade/components/ArcadeModal"
+import { ArcadeStage } from "@/features/arcade/components/ArcadeStage"
 
 vi.mock("@/features/arcade/components/ArcadeCanvasHost", () => ({
   ArcadeCanvasHost: ({
@@ -23,7 +23,7 @@ vi.mock("@/features/arcade/components/ArcadeCanvasHost", () => ({
   ),
 }))
 
-describe("ArcadeModal", () => {
+describe("ArcadeStage", () => {
   beforeEach(() => {
     localStorage.clear()
   })
@@ -36,7 +36,7 @@ describe("ArcadeModal", () => {
   it("选择页渲染三款游戏与各自最高分", () => {
     localStorage.setItem("lx_arcade_best_v1", JSON.stringify({ dodge: 90, bad: "x" }))
 
-    render(<ArcadeModal isOpen={true} onClose={() => {}} />)
+    render(<ArcadeStage onExit={() => {}} />)
 
     expect(screen.getByText("One Stroke")).toBeDefined()
     expect(screen.getByText("Stardust Dodge")).toBeDefined()
@@ -46,7 +46,7 @@ describe("ArcadeModal", () => {
   })
 
   it("选择游戏后进入画布并显示工具栏最高分，返回按钮回到选择页", () => {
-    render(<ArcadeModal isOpen={true} onClose={() => {}} />)
+    render(<ArcadeStage onExit={() => {}} />)
 
     fireEvent.click(screen.getByRole("button", { name: /Stardust Dodge/ }))
     expect(screen.getByText("canvas-host")).toBeDefined()
@@ -58,7 +58,7 @@ describe("ArcadeModal", () => {
   })
 
   it("暂停请求展示暂停面板，继续后恢复运行", () => {
-    render(<ArcadeModal isOpen={true} onClose={() => {}} />)
+    render(<ArcadeStage onExit={() => {}} />)
 
     fireEvent.click(screen.getByRole("button", { name: /One Stroke/ }))
     fireEvent.click(screen.getByText("request-pause"))
@@ -71,7 +71,7 @@ describe("ArcadeModal", () => {
   })
 
   it("游戏结束展示得分与新纪录，并写入 localStorage 最高分", () => {
-    render(<ArcadeModal isOpen={true} onClose={() => {}} />)
+    render(<ArcadeStage onExit={() => {}} />)
 
     fireEvent.click(screen.getByRole("button", { name: /Silhouette Run/ }))
     fireEvent.click(screen.getByText("finish-game"))
@@ -82,12 +82,23 @@ describe("ArcadeModal", () => {
     expect(JSON.parse(localStorage.getItem("lx_arcade_best_v1") ?? "{}")).toEqual({ runner: 120 })
   })
 
-  it("选择页按 ESC 关闭游戏厅", () => {
-    const onClose = vi.fn()
-    render(<ArcadeModal isOpen={true} onClose={onClose} />)
+  it("选择页按 ESC 退出游戏厅", () => {
+    const onExit = vi.fn()
+    render(<ArcadeStage onExit={onExit} />)
 
-    fireEvent.keyDown(document, { key: "Escape" })
+    fireEvent.keyDown(window, { key: "Escape" })
 
-    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onExit).toHaveBeenCalledTimes(1)
+  })
+
+  it("暂停面板可退出游戏厅（返回索引）", () => {
+    const onExit = vi.fn()
+    render(<ArcadeStage onExit={onExit} />)
+
+    fireEvent.click(screen.getByRole("button", { name: /One Stroke/ }))
+    fireEvent.click(screen.getByText("request-pause"))
+    fireEvent.click(screen.getByRole("button", { name: "Back to index" }))
+
+    expect(onExit).toHaveBeenCalledTimes(1)
   })
 })

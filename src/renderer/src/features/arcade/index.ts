@@ -1,3 +1,3 @@
-export { ArcadeModal } from "./components/ArcadeModal"
+export { ArcadeStage } from "./components/ArcadeStage"
 export { useArcadeBestScores } from "./hooks/useArcadeBestScores"
 export * from "./types"
