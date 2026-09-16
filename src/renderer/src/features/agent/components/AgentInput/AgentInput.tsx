@@ -457,7 +457,7 @@ export const AgentInput = ({
               onVariantChange={onVariantChange}
             />
             {selectedVariant ? (
-              <LxTag size="small" color="sky" className="shrink-0 font-mono">
+              <LxTag color="sky" className="shrink-0 font-mono">
                 {selectedVariant}
               </LxTag>
             ) : null}
