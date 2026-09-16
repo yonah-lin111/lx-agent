@@ -10,6 +10,8 @@ export interface OpenClawAssistantMessageProps {
   error?: string
   agent?: ConversationAgent
   isStreaming?: boolean
+  // 该条消息生成时的模型（历史水合与 run 结束回填；未记录时不渲染）。
+  model?: string
 }
 
 export const OpenClawAssistantMessage = ({
@@ -18,6 +20,7 @@ export const OpenClawAssistantMessage = ({
   error,
   agent,
   isStreaming = false,
+  model,
 }: OpenClawAssistantMessageProps): React.JSX.Element => {
   const previewRef = useRef<HTMLElement | null>(null)
 
@@ -31,6 +34,7 @@ export const OpenClawAssistantMessage = ({
           {(agent?.name ?? agentId).slice(0, 1).toUpperCase()}
         </span>
         <span className="text-[12px] font-medium text-white/70">{agent?.name ?? agentId}</span>
+        {model ? <span className="shrink-0 text-white/35">{model}</span> : null}
       </div>
 
       <div

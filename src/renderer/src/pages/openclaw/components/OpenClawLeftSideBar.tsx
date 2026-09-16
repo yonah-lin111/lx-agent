@@ -208,15 +208,21 @@ export const OpenClawLeftSideBar = ({
                     {agent.name.slice(0, 1).toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs text-white/80">{agent.name}</span>
-                    <span className="block truncate text-xs text-white/40">
-                      {t(OFFICE_STATUS_LABEL_KEY[status])}
+                    <span className="flex items-center gap-1">
+                      <span className="min-w-0 flex-1 truncate text-xs text-white/80">
+                        {agent.name}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1">
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${OFFICE_STATUS_DOT_CLASS[status]}`}
+                        />
+                        <span className="text-xs text-white/40">
+                          {t(OFFICE_STATUS_LABEL_KEY[status])}
+                        </span>
+                      </span>
                     </span>
                     <AgentStatsLine stats={agentStats[agent.id]} />
                   </span>
-                  <span
-                    className={`h-2 w-2 shrink-0 rounded-full ${OFFICE_STATUS_DOT_CLASS[status]}`}
-                  />
                 </button>
               )
             })

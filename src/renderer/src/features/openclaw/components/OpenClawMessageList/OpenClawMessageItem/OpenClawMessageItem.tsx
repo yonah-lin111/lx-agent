@@ -38,6 +38,7 @@ export const OpenClawMessageItem = ({
       error={message.status === "error" ? message.error : undefined}
       agent={agent}
       isStreaming={isStreaming}
+      model={message.model}
     />
   )
 }

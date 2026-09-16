@@ -110,7 +110,7 @@ describe("OpenClawMessageList & OpenClawMessageItem", () => {
     expect(screen.queryByText(/coworker/)).toBeNull()
   })
 
-  it("消息头部不再渲染模型与上下文统计", () => {
+  it("消息头部展示该条消息记录的模型名，且不渲染上下文统计", () => {
     const timeline: OfficeTimelineMessage[] = [
       { agentId: "lily", message: user("u1", "assign", 100) },
       {
@@ -121,12 +121,14 @@ describe("OpenClawMessageList & OpenClawMessageItem", () => {
           usage: { input: 100000, output: 10 },
         }),
       },
+      { agentId: "lily", message: assistant("a2", "no-model-reply", 300) },
     ]
 
     render(<OpenClawMessageList timeline={timeline} agents={agents} />)
 
-    expect(screen.getByText("reply")).not.toBeNull()
-    expect(screen.queryByText("gpt-5.2")).toBeNull()
+    // 仅记录了模型的消息展示模型名，未记录的消息不渲染。
+    expect(screen.getByText("gpt-5.2")).not.toBeNull()
+    expect(screen.getByText("no-model-reply")).not.toBeNull()
     expect(screen.queryByText(/^\d+%$/)).toBeNull()
   })
 
