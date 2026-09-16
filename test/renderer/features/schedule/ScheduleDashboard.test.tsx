@@ -66,7 +66,9 @@ describe("ScheduleDashboard", () => {
       expect(screen.getByText("写方案")).toBeDefined()
     })
     expect(screen.getByText("评审代码")).toBeDefined()
-    expect(screen.getByText(/1 \/ 2 completed/)).toBeDefined()
+    expect(screen.getByRole("button", { name: "All" })).toBeDefined()
+    expect(screen.getByRole("button", { name: "Pending" })).toBeDefined()
+    expect(screen.getByRole("button", { name: "Done" })).toBeDefined()
     expect(api.listByDate).toHaveBeenCalledWith({ entryDate: toLocalDateKey(new Date()) })
     // 月历角标与趋势统计各发起一次区间查询。
     expect(api.listRangeStats).toHaveBeenCalledTimes(2)

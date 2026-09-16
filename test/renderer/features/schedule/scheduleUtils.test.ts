@@ -3,8 +3,12 @@ import { describe, expect, it } from "vitest"
 import {
   countByPriority,
   fillRecentStats,
+  filterScheduleItems,
   getCompletionRate,
   getNextPriority,
+  getWeekDates,
+  getWeekStartAndEnd,
+  groupItemsByPriority,
   sortScheduleItems,
 } from "@/features/schedule/utils"
 
@@ -78,5 +82,56 @@ describe("schedule utils", () => {
       { date: "2026-09-15", plannedCount: 0, completedCount: 0 },
       { date: "2026-09-16", plannedCount: 3, completedCount: 1 },
     ])
+  })
+
+  it("getWeekStartAndEnd 计算周一至周日区间", () => {
+    // 2026-09-16 是周三，周一是 2026-09-14，周日是 2026-09-20
+    const { startDate, endDate } = getWeekStartAndEnd("2026-09-16")
+    expect(startDate).toBe("2026-09-14")
+    expect(endDate).toBe("2026-09-20")
+  })
+
+  it("getWeekDates 正确生成 7 天感知带模型与状态匹配", () => {
+    const weekDays = getWeekDates("2026-09-16", "2026-09-16", "zh-CN", {
+      "2026-09-16": { plannedCount: 5, completedCount: 3 },
+    })
+
+    expect(weekDays).toHaveLength(7)
+    expect(weekDays[0].dateKey).toBe("2026-09-14")
+    expect(weekDays[6].dateKey).toBe("2026-09-20")
+
+    const wednesday = weekDays[2]
+    expect(wednesday.dateKey).toBe("2026-09-16")
+    expect(wednesday.isToday).toBe(true)
+    expect(wednesday.isSelected).toBe(true)
+    expect(wednesday.entryCount).toBe(5)
+    expect(wednesday.completedCount).toBe(3)
+  })
+
+  it("filterScheduleItems 按待办状态正确过滤", () => {
+    const items = [
+      createItem({ id: 1, completed: false }),
+      createItem({ id: 2, completed: true }),
+      createItem({ id: 3, completed: false }),
+    ]
+
+    expect(filterScheduleItems(items, "all")).toHaveLength(3)
+    expect(filterScheduleItems(items, "pending")).toEqual([items[0], items[2]])
+    expect(filterScheduleItems(items, "completed")).toEqual([items[1]])
+  })
+
+  it("groupItemsByPriority 按 P0-P3 四象限正确聚合", () => {
+    const items = [
+      createItem({ id: 1, priority: "P0" }),
+      createItem({ id: 2, priority: "P1" }),
+      createItem({ id: 3, priority: "P0" }),
+      createItem({ id: 4, priority: "P3" }),
+    ]
+
+    const grouped = groupItemsByPriority(items)
+    expect(grouped.P0.map((i) => i.id)).toEqual([1, 3])
+    expect(grouped.P1.map((i) => i.id)).toEqual([2])
+    expect(grouped.P2).toEqual([])
+    expect(grouped.P3.map((i) => i.id)).toEqual([4])
   })
 })

@@ -1,7 +1,13 @@
 import type { ScheduleDayStats, ScheduleItem, SchedulePriority } from "@shared/contracts/schedule"
-import { getRecentRange, shiftDateKey } from "@/lib/date"
+import {
+  formatWeekdayShort,
+  getRecentRange,
+  getWeekStartKey,
+  parseDateKey,
+  shiftDateKey,
+} from "@/lib/date"
 import { SCHEDULE_PRIORITY_SEQUENCE } from "./constants"
-import type { SchedulePriorityCounts } from "./types"
+import type { SchedulePriorityCounts, ScheduleStatusFilter, ScheduleWeekDay } from "./types"
 
 /**
  * 计算下一个优先级（P3 回绕到 P0）。
@@ -59,4 +65,70 @@ export const fillRecentStats = (
     const date = shiftDateKey(startDate, index)
     return statsByDate.get(date) ?? { date, plannedCount: 0, completedCount: 0 }
   })
+}
+
+/**
+ * 计算指定日期所在周（周一至周日）的起始与截止日期。
+ */
+export const getWeekStartAndEnd = (dateKey: string): { startDate: string; endDate: string } => {
+  const startDate = getWeekStartKey(dateKey)
+  const endDate = shiftDateKey(startDate, 6)
+  return { startDate, endDate }
+}
+
+/**
+ * 生成指定日期所在周（周一至周日）的 7 天视图模型。
+ */
+export const getWeekDates = (
+  selectedDateKey: string,
+  todayKey: string,
+  locale: string,
+  statsMap: Record<string, { plannedCount: number; completedCount: number }> = {},
+): ScheduleWeekDay[] => {
+  const weekStart = getWeekStartKey(selectedDateKey)
+  return Array.from({ length: 7 }, (_, index) => {
+    const dateKey = shiftDateKey(weekStart, index)
+    const dayOfMonth = parseDateKey(dateKey).getDate()
+    const weekdayLabel = formatWeekdayShort(dateKey, locale)
+    const stats = statsMap[dateKey]
+    return {
+      dateKey,
+      dayOfMonth,
+      weekdayLabel,
+      isToday: dateKey === todayKey,
+      isSelected: dateKey === selectedDateKey,
+      entryCount: stats?.plannedCount ?? 0,
+      completedCount: stats?.completedCount ?? 0,
+    }
+  })
+}
+
+/**
+ * 按完成状态过滤待办列表。
+ */
+export const filterScheduleItems = (
+  items: ScheduleItem[],
+  filter: ScheduleStatusFilter,
+): ScheduleItem[] => {
+  if (filter === "pending") return items.filter((item) => !item.completed)
+  if (filter === "completed") return items.filter((item) => item.completed)
+  return items
+}
+
+/**
+ * 按优先级将待办条目归类为四象限分组。
+ */
+export const groupItemsByPriority = (
+  items: ScheduleItem[],
+): Record<SchedulePriority, ScheduleItem[]> => {
+  const groups: Record<SchedulePriority, ScheduleItem[]> = {
+    P0: [],
+    P1: [],
+    P2: [],
+    P3: [],
+  }
+  for (const item of items) {
+    groups[item.priority].push(item)
+  }
+  return groups
 }

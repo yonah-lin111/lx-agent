@@ -9,6 +9,8 @@ export interface LxChartCardProps {
   emptyText: string
   // 图表区高度（空态占位与内容区共用）。
   height?: number
+  // 自定义类名。
+  className?: string
   children: ReactNode
 }
 
@@ -22,9 +24,12 @@ export const LxChartCard = ({
   isEmpty,
   emptyText,
   height = 240,
+  className = "",
   children,
 }: LxChartCardProps): React.JSX.Element => (
-  <div className="lx-chart-card flex min-w-0 flex-col rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3">
+  <div
+    className={`lx-chart-card flex min-w-0 flex-col rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3 ${className}`}
+  >
     <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
       <h3 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">{title}</h3>
       {subtitle ? (
