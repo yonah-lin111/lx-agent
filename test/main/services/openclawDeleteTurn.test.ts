@@ -114,6 +114,26 @@ const emitEvent = (event: unknown): void => {
 const rewindCalls = (): FakeRequest[] =>
   gateway.requests.filter((request) => request.method === "sessions.rewind")
 
+// 真实 Gateway 历史形态：持久化身份（entryId / runId）在消息的 __openclaw 元数据里。
+const userEntry = (id: string, content: string, timestamp: number): Record<string, unknown> => ({
+  role: "user",
+  content,
+  timestamp,
+  __openclaw: { id, seq: 1 },
+})
+
+const assistantEntry = (
+  id: string,
+  content: string,
+  timestamp: number,
+  runId: string,
+): Record<string, unknown> => ({
+  role: "assistant",
+  content,
+  timestamp,
+  __openclaw: { id, runId, seq: 2 },
+})
+
 describe("openclawClientManager 轮次删除（sessions.rewind）", () => {
   beforeEach(() => {
     holder.appDataRoot = mkdtempSync(join(tmpdir(), "openclaw-delete-turn-"))
@@ -137,8 +157,8 @@ describe("openclawClientManager 轮次删除（sessions.rewind）", () => {
   it("已水合会话：直传轮次用户消息 entryId，删除后投影按云端历史收敛为空", async () => {
     writeConfig()
     gateway.historyMessages = [
-      { id: "u1", role: "user", content: "hello", timestamp: 1 },
-      { id: "a1", role: "assistant", content: "reply", timestamp: 2, runId: "run-1" },
+      userEntry("u1", "hello", 1),
+      assistantEntry("a1", "reply", 2, "run-1"),
     ]
     gateway.postRewindHistory = []
     await openClawClientManager.connect(instanceId)
@@ -183,8 +203,8 @@ describe("openclawClientManager 轮次删除（sessions.rewind）", () => {
 
     // 云端历史（权威 id）与本地乐观投影并存：直传本地 id 必然失败。
     gateway.historyMessages = [
-      { id: "hist-u1", role: "user", content: "hello", timestamp: optimisticUser?.timestamp },
-      { id: "hist-a1", role: "assistant", content: "reply", timestamp: 3, runId: "run-9" },
+      userEntry("hist-u1", "hello", optimisticUser?.timestamp ?? 0),
+      assistantEntry("hist-a1", "reply", 3, "run-9"),
     ]
     gateway.postRewindHistory = []
     gateway.rewindErrors = 1
@@ -201,8 +221,8 @@ describe("openclawClientManager 轮次删除（sessions.rewind）", () => {
   it("解析结果与直传 id 相同（云端无此 entry）时保留原始错误，不改动投影", async () => {
     writeConfig()
     gateway.historyMessages = [
-      { id: "u1", role: "user", content: "hello", timestamp: 1 },
-      { id: "a1", role: "assistant", content: "reply", timestamp: 2, runId: "run-1" },
+      userEntry("u1", "hello", 1),
+      assistantEntry("a1", "reply", 2, "run-1"),
     ]
     await openClawClientManager.connect(instanceId)
     await openClawClientManager.getSnapshot(instanceId, "lily")
@@ -220,8 +240,8 @@ describe("openclawClientManager 轮次删除（sessions.rewind）", () => {
   it("会话流式中拒绝删除：不发送 rewind 请求", async () => {
     writeConfig()
     gateway.historyMessages = [
-      { id: "u1", role: "user", content: "hello", timestamp: 1 },
-      { id: "a1", role: "assistant", content: "reply", timestamp: 2, runId: "run-1" },
+      userEntry("u1", "hello", 1),
+      assistantEntry("a1", "reply", 2, "run-1"),
     ]
     await openClawClientManager.connect(instanceId)
     await openClawClientManager.getSnapshot(instanceId, "lily")

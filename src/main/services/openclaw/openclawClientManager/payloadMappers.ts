@@ -174,23 +174,27 @@ export const mapHistoryMessage = (
   const content =
     extractText(source.content) || (typeof source.text === "string" ? source.text : "")
   if (!content) return null
+  // 真实 Gateway 把持久化身份放在消息的 `__openclaw` 元数据里；该 id 即 sessions.rewind 的 entryId。
+  const metadata = isRecord(source.__openclaw)
+    ? source.__openclaw
+    : isRecord(raw.__openclaw)
+      ? raw.__openclaw
+      : null
   const id =
-    typeof source.id === "string" && source.id
-      ? source.id
-      : typeof raw.id === "string" && raw.id
-        ? raw.id
-        : `history-${index}`
+    (metadata ? readTrimmedString(metadata.id) : undefined) ??
+    readTrimmedString(raw.messageId) ??
+    readTrimmedString(raw.id) ??
+    readTrimmedString(source.id) ??
+    `history-${index}`
   const timestampCandidates = [source.timestamp, source.at, source.createdAt, raw.timestamp, raw.at]
   const timestamp =
     timestampCandidates.find(
       (value): value is number => typeof value === "number" && Number.isFinite(value),
     ) ?? Date.now() + index
   const runId =
-    typeof source.runId === "string" && source.runId
-      ? source.runId
-      : typeof raw.runId === "string" && raw.runId
-        ? raw.runId
-        : undefined
+    (metadata ? readTrimmedString(metadata.runId) : undefined) ??
+    readTrimmedString(source.runId) ??
+    readTrimmedString(raw.runId)
   // assistant 消息自带生成时模型与 token 用量，随历史一并保留。
   const model = readTrimmedString(source.model)
   const modelProvider =
