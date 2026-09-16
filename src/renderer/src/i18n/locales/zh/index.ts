@@ -1,5 +1,6 @@
 import type { TranslationDictionary } from "../en"
 import { agent } from "./agent"
+import { arcade } from "./arcade"
 import { bottomBar } from "./bottomBar"
 import { common } from "./common"
 import { frontDesign } from "./frontDesign"
@@ -19,6 +20,7 @@ import { usage } from "./usage"
 
 export const zh: TranslationDictionary = {
   common,
+  arcade,
   nav,
   home,
   usage,

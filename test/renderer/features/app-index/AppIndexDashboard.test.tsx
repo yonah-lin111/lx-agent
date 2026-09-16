@@ -12,6 +12,11 @@ vi.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
 }))
 
+vi.mock("@/features/arcade", () => ({
+  ArcadeModal: ({ isOpen }: { isOpen: boolean }): React.JSX.Element | null =>
+    isOpen ? <div>arcade-modal</div> : null,
+}))
+
 vi.stubGlobal(
   "ResizeObserver",
   class {
@@ -92,6 +97,16 @@ describe("AppIndexDashboard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }))
     expect(mockNavigate).toHaveBeenCalledWith("/settings")
+  })
+
+  it("点击 logo 打开彩蛋游戏厅", () => {
+    render(<AppIndexDashboard />)
+
+    expect(screen.queryByText("arcade-modal")).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "Feeling lucky?" }))
+
+    expect(screen.getByText("arcade-modal")).toBeDefined()
   })
 
   it("点击新建对话入口创建 Agent Tab 而不跳转路由", () => {

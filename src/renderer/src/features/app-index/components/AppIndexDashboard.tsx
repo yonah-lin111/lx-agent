@@ -10,12 +10,14 @@ import {
   Palette,
   Settings,
 } from "lucide-react"
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
+import { ArcadeModal } from "@/features/arcade"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { HOME_VIEW_QUERY_KEY } from "@/lib/homeView"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
@@ -111,6 +113,7 @@ export const AppIndexDashboard = (): React.JSX.Element => {
   const navigate = useNavigate()
   const { warning } = useLxToast()
   const { entries, isLoading, error, refresh } = useDailyActivity()
+  const [isArcadeOpen, setIsArcadeOpen] = useState(false)
 
   const handleEntryClick = useCallback(
     (entry: QuickEntry): void => {
@@ -136,11 +139,20 @@ export const AppIndexDashboard = (): React.JSX.Element => {
 
       {/* 1. 品牌 Hero：logo + 产品定位说明（无卡片容器，直接展示文字） */}
       <section className="app-index-hero flex min-w-0 items-center gap-4 py-1">
-        <img
-          src={logoImg}
-          alt="LX Agent"
-          className="app-index-logo h-16 w-16 shrink-0 rounded-2xl object-contain drop-shadow-md select-none pointer-events-none"
-        />
+        <LxTooltip content={t("arcade.logoHint")} placement="bottom">
+          <button
+            type="button"
+            aria-label={t("arcade.logoHint")}
+            onClick={() => setIsArcadeOpen(true)}
+            className="app-index-logo-button shrink-0 cursor-pointer rounded-2xl transition-[filter,transform] duration-150 hover:scale-[1.03] hover:brightness-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-theme-accent)]"
+          >
+            <img
+              src={logoImg}
+              alt="LX Agent"
+              className="app-index-logo h-16 w-16 rounded-2xl object-contain drop-shadow-md select-none pointer-events-none"
+            />
+          </button>
+        </LxTooltip>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className="font-mono text-base font-bold tracking-[0.18em] text-[var(--color-theme-text)]">
@@ -223,6 +235,9 @@ export const AppIndexDashboard = (): React.JSX.Element => {
       <section className="mt-5">
         <ActivityHeatmap entries={entries} />
       </section>
+
+      {/* 彩蛋：点击 logo 打开游戏厅 */}
+      <ArcadeModal isOpen={isArcadeOpen} onClose={() => setIsArcadeOpen(false)} />
     </div>
   )
 }
