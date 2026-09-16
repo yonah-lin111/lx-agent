@@ -22,6 +22,7 @@ import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
 import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
+import { openExternalUrl } from "@/services/externalLinkService"
 import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
 import { startScreenshotCleanupScheduler } from "@/services/screenshotCleanupService"
 import { terminalService } from "@/services/terminalService"
@@ -107,6 +108,14 @@ app.whenReady().then(() => {
 
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window)
+  })
+
+  // 外部链接统一交给系统默认浏览器，禁止在应用内弹出新窗口（覆盖所有 webContents）。
+  app.on("web-contents-created", (_, contents) => {
+    contents.setWindowOpenHandler(({ url }) => {
+      void openExternalUrl(url)
+      return { action: "deny" }
+    })
   })
 
   createWindow()
