@@ -562,12 +562,13 @@ export const AgentExecutionFlowItem = ({
 
       {/* 底部 Token 指标与并行状态栏：指标仅在步骤执行完成后展示；并行标记与 Subagent 详情不受运行态限制 */}
       {showFooter && (
-        <div className="agent-execution-flow-step-footer flex items-center justify-between gap-2 border-t border-white/5 px-2.5 py-1 select-none font-mono text-xs">
+        <div className="agent-execution-flow-step-footer flex items-center justify-between gap-2 overflow-hidden border-t border-white/5 px-2.5 py-1 select-none font-mono text-xs">
           {/* 左侧 Token 指标与 Subagent Detail 按钮 */}
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             {showTokenMetrics && step.tokens ? (
               <LxTooltip
                 placement="top"
+                className="min-w-0 max-w-full"
                 content={
                   <div className="flex flex-col gap-0.5 font-mono text-xs">
                     {isParallelBatchTotal && step.parallel && (
@@ -583,15 +584,15 @@ export const AgentExecutionFlowItem = ({
                   </div>
                 }
               >
-                <span className="flex items-center gap-1 leading-none text-white/35 select-text tabular-nums whitespace-nowrap cursor-default hover:text-white/60 transition-colors">
+                <span className="inline-block min-w-0 max-w-full truncate leading-none text-white/35 select-text tabular-nums cursor-default hover:text-white/60 transition-colors">
                   <span>IN {formatTokensShort(step.tokens.input ?? 0)}</span>
-                  <span aria-hidden="true" className="opacity-40">
+                  <span aria-hidden="true" className="mx-1 opacity-40">
                     ·
                   </span>
                   <span>OUT {formatTokensShort(step.tokens.output ?? 0)}</span>
                   {step.tokens.cacheRead !== undefined && step.tokens.cacheRead > 0 && (
                     <>
-                      <span aria-hidden="true" className="opacity-40">
+                      <span aria-hidden="true" className="mx-1 opacity-40">
                         ·
                       </span>
                       <span>CACHE {formatTokensShort(step.tokens.cacheRead)}</span>
@@ -600,7 +601,7 @@ export const AgentExecutionFlowItem = ({
                   {isParallelBatchTotal && (
                     <span
                       data-testid="flow-item-parallel-token-total"
-                      className="ml-0.5 text-xs text-white/40"
+                      className="ml-1 text-xs text-white/40"
                     >
                       ({t("agent.parallelBatchTotal")})
                     </span>
@@ -621,7 +622,7 @@ export const AgentExecutionFlowItem = ({
                       onOpenSubagent?.(step.subagentContent)
                     }
                   }}
-                  className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-xs font-medium leading-none text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200 focus:outline-none"
+                  className="shrink-0 inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-xs font-medium leading-none text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200 focus:outline-none"
                 >
                   <span>{t("agent.subagentDetail")}</span>
                   <ExternalLink className="h-2.5 w-2.5 opacity-70" />
@@ -634,6 +635,7 @@ export const AgentExecutionFlowItem = ({
           {step.parallel && (
             <LxTooltip
               placement="top"
+              className="shrink-0"
               content={t("agent.parallelToolNotice", {
                 index: step.parallel.index,
                 total: step.parallel.total,
@@ -641,7 +643,7 @@ export const AgentExecutionFlowItem = ({
             >
               <span
                 data-testid="flow-item-parallel"
-                className={`shrink-0 leading-none select-none font-mono text-xs font-medium cursor-default transition-opacity hover:opacity-80 ${
+                className={`shrink-0 whitespace-nowrap leading-none select-none font-mono text-xs font-medium cursor-default transition-opacity hover:opacity-80 ${
                   PARALLEL_BATCH_COLORS[
                     (step.parallel.batchIndex ?? 0) % PARALLEL_BATCH_COLORS.length
                   ]

@@ -115,6 +115,56 @@ describe("AgentExecutionFlowItem - 并行工具调用样式与 Token 结算测�
       expect(screen.getByText("IN 1.0k")).toBeDefined()
       expect(screen.queryByTestId("flow-item-parallel-token-total")).toBeNull()
     })
+
+    it("小宽度容器下，左侧 token 区域配置 truncate 与弹性收缩，Parallel 容器保持 shrink-0 不被挤出", () => {
+      const step: ExecutionStep = {
+        id: "step-parallel-narrow",
+        messageId: "msg-1",
+        turnIndex: 1,
+        stepIndex: 5,
+        kind: "tool",
+        title: "read",
+        status: "done",
+        timestamp: 1050,
+        parallel: {
+          index: 5,
+          total: 5,
+          batchId: "batch-1",
+          batchIndex: 0,
+        },
+        tokens: {
+          input: 31000,
+          output: 1100,
+          total: 32100,
+        },
+      }
+
+      const { container } = render(
+        <AgentExecutionFlowItem step={step} isExpanded={false} onToggleExpand={vi.fn()} />,
+      )
+
+      const footer = container.querySelector(".agent-execution-flow-step-footer")
+      expect(footer).toBeDefined()
+      expect(footer?.className).toContain("overflow-hidden")
+
+      // 左侧容器必须支持弹性收缩与溢出隐藏
+      const leftContainer = footer?.firstElementChild as HTMLElement
+      expect(leftContainer).toBeDefined()
+      expect(leftContainer.className).toContain("min-w-0")
+      expect(leftContainer.className).toContain("flex-1")
+      expect(leftContainer.className).toContain("overflow-hidden")
+
+      // token 文本节点必须具有 truncate 与 max-w-full
+      const tokenSpan = leftContainer.querySelector("span.truncate")
+      expect(tokenSpan).toBeDefined()
+      expect(tokenSpan?.className).toContain("max-w-full")
+      expect(tokenSpan?.className).toContain("min-w-0")
+
+      // 右侧 Parallel 容器必须包含 shrink-0 与 whitespace-nowrap，严禁被压缩或折行挤出
+      const parallelBadge = screen.getByTestId("flow-item-parallel")
+      expect(parallelBadge.className).toContain("shrink-0")
+      expect(parallelBadge.className).toContain("whitespace-nowrap")
+    })
   })
 
   describe("3. 完整列表集成 (AgentExecutionFlowList)", () => {
