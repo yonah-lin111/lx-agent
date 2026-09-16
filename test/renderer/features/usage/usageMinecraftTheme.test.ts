@@ -40,7 +40,7 @@ describe("usage Minecraft 主题适配", () => {
       /\.recharts-bar-rectangle path,[\s\S]{0,160}shape-rendering:\s*crispEdges/,
     )
 
-    const pieSelector = '[data-theme="minecraft"] .usage-chart-card .recharts-pie-sector path'
+    const pieSelector = '[data-theme="minecraft"] .lx-chart-card .recharts-pie-sector path'
     const pieBlock = ruleBlock(minecraftCss, pieSelector)
     expect(pieBlock).toContain("shape-rendering: crispEdges")
     expect(pieBlock).toContain("stroke: #000000")
@@ -53,7 +53,7 @@ describe("usage Minecraft 主题适配", () => {
       '[data-theme="minecraft"] .overview-summary-card,\n' +
       '[data-theme="minecraft"] .overview-heatmap-card,\n' +
       '[data-theme="minecraft"] .usage-stat-card,\n' +
-      '[data-theme="minecraft"] .usage-chart-card,\n' +
+      '[data-theme="minecraft"] .lx-chart-card,\n' +
       '[data-theme="minecraft"] .usage-table-card {'
     const start = minecraftCss.indexOf(selector)
     expect(start).toBeGreaterThanOrEqual(0)

@@ -8,6 +8,7 @@ import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
 import type { OverviewApi } from "@shared/contracts/overview"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
+import type { ScheduleApi } from "@shared/contracts/schedule"
 import type { TerminalApi } from "@shared/contracts/terminal"
 import type { UsageApi } from "@shared/contracts/usage"
 import type { ProjectApi } from "@shared/project"
@@ -33,6 +34,7 @@ declare global {
       TerminalApi &
       OverviewApi &
       UsageApi &
+      ScheduleApi &
       OpenClawApi
   }
 

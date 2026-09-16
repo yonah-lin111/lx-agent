@@ -35,6 +35,7 @@ describe("agent 表结构与约束", () => {
       "project",
       "project_folder",
       "project_item",
+      "schedule_item",
       "usage_log",
     ])
     expect(indexNames).toEqual(
@@ -50,6 +51,8 @@ describe("agent 表结构与约束", () => {
         "idx_agent_call_parent",
         "idx_agent_call_entry",
         "idx_agent_snapshot_session",
+        "idx_schedule_item_entry",
+        "idx_schedule_item_completed_date",
         "idx_usage_log_created",
         "idx_usage_log_model",
         "idx_usage_log_provider",

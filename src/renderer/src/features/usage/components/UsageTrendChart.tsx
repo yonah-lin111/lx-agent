@@ -10,6 +10,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { LxChartCard } from "@/components/ui/LxChartCard"
+import { LxChartTooltip, type LxChartTooltipEntry } from "@/components/ui/LxChartTooltip"
 import { useTranslation } from "@/i18n"
 import { USAGE_CHART_COLORS } from "../constants"
 import type { UsageDailyPoint, UsageGranularity } from "../types"
@@ -21,8 +23,6 @@ import {
   formatUsd,
   getFreshInputTokens,
 } from "../utils"
-import { UsageChartCard } from "./UsageChartCard"
-import { UsageChartTooltip, type UsageChartTooltipEntry } from "./UsageChartTooltip"
 
 export interface UsageTrendChartProps {
   daily: UsageDailyPoint[]
@@ -60,13 +60,13 @@ export const UsageTrendChart = ({
   )
   const hasData = series.some((point) => point.requestCount > 0)
 
-  const formatTooltipValue = (entry: UsageChartTooltipEntry): string =>
+  const formatTooltipValue = (entry: LxChartTooltipEntry): string =>
     entry.dataKey === "cost"
       ? formatUsd(Number(entry.value ?? 0))
       : formatNumber(Number(entry.value ?? 0))
 
   return (
-    <UsageChartCard
+    <LxChartCard
       title={t("usage.charts.trend")}
       isEmpty={!hasData}
       emptyText={t("usage.empty.noData")}
@@ -126,7 +126,7 @@ export const UsageTrendChart = ({
               tickFormatter={(value: number) => formatUsd(value, 2)}
             />
             <Tooltip
-              content={<UsageChartTooltip valueFormatter={formatTooltipValue} />}
+              content={<LxChartTooltip valueFormatter={formatTooltipValue} />}
               cursor={{ stroke: "var(--color-theme-border-strong)", strokeDasharray: "3 3" }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -183,6 +183,6 @@ export const UsageTrendChart = ({
           </AreaChart>
         </ResponsiveContainer>
       </div>
-    </UsageChartCard>
+    </LxChartCard>
   )
 }

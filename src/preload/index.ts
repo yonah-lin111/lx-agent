@@ -6,6 +6,7 @@ import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
 import type { OverviewApi } from "@shared/contracts/overview"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
+import type { ScheduleApi } from "@shared/contracts/schedule"
 import type { TerminalApi } from "@shared/contracts/terminal"
 import type { UsageApi } from "@shared/contracts/usage"
 import { CLIPBOARD_CHANNELS } from "@shared/ipc/clipboardChannels"
@@ -21,6 +22,7 @@ import { markdownApi } from "./api/markdown"
 import { openclawApi } from "./api/openclaw"
 import { overviewApi } from "./api/overview"
 import { promptHistoryApi } from "./api/promptHistory"
+import { scheduleApi } from "./api/schedule"
 import { terminalApi } from "./api/terminal"
 import { usageApi } from "./api/usage"
 
@@ -35,6 +37,7 @@ const api: ProjectApi &
   TerminalApi &
   OverviewApi &
   UsageApi &
+  ScheduleApi &
   OpenClawApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   saveClipboardImage: (buffer, mimeType) =>
@@ -120,6 +123,7 @@ const api: ProjectApi &
   git: gitApi,
   overview: overviewApi,
   usage: usageApi,
+  schedule: scheduleApi,
   promptHistory: promptHistoryApi,
   terminal: terminalApi,
   openclaw: openclawApi,

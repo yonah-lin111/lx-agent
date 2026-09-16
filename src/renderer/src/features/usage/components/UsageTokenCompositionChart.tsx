@@ -1,11 +1,11 @@
 import { useMemo } from "react"
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
+import { LxChartCard } from "@/components/ui/LxChartCard"
+import { LxChartTooltip, type LxChartTooltipEntry } from "@/components/ui/LxChartTooltip"
 import { useTranslation } from "@/i18n"
 import { USAGE_CHART_COLORS } from "../constants"
 import type { UsageSummary } from "../types"
 import { formatNumber } from "../utils"
-import { UsageChartCard } from "./UsageChartCard"
-import { UsageChartTooltip, type UsageChartTooltipEntry } from "./UsageChartTooltip"
 
 // Token 构成固定配色：新鲜输入 / 输出 / 缓存读 / 缓存写（复用主题语义色）。
 const COMPOSITION_COLORS = [
@@ -41,11 +41,11 @@ export const UsageTokenCompositionChart = ({
     ].filter((item) => item.value > 0)
   }, [summary, t])
 
-  const formatTooltipValue = (entry: UsageChartTooltipEntry): string =>
+  const formatTooltipValue = (entry: LxChartTooltipEntry): string =>
     formatNumber(Number(entry.value ?? 0))
 
   return (
-    <UsageChartCard
+    <LxChartCard
       title={t("usage.charts.tokenComposition")}
       isEmpty={data.length === 0}
       emptyText={t("usage.empty.noData")}
@@ -54,7 +54,7 @@ export const UsageTokenCompositionChart = ({
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart accessibilityLayer={false}>
-            <Tooltip content={<UsageChartTooltip valueFormatter={formatTooltipValue} />} />
+            <Tooltip content={<LxChartTooltip valueFormatter={formatTooltipValue} />} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             <Pie data={data} dataKey="value" nameKey="name" outerRadius={82} stroke="none">
               {data.map((item, index) => (
@@ -67,6 +67,6 @@ export const UsageTokenCompositionChart = ({
           </PieChart>
         </ResponsiveContainer>
       </div>
-    </UsageChartCard>
+    </LxChartCard>
   )
 }

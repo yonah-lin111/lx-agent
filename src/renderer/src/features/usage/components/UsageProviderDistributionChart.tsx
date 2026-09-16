@@ -1,11 +1,11 @@
 import { useMemo } from "react"
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
+import { LxChartCard } from "@/components/ui/LxChartCard"
+import { LxChartTooltip, type LxChartTooltipEntry } from "@/components/ui/LxChartTooltip"
 import { useTranslation } from "@/i18n"
 import { USAGE_PROVIDER_COLORS } from "../constants"
 import type { UsageProviderStats } from "../types"
 import { formatNumber, formatUsd } from "../utils"
-import { UsageChartCard } from "./UsageChartCard"
-import { UsageChartTooltip, type UsageChartTooltipEntry } from "./UsageChartTooltip"
 
 const MAX_PROVIDERS = 8
 
@@ -33,11 +33,11 @@ export const UsageProviderDistributionChart = ({
     [providerStats],
   )
 
-  const formatTooltipValue = (entry: UsageChartTooltipEntry): string =>
+  const formatTooltipValue = (entry: LxChartTooltipEntry): string =>
     hasPricing ? formatUsd(Number(entry.value ?? 0)) : formatNumber(Number(entry.value ?? 0))
 
   return (
-    <UsageChartCard
+    <LxChartCard
       title={t("usage.charts.providerDistribution")}
       subtitle={hasPricing ? undefined : t("usage.charts.noPricingHint")}
       isEmpty={data.length === 0}
@@ -47,7 +47,7 @@ export const UsageProviderDistributionChart = ({
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart accessibilityLayer={false}>
-            <Tooltip content={<UsageChartTooltip valueFormatter={formatTooltipValue} />} />
+            <Tooltip content={<LxChartTooltip valueFormatter={formatTooltipValue} />} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             <Pie
               data={data}
@@ -68,6 +68,6 @@ export const UsageProviderDistributionChart = ({
           </PieChart>
         </ResponsiveContainer>
       </div>
-    </UsageChartCard>
+    </LxChartCard>
   )
 }

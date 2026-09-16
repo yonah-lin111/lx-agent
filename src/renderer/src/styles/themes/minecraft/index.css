@@ -32,6 +32,13 @@
   --color-usage-chart-provider-6: #5590cc;
   --color-usage-chart-provider-7: #c9bb70;
   --color-usage-chart-provider-8: #8c8ca0;
+  /* 日程优先级与趋势图配色：矿物色板（红石 / 金 / 钻石 / 安山岩 + 青金石 / 绿宝石）。 */
+  --color-schedule-priority-p0: #cc5f5f;
+  --color-schedule-priority-p1: #cc8a1f;
+  --color-schedule-priority-p2: #4ec5c5;
+  --color-schedule-priority-p3: #8c8ca0;
+  --color-schedule-chart-planned: #5590cc;
+  --color-schedule-chart-completed: #4fc94f;
   --theme-font-family:
     "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, "PingFang SC",
     "Microsoft YaHei", monospace;
@@ -1348,7 +1355,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 [data-theme="minecraft"] .overview-summary-card,
 [data-theme="minecraft"] .overview-heatmap-card,
 [data-theme="minecraft"] .usage-stat-card,
-[data-theme="minecraft"] .usage-chart-card,
+[data-theme="minecraft"] .lx-chart-card,
 [data-theme="minecraft"] .usage-table-card {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
@@ -1363,7 +1370,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 [data-theme="minecraft"] .overview-metric-card:hover,
 [data-theme="minecraft"] .overview-summary-card:hover,
 [data-theme="minecraft"] .usage-stat-card:hover,
-[data-theme="minecraft"] .usage-chart-card:hover {
+[data-theme="minecraft"] .lx-chart-card:hover {
   background-color: #242434 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
@@ -1501,22 +1508,94 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 }
 
 /* 用量图表像素化：柱形直角由组件按主题传 radius，饼图与网格线去抗锯齿处理 */
-[data-theme="minecraft"] .usage-chart-card .recharts-bar-rectangle path,
-[data-theme="minecraft"] .usage-chart-card .recharts-cartesian-grid line {
+[data-theme="minecraft"] .lx-chart-card .recharts-bar-rectangle path,
+[data-theme="minecraft"] .lx-chart-card .recharts-cartesian-grid line {
   shape-rendering: crispEdges !important;
 }
 
-[data-theme="minecraft"] .usage-chart-card .recharts-pie-sector path {
+[data-theme="minecraft"] .lx-chart-card .recharts-pie-sector path {
   shape-rendering: crispEdges !important;
   stroke: #000000 !important;
   stroke-width: 2px !important;
 }
 
-[data-theme="minecraft"] .usage-chart-tooltip {
+[data-theme="minecraft"] .lx-chart-tooltip {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
     2px 2px 0px 0px #000000 !important;
+}
+
+/* ========================================================
+ * 日程模块（Schedule）：日期选择器、优先级徽标与统计图表
+ * ======================================================== */
+/* 日期选择器弹层：复用全局 dialog 石质凹槽，仅补齐内边距与直角 */
+[data-theme="minecraft"] .lx-datepicker {
+  border-radius: 0px !important;
+  padding: 10px !important;
+}
+
+/* 选中日 / 选中月 / 快捷项：经验条荧光绿微光（覆盖全局按钮黑色边框） */
+[data-theme="minecraft"] .lx-datepicker-day[aria-pressed="true"],
+[data-theme="minecraft"] .lx-datepicker-month[aria-pressed="true"],
+[data-theme="minecraft"] .lx-datepicker-quick[aria-pressed="true"] {
+  background-color: #14141c !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
+    0px 0px 8px rgba(85, 255, 85, 0.2) !important;
+}
+
+/* 非当前月补位日期：弱化到接近背景 */
+[data-theme="minecraft"] .lx-datepicker-day[data-outside="true"] {
+  color: #5c5c70 !important;
+}
+
+/* 每日条目角标：像素方形经验条 */
+[data-theme="minecraft"] .lx-datepicker-badge {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  background-color: #55ff55 !important;
+  color: #000000 !important;
+}
+
+[data-theme="minecraft"] .lx-datepicker-today-dot {
+  border-radius: 0px !important;
+  background-color: #55ff55 !important;
+}
+
+/* 优先级徽标：保留矿物语义色，直角 + 像素凸起 */
+[data-theme="minecraft"] .lx-schedule-priority {
+  border-radius: 0px !important;
+  border-width: 2px !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+/* 日程图表沿用共享 .lx-chart-card / .lx-chart-tooltip 规则（与用量图表同一像素语言） */
+
+/* 日程列表卡片：去掉马赛克底纹，保留石质边框与凹槽 */
+[data-theme="minecraft"] .lx-schedule-board {
+  background-image: none !important;
+  background-color: #1e1e2a !important;
+}
+
+/* 统计面板容器退化为纯布局列（与全局 aside nav 同策略） */
+[data-theme="minecraft"] .lx-schedule-stats {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* 日程条目行：纯平铺行，无底纹无边框（内容文本按钮为 ghost 变体，不受全局按钮浮雕影响） */
+[data-theme="minecraft"] .lx-schedule-item {
+  background-image: none !important;
+}
+
+[data-theme="minecraft"] .lx-schedule-item:hover {
+  background-color: #343448 !important;
 }

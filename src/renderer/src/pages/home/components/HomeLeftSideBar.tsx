@@ -1,4 +1,4 @@
-import { BarChart3, LayoutDashboard, type LucideIcon } from "lucide-react"
+import { BarChart3, CalendarCheck, LayoutDashboard, type LucideIcon } from "lucide-react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -25,6 +25,12 @@ const HOME_NAV_ITEMS: HomeNavItem[] = [
     iconClassName: "text-sky-400",
   },
   {
+    view: "schedule",
+    labelKey: "home.schedule",
+    icon: CalendarCheck,
+    iconClassName: "text-violet-400",
+  },
+  {
     view: "usage",
     labelKey: "usage.title",
     icon: BarChart3,
@@ -33,7 +39,7 @@ const HOME_NAV_ITEMS: HomeNavItem[] = [
 ]
 
 /**
- * 渲染主页专属左侧栏内容（概览 / 用量统计，参考 SettingsLeftSideBar 布局规范）。
+ * 渲染主页专属左侧栏内容（概览 / 日程 / 用量统计，参考 SettingsLeftSideBar 布局规范）。
  */
 export const HomeLeftSideBar = ({
   isCollapsed = false,

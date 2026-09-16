@@ -49,4 +49,17 @@ export const common = {
   hidePassword: "Hide Password",
   increaseValue: "Increase Value",
   decreaseValue: "Decrease Value",
+  datePicker: {
+    placeholder: "Select date",
+    selectDate: "Select Date",
+    selectWeek: "Select Week",
+    selectMonth: "Select Month",
+    today: "Today",
+    yesterday: "Yesterday",
+    tomorrow: "Tomorrow",
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    previousYear: "Previous year",
+    nextYear: "Next year",
+  },
 }

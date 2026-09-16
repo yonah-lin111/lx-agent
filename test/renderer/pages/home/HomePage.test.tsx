@@ -16,6 +16,9 @@ vi.mock("@/features/overview", () => ({
 vi.mock("@/features/usage", () => ({
   UsageDashboard: (): React.JSX.Element => <div>usage-view</div>,
 }))
+vi.mock("@/features/schedule", () => ({
+  ScheduleDashboard: (): React.JSX.Element => <div>schedule-view</div>,
+}))
 
 beforeEach(() => {
   mockParams.value = new URLSearchParams()
@@ -30,6 +33,7 @@ describe("HomePage", () => {
     render(<HomePage />)
     expect(screen.getByText("overview-view")).toBeDefined()
     expect(screen.queryByText("usage-view")).toBeNull()
+    expect(screen.queryByText("schedule-view")).toBeNull()
   })
 
   it("view=usage 时渲染用量统计组件（不切换路由）", () => {
@@ -37,5 +41,13 @@ describe("HomePage", () => {
     render(<HomePage />)
     expect(screen.getByText("usage-view")).toBeDefined()
     expect(screen.queryByText("overview-view")).toBeNull()
+  })
+
+  it("view=schedule 时渲染日程组件（不切换路由）", () => {
+    mockParams.value = new URLSearchParams("view=schedule")
+    render(<HomePage />)
+    expect(screen.getByText("schedule-view")).toBeDefined()
+    expect(screen.queryByText("overview-view")).toBeNull()
+    expect(screen.queryByText("usage-view")).toBeNull()
   })
 })

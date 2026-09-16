@@ -1,5 +1,6 @@
 export const home = {
   overview: "Overview",
+  schedule: "Schedule",
   overviewSubtitle: "Agent pair programming activity and core project asset summary",
   allProjects: "All Projects Summary",
   activeProject: "Linked Project",
