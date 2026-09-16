@@ -1468,6 +1468,26 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     2px 2px 0px 0px #000000 !important;
 }
 
+/* 彩蛋游戏卡片：与统计卡一致的像素浮雕容器（去掉马赛克底纹与圆角） */
+[data-theme="minecraft"] .arcade-game-card {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .arcade-game-card:hover {
+  background-color: #242434 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
 /* 绿墙热力图像素风格单元格：经典 Minecraft 绿色阶梯与立体像素槽 */
 [data-theme="minecraft"] .activity-heatmap-cell {
   border-radius: 0px !important;
