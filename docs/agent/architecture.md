@@ -4,15 +4,12 @@ LX Agent 的 Agent 能力（对话 + 工具 + 协作）运行于 Electron main �
 
 文档分工：
 
-- [architecture.md](./architecture.md)（本篇）：整体分层架构、进程模型、并发模型、核心契约与消息流
-- [runtime.md](./runtime.md)：Turn 状态机、Unified Exec 执行引擎、上下文治理、记忆与后台作业
-- [tools.md](./tools.md)：内置工具全集（文件/检索/补丁/记忆/MCP/Skill/协作）与提示词装配规范
+- [architecture.md](./architecture.md)（本篇）：整体分层架构、进程模型、并发模型、核心契约、消息流与 SQLite 存储
+- [runtime.md](./runtime.md)：Turn 状态机、Unified Exec 执行引擎、上下文治理、Token Saver、子代理池与角色治理、记忆与后台作业
+- [tools.md](./tools.md)：内置工具全集（文件/检索/补丁/记忆/MCP/Skill/图片查看）与提示词装配规范、生命周期钩子
 - [permissions.md](./permissions.md)：四模式硬门禁、三档沙箱策略、Guardian 防护网与多级审批
-- [hooks.md](./hooks.md)：用户级生命周期钩子（11 事件）、配置 schema、子进程线协议与 fail-open 语义
-- [collaboration-modes.md](./collaboration-modes.md)：Plan / Review 模式的输出协议、解析契约与交互卡片
-- [front-design.md](./front-design.md)：Front Design 模式的输出协议、热更新、版本迭代与画布点选微调
+- [modes.md](./modes.md)：Plan / Review / Design 三模式的输出协议、解析契约与交互卡片（含 Front Design 画布）
 - [openclaw.md](./openclaw.md)：OpenClaw Gateway 接入的页面、会话扇出与跨页委派
-- [database.md](./database.md)：SQLite 数据模型、Session Entry 事务落盘与版本回退
 
 ---
 
@@ -39,6 +36,7 @@ flowchart TD
         Runner --> Perm[PermissionManager: 模式/沙箱/规则/审批策略]
         Runner --> Guard[RepeatToolGuard]
         Runner --> Compaction[ContextCompactor + ContextPruner]
+        Adapter --> TokenSaver[TokenSaver: RTK 压缩 + 风格注入]
     end
 
     subgraph Tooling & Subsystems
@@ -46,7 +44,7 @@ flowchart TD
         Tools --> Exec[UnifiedExecManager: HeadTailBuffer + PTY]
         Tools --> FileOps[FileMutationQueue: Read/Write/Edit/ApplyPatch]
         Tools --> Memory[MemoryManager: MEMORY.md + Topic Notes]
-        Tools --> Subagents[SubagentPool: Task / Explorer / Worker]
+        Tools --> Subagents[SubagentPool: 角色治理 + Task Runtime]
         Tools --> MCP[McpManager: Stdio Servers]
         Tools --> Skills[SkillLoader: SKILL.md]
         Tools --> LSP[LspManager: 语言服务器与写后诊断]
@@ -63,7 +61,7 @@ flowchart TD
 2. **环境切片与装配**：`TurnContext` 冻结当前 Turn 的 `cwd`、`is_worktree`、`git_branch`、协作模式（`build`/`plan`/`review`/`design`）、沙箱策略等不可变快照；`SystemPromptManager` 按 order 分层动态拼装（见 tools.md §3）。
 3. **驱动循环 (Agent Loop)**：
    - 构造 `LlmMessage` 列表，执行上下文修剪（`ContextPruner`）与记忆/任务状态注入（`transformContext`）。
-   - 调用 `aiSdkStreamFn` 发起流式推理，由 `IdleWatchdog`（默认 60s）监控防止网络半开假死。
+   - 调用 `aiSdkStreamFn` 发起流式推理，由 `IdleWatchdog`（默认 60s）监控防止网络半开假死；出站请求副本按 Token Saver 配置压缩与风格注入（见 runtime.md §4.6），落库与 UI 保持原始内容。
    - 检测到 Tool Call：依次通过 `CommandSafetyGuard`、`GuardianEvaluator`、`PermissionManager`（模式/沙箱/白名单/审批）安全门控。
    - 安全放行后通过 `UnifiedExecManager` 或 `FileMutationQueue` 调度执行，结果格式化回灌模型。
 4. **单事务结算与广播**：Turn 结束时调用 `turnStore.flushTurn()` 单事务落库；广播 `turn_end`、`agent_end`；触发 `InputQueue.drain()` 消费下一条排队输入；异步执行 Token 估算与按需压缩。
@@ -91,8 +89,9 @@ src/main/agent/
 │   ├── validate.ts        #   工具参数统一前置校验
 │   └── worldState.ts      #   会话级世界状态投影
 ├── stream/                # LLM 模型与流式适配
-│   ├── aiSdkStreamFn.ts   #   Vercel AI SDK 适配器
+│   ├── aiSdkStreamFn.ts   #   Vercel AI SDK 适配器 + Token Saver 出站转换
 │   ├── modelFactory.ts    #   多 Provider/Model 装配与缓存
+│   ├── modelCapabilities.ts # 视觉能力判定 (modelSupportsImageInput)
 │   ├── toModelMessages.ts #   消息与工具定义转换
 │   └── idleWatchdog.ts    #   流式空闲看门狗 (默认 60s)
 ├── shell/                 # 统一进程与终端执行引擎
@@ -102,15 +101,16 @@ src/main/agent/
 ├── subagent/              # 多 Agent 协作与特化代理池
 │   ├── subagentPool.ts    #   SubagentPool (会话续接、隔离生命周期)
 │   ├── agentRoles.ts      #   内置角色目录与用户角色合并解析 (explorer/worker)
+│   ├── subagentConfig.ts  #   agent.subagents 配置解析与校验
 │   └── subagentRuntime.ts #   会话级子代理并发槽位治理 (超限快返)
 ├── guard/                 # 安全防护网与死循环守卫
 │   ├── guardianEvaluator.ts   # Guardian 四维安全规则引擎
 │   ├── commandSafetyGuard.ts  # 高危 Shell 命令语法树拆解与拦截
-│   ├── repeatToolGuard.ts     # 工具重复调用死循环熔断 (3/5/7)
+│   └── repeatToolGuard.ts     # 工具重复调用死循环熔断 (3/5/7)
 ├── permissions/           # 权限信任与多级审批体系
 │   ├── permissionManager.ts  # 模式/沙箱/规则/会话白名单调度
-│   └── rule.ts               # Tool(arg) 规则解析引擎
-├── hooks/                 # 用户级生命周期钩子引擎 (配置/子进程/解析/派发，详见 hooks.md)
+│   └── rule.ts               # Tool(arg) 规则解析引擎与工具分级
+├── hooks/                 # 用户级生命周期钩子引擎 (配置/子进程/解析/派发，详见 tools.md §7)
 ├── prompts/               # 动态提示词与自适应装配
 │   ├── systemPromptManager.ts# 分层装配引擎 (Sections, Contexts, Variables, Interceptors)
 │   ├── modelAdapters.ts      # 模型自适应规则 (Codex, Claude, Generic)
@@ -118,7 +118,8 @@ src/main/agent/
 │   └── personalities/        # 人格提示词 (pragmatic / friendly)
 ├── memories/              # 分层记忆系统
 │   └── memoryManager.ts   #   MEMORY.md 索引与 Topic Notes 管理
-├── tools/                 # 内置工具全集 (清单详见 tools.md)
+├── tools/                 # 内置工具全集 (清单详见 tools.md §2)
+│   └── registry.ts        #   ToolRegistry (注册/激活集/cwd 绑定)
 ├── skills/                # SkillLoader 扫描与 read_skill 工具
 ├── mcp/                   # Stdio MCP 连接池与 JSON Schema→Zod 映射
 ├── lsp/                   # 语言服务器客户端与写后自动诊断
@@ -127,18 +128,22 @@ src/main/agent/
 ├── compaction/            # 历史工具输出内存修剪 (ContextPruner)
 ├── compaction.ts          # 结构化压缩与溢出自愈算法
 ├── contextCompactor.ts    # 压缩调度编排器
+├── tokenSaver/            # 出站请求治理 (RTK 压缩 / Caveman / Ponytail)
 ├── export/                # 会话导出器 (Markdown / JSONL / 单文件 HTML)
 ├── question/              # 模型提问的挂起-应答管理
 ├── instructionLoader.ts   # AGENTS.md 级联加载
 ├── titleGenerator.ts      # 会话标题生成
 ├── suggestedQuestionsGenerator.ts # 后续建议问题生成
+├── usageRecorder.ts       # 用量日志采集与事件广播
 ├── assembly.ts            # 工具注册表装配与默认 cwd 解析
-├── sessionRunner.ts       # AgentSessionRunner: 单会话运行器
+├── sessionRunner.ts       # AgentSessionRunner 主体
+├── sessionRunner.types.ts / sessionRunnerInput.ts / sessionRunnerLifecycle.ts
+├── sessionRunnerQueue.ts  #   InputQueue 排队与 drain
+├── sessionRunnerSessionData.ts / sessionRunnerToolHooks.ts / sessionRunnerTurns.ts
+├── sessionRunnerAgentFactory.ts # 会话 Agent 构建（模型/工具/提示词装配）
 ├── agentRunner.ts         # SessionRunnerManager: 多会话管理器 (单例 agentRunner)
 └── turnStore.ts           # 事务级会话落盘与状态投影
 ```
-
-> `tools/visuals.ts`（render_svg / render_ascii / render_html）为保留文件但**不注册**，回归测试 `renderToolsRemovalRegression` 明确禁止其回到工具集。
 
 ---
 
@@ -165,6 +170,7 @@ interface AssistantMessage {
   usage: Usage
   stopReason: StopReason
   errorMessage?: string
+  tokenSaver?: TokenSaverRun  // Token Saver 本轮生效记录（执行流底栏标注）
   timestamp: number
 }
 
@@ -178,6 +184,7 @@ interface ToolResultMessage {
   durationMs?: number           // 工具执行耗时 (ms)
   diff?: AgentDiff              // 文件写操作行级结构化 Diff
   subagent?: SubagentData       // 子代理运行完整快照
+  image?: ViewImageDetails      // view_image 图片元信息
   lsp?: LspToolDetails          // LSP 诊断或跳转细节
 }
 
@@ -225,20 +232,21 @@ type AgentMessage =
 | 分组 | Channel 名称 | 核心职责 |
 | :--- | :--- | :--- |
 | **对话流** | `send` / `continue` / `abort` / `compact` / `undoCompaction` | 会话发送、续写、打断及手动压缩 |
-| **会话管理** | `listSessions` / `restoreSession` / `renameSession` / `deleteSession` / `deleteMessageTurn` / `forkSession` / `restore` | 会话 CRUD、分支切割、历史轮次删除 |
+| **会话管理** | `listSessions` / `restoreSession` / `renameSession` / `deleteSession` / `deleteMessageTurn` / `forkSession` / `restore` / `getDefaultPath` | 会话 CRUD、分支切割、历史轮次删除与默认路径 |
 | **协作与工作区** | `setCollaborationMode` / `switchWorktree` / `switchProject` / `switchModel` | 模式切换、Worktree / 项目 / 模型切换 |
-| **交互回传** | `permissionResponse` / `questionResponse` | 审批决策回传（Once/Session/Prefix/Deny）与提问答复 |
+| **交互回传** | `permissionResponse` / `questionResponse` | 审批决策回传（允许一次/会话/永久/拒绝/允许全部）与提问答复 |
 | **状态查询** | `getMcpStatus` / `getLspStatus` / `installLspServers` / `getContextUsage` / `getPromptAssembly` | 服务状态、用量与提示词装配快照审查 |
 | **模板与技能** | `listPromptTemplates` / `listSkills` / `getSkillContent` / `suggestedQuestions` | Slash 模板、Skill 列表与建议问题 |
 | **作业管理** | `listJobs` / `killJob` / `removeJob` / `clearSettledJobs` / `readJobOutput` | 后台长时进程管控 |
 | **导出集成** | `exportSession` / `copySession` / `openFileAt` / `showItemInFolder` | 会话格式化导出与本地文件跳转 |
 | **前端设计** | `compileTailwind` / `saveFrontDesign` / `openDesignDir` | Tailwind JIT 编译、设计三件套落盘与目录打开 |
+| **下行事件** | `event` | 主进程 → Renderer 的唯一事件广播通道 |
 
 ---
 
 ## 6. 多标签页（Multi-Tab）体系
 
-Renderer 侧 `agentTabStore` 管理多标签状态，`AgentTabBar` 横向标签栏位于 `RightSidebar` 顶部（视图切换按钮之间）：
+Renderer 侧 `agentTabStore`（`features/agent/hooks/agentTabStore.ts`）管理多标签状态，`AgentTabBar` 横向标签栏位于 `RightSidebar` 顶部（视图切换按钮之间）：
 
 1. **Tab 状态模型**：`{ id, sessionId: string | null, title?, turnCount?, draftBinding?, createdAt }`；草稿 Tab 的 `sessionId` 为 `null`，首条消息落库后回填。
 2. **上限与保底**：最多 8 个 Tab（`MAX_TABS`），至少保留 1 个；关闭流式中的 Tab 先 `agentApi.abort()`。
@@ -254,11 +262,108 @@ Renderer 侧 `agentTabStore` 管理多标签状态，`AgentTabBar` 横向标签�
 
 Renderer 采用 **Feature-First** 模块化设计（`src/renderer/src/features/agent/`）：
 
-1. **输入与交互区 (`AgentInput`)**：Markdown 编辑、`@` 综合提及（文件 / Skill / 设计卡片）、`$` Skill 面板、`/` Slash 模板补全、多级 Esc 梯次打断、排队状态气泡。
-2. **消息流渲染 (`AgentMessageList`)**：Block 级折叠聚合（普通工具组、文件 Diff 组、思考折叠、子代理链路），结构化卡片（`ProposedPlanCard` / `ReviewFindingsCard` / `FrontDesignCard`）。
+1. **输入与交互区 (`AgentInput`)**：Markdown 编辑、`@` 综合提及（文件 / Skill / 子代理角色 / 设计卡片）、`$` Skill 面板、`/` Slash 模板补全、多级 Esc 梯次打断、排队状态气泡。
+2. **消息流渲染 (`AgentMessageList`)**：Block 级折叠聚合（普通工具组、文件 Diff 组、思考折叠、子代理链路），结构化卡片（`ProposedPlanCard` / `ReviewFindingsCard` / `FrontDesignCard`）与 `AgentViewImageBlock` 图片块。
 3. **全景执行面板 (`AgentExecutionFlowList`)**：
    - 将底层消息流与 `PromptAssembly` 统一投影为标准执行步骤序列（`system` / `user` / `assistant` / `thinking` / `tool` / `subagent` / `compaction` / `undo` / `modelSwitch` / `error` / `proposedPlan` / `reviewFindings` / `frontDesign`）。
-   - 专用渲染分发器：`FlowToolBash`（命令高亮、退出码、终端窗格）、`FlowToolFileOps`（行级 Diff 统计）、`FlowToolSearch`（搜索命中概览）。
-   - 聚合 Telemetry 指标：单步耗时 `durationMs`、Token 明细与缓存命中状态。
-4. **状态栏 (`AgentStatusBar`)**：协作模式按钮（四态循环）、权限状态、后台作业状态与 `AgentContextUsagePill` 容量指示。
-5. **面板 (`panels/`)**：`ChatHistoryPanel` 会话历史、`AgentJobsMonitorView` 作业监控、`AgentSubagentPanel` 子代理时间轴。
+   - 专用渲染分发器：`FlowToolBash`（命令高亮、退出码、终端窗格）、`FlowToolFileOps`（行级 Diff 统计）、`FlowToolSearch`（搜索命中概览）、`FlowToolViewImage`（缩略图与元信息）。
+   - 聚合 Telemetry 指标：单步耗时 `durationMs`、Token 明细、缓存命中状态与 Token Saver 生效标注。
+4. **状态栏 (`AgentStatusBar`)**：协作模式按钮（四态循环）、权限请求面板与沙箱盾牌（`PermissionStatusButton`）、后台作业状态与 `AgentContextUsagePill` 容量指示。
+5. **面板 (`panels/`)**：`AgentHistoryPanel` 会话历史、`AgentSubagentPanel` 子代理时间轴、`AgentJobsMonitorView` 作业监控。
+
+---
+
+## 8. Agent 数据存储（SQLite）
+
+存储框架为 `src/main/db/migrations/` 迁移器（`Migration = { version, name, up }`，启动时按 version 顺序应用；已应用迁移不可修改，schema 变更只新增迁移文件）。Agent 四表由 `0001_init` 建立，`0008_remove_agent_session_project_item_id` 移除 `agent_session.project_item_id` 并重建索引。SQL 操作集中在 `src/main/services/agentSessionService.ts`，写入编排由 main 进程单写者 better-sqlite3 同步执行。
+
+会话树（`agent_session_entry`）存完整会话上下文，是恢复/续接的**真相源**；`agent_call` 是工具调用的派生查询视图（审计/统计）；`agent_snapshot` 服务于删轮回滚。
+
+### 8.1 设计决策
+
+| # | 决策 | 结论 |
+|---|------|------|
+| 1 | 存储形态 | 混合：entry 树为真相源 + `agent_call` 独立视图表 |
+| 2 | session 归属 | 全局会话，不按页面分桶；归属（project_id/page）建会话时绑定，仅作项目 tag 客户端筛选依据 |
+| 3 | 调用记录 | 统一 `agent_call` + `kind` 四分类（builtin/mcp/subagent/skill）；子代理嵌套经 `parent_call_id` 同表自关联 |
+| 4 | 能力快照 | 激活能力集随会话以 `active_capabilities` entry 冻结；config.json 仅作新建会话的默认装配源 |
+| 5 | id 规范 | `id INTEGER PRIMARY KEY` + `external_id TEXT UNIQUE`（uuid 业务键）+ `created_at/updated_at`；FK 引用 external_id |
+| 6 | 空会话不入库 | 新建对话仅内存态；首次发消息才 INSERT 会话行——空会话天然不可恢复 |
+| 7 | 写入者 | main 单写者同步事务；每 turn 一个事务 |
+| 8 | 多会话并发 | 每个会话由独立 `AgentSessionRunner` 持有内存状态，落库仍经同一写者串行提交，无跨会话事务 |
+
+### 8.2 表结构
+
+**agent_session —— 会话元数据**
+
+| 列 | 说明 |
+|----|------|
+| external_id | uuid 业务键 |
+| project_id / page | 归属：绑定所属项目或独立页面路由（二者互斥；`project_item_id` 已由 0008 迁移移除） |
+| title | 默认 'new chat'，AI 总结 ≤40 字符 |
+| cwd | 工具执行目录（项目目录，回退桌面路径） |
+| created_at / updated_at | updated_at = 最后一次活跃（追加 entry 同事务 touch），历史列表按其倒序 |
+
+索引：`(page, updated_at DESC)`、`(project_id, updated_at DESC)`。级联：随 `project` 删除。
+
+**agent_session_entry —— 会话上下文树（真相源）**
+
+| 列 | 说明 |
+|----|------|
+| session_id | → agent_session.external_id，CASCADE |
+| seq | 会话内单调递增；UNIQUE(session_id, seq)；删轮保留空洞，nextSeq 取 MAX+1 |
+| parent_id | 自引用树父（fork 重映射；多分支留口，v1 线性恒 NULL） |
+| type / payload | 类型 + JSON 负载 |
+
+entry type 约定：
+
+| type | payload | 说明 |
+|------|---------|------|
+| `message` | `AgentMessage` 原样 | user / assistant（含 toolCall blocks）/ toolResult（含 diff?、subagent?、image? 快照）/ modelSwitch 等；恢复续接的输入 |
+| `active_capabilities` | `{ tools, mcp, skills }` | 能力快照，仅在能力集实际变化时追加；首条在创建事务内写入 |
+| `todo` | `TodoList` | 追加型整表替换；恢复读最后一条；随轮删除回退 |
+| `compaction` | `{ summary, firstKeptSeq, tokensBefore, ... }` | 压缩边界；独立边界不随轮删除 |
+
+**agent_call —— 工具调用记录（查询/审计视图）**
+
+关键列：`session_id`、`entry_id`（触发该调用的 message entry，真相源↔视图互跳）、`parent_call_id`（自引用，子代理 provenance）、`kind`（CHECK：builtin/mcp/subagent/skill）、`name`（MCP 记前缀全名）、`mcp_server`（fullName→server 反查）、`status`（running/success/error/aborted）、`args/result`（截断 JSON）、`details`、`duration_ms`。
+
+- **kind 分类**（按工具名判定）：`task`→subagent、`read_skill`→skill、∈已连接 MCP 全名→mcp（填 mcp_server）、其余 builtin。
+- **subagent provenance**：子代理内部每次调用写同一张表同 session_id，`parent_call_id` 指向父 task 调用行的 external_id、`entry_id` 恒 null；任意深度成立，递归 CTE 查子树。
+- 索引：session+started_at、kind、name、parent_call_id、entry_id。
+
+**agent_snapshot —— git 快照（删轮回滚）**
+
+`session_id` + `user_message_timestamp` 定位一轮；`hash_start/hash_end`（write-tree 哈希）+ `files_changed`（diff --name-only JSON）。仅 cwd 为 git 仓库时写入；删除最后一轮时按 files_changed 选择性回滚（见 runtime.md §7）；fork 时复制 ≤切割点时间戳的行到新会话。
+
+### 8.3 写入时机（turnStore.ts 编排）
+
+```
+send() 新会话 ──► createSessionIfNeeded：INSERT agent_session + 首条 active_capabilities entry（同事务）
+                     └─ 触发标题生成（fire-and-forget）
+beginTurn     ──► 缓冲本轮输入（binding/cwd/title/capabilities）
+run 中        ──► tool_execution_start 缓冲 PendingCall（预生成 external_id 供子调用引用）
+                   tool_execution_end 更新 status/result/duration
+agent_end     ──► flushTurn 单事务：
+                   ① 按 seq 追加本轮 message entries
+                   ② INSERT 全部 agent_call 行（含子代理 child calls，parent_call_id 关联）
+                   ③ pendingTodo 非空则追加 todo entry
+                   ④ touchSession 同步 updated_at
+压缩完成      ──► 独立事务追加 compaction entry
+```
+
+截断策略：`entry.payload` 存**完整**消息（恢复需要全量上下文）；`agent_call.args/result` 为查询视图，复用 truncate 常量截断（2000 行 / 50KB / 单行 500），全文在 payload 内。spill 文件（`~/.lx/spill/`）不入库，随会话删除级联清理。
+
+### 8.4 读取路径
+
+- **历史列表**：全量 `ORDER BY updated_at DESC`，无归属过滤。
+- **restoreSession**：entries 按 seq 升序重建 messages（损坏 entry 跳过）→ 最近 active_capabilities → MCP/skill 按当前配置重载 → compaction 边界与最后一条 todo 一并恢复。
+- **fork**：复制 `seq < forkSeq` 的 entries（保持原 seq、重映射 parent_id/external_id）+ snapshots，同一事务（见 runtime.md §7）。
+- **deleteMessageTurn**：区间删 entries + entry_id 关联的 calls，compaction 边界除外；删除后重读最后 todo 同步内存。
+
+### 8.5 演进路线
+
+| 方向 | 触发条件 | 留口位点 |
+|------|----------|----------|
+| 会话全文搜索 | 历史面板标题搜索不够用时 | entries 结构支持 FTS5 影子表增量维护 |
+| 项目删除保留会话审计 | 出现"删项目留会话"诉求 | 改软删/归档，评估 CASCADE 影响 |

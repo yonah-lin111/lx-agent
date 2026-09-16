@@ -92,7 +92,7 @@ const UNSUPPORTED_FORMAT_MESSAGE =
 /**
  * 创建 view_image 工具：读取项目内本地图片并投喂给视觉模型。
  *
- * 预处理双路径（详见 docs/agent/view-image.md）：
+ * 预处理双路径（详见 docs/agent/tools.md §8）：
  * - 文件 ≤ 4MiB 且长边未超限：原字节直传（零重编码）；
  * - 需缩放或超过 4MiB：nativeImage 缩放后重编码（PNG→PNG，JPEG→JPEG）。
  */

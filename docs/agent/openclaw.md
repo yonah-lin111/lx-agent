@@ -37,9 +37,9 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
                        OpenClaw Gateway
 ```
 
-- **Main**：`services/openclaw/openclawClientManager.ts` 按 `instanceId` 维护 WebSocket 长连接、心跳重连、RPC 调用与流式事件解析；`openclawDeviceAuth.ts` 处理设备配对；`settingsService` 负责 `openclaw` 配置读写。Token 仅在主进程用于握手，不下发渲染进程长期持有。
+- **Main**：`services/openclaw/openclawClientManager/` 按 `instanceId` 维护 WebSocket 长连接、心跳重连、RPC 调用与流式事件解析（`connectionFlow` / `eventProjection` / `payloadMappers` / `sessionRuntime`）；`openclawDeviceAuth.ts` 处理设备配对；`settingsService` 负责 `openclaw` 配置读写。Token 仅在主进程用于握手，不下发渲染进程长期持有。
 - **Preload**：`@shared/ipc/openclawChannels.ts` 定义通道契约，`window.api.openclaw` 暴露类型安全接口。
-- **Renderer**：feature-first 组织，`features/openclaw` 承载状态与视图，`pages/openclaw` 承载路由页面与专属左栏；契约类型在 `@shared/contracts/openclaw.ts`。
+- **Renderer**：feature-first 组织，`features/openclaw` 承载状态与视图（`openclawChatStore` / `openclawOfficeStore` / `agentStatus` / `clawMention` / `openclawCommands`），`pages/openclaw` 承载路由页面与专属左栏；契约类型在 `@shared/contracts/openclaw.ts`。
 
 ## 3. 页面与路由
 
@@ -108,22 +108,20 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
 `OpenClawInput` 复用 Agent 输入框的既有能力，避免重复实现：
 
 - 编辑器主题：`agentEditorTheme`、`agentHighlightStyle`、`markdownMarkerHighlight`；
-- 面板组件：`AgentInputCommandPanel`（命令）、`AgentInputFilePanel`（提及）；
+- 面板组件：`AgentInputCommandPanel`（命令）、`AgentInputFilePanel`（提及）、`OpenClawPickerPanel`（办公区/员工选择）；
 - 纯函数：`getMentionQuery`、`isFuzzyMatch`、`getAgentPanelPosition`。
 
-仅实现 OpenClaw 需要的三种面板：`/` 命令、当前办公区内的 `@claw` 提及、`/office`・`/agent` 选择面板；本地会话专属面板（model / worktree / project / session / skill / design / 文件提及）不接入。
+仅实现 OpenClaw 需要的三种面板：`/` 命令、当前办公区内的 `@claw` 提及、`/office` 选择面板；本地会话专属面板（model / worktree / project / session / skill / design / 文件提及）不接入。
 
 ### 5.2 内置命令
 
 | 命令 | 行为 |
 |---|---|
-| `/clear` | 清空当前办公区全部会话消息 |
-| `/new` | 为当前办公区重置会话（换 `sessionKey`） |
+| `/clear` | 选择员工并新建对话（`&` 分隔多个，保留文本允许追加参数） |
 | `/stop` | 中止当前办公区内所有流式任务 |
-| `/agent` | 打开员工选择面板（可连续多选） |
 | `/office` | 打开办公区切换面板 |
 
-按键：`↑/↓` 移动、`Enter` 选择、`Esc` 关闭/中止流式；无面板时 `Enter` 发送、`Shift+Enter` 换行。命令集刻意保持最小，后续按需扩展（如 `/export`）。
+按键：`↑/↓` 移动、`Enter` 选择、`Esc` 关闭/中止流式；无面板时 `Enter` 发送、`Shift+Enter` 换行。员工多选通过左栏名册或 `@claw:` 提及完成。
 
 ## 6. 跨页任务委派
 
@@ -142,12 +140,8 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
 - **连接容错**：断线显示「未连接 / 连接中」，支持手动重连；配对待审批时展示审批指引与 `requestId`。
 - **国际化与主题**：全部文案经 `useTranslation` 输出（中/英），样式使用项目主题 Token 与 `bg-white/[0.0x]`、`border-white/8` 等约定，禁止硬编码中文字符串与原生 `title` 属性。
 
-## 8. 测试与已知限制
+## 8. 已知限制
 
-- **测试覆盖**：纯逻辑单测——`agentStatus`（状态映射）、`clawMention`（提及解析/删除范围/扇出目标）、`mergeOfficeTimeline`（时间线合并）、`openclawCommands`（命令匹配）、`openclawOfficeStore`（办公区/员工选中与派发）；主进程行为测试——连接生命周期、会话绑定、token 用量、轮次删除（rewind entryId 解析、失败保留原错误、流式拒绝）；组件渲染测试——`OpenClawConversationView`（多 Agent 交错消息流）、`OpenClawLeftSideBar`（办公区/名册/选中交互）、消息操作按钮（复制/删除可见性与二次确认）。
-- **已知限制**：
-  - 真实 Gateway 的连接、流式与重连行为需在 Electron 真机环境人工验证；
-  - 员工数量很大时名册仅靠滚动承载，暂未虚拟化或分组；
-  - 命令集仅 5 个基础命令。
-
-> 变更记录：早期「底边栏聊天面板」与基于 PixiJS 的像素办公室视图均已移除（`pixi.js` 依赖、`viewMode` 与 `/mode` 命令一并删除）；办公区/员工状态统一由左栏名册承载，强调色取色规则迁至 `features/openclaw/agentAccent.ts`。
+- 真实 Gateway 的连接、流式与重连行为需在 Electron 真机环境人工验证；
+- 员工数量很大时名册仅靠滚动承载，暂未虚拟化或分组；
+- 命令集刻意保持最小（3 个基础命令），后续按需扩展（如 `/export`）。

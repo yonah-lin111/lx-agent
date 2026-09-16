@@ -2,7 +2,7 @@
 
 本文档定义 LX Agent 的多层安全防御体系：四态协作模式硬门禁、三档沙箱策略（Sandbox Policy）、Guardian 四维风险评估器、多级审批流与会话白名单规则引擎。
 
-架构总览见 [architecture.md](./architecture.md)；工具契约见 [tools.md](./tools.md)；模式输出协议见 [collaboration-modes.md](./collaboration-modes.md)；执行引擎见 [runtime.md](./runtime.md)。
+架构总览见 [architecture.md](./architecture.md)；工具契约见 [tools.md](./tools.md)；模式输出协议见 [modes.md](./modes.md)；执行引擎见 [runtime.md](./runtime.md)。
 
 ---
 
@@ -14,8 +14,8 @@
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ [Gate 1: Collaboration Mode]                                │
-│   - Plan / Review 模式: write/edit/apply_patch/todowrite    │
-│     ──► 硬拦截 (拒绝执行，返回模式专用错误文案)              │
+│   - Plan / Review 模式: write/edit/apply_patch/todowrite/   │
+│     task ──► 硬拦截 (拒绝执行，返回模式专用错误文案)          │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
@@ -45,7 +45,7 @@
 │ [Gate 5: Approval]                                          │
 │   - bypassPermissions / danger-full-access → 放行           │
 │   - acceptEdits → 文件修改类放行                            │
-│   - 默认触发 PermissionRequest 弹窗 → 用户决策              │
+│   - 默认触发 PermissionRequest（状态栏盾牌面板）→ 用户决策   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -59,15 +59,15 @@
 export type CollaborationMode = "build" | "plan" | "review" | "design"
 ```
 
-| 模式 | 写入工具（`write`/`edit`/`apply_patch`） | `todowrite` | 其他工具 | 输出契约 |
+| 模式 | 写入工具（`write`/`edit`/`apply_patch`） | `todowrite` / `task` | 其他工具 | 输出契约 |
 | :--- | :--- | :--- | :--- | :--- |
 | **`build`** | 按沙箱/规则/审批正常判定 | 允许 | 正常判定 | 无 |
-| **`plan`** | **deny**（Plan Mode 提示词引导输出 `<proposed_plan>`） | **deny** | 只读工具正常 | 见 collaboration-modes.md |
-| **`review`** | **deny**（提示词引导输出 `<review_findings>`） | **deny** | 只读工具正常 | 见 collaboration-modes.md |
-| **`design`** | 按沙箱/规则/审批正常判定（无模式级硬拦截） | 允许 | 正常判定 | `<front_design>` / `<front_design_update>`，见 front-design.md |
+| **`plan`** | **deny**（Plan Mode 提示词引导输出 `<proposed_plan>`） | **deny** | 只读工具正常 | 见 modes.md §2 |
+| **`review`** | **deny**（提示词引导输出 `<review_findings>`） | **deny** | 只读工具正常 | 见 modes.md §3 |
+| **`design`** | 按沙箱/规则/审批正常判定（无模式级硬拦截） | 允许 | 正常判定 | `<front_design>` / `<front_design_update>`，见 modes.md §4 |
 
 - Plan / Review 的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`PLAN_MODE_MUTATION_REASON` / `REVIEW_MODE_MUTATION_REASON`）。
-- `design` 模式仅约束输出协议（提示词层），不做工具级拦截；`render_svg` / `render_ascii` / `render_html` 已从工具集整体移除（见 tools.md §2）。
+- `design` 模式仅约束输出协议（提示词层），不做工具级拦截（原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
 - 模式切换：`Shift + Tab` 在 `build → plan → review → design → build` 间循环（状态栏按钮等价），或经 IPC `setCollaborationMode` 定向切换；卡片一键采纳也会切回 `build`。
 
 ---
@@ -115,18 +115,21 @@ Guardian 在工具执行前进行实时四维风险评估：
 
 ### 5.2 工具分级
 
-- **豁免工具（`EXEMPT_TOOLS`，永不询问）**：`web_search` / `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `question` / `lsp` / `view_image`。
+- **豁免工具（`EXEMPT_TOOLS`，永不询问）**：`web_search` / `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `question` / `lsp` / `view_image` / `memory`。
 - **受控内置工具（`GATED_BUILTIN_TOOLS`）**：`bash` / `write` / `edit` / `apply_patch` / `task` / `webfetch`；加上全部已连接 MCP 工具均进入审批判定。
 
 ### 5.3 审批决策流 (Approval Decisions)
 
-触发 `permission_request` 事件时，用户在 UI 中的可选决策：
+触发 `permission_request` 事件时，状态栏权限盾牌面板（`PermissionStatusButton`，自动展开，支持键盘导航）提供六种决策：
 
-1. **`approve_once`（单次放行）**：仅批准当前这次工具调用。
-2. **`approve_session`（会话级放行）**：当前会话内存白名单按工具整类放行（`rememberForSession`）；随会话切换重置。
-3. **`allowAll`（会话全放行）**：跳过后续规则与弹窗，仅限当前会话。
-4. **`deny`（拒绝执行）**：拒绝本次调用，返回 `USER_DENY_REASON` 回灌模型；拒绝原因可附在结果中。
-5. **`permanent`（永久规则）**：勾选后经 `persistRule()` 将 `Tool(arg)` 形态规则原子写入配置文件（永久 allow 或永久 deny），实时热重载生效；`apply_patch` 仅在补丁恰好命中单一目标路径时写入路径规则，多路径补丁不写永久规则。
+1. **允许（单次放行）**：仅批准当前这次工具调用。
+2. **允许本次会话（`rememberForSession`）**：当前会话内存白名单按工具整类放行；随会话切换重置。
+3. **永久允许（`permanent`）**：经 `persistRule()` 将 `Tool(arg)` 形态规则原子写入配置文件，后续不再询问；`apply_patch` 仅在补丁恰好命中单一目标路径时写入路径规则，多路径补丁不写永久规则。
+4. **拒绝**：拒绝本次调用，返回 `USER_DENY_REASON` 回灌模型。
+5. **永久拒绝（`permanent`）**：同理写回配置，后续直接拒绝。
+6. **允许全部（`allowAll`，二次确认）**：跳过后续规则与弹窗，仅限当前会话。
+
+Esc 仅收起面板，请求保持挂起；决策经 IPC `permissionResponse` 回传主进程。
 
 ### 5.4 权限确认模式 (`PermissionMode`)
 
@@ -151,7 +154,7 @@ Guardian 在工具执行前进行实时四维风险评估：
         "Bash(git status)",
         "Edit(src/**)",
         "Write(test/**)",
-        "codegraph_codegraph_search()"
+        "mcp__github__create_issue()"
       ],
       "deny": [
         "Bash(rm -rf *)",
