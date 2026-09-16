@@ -258,6 +258,53 @@ export interface TranscribeAudioResult {
   language?: string
 }
 
+// Caveman 输出压缩档位（wenyan 档位仅中文界面可选）。
+export type CavemanLevel = "lite" | "full" | "ultra" | "wenyan-lite" | "wenyan" | "wenyan-ultra"
+
+// Ponytail 代码极简倾向档位。
+export type PonytailLevel = "lite" | "full" | "ultra"
+
+// Caveman 全部档位（顺序即界面展示顺序）。
+export const CAVEMAN_LEVELS: readonly CavemanLevel[] = [
+  "lite",
+  "full",
+  "ultra",
+  "wenyan-lite",
+  "wenyan",
+  "wenyan-ultra",
+]
+
+// Caveman 文言文档位（界面语言非中文时不可选，已存档位回退 ultra）。
+export const CAVEMAN_WENYAN_LEVELS: readonly CavemanLevel[] = [
+  "wenyan-lite",
+  "wenyan",
+  "wenyan-ultra",
+]
+
+// Ponytail 全部档位。
+export const PONYTAIL_LEVELS: readonly PonytailLevel[] = ["lite", "full", "ultra"]
+
+// Token Saver 设置（~/.lx/config.json 的 tokenSaver 节点）。
+export interface TokenSaverSettings {
+  // RTK：压缩工具输出（git diff / grep / ls / tree / log / 构建输出等）。
+  rtkEnabled: boolean
+  // Caveman：压缩模型输出风格。
+  cavemanEnabled: boolean
+  cavemanLevel: CavemanLevel
+  // Ponytail：偏向最小化代码实现。
+  ponytailEnabled: boolean
+  ponytailLevel: PonytailLevel
+}
+
+// Token Saver 默认配置：RTK 默认开启，风格提示词默认关闭。
+export const DEFAULT_TOKEN_SAVER_SETTINGS: TokenSaverSettings = {
+  rtkEnabled: true,
+  cavemanEnabled: false,
+  cavemanLevel: "full",
+  ponytailEnabled: false,
+  ponytailLevel: "full",
+}
+
 // OpenClaw 实例认证模式：loopback 本机直连用 token；远端 gateway 必须走设备配对。
 export type OpenClawAuthMode = "token" | "device"
 
@@ -397,5 +444,7 @@ export interface SettingsApi {
     transcribeAudio: (input: TranscribeAudioInput) => Promise<TranscribeAudioResult>
     getOpenClawSettings: () => Promise<OpenClawSettings>
     saveOpenClawSettings: (settings: OpenClawSettings) => Promise<OpenClawSettings>
+    getTokenSaverSettings: () => Promise<TokenSaverSettings>
+    saveTokenSaverSettings: (settings: TokenSaverSettings) => Promise<TokenSaverSettings>
   }
 }

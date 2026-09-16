@@ -20,6 +20,7 @@ import {
   getPermissionSettings,
   getSkillSettings,
   getSubagentSettings,
+  getTokenSaverSettings,
   getUiSettings,
   getVoiceSettings,
   saveCliSettings,
@@ -31,6 +32,7 @@ import {
   savePermissionSettings,
   saveSkillSettings,
   saveSubagentSettings,
+  saveTokenSaverSettings,
   saveUiSettings,
   saveVoiceSettings,
 } from "@/services/settingsService"
@@ -95,4 +97,8 @@ export const registerSettingsHandlers = (): void => {
   ipcMain.handle(SETTINGS_CHANNELS.transcribeAudio, (_, input) => transcribeAudioWithGroq(input))
   ipcMain.handle(SETTINGS_CHANNELS.getOpenClawSettings, () => getOpenClawSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveOpenClawSettings, (_, input) => saveOpenClawSettings(input))
+  ipcMain.handle(SETTINGS_CHANNELS.getTokenSaverSettings, () => getTokenSaverSettings())
+  ipcMain.handle(SETTINGS_CHANNELS.saveTokenSaverSettings, (_, input) =>
+    saveTokenSaverSettings(input),
+  )
 }

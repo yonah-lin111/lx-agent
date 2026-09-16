@@ -2,6 +2,7 @@ import {
   Bot,
   Code,
   Code2,
+  Coins,
   type LucideIcon,
   Mic,
   Network,
@@ -29,6 +30,7 @@ export interface SettingsSection {
     | "settings.lsp"
     | "settings.mcp"
     | "settings.skills"
+    | "settings.tokenSaver"
     | "settings.voice"
     | "settings.openclaw"
   icon: LucideIcon
@@ -44,6 +46,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "skills", labelKey: "settings.skills", icon: Sparkles },
   { id: "models", labelKey: "settings.models", icon: Bot },
   { id: "providers", labelKey: "settings.providers", icon: Server },
+  { id: "token-saver", labelKey: "settings.tokenSaver", icon: Coins },
   { id: "voice", labelKey: "settings.voice", icon: Mic },
   { id: "permissions", labelKey: "settings.permissions", icon: Shield },
   { id: "hooks", labelKey: "settings.hooks", icon: Webhook },

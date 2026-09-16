@@ -16,6 +16,7 @@ export * from "./components/SettingsActionBar"
 export * from "./components/SettingsStatusPill"
 export * from "./components/SkillSettings"
 export * from "./components/SubagentSettings"
+export * from "./components/TokenSaverSettings"
 export * from "./components/VoiceSettings"
 export * from "./constants"
 

@@ -20,6 +20,7 @@ import {
   SkillSettings,
   SubagentSettings,
   settingsApi,
+  TokenSaverSettings,
   usePermissionSettings,
   useRegisterSettingsSection,
   useSettingsData,
@@ -38,6 +39,7 @@ const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   skills: "settings.skillsDesc",
   models: "settings.modelsDesc",
   providers: "settings.providersDesc",
+  "token-saver": "settings.tokenSaverDesc",
   voice: "settings.voiceDesc",
   permissions: "settings.permissionsDesc",
   hooks: "settings.hooksDesc",
@@ -206,6 +208,7 @@ export const SettingsPage = (): React.JSX.Element => {
             />
           ) : null}
           {activeSection === "voice" ? <VoiceSettingsComponent /> : null}
+          {activeSection === "token-saver" ? <TokenSaverSettings /> : null}
           {activeSection === "permissions" && permissionSettings ? (
             <PermissionSettings settings={permissionSettings} setSettings={setPermissionSettings} />
           ) : null}

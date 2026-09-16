@@ -1,23 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 import { Agent } from "@/agent/core/agent"
-import type { AgentTool, Model } from "@/agent/core/types"
+import type { AgentTool, LlmMessage, Model } from "@/agent/core/types"
 import { createAiSdkStreamFn } from "@/agent/stream/aiSdkStreamFn"
+import { CAVEMAN_PROMPTS } from "@/agent/tokenSaver/prompts"
 
 // Mock modelFactory
 vi.mock("@/agent/stream/modelFactory", () => ({
   resolveLanguageModel: vi.fn().mockReturnValue({}),
 }))
 
-// Mock settingsService：可控 provider 配置（opencode Go 请求头注入用例）。
+// Mock settingsService：可控 provider 配置（opencode Go 请求头注入用例）与 Token Saver 配置。
 const settingsState = vi.hoisted(() => ({
   settings: {
     providers: {} as Record<string, unknown>,
     streamIdleTimeoutMs: undefined as number | undefined,
   },
+  tokenSaver: {
+    rtkEnabled: false,
+    cavemanEnabled: false,
+    cavemanLevel: "full" as const,
+    ponytailEnabled: false,
+    ponytailLevel: "full" as const,
+  },
 }))
 vi.mock("@/services/settingsService", () => ({
   getModelProviderSettings: () => settingsState.settings,
+  getTokenSaverSettings: () => settingsState.tokenSaver,
 }))
 
 // Mock ai streamText
@@ -30,11 +39,33 @@ vi.mock("ai", () => ({
 
 const TEST_MODEL: Model = { provider: "test-provider", id: "test-model" }
 
+// 构造可供 RTK 压缩的长 diff 工具结果。
+const makeLargeDiff = (): string => {
+  const lines = ["diff --git a/foo.js b/foo.js", "@@ -1,3 +1,200 @@"]
+  for (let i = 0; i < 200; i++) lines.push(`+added line ${i} ${"x".repeat(20)}`)
+  return lines.join("\n")
+}
+
+const makeLargeDiffToolResult = (): LlmMessage => ({
+  role: "toolResult",
+  toolCallId: "call_1",
+  toolName: "bash",
+  content: [{ type: "text", text: makeLargeDiff() }],
+  isError: false,
+})
+
 describe("createAiSdkStreamFn 与流式看门狗集成", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     settingsState.settings = { providers: {}, streamIdleTimeoutMs: undefined }
+    settingsState.tokenSaver = {
+      rtkEnabled: false,
+      cavemanEnabled: false,
+      cavemanLevel: "full",
+      ponytailEnabled: false,
+      ponytailLevel: "full",
+    }
   })
 
   afterEach(() => {
@@ -526,5 +557,93 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
 
     const lastOptions = mockStreamText.mock.calls.at(-1)?.[0] as { headers?: unknown }
     expect(lastOptions.headers).toBeUndefined()
+  })
+
+  it("chat 请求开启 Caveman 时把风格提示词拼接到系统提示词", async () => {
+    async function* createMockStream() {
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createMockStream() })
+    settingsState.tokenSaver.cavemanEnabled = true
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000, purpose: "chat" })
+    const stream = await streamFn(TEST_MODEL, { systemPrompt: "base prompt", messages: [] }, {})
+    for await (const _ of stream) {
+      // consume
+    }
+    await stream.result()
+
+    const lastOptions = mockStreamText.mock.calls.at(-1)?.[0] as { system?: string }
+    expect(lastOptions.system).toBe(`base prompt\n\n${CAVEMAN_PROMPTS.full}`)
+  })
+
+  it("非 chat purpose（title）不受 Token Saver 影响", async () => {
+    async function* createMockStream() {
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createMockStream() })
+    settingsState.tokenSaver.cavemanEnabled = true
+    settingsState.tokenSaver.rtkEnabled = true
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000, purpose: "title" })
+    const stream = await streamFn(
+      TEST_MODEL,
+      { systemPrompt: "base prompt", messages: [makeLargeDiffToolResult()] },
+      {},
+    )
+    for await (const _ of stream) {
+      // consume
+    }
+    await stream.result()
+
+    const lastOptions = mockStreamText.mock.calls.at(-1)?.[0] as {
+      system?: string
+      messages: Array<{ role: string; content: Array<Record<string, unknown>> }>
+    }
+    expect(lastOptions.system).toBe("base prompt")
+    const toolMessage = lastOptions.messages.find((message) => message.role === "tool")
+    const output = toolMessage?.content[0]?.output as { type: string; value: string }
+    expect(output.value.length).toBe(makeLargeDiff().length)
+  })
+
+  it("chat 请求开启 RTK 时压缩出站工具结果", async () => {
+    async function* createMockStream() {
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createMockStream() })
+    settingsState.tokenSaver.rtkEnabled = true
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000, purpose: "chat" })
+    const stream = await streamFn(
+      TEST_MODEL,
+      { systemPrompt: "", messages: [makeLargeDiffToolResult()] },
+      {},
+    )
+    for await (const _ of stream) {
+      // consume
+    }
+    await stream.result()
+
+    const lastOptions = mockStreamText.mock.calls.at(-1)?.[0] as {
+      messages: Array<{ role: string; content: Array<Record<string, unknown>> }>
+    }
+    const toolMessage = lastOptions.messages.find((message) => message.role === "tool")
+    const output = toolMessage?.content[0]?.output as { type: string; value: string }
+    expect(output.value.length).toBeLessThan(makeLargeDiff().length)
   })
 })
