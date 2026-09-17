@@ -93,6 +93,51 @@ describe("ScheduleDashboard", () => {
     })
   })
 
+  it("切换日期不触发整页加载遮罩，并保留当前列表直到新数据到达", async () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowKey = toLocalDateKey(tomorrow)
+
+    const api = createApiMock([createItem({ id: 1, content: "今日任务" })])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    render(<ScheduleDashboard />)
+    await waitFor(() => {
+      expect(screen.getByText("今日任务")).toBeDefined()
+    })
+    // 等首屏遮罩淡出后再切日期，断言只反映切换日期时的加载表现。
+    await waitFor(() => {
+      expect(screen.getByRole("status").className).toContain("pointer-events-none")
+    })
+
+    // 挂起明天的查询，直到测试显式放行。
+    const pending: Array<{ resolve: (items: ScheduleItem[]) => void }> = []
+    api.listByDate.mockImplementation((input: { entryDate: string }) =>
+      input.entryDate === tomorrowKey
+        ? new Promise<ScheduleItem[]>((resolve) => {
+            pending.push({ resolve })
+          })
+        : Promise.resolve([]),
+    )
+
+    fireEvent.click(screen.getByLabelText("Next day"))
+
+    await waitFor(() => {
+      expect(pending.length).toBe(1)
+    })
+    // 遮罩保持隐藏，列表沿用当前数据，不出现加载闪断。
+    expect(screen.getByRole("status").className).toContain("pointer-events-none")
+    expect(screen.getByText("今日任务")).toBeDefined()
+
+    for (const request of pending) {
+      request.resolve([])
+    }
+    await waitFor(() => {
+      expect(screen.queryByText("今日任务")).toBeNull()
+    })
+  })
+
   it("回车提交新条目并按当前优先级创建", async () => {
     const api = createApiMock([])
     // @ts-expect-error Mock window.api

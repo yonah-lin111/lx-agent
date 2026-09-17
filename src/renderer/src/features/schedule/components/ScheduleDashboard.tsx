@@ -1,5 +1,5 @@
 import { ArrowUpDown, CalendarDays, LayoutGrid, ListTodo, PanelRight } from "lucide-react"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { useTranslation } from "@/i18n"
@@ -64,6 +64,12 @@ export const ScheduleDashboard = (): React.JSX.Element => {
 
   const { items, setItems, isLoading, hasError, reload } = useScheduleItems(entryDate)
 
+  // 仅进入日程视图（切 tab）时的首屏加载展示整页遮罩；切换日期为增量刷新，不触发加载遮罩。
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  useEffect(() => {
+    if (!isLoading) setHasLoadedOnce(true)
+  }, [isLoading])
+
   // 月历角标与近 7 日趋势共用区间统计查询。
   const monthRange = useMemo(() => getMonthRange(visibleMonth), [visibleMonth])
   const trendRange = useMemo(() => getRecentRange(entryDate, SCHEDULE_TREND_DAYS), [entryDate])
@@ -119,8 +125,8 @@ export const ScheduleDashboard = (): React.JSX.Element => {
 
   return (
     <div className="custom-scrollbar relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-4 [scrollbar-gutter:stable] xl:flex-row">
-      {/* 首屏（切 tab / 空日期）整页加载遮罩；列表非空时的增量刷新仅显示行内文本 */}
-      <LxLoadingOverlay isLoading={isLoading && items.length === 0} text={t("schedule.loading")} />
+      {/* 仅进入视图（切 tab）的首屏加载遮罩；切换日期保持当前列表，不打断内容 */}
+      <LxLoadingOverlay isLoading={isLoading && !hasLoadedOnce} text={t("schedule.loading")} />
 
       <div className="flex w-full min-w-0 flex-1 flex-col gap-3 xl:min-h-0">
         {/* 顶部标题与日期导航 */}
@@ -171,14 +177,18 @@ export const ScheduleDashboard = (): React.JSX.Element => {
               {viewMode === "list" ? (
                 <div className="flex items-center gap-1">
                   {(["all", "pending", "completed"] as const).map((filterKey) => (
-                    <button
+                    <LxIconButton
                       key={filterKey}
-                      type="button"
-                      className={`h-6 rounded-full px-2 text-[11px] font-medium transition-colors ${
-                        statusFilter === filterKey
-                          ? "bg-[var(--color-theme-text)] text-[var(--color-theme-bg)]"
-                          : "text-[var(--color-theme-text-muted)] hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
-                      }`}
+                      iconOnly={false}
+                      size="small"
+                      shape="circle"
+                      highlighted={statusFilter === filterKey}
+                      textClass="text-[var(--color-theme-text-muted)]"
+                      hoverBgClass="hover:bg-[var(--color-theme-surface-hover)]"
+                      hoverTextClass="hover:text-[var(--color-theme-text)]"
+                      highlightBgClass="bg-[var(--color-theme-text)]"
+                      highlightTextClass="text-[var(--color-theme-bg)]"
+                      className="font-medium"
                       onClick={() => setStatusFilter(filterKey)}
                     >
                       {filterKey === "all"
@@ -186,7 +196,7 @@ export const ScheduleDashboard = (): React.JSX.Element => {
                         : filterKey === "pending"
                           ? t("schedule.filterPending")
                           : t("schedule.filterCompleted")}
-                    </button>
+                    </LxIconButton>
                   ))}
                 </div>
               ) : null}
@@ -253,7 +263,8 @@ export const ScheduleDashboard = (): React.JSX.Element => {
                   </div>
                 ) : null}
 
-                {!hasError && isLoading ? (
+                {/* 无任何数据可沿用时的行内占位；有数据时切换日期保持原列表直到新数据到达 */}
+                {!hasError && isLoading && items.length === 0 ? (
                   <p className="px-1 py-3 text-xs text-[var(--color-theme-text-subtle)]">
                     {t("schedule.loading")}
                   </p>
@@ -271,7 +282,7 @@ export const ScheduleDashboard = (): React.JSX.Element => {
                   </div>
                 ) : null}
 
-                {!hasError && !isLoading
+                {!hasError
                   ? filteredItems.map((item) => (
                       <ScheduleItemRow
                         key={item.id}
