@@ -28,6 +28,20 @@ describe("SpillManager", () => {
     expect(filePath).toContain("call_123.txt")
   })
 
+  it("默认根目录跟随应用数据根目录（测试隔离不落到真实 ~/.lx）", () => {
+    const dataRoot = process.env.LX_AGENT_DATA_ROOT ?? ""
+    expect(dataRoot).not.toBe("")
+
+    expect(new SpillManager().getBaseDir()).toBe(join(dataRoot, "spill"))
+  })
+
+  it("会话 id 消毒后不含路径分隔符，越界会话 id 被收敛回根目录", () => {
+    const filePath = manager.saveSpillFile("../../escape", "c1", "content")
+    expect(filePath.startsWith(tmpBase)).toBe(true)
+
+    expect(manager.getSessionDir("..")).toBe(join(tmpBase, "__"))
+  })
+
   it("cleanSessionSpill 清除对应会话目录", () => {
     const filePath = manager.saveSpillFile("sess-1", "c1", "content")
     expect(existsSync(filePath)).toBe(true)
