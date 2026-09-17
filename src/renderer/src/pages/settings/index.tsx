@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import {
+  AgentsMdSettings,
   CliSettings,
   CustomCommandSettings,
   GeneralSettings,
@@ -37,6 +38,7 @@ const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   mcp: "settings.mcpDesc",
   openclaw: "settings.openclawDesc",
   skills: "settings.skillsDesc",
+  "agents-md": "settings.agentsMdDesc",
   models: "settings.modelsDesc",
   providers: "settings.providersDesc",
   "token-saver": "settings.tokenSaverDesc",
@@ -192,6 +194,7 @@ export const SettingsPage = (): React.JSX.Element => {
           {activeSection === "mcp" ? <McpSettings /> : null}
           {activeSection === "openclaw" ? <OpenClawSettings /> : null}
           {activeSection === "skills" ? <SkillSettings /> : null}
+          {activeSection === "agents-md" ? <AgentsMdSettings /> : null}
           {activeSection === "models" ? (
             <ModelSettings settings={settings} setSettings={setSettings} />
           ) : null}

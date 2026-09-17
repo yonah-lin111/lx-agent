@@ -21,6 +21,7 @@ import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
 import { registerScheduleHandlers } from "@/ipc/scheduleHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
+import { registerSkillHandlers } from "@/ipc/skillHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
 import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
@@ -91,6 +92,7 @@ app.whenReady().then(() => {
   registerProjectHandlers()
   registerClipboardHandlers()
   registerSettingsHandlers()
+  registerSkillHandlers()
   registerMarkdownHandlers()
   registerGitHandlers()
   registerCustomCommandHandlers()

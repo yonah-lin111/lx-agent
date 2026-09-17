@@ -24,9 +24,9 @@ import { mcpManager } from "@/agent/mcp/mcpManager"
 import { permissionManager } from "@/agent/permissions/permissionManager"
 import { promptTemplateLoader } from "@/agent/prompts/promptTemplateLoader"
 import { questionManager } from "@/agent/question/questionManager"
-import { skillLoader, stripFrontmatter } from "@/agent/skills/skillLoader"
+import { getUserSkillDirs, skillLoader, stripFrontmatter } from "@/agent/skills/skillLoader"
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
-import { getSessionDesignDir } from "@/paths"
+import { getSessionDesignDir, getStandardSkillsDir } from "@/paths"
 import { saveFrontDesignToDisk } from "@/services/frontDesignService"
 import { compileTailwindCss } from "@/services/tailwindCompilerService"
 
@@ -340,17 +340,22 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     }
     const validCwd =
       typeof cwd === "string" && cwd.trim() ? cwd.trim() : agentRunner.getCurrentCwd()
-    const globalSkillDir = resolve(skillLoader.getSkillDir())
-    return skillLoader.load(validCwd).map((skill) => ({
-      name: skill.name,
-      description: skill.description,
-      shortDescription: skill.shortDescription,
-      displayName: skill.displayName,
-      filePath: skill.filePath,
-      baseDir: skill.baseDir,
-      disableModelInvocation: skill.disableModelInvocation,
-      isGlobal: resolve(skill.filePath).startsWith(globalSkillDir),
-    }))
+    const userSkillDirs = getUserSkillDirs().map((dir) => resolve(dir))
+    const standardSkillsDir = resolve(getStandardSkillsDir())
+    return skillLoader.load(validCwd).map((skill) => {
+      const resolvedFilePath = resolve(skill.filePath)
+      return {
+        name: skill.name,
+        description: skill.description,
+        shortDescription: skill.shortDescription,
+        displayName: skill.displayName,
+        filePath: skill.filePath,
+        baseDir: skill.baseDir,
+        disableModelInvocation: skill.disableModelInvocation,
+        isGlobal: userSkillDirs.some((dir) => resolvedFilePath.startsWith(dir)),
+        sourceKind: resolvedFilePath.startsWith(standardSkillsDir) ? "agents" : "lx",
+      }
+    })
   })
 
   ipcMain.handle(AGENT_CHANNELS.getSkillContent, (_, name: unknown, cwd: unknown) => {

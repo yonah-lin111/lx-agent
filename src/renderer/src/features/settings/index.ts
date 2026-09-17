@@ -1,8 +1,10 @@
 export * from "./api/customCommandApi"
+export * from "./api/instructionApi"
 export * from "./api/settingsApi"
+export * from "./api/skillApi"
+export * from "./components/AgentsMdSettings"
 export * from "./components/CliIcon"
 export * from "./components/CliSettings"
-
 export * from "./components/CustomCommandSettings"
 export * from "./components/GeneralSettings"
 export * from "./components/HooksSettings"

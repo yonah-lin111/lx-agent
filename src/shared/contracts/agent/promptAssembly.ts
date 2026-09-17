@@ -9,7 +9,7 @@ export interface PromptTemplateItem {
   filePath: string
 }
 
-// Skill 条目（由 skillLoader 扫描自 ~/.lx/skills、<cwd>/.lx/skills 与 <cwd>/.agents/skills）。
+// Skill 条目（由 skillLoader 扫描自 ~/.lx/skills、~/.agents/skills 与项目内 .lx/.agents 目录）。
 export interface SkillItem {
   name: string
   description: string
@@ -19,6 +19,8 @@ export interface SkillItem {
   baseDir: string
   disableModelInvocation: boolean
   isGlobal?: boolean
+  // 来源根目录：lx 原生或跨客户端标准 .agents。
+  sourceKind?: "lx" | "agents"
 }
 
 // 系统提示词分段装配结果。

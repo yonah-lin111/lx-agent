@@ -56,6 +56,26 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.listSkills, cwd, force),
   getSkillContent: (name: string, cwd?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.getSkillContent, name, cwd),
+  listSkillFiles: (skillDir: string) => ipcRenderer.invoke(AGENT_CHANNELS.listSkillFiles, skillDir),
+  readSkillFile: (skillDir: string, relativePath: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.readSkillFile, skillDir, relativePath),
+  writeSkillFile: (skillDir: string, relativePath: string, content: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.writeSkillFile, skillDir, relativePath, content),
+  deleteSkillFile: (skillDir: string, relativePath: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.deleteSkillFile, skillDir, relativePath),
+  moveSkillFile: (skillDir: string, fromRelativePath: string, toRelativePath: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.moveSkillFile, skillDir, fromRelativePath, toRelativePath),
+  importSkillFiles: (skillDir: string, targetDirRelativePath: string, dialogTitle?: string) =>
+    ipcRenderer.invoke(
+      AGENT_CHANNELS.importSkillFiles,
+      skillDir,
+      targetDirRelativePath,
+      dialogTitle,
+    ),
+  saveSkill: (input) => ipcRenderer.invoke(AGENT_CHANNELS.saveSkill, input),
+  getInstruction: (scope, projectPath?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.getInstruction, scope, projectPath),
+  saveInstruction: (input) => ipcRenderer.invoke(AGENT_CHANNELS.saveInstruction, input),
   exportSession: (options) => ipcRenderer.invoke(AGENT_CHANNELS.exportSession, options),
   copySession: (options) => ipcRenderer.invoke(AGENT_CHANNELS.copySession, options),
   suggestedQuestions: (messages: SuggestedQuestionContextMessage[], excludedQuestions?: string[]) =>

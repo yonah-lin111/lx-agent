@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "n
 import { basename, dirname, join, relative, resolve, sep } from "node:path"
 import matter from "gray-matter"
 import ignore from "ignore"
-import { getAppDataRoot } from "@/paths"
+import { getAppDataRoot, getStandardSkillsDir } from "@/paths"
 
 export type SkillToolDependency = {
   type: string
@@ -349,7 +349,14 @@ const isSameFile = (a: string, b: string): boolean => {
   }
 }
 
-// 合并三来源：user（~/.lx/skills）优先，其次 project（<cwd>/.lx/skills），最后 standard（<cwd>/.agents/skills），同名冲突前者优先覆盖（记诊断）。
+// user 级 skill 根目录（按优先级）：~/.lx/skills 与跨客户端标准 ~/.agents/skills。
+export const getUserSkillDirs = (): string[] => [
+  join(getAppDataRoot(), "skills"),
+  getStandardSkillsDir(),
+]
+
+// 合并四来源：user（~/.lx/skills）优先，其次 standard（~/.agents/skills），再次 project（<cwd>/.lx/skills），
+// 最后 project standard（<cwd>/.agents/skills）；同名冲突前者优先覆盖（记诊断）。
 const loadSkills = (cwd: string): LoadedSkill[] => {
   const diagnostics: string[] = []
   const skillMap = new Map<string, LoadedSkill>()
@@ -370,6 +377,7 @@ const loadSkills = (cwd: string): LoadedSkill[] => {
   }
 
   addFromDir(join(getAppDataRoot(), "skills"))
+  addFromDir(getStandardSkillsDir())
   addFromDir(join(resolve(cwd), ".lx", "skills"))
   addFromDir(join(resolve(cwd), ".agents", "skills"))
   for (const message of diagnostics) console.warn(message)
@@ -398,11 +406,6 @@ class SkillLoader {
   // 清空缓存（文件变动或测试用）。
   clearCache(): void {
     this.cache.clear()
-  }
-
-  // user 级 skills 目录（文档/诊断用）。
-  getSkillDir(): string {
-    return join(getAppDataRoot(), "skills")
   }
 }
 
