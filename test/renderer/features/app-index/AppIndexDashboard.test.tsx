@@ -12,10 +12,6 @@ vi.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
 }))
 
-vi.mock("@/features/arcade", () => ({
-  ArcadeStage: (): React.JSX.Element => <div>arcade-stage</div>,
-}))
-
 vi.stubGlobal(
   "ResizeObserver",
   class {
@@ -47,7 +43,7 @@ describe("AppIndexDashboard", () => {
     mockNavigate.mockClear()
   })
 
-  it("渲染品牌 Hero、8 个快速入口与年度会话活跃度绿墙", async () => {
+  it("渲染品牌 Hero、9 个快速入口与年度会话活跃度绿墙", async () => {
     const { container } = render(<AppIndexDashboard />)
 
     // Hero 品牌与文案
@@ -59,12 +55,13 @@ describe("AppIndexDashboard", () => {
     expect(container.querySelector(".app-index-section-icon--entries")).not.toBeNull()
     expect(container.querySelector(".app-index-section-icon--activity")).not.toBeNull()
 
-    // 8 个快速入口
+    // 9 个快速入口
     const entries = [
       "New Chat",
       "Projects",
       "Schedule",
       "Usage",
+      "Games",
       "Front Design",
       "OpenClaw",
       "UI Preview",
@@ -94,19 +91,20 @@ describe("AppIndexDashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Usage" }))
     expect(mockNavigate).toHaveBeenCalledWith("/?view=usage")
 
+    fireEvent.click(screen.getByRole("button", { name: "Games" }))
+    expect(mockNavigate).toHaveBeenCalledWith("/?view=game")
+
     fireEvent.click(screen.getByRole("button", { name: "Settings" }))
     expect(mockNavigate).toHaveBeenCalledWith("/settings")
   })
 
-  it("点击 logo 在索引页内整页打开彩蛋游戏厅", () => {
+  it("logo 为纯展示，不再提供游戏入口", () => {
     render(<AppIndexDashboard />)
 
-    expect(screen.queryByText("arcade-stage")).toBeNull()
-
-    fireEvent.click(screen.getByRole("button", { name: "Feeling lucky?" }))
-
-    expect(screen.getByText("arcade-stage")).toBeDefined()
-    expect(screen.queryByText("Quick Entries")).toBeNull()
+    const logo = screen.getByAltText("LX Agent")
+    expect(logo.tagName).toBe("IMG")
+    expect(logo.closest("button")).toBeNull()
+    expect(screen.queryByRole("button", { name: "Feeling lucky?" })).toBeNull()
   })
 
   it("点击新建对话入口创建 Agent Tab 而不跳转路由", () => {

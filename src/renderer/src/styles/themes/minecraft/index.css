@@ -1468,8 +1468,8 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     2px 2px 0px 0px #000000 !important;
 }
 
-/* 彩蛋游戏卡片：与统计卡一致的像素浮雕容器（去掉马赛克底纹与圆角） */
-[data-theme="minecraft"] .arcade-game-card {
+/* 内置游戏卡片：与统计卡一致的像素浮雕容器（去掉马赛克底纹与圆角） */
+[data-theme="minecraft"] .builtin-game-card {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #1e1e2a !important;
@@ -1480,7 +1480,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   font-family: var(--theme-font-family) !important;
 }
 
-[data-theme="minecraft"] .arcade-game-card:hover {
+[data-theme="minecraft"] .builtin-game-card:hover {
   background-color: #242434 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
@@ -1513,6 +1513,14 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   color: #ffaa00 !important;
 }
 
+[data-theme="minecraft"] .game-section-icon--builtin {
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] .game-section-icon--imported {
+  color: #ffaa00 !important;
+}
+
 /* 卡片与模拟器工具栏图标：经验条绿 + 像素投影 */
 [data-theme="minecraft"] .game-card-icon,
 [data-theme="minecraft"] .game-stage-icon {
@@ -1520,7 +1528,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   filter: drop-shadow(1px 1px 0px #000000) !important;
 }
 
-/* 游戏卡片：与彩蛋游戏卡片一致的像素浮雕容器（卡片内部按钮为 ghost 变体，不叠加二级浮雕） */
+/* 游戏卡片：与内置游戏卡片一致的像素浮雕容器（卡片内部按钮为 ghost 变体，不叠加二级浮雕） */
 [data-theme="minecraft"] .game-card {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;

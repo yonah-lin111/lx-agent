@@ -1,7 +1,7 @@
 import type { AppTheme } from "@/stores/themeStore"
-import type { ArcadePalette } from "./types"
+import type { BuiltinPalette } from "./types"
 
-const DEFAULT_PALETTE: ArcadePalette = {
+const DEFAULT_PALETTE: BuiltinPalette = {
   background: "#0d1117",
   backgroundAlt: "#151b24",
   grid: "rgba(255, 255, 255, 0.06)",
@@ -21,7 +21,7 @@ const DEFAULT_PALETTE: ArcadePalette = {
   radius: 8,
 }
 
-const MINECRAFT_PALETTE: ArcadePalette = {
+const MINECRAFT_PALETTE: BuiltinPalette = {
   background: "#141419",
   backgroundAlt: "#1b1b26",
   grid: "rgba(255, 255, 255, 0.07)",
@@ -44,5 +44,5 @@ const MINECRAFT_PALETTE: ArcadePalette = {
 /**
  * 按当前 app 主题返回游戏色板。
  */
-export const getArcadePalette = (theme: AppTheme): ArcadePalette =>
+export const getBuiltinPalette = (theme: AppTheme): BuiltinPalette =>
   theme === "minecraft" ? MINECRAFT_PALETTE : DEFAULT_PALETTE

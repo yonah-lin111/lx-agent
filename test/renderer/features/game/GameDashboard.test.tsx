@@ -3,6 +3,18 @@ import type { GameRomEntry } from "@shared/contracts/game"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { GameDashboard } from "@/features/game"
+import { BUILTIN_BEST_SCORES_STORAGE_KEY } from "@/features/game/builtin/constants"
+
+vi.mock("@/features/game/builtin/components/BuiltinGameCanvasHost", () => ({
+  BuiltinGameCanvasHost: ({ onGameOver }: { onGameOver: (score: number) => void }) => (
+    <div>
+      <span>builtin-canvas-host</span>
+      <button type="button" onClick={() => onGameOver(120)}>
+        finish-game
+      </button>
+    </div>
+  ),
+}))
 
 const createEntry = (patch: Partial<GameRomEntry> = {}): GameRomEntry => ({
   id: 1,
@@ -32,22 +44,53 @@ const installApi = (api: ReturnType<typeof createApiMock>): void => {
 
 afterEach(() => {
   cleanup()
+  localStorage.clear()
   vi.restoreAllMocks()
 })
 
 describe("GameDashboard", () => {
-  it("无条目时展示空态与导入提示", async () => {
-    const api = createApiMock()
-    installApi(api)
+  it("内置分区渲染三款内置游戏与类型标签，导入分区展示空态", async () => {
+    installApi(createApiMock())
 
     render(<GameDashboard />)
 
-    expect(await screen.findByText("No games yet")).toBeDefined()
+    expect(await screen.findByText("Built-in games")).toBeDefined()
+    expect(screen.getByText("Tetris")).toBeDefined()
+    expect(screen.getByText("Stardust Dodge")).toBeDefined()
+    expect(screen.getByText("Cake Stack")).toBeDefined()
+    expect(screen.getAllByText("Built-in")).toHaveLength(3)
+
+    expect(screen.getByText("Imported games")).toBeDefined()
+    expect(screen.getByText("No imported games yet")).toBeDefined()
     expect(screen.getByText(/64MB/)).toBeDefined()
-    expect(api.list).toHaveBeenCalledTimes(1)
   })
 
-  it("渲染游戏卡片（标题 / 体积 / 未游玩）", async () => {
+  it("内置卡片展示本机最高分", async () => {
+    localStorage.setItem(BUILTIN_BEST_SCORES_STORAGE_KEY, JSON.stringify({ tetris: 420 }))
+    installApi(createApiMock())
+
+    render(<GameDashboard />)
+
+    expect(await screen.findByText("Best: 420")).toBeDefined()
+    expect(screen.getAllByText("Best: 0")).toHaveLength(2)
+  })
+
+  it("点击内置卡片直接开局，结算退出后列表刷新最高分", async () => {
+    installApi(createApiMock())
+
+    render(<GameDashboard />)
+    fireEvent.click(await screen.findByText("Stardust Dodge"))
+
+    expect(screen.getByText("builtin-canvas-host")).toBeDefined()
+
+    fireEvent.click(screen.getByText("finish-game"))
+    fireEvent.click(screen.getByRole("button", { name: "Pick another game" }))
+
+    expect(await screen.findByText("Best: 120")).toBeDefined()
+    expect(screen.getByText("Built-in games")).toBeDefined()
+  })
+
+  it("渲染导入游戏卡片（标题 / 体积 / 未游玩）与导入类型标签", async () => {
     const api = createApiMock()
     api.list.mockResolvedValue([createEntry()])
     installApi(api)
@@ -56,6 +99,8 @@ describe("GameDashboard", () => {
 
     expect(await screen.findByText("Demo Game")).toBeDefined()
     expect(screen.getByText("1.0 MB · Never played")).toBeDefined()
+    expect(screen.getByText("Imported")).toBeDefined()
+    expect(api.list).toHaveBeenCalledTimes(1)
   })
 
   it("导入成功后刷新列表并展示新卡片", async () => {
@@ -67,7 +112,7 @@ describe("GameDashboard", () => {
     installApi(api)
 
     render(<GameDashboard />)
-    await screen.findByText("No games yet")
+    await screen.findByText("No imported games yet")
 
     fireEvent.click(screen.getByRole("button", { name: /Import Game/i }))
 
@@ -95,7 +140,7 @@ describe("GameDashboard", () => {
     expect(screen.getAllByText("Demo Game")).toHaveLength(1)
   })
 
-  it("点击卡片进入模拟器视图并渲染 webview", async () => {
+  it("点击导入卡片进入模拟器视图并渲染 webview", async () => {
     const api = createApiMock()
     api.list.mockResolvedValue([createEntry({ id: 7 })])
     installApi(api)

@@ -3,7 +3,7 @@ import {
   buildDodgeSchedule,
   computeDodgeScore,
   DODGE_DURATION_MS,
-} from "@/features/arcade/games/dodge/waves"
+} from "@/features/game/builtin/games/dodge/waves"
 
 describe("星尘闪避波次与计分", () => {
   it("相同种子生成完全一致的弹幕时间表", () => {

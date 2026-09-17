@@ -44,7 +44,7 @@ describe("我的世界主题游戏视图", () => {
     expect(block).toContain("drop-shadow(1px 1px 0px #000000)")
   })
 
-  it("游戏卡片使用与彩蛋游戏卡片一致的像素浮雕", () => {
+  it("游戏卡片使用与内置游戏卡片一致的像素浮雕", () => {
     const block = getRuleBlock('[data-theme="minecraft"] .game-card {')
 
     expect(block).toContain("border: 2px solid #000000 !important")
@@ -54,6 +54,25 @@ describe("我的世界主题游戏视图", () => {
 
     const hoverBlock = getRuleBlock('[data-theme="minecraft"] .game-card:hover')
     expect(hoverBlock).toContain("background-color: #242434 !important")
+  })
+
+  it("内置游戏卡片沿用相同的像素浮雕容器", () => {
+    const block = getRuleBlock('[data-theme="minecraft"] .builtin-game-card {')
+
+    expect(block).toContain("border: 2px solid #000000 !important")
+    expect(block).toContain("background-color: #1e1e2a !important")
+
+    const hoverBlock = getRuleBlock('[data-theme="minecraft"] .builtin-game-card:hover')
+    expect(hoverBlock).toContain("background-color: #242434 !important")
+  })
+
+  it("内置 / 导入分区图标使用像素描边与各自主题色", () => {
+    expect(getRuleBlock('[data-theme="minecraft"] .game-section-icon--builtin')).toContain(
+      "color: #55ff55 !important",
+    )
+    expect(getRuleBlock('[data-theme="minecraft"] .game-section-icon--imported')).toContain(
+      "color: #ffaa00 !important",
+    )
   })
 
   it("空态占位与模拟器视口保留像素凹槽", () => {

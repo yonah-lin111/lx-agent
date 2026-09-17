@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from "react"
-import { ARCADE_BEST_SCORES_STORAGE_KEY } from "../constants"
+import { BUILTIN_BEST_SCORES_STORAGE_KEY } from "../constants"
 
 /**
- * 读取本机保存的彩蛋最高分（非法数据安全回退为空表）。
+ * 读取本机保存的内置游戏最高分（非法数据安全回退为空表）。
  */
 const readBestScores = (): Record<string, number> => {
   try {
-    const raw = localStorage.getItem(ARCADE_BEST_SCORES_STORAGE_KEY)
+    const raw = localStorage.getItem(BUILTIN_BEST_SCORES_STORAGE_KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw) as unknown
     if (!parsed || typeof parsed !== "object") return {}
@@ -19,15 +19,15 @@ const readBestScores = (): Record<string, number> => {
     }
     return result
   } catch (error) {
-    console.error("Failed to read arcade best scores", error)
+    console.error("Failed to read builtin best scores", error)
     return {}
   }
 }
 
 /**
- * 管理各小游戏最高分：仅在刷新纪录时写入 localStorage。
+ * 管理各内置游戏最高分：仅在刷新纪录时写入 localStorage。
  */
-export const useArcadeBestScores = (): {
+export const useBuiltinBestScores = (): {
   bestScores: Record<string, number>
   submitScore: (gameId: string, score: number) => boolean
 } => {
@@ -41,9 +41,9 @@ export const useArcadeBestScores = (): {
     bestScoresRef.current = next
     setBestScores(next)
     try {
-      localStorage.setItem(ARCADE_BEST_SCORES_STORAGE_KEY, JSON.stringify(next))
+      localStorage.setItem(BUILTIN_BEST_SCORES_STORAGE_KEY, JSON.stringify(next))
     } catch (error) {
-      console.error("Failed to save arcade best score", error)
+      console.error("Failed to save builtin best score", error)
     }
     return true
   }, [])

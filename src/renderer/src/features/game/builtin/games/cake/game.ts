@@ -1,5 +1,5 @@
-import { ARCADE_HEIGHT, ARCADE_WIDTH } from "../../constants"
-import type { ArcadeGame, ArcadeInputState, ArcadePalette } from "../../types"
+import { BUILTIN_HEIGHT, BUILTIN_WIDTH } from "../../constants"
+import type { BuiltinGame, BuiltinInputState, BuiltinPalette } from "../../types"
 import { createSeededRandom } from "../../utils"
 import {
   CAKE_BASE_WIDTH,
@@ -49,10 +49,10 @@ interface CakeDebris {
 /**
  * 叠蛋糕：蛋糕层左右摆动，点击落下；与下层错位的部分被切掉，层越叠越窄，落空即结束。
  */
-export const createCakeGame = (): ArcadeGame => {
+export const createCakeGame = (): BuiltinGame => {
   const random = createSeededRandom(Math.floor(Math.random() * 0x7fffffff))
 
-  const layers: CakeLayer[] = [{ x: (ARCADE_WIDTH - CAKE_BASE_WIDTH) / 2, width: CAKE_BASE_WIDTH }]
+  const layers: CakeLayer[] = [{ x: (BUILTIN_WIDTH - CAKE_BASE_WIDTH) / 2, width: CAKE_BASE_WIDTH }]
   let phase: CakePhase = "sliding"
   let slideCenter = 0
   let slideDirection = 1
@@ -87,7 +87,7 @@ export const createCakeGame = (): ArcadeGame => {
     const top = layers[layers.length - 1]
     slideWidth = top.width
     slideDirection = random() < 0.5 ? -1 : 1
-    const bounds = getCakeSlideBounds(slideWidth, ARCADE_WIDTH, SCREEN_MARGIN)
+    const bounds = getCakeSlideBounds(slideWidth, BUILTIN_WIDTH, SCREEN_MARGIN)
     slideCenter = slideDirection > 0 ? bounds.min : bounds.max
   }
 
@@ -150,7 +150,7 @@ export const createCakeGame = (): ArcadeGame => {
 
   const drawLayer = (
     ctx: CanvasRenderingContext2D,
-    palette: ArcadePalette,
+    palette: BuiltinPalette,
     layer: CakeLayer,
     topY: number,
     color: string,
@@ -190,14 +190,14 @@ export const createCakeGame = (): ArcadeGame => {
   startSliding()
 
   return {
-    update: (dt: number, input: ArcadeInputState): void => {
+    update: (dt: number, input: BuiltinInputState): void => {
       if (finished) return
       elapsed += dt
       cameraOffset *= Math.exp(-dt / 70)
       updateDebris(dt)
 
       if (phase === "sliding") {
-        const bounds = getCakeSlideBounds(slideWidth, ARCADE_WIDTH, SCREEN_MARGIN)
+        const bounds = getCakeSlideBounds(slideWidth, BUILTIN_WIDTH, SCREEN_MARGIN)
         const speed = getCakeSlideSpeed(layers.length)
         slideCenter += (slideDirection * speed * dt) / 1000
         if (slideCenter <= bounds.min) {
@@ -231,20 +231,20 @@ export const createCakeGame = (): ArcadeGame => {
 
     isFinished: (): boolean => finished,
 
-    render: (ctx: CanvasRenderingContext2D, palette: ArcadePalette): void => {
+    render: (ctx: CanvasRenderingContext2D, palette: BuiltinPalette): void => {
       ctx.setTransform(1, 0, 0, 1, 0, 0)
 
-      const sky = ctx.createLinearGradient(0, 0, 0, ARCADE_HEIGHT)
+      const sky = ctx.createLinearGradient(0, 0, 0, BUILTIN_HEIGHT)
       sky.addColorStop(0, palette.background)
       sky.addColorStop(1, palette.backgroundAlt)
       ctx.fillStyle = sky
-      ctx.fillRect(0, 0, ARCADE_WIDTH, ARCADE_HEIGHT)
+      ctx.fillRect(0, 0, BUILTIN_WIDTH, BUILTIN_HEIGHT)
 
       // 地面（塔高到一定程度后会滚出画面）
       const groundTop = layerTopY(0) + CAKE_LAYER_HEIGHT
-      if (groundTop < ARCADE_HEIGHT) {
+      if (groundTop < BUILTIN_HEIGHT) {
         ctx.fillStyle = palette.pixel ? "#0c1218" : "#0b1118"
-        ctx.fillRect(0, groundTop, ARCADE_WIDTH, ARCADE_HEIGHT - groundTop)
+        ctx.fillRect(0, groundTop, BUILTIN_WIDTH, BUILTIN_HEIGHT - groundTop)
       }
 
       // 由底向上绘制塔身，顶层带奶油花边

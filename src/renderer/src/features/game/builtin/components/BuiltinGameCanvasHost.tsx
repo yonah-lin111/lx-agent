@@ -1,33 +1,33 @@
 import { useEffect, useRef } from "react"
-import { ARCADE_HEIGHT, ARCADE_WIDTH } from "../constants"
-import { createArcadeGame } from "../games"
-import type { ArcadeGameId, ArcadeInputState, ArcadePalette } from "../types"
+import { BUILTIN_HEIGHT, BUILTIN_WIDTH } from "../constants"
+import { createBuiltinGame } from "../games"
+import type { BuiltinGameId, BuiltinInputState, BuiltinPalette } from "../types"
 
 // 游戏按键（阻止浏览器默认滚动行为）。
 const GAME_KEYS = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"])
 
-export interface ArcadeCanvasHostProps {
-  gameId: ArcadeGameId
+export interface BuiltinGameCanvasHostProps {
+  gameId: BuiltinGameId
   // 每次重新开局 +1，强制重建游戏实例。
   runId: number
-  palette: ArcadePalette
+  palette: BuiltinPalette
   isPaused: boolean
   onGameOver: (score: number) => void
   onPauseRequest: () => void
 }
 
 /**
- * 小游戏画布宿主：负责 RAF 循环、输入采集、暂停/失焦处理与等比缩放适配。
+ * 内置游戏画布宿主：负责 RAF 循环、输入采集、暂停/失焦处理与等比缩放适配。
  * 游戏统一在 960 × 600 逻辑坐标系内绘制到离屏画布，宿主再按容器尺寸等比缩放并完整显示（永不裁切）。
  */
-export const ArcadeCanvasHost = ({
+export const BuiltinGameCanvasHost = ({
   gameId,
   runId,
   palette,
   isPaused,
   onGameOver,
   onPauseRequest,
-}: ArcadeCanvasHostProps): React.JSX.Element => {
+}: BuiltinGameCanvasHostProps): React.JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const paletteRef = useRef(palette)
@@ -47,8 +47,8 @@ export const ArcadeCanvasHost = ({
 
     // 逻辑画布：游戏只与世界坐标系（960 × 600）打交道，缩放全部由宿主负责。
     const logicalCanvas = document.createElement("canvas")
-    logicalCanvas.width = ARCADE_WIDTH
-    logicalCanvas.height = ARCADE_HEIGHT
+    logicalCanvas.width = BUILTIN_WIDTH
+    logicalCanvas.height = BUILTIN_HEIGHT
     const logicalCtx = logicalCanvas.getContext("2d")
     if (!logicalCtx) return
 
@@ -61,14 +61,14 @@ export const ArcadeCanvasHost = ({
       const rect = canvas.getBoundingClientRect()
       if (rect.width <= 0 || rect.height <= 0) return
 
-      const cssScale = Math.min(rect.width / ARCADE_WIDTH, rect.height / ARCADE_HEIGHT)
+      const cssScale = Math.min(rect.width / BUILTIN_WIDTH, rect.height / BUILTIN_HEIGHT)
       fit.cssScale = cssScale
-      fit.offsetX = (rect.width - ARCADE_WIDTH * cssScale) / 2
-      fit.offsetY = (rect.height - ARCADE_HEIGHT * cssScale) / 2
+      fit.offsetX = (rect.width - BUILTIN_WIDTH * cssScale) / 2
+      fit.offsetY = (rect.height - BUILTIN_HEIGHT * cssScale) / 2
 
       // 位图按显示尺寸分配，保证任意缩放档位下像素密度都与屏幕一致。
-      const bitmapWidth = Math.max(1, Math.round(ARCADE_WIDTH * cssScale * dpr))
-      const bitmapHeight = Math.max(1, Math.round(ARCADE_HEIGHT * cssScale * dpr))
+      const bitmapWidth = Math.max(1, Math.round(BUILTIN_WIDTH * cssScale * dpr))
+      const bitmapHeight = Math.max(1, Math.round(BUILTIN_HEIGHT * cssScale * dpr))
       if (canvas.width !== bitmapWidth || canvas.height !== bitmapHeight) {
         canvas.width = bitmapWidth
         canvas.height = bitmapHeight
@@ -76,8 +76,8 @@ export const ArcadeCanvasHost = ({
     }
     syncCanvasSize()
 
-    const game = createArcadeGame(gameId)
-    const input: ArcadeInputState = { keys: new Set(), pressedKeys: new Set() }
+    const game = createBuiltinGame(gameId)
+    const input: BuiltinInputState = { keys: new Set(), pressedKeys: new Set() }
     let finished = false
     let rafId = 0
     let lastFrameAt = performance.now()

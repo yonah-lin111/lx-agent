@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest"
-import { createArcadeGame } from "@/features/arcade/games"
-import type { ArcadeGameId, ArcadeInputState } from "@/features/arcade/types"
+import { createBuiltinGame } from "@/features/game/builtin/games"
+import type { BuiltinGameId, BuiltinInputState } from "@/features/game/builtin/types"
 
 // 16.7ms 一帧的输入快照。
-const createInput = (): ArcadeInputState => ({ keys: new Set(), pressedKeys: new Set() })
+const createInput = (): BuiltinInputState => ({ keys: new Set(), pressedKeys: new Set() })
 
 const runFrames = (
-  gameId: ArcadeGameId,
+  gameId: BuiltinGameId,
   frames: number,
-  mutate?: (input: ArcadeInputState, frame: number) => void,
-): ReturnType<typeof createArcadeGame> => {
-  const game = createArcadeGame(gameId)
+  mutate?: (input: BuiltinInputState, frame: number) => void,
+): ReturnType<typeof createBuiltinGame> => {
+  const game = createBuiltinGame(gameId)
   const input = createInput()
   for (let frame = 0; frame < frames; frame += 1) {
     input.pressedKeys.clear()
@@ -21,10 +21,10 @@ const runFrames = (
   return game
 }
 
-describe("彩蛋游戏运行时冒烟测试", () => {
+describe("内置游戏运行时冒烟测试", () => {
   it("三款游戏都能创建并处于未结束状态", () => {
     for (const gameId of ["tetris", "dodge", "cake"] as const) {
-      const game = createArcadeGame(gameId)
+      const game = createBuiltinGame(gameId)
       expect(game.getScore()).toBe(0)
       expect(game.isFinished()).toBe(false)
     }
@@ -59,7 +59,7 @@ describe("彩蛋游戏运行时冒烟测试", () => {
   })
 
   it("叠蛋糕：首次落层必然命中并计分（基座足够宽）", () => {
-    const game = createArcadeGame("cake")
+    const game = createBuiltinGame("cake")
     const input = createInput()
 
     input.pressedKeys.add("Space")
@@ -74,7 +74,7 @@ describe("彩蛋游戏运行时冒烟测试", () => {
   })
 
   it("叠蛋糕：连续落层会因错位累积而结束，分数有限", () => {
-    const game = createArcadeGame("cake")
+    const game = createBuiltinGame("cake")
     const input = createInput()
 
     for (let frame = 0; frame < 2000; frame += 1) {

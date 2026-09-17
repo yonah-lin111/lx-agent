@@ -7,6 +7,7 @@ import { LxInput } from "@/components/ui/LxInput"
 import { LxMenu } from "@/components/ui/LxMenu"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxModal } from "@/components/ui/LxModal"
+import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { formatPlayedAt, formatRomSize } from "@/features/game/utils"
 import { useTranslation } from "@/i18n"
@@ -70,30 +71,33 @@ export const GameCard = ({
       <div className="game-card flex min-w-0 flex-col gap-2 rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-4 transition-colors hover:border-[var(--color-theme-border-strong)] hover:bg-[var(--color-theme-surface-hover)]">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <Gamepad2 className="game-card-icon h-5 w-5 shrink-0 text-emerald-400" />
-          <LxTooltip
-            closeOnOutsideClick
-            content={
-              isConfirmingRemove
-                ? t("game.remove.description", { title: entry.title })
-                : t("game.card.more")
-            }
-            open={isConfirmingRemove ? true : undefined}
-            placement="top"
-            title={isConfirmingRemove ? t("game.remove.title") : undefined}
-            onCancel={() => setIsConfirmingRemove(false)}
-            onConfirm={isConfirmingRemove ? () => void handleRemoveConfirm() : undefined}
-          >
-            <button
-              ref={menuButtonRef}
-              type="button"
-              data-variant="ghost"
-              aria-label={t("game.card.more")}
-              className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-[4px] text-[var(--color-theme-text-muted)] transition-colors hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
-              onClick={handleOpenMenu}
+          <div className="flex min-w-0 shrink-0 items-center gap-1.5">
+            <LxTag size="small">{t("game.imported.tag")}</LxTag>
+            <LxTooltip
+              closeOnOutsideClick
+              content={
+                isConfirmingRemove
+                  ? t("game.remove.description", { title: entry.title })
+                  : t("game.card.more")
+              }
+              open={isConfirmingRemove ? true : undefined}
+              placement="top"
+              title={isConfirmingRemove ? t("game.remove.title") : undefined}
+              onCancel={() => setIsConfirmingRemove(false)}
+              onConfirm={isConfirmingRemove ? () => void handleRemoveConfirm() : undefined}
             >
-              <Ellipsis className="h-4 w-4" />
-            </button>
-          </LxTooltip>
+              <button
+                ref={menuButtonRef}
+                type="button"
+                data-variant="ghost"
+                aria-label={t("game.card.more")}
+                className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-[4px] text-[var(--color-theme-text-muted)] transition-colors hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
+                onClick={handleOpenMenu}
+              >
+                <Ellipsis className="h-4 w-4" />
+              </button>
+            </LxTooltip>
+          </div>
         </div>
 
         <button

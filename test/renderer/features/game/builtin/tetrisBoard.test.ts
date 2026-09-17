@@ -14,14 +14,14 @@ import {
   TETRIS_ROWS,
   type TetrisBoard,
   type TetrisPiece,
-} from "@/features/arcade/games/tetris/board"
+} from "@/features/game/builtin/games/tetris/board"
 import {
   getTetrominoOffsets,
   rotateClockwise,
   TETROMINO_KINDS,
   TETROMINO_ROTATIONS,
-} from "@/features/arcade/games/tetris/pieces"
-import { createSeededRandom } from "@/features/arcade/utils"
+} from "@/features/game/builtin/games/tetris/pieces"
+import { createSeededRandom } from "@/features/game/builtin/utils"
 
 describe("俄罗斯方块盘面规则", () => {
   it("7-bag：每袋含全部 7 种方块且不重复", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { ARCADE_WIDTH } from "@/features/arcade/constants"
+import { BUILTIN_WIDTH } from "@/features/game/builtin/constants"
 import {
   CAKE_BASE_WIDTH,
   CAKE_MAX_SLIDE_SPEED,
@@ -10,9 +10,9 @@ import {
   getCakeSlideBounds,
   getCakeSlideSpeed,
   resolveCakeDrop,
-} from "@/features/arcade/games/cake/world"
+} from "@/features/game/builtin/games/cake/world"
 
-const base = { x: (ARCADE_WIDTH - CAKE_BASE_WIDTH) / 2, width: CAKE_BASE_WIDTH }
+const base = { x: (BUILTIN_WIDTH - CAKE_BASE_WIDTH) / 2, width: CAKE_BASE_WIDTH }
 
 describe("叠蛋糕世界规则", () => {
   it("完美对齐：吸附到下层并保持宽度，不产生切边", () => {
@@ -60,14 +60,14 @@ describe("叠蛋糕世界规则", () => {
   })
 
   it("摆动区间保证整层留在屏幕内且中心被钳制", () => {
-    const bounds = getCakeSlideBounds(200, ARCADE_WIDTH, 36)
+    const bounds = getCakeSlideBounds(200, BUILTIN_WIDTH, 36)
     expect(bounds.min).toBe(136)
-    expect(bounds.max).toBe(ARCADE_WIDTH - 136)
+    expect(bounds.max).toBe(BUILTIN_WIDTH - 136)
     expect(clampCakeSlideCenter(0, bounds)).toBe(bounds.min)
-    expect(clampCakeSlideCenter(ARCADE_WIDTH * 2, bounds)).toBe(bounds.max)
+    expect(clampCakeSlideCenter(BUILTIN_WIDTH * 2, bounds)).toBe(bounds.max)
 
     // 宽度超过可用空间时区间不会反转
-    const wide = getCakeSlideBounds(ARCADE_WIDTH + 400, ARCADE_WIDTH, 36)
+    const wide = getCakeSlideBounds(BUILTIN_WIDTH + 400, BUILTIN_WIDTH, 36)
     expect(wide.max).toBeGreaterThanOrEqual(wide.min)
   })
 })

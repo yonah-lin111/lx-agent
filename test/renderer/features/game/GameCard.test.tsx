@@ -34,6 +34,7 @@ describe("GameCard", () => {
 
     expect(screen.getByText("口袋测试")).toBeDefined()
     expect(screen.getByText(/512.0 KB · Last played/)).toBeDefined()
+    expect(screen.getByText("Imported")).toBeDefined()
   })
 
   it("点击卡片主体触发播放", () => {

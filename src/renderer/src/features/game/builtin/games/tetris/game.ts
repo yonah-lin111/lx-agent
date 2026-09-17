@@ -1,5 +1,5 @@
-import { ARCADE_HEIGHT, ARCADE_WIDTH } from "../../constants"
-import type { ArcadeGame, ArcadeInputState, ArcadePalette } from "../../types"
+import { BUILTIN_HEIGHT, BUILTIN_WIDTH } from "../../constants"
+import type { BuiltinGame, BuiltinInputState, BuiltinPalette } from "../../types"
 import { createSeededRandom, roundRectPath } from "../../utils"
 import {
   canPlaceTetrisPiece,
@@ -56,7 +56,7 @@ const LINE_CLEAR_FLASH_MS = 220
 /**
  * 方块坠落：堆叠、消行、等级加速的经典俄罗斯方块。
  */
-export const createTetrisGame = (): ArcadeGame => {
+export const createTetrisGame = (): BuiltinGame => {
   const random = createSeededRandom(Math.floor(Math.random() * 0x7fffffff))
 
   let board: TetrisBoard = createTetrisBoard()
@@ -157,7 +157,7 @@ export const createTetrisGame = (): ArcadeGame => {
 
   const drawBlock = (
     ctx: CanvasRenderingContext2D,
-    palette: ArcadePalette,
+    palette: BuiltinPalette,
     left: number,
     top: number,
     size: number,
@@ -183,7 +183,7 @@ export const createTetrisGame = (): ArcadeGame => {
     ctx.globalAlpha = 1
   }
 
-  const drawPlayfield = (ctx: CanvasRenderingContext2D, palette: ArcadePalette): void => {
+  const drawPlayfield = (ctx: CanvasRenderingContext2D, palette: BuiltinPalette): void => {
     ctx.fillStyle = palette.pixel ? "#101018" : "rgba(255, 255, 255, 0.03)"
     ctx.fillRect(BOARD_LEFT, BOARD_TOP, BOARD_PIXEL_WIDTH, BOARD_PIXEL_HEIGHT)
 
@@ -209,7 +209,7 @@ export const createTetrisGame = (): ArcadeGame => {
     ctx.strokeRect(BOARD_LEFT - 1, BOARD_TOP - 1, BOARD_PIXEL_WIDTH + 2, BOARD_PIXEL_HEIGHT + 2)
   }
 
-  const drawNextPreview = (ctx: CanvasRenderingContext2D, palette: ArcadePalette): void => {
+  const drawNextPreview = (ctx: CanvasRenderingContext2D, palette: BuiltinPalette): void => {
     const boxSize = PREVIEW_CELL * 4 + 16
     ctx.strokeStyle = palette.grid
     ctx.lineWidth = 1
@@ -240,7 +240,7 @@ export const createTetrisGame = (): ArcadeGame => {
     }
   }
 
-  const drawSidePanel = (ctx: CanvasRenderingContext2D, palette: ArcadePalette): void => {
+  const drawSidePanel = (ctx: CanvasRenderingContext2D, palette: BuiltinPalette): void => {
     ctx.textBaseline = "middle"
     ctx.textAlign = "left"
 
@@ -263,7 +263,7 @@ export const createTetrisGame = (): ArcadeGame => {
   spawnPiece()
 
   return {
-    update: (dt: number, input: ArcadeInputState): void => {
+    update: (dt: number, input: BuiltinInputState): void => {
       if (finished) return
       elapsed += dt
 
@@ -302,10 +302,10 @@ export const createTetrisGame = (): ArcadeGame => {
 
     isFinished: (): boolean => finished,
 
-    render: (ctx: CanvasRenderingContext2D, palette: ArcadePalette): void => {
+    render: (ctx: CanvasRenderingContext2D, palette: BuiltinPalette): void => {
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.fillStyle = palette.background
-      ctx.fillRect(0, 0, ARCADE_WIDTH, ARCADE_HEIGHT)
+      ctx.fillRect(0, 0, BUILTIN_WIDTH, BUILTIN_HEIGHT)
 
       drawPlayfield(ctx, palette)
 
