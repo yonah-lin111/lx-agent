@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
+import { pathToFileURL } from "node:url"
 import { ensureWorktreeNodeModules } from "./setupWorktreeNodeModules.mjs"
+
+const require = createRequire(import.meta.url)
 
 const nativeModules = [
   {
@@ -33,15 +37,31 @@ const fail = (message) => {
 }
 
 /**
+ * 组装子进程参数：Windows 下 .cmd/.bat 不能直接 spawn（Node 安全修复后返回 EINVAL），
+ * 必须经 shell 执行；本脚本传入的参数都是无空格的字面量，可安全交由 shell 拼接。
+ */
+export const resolveSpawnSpec = (command, args, platform = process.platform) =>
+  platform === "win32" && /\.(cmd|bat)$/i.test(command)
+    ? { file: command, args, shell: true }
+    : { file: command, args, shell: false }
+
+/**
  * 执行子命令。
  */
-const run = (command, args, options = {}) =>
-  spawnSync(command, args, {
+const run = (command, args, options = {}) => {
+  const spec = resolveSpawnSpec(command, args)
+  return spawnSync(spec.file, spec.args, {
     cwd: process.cwd(),
     env: rebuildEnv,
     stdio: "inherit",
+    shell: spec.shell,
     ...options,
   })
+}
+
+// electron 包在 Node 环境下导出可执行文件路径：直接 spawn 该可执行文件，避免经 pnpm(.cmd)
+// 转发，也避免带空格的 `-e` 内联脚本被 shell 拆成多个参数。
+const resolveElectronBinary = () => require("electron")
 
 /**
  * 探测原生模块是否适配当前目标运行时。
@@ -52,7 +72,7 @@ const canLoadNativeModule = (probeScript) => {
   }
 
   return (
-    run(pnpmCommand, ["exec", "electron", "-e", probeScript], {
+    run(resolveElectronBinary(), ["-e", probeScript], {
       env: electronProbeEnv,
       stdio: "ignore",
     }).status === 0
@@ -85,25 +105,34 @@ const rebuildNativeModules = () => {
   ])
 }
 
-if (!supportedTargets.has(target)) {
-  fail("用法: node scripts/rebuildNativeIfNeeded.mjs <electron|node>")
+/**
+ * 入口：工作区 node_modules 不可用时先复用主仓库安装，再按需重建原生模块。
+ */
+export const main = () => {
+  if (!supportedTargets.has(target)) {
+    fail("用法: node scripts/rebuildNativeIfNeeded.mjs <electron|node>")
+  }
+
+  // 工作区 node_modules 缺失/为空时，先复用主仓库安装，避免探测直接失败。
+  const setupResult = ensureWorktreeNodeModules()
+  if (!setupResult.ok) fail(setupResult.message)
+  if (setupResult.message) console.log(setupResult.message)
+
+  if (allNativeModulesMatch()) {
+    console.log(
+      `Native modules (${nativeModules.map((mod) => mod.name).join(", ")}) already match ${target} runtime; skip rebuild.`,
+    )
+    return
+  }
+
+  console.log(`Native modules do not match ${target} runtime; rebuilding...`)
+  const rebuildResult = rebuildNativeModules()
+
+  if (rebuildResult.status !== 0) {
+    process.exit(rebuildResult.status ?? 1)
+  }
 }
 
-// 工作区 node_modules 缺失/为空时，先复用主仓库安装，避免 `pnpm exec electron` 探测失败。
-const setupResult = ensureWorktreeNodeModules()
-if (!setupResult.ok) fail(setupResult.message)
-if (setupResult.message) console.log(setupResult.message)
-
-if (allNativeModulesMatch()) {
-  console.log(
-    `Native modules (${nativeModules.map((mod) => mod.name).join(", ")}) already match ${target} runtime; skip rebuild.`,
-  )
-  process.exit(0)
-}
-
-console.log(`Native modules do not match ${target} runtime; rebuilding...`)
-const rebuildResult = rebuildNativeModules()
-
-if (rebuildResult.status !== 0) {
-  process.exit(rebuildResult.status ?? 1)
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
 }
