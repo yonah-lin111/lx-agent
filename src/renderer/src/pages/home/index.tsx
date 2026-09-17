@@ -1,11 +1,12 @@
 import { useSearchParams } from "react-router-dom"
 import { AppIndexDashboard } from "@/features/app-index"
+import { GameDashboard } from "@/features/game"
 import { ScheduleDashboard } from "@/features/schedule"
 import { UsageDashboard } from "@/features/usage"
 import { HOME_VIEW_QUERY_KEY, parseHomeView } from "@/lib/homeView"
 
 /**
- * 渲染主页容器：按查询参数切换索引 / 日程 / 用量统计视图（对齐设置页 section 切换模式）。
+ * 渲染主页容器：按查询参数切换索引 / 日程 / 用量统计 / 游戏视图（对齐设置页 section 切换模式）。
  */
 export const HomePage = (): React.JSX.Element => {
   const [searchParams] = useSearchParams()
@@ -14,6 +15,7 @@ export const HomePage = (): React.JSX.Element => {
   const renderView = (): React.JSX.Element => {
     if (view === "schedule") return <ScheduleDashboard />
     if (view === "usage") return <UsageDashboard />
+    if (view === "game") return <GameDashboard />
     return <AppIndexDashboard />
   }
 

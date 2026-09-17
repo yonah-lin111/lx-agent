@@ -58,6 +58,20 @@ describe("HomeLeftSideBar", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/")
   })
 
+  it("view=game 时高亮游戏项，点击游戏项跳转到游戏视图", () => {
+    mockParams.value = new URLSearchParams("view=game")
+    render(<HomeLeftSideBar isCollapsed={false} />)
+
+    const gameItem = screen.getByRole("button", { name: /game|游戏/i })
+    expect(gameItem.getAttribute("aria-current")).toBe("page")
+
+    mockParams.value = new URLSearchParams()
+    cleanup()
+    render(<HomeLeftSideBar isCollapsed={false} />)
+    fireEvent.click(screen.getByRole("button", { name: /game|游戏/i }))
+    expect(mockNavigate).toHaveBeenCalledWith("/?view=game")
+  })
+
   it("view=usage 时高亮用量项，点击索引回到根路径", () => {
     mockParams.value = new URLSearchParams("view=usage")
     render(<HomeLeftSideBar isCollapsed={false} />)

@@ -12,6 +12,7 @@ export const home = {
     projectsDesc: "Manage prompts and project assets",
     scheduleDesc: "Plan and track daily tasks",
     usageDesc: "Token, cost and request details",
+    gameDesc: "Import and play local GBA ROMs",
     designDesc: "Preview agent-generated frontends",
     openclawDesc: "Dispatch tasks to your agent team",
     uiDesc: "Browse the shared component library",

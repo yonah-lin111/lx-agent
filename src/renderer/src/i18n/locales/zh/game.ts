@@ -1,0 +1,51 @@
+export const game = {
+  title: "游戏",
+  subtitle: "导入本地 GBA ROM，模拟器离线运行，存档保存在本机应用数据目录。",
+  import: "导入游戏",
+  importing: "导入中…",
+  loading: "加载游戏列表…",
+  empty: "还没有游戏",
+  emptyHint: "点击「导入游戏」选择 .gba 文件，单个文件不超过 64MB；重复导入同一游戏不会新建卡片。",
+  importResult: {
+    imported: "已导入 {{count}} 个游戏",
+    duplicated: "「{{title}}」已存在，未重复导入",
+    invalid: "「{{file}}」导入失败：{{reason}}",
+  },
+  invalidReason: {
+    unsupportedExtension: "仅支持 .gba 文件",
+    tooLarge: "文件超过 64MB",
+    unreadable: "文件无法读取",
+  },
+  card: {
+    more: "更多操作",
+    rename: "重命名",
+    remove: "删除",
+    neverPlayed: "尚未游玩",
+    lastPlayed: "最近游玩 {{time}}",
+  },
+  rename: {
+    title: "重命名游戏",
+    placeholder: "输入卡片标题",
+    confirm: "保存",
+    cancel: "取消",
+  },
+  remove: {
+    title: "删除游戏",
+    description: "将删除「{{title}}」及其存档，此操作不可撤销。",
+    success: "已删除「{{title}}」",
+  },
+  stage: {
+    loading: "模拟器加载中…",
+    error: "模拟器加载失败",
+    retry: "重试",
+    back: "返回游戏列表",
+    exitHint: "ESC 退出",
+  },
+  error: {
+    listFailed: "读取游戏列表失败",
+    importFailed: "导入失败",
+    renameFailed: "重命名失败",
+    removeFailed: "删除失败",
+    saveFailed: "存档写入失败",
+  },
+}

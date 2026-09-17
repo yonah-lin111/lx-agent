@@ -158,7 +158,9 @@ export const HeaderSideBar = ({
         ? "home.schedule"
         : homeView === "usage"
           ? "usage.title"
-          : "home.index.label"
+          : homeView === "game"
+            ? "game.title"
+            : "home.index.label"
     breadcrumbParts.push(t(labelKey))
   }
   if (pathname === PAGE_ROUTES.settings) {

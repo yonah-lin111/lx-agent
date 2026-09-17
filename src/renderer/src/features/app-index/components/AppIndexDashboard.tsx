@@ -5,6 +5,7 @@ import {
   CalendarCheck,
   Compass,
   Component,
+  Gamepad2,
   type LucideIcon,
   MessageSquarePlus,
   Palette,
@@ -70,6 +71,14 @@ const QUICK_ENTRIES: QuickEntry[] = [
     icon: BarChart3,
     iconClassName: "text-emerald-400",
     path: `${PAGE_ROUTES.home}?${HOME_VIEW_QUERY_KEY}=usage`,
+  },
+  {
+    id: "game",
+    labelKey: "game.title",
+    descriptionKey: "home.index.gameDesc",
+    icon: Gamepad2,
+    iconClassName: "text-amber-400",
+    path: `${PAGE_ROUTES.home}?${HOME_VIEW_QUERY_KEY}=game`,
   },
   {
     id: "design",

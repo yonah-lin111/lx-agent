@@ -19,6 +19,9 @@ vi.mock("@/features/usage", () => ({
 vi.mock("@/features/schedule", () => ({
   ScheduleDashboard: (): React.JSX.Element => <div>schedule-view</div>,
 }))
+vi.mock("@/features/game", () => ({
+  GameDashboard: (): React.JSX.Element => <div>game-view</div>,
+}))
 
 beforeEach(() => {
   mockParams.value = new URLSearchParams()
@@ -48,6 +51,15 @@ describe("HomePage", () => {
     render(<HomePage />)
     expect(screen.getByText("schedule-view")).toBeDefined()
     expect(screen.queryByText("index-view")).toBeNull()
+    expect(screen.queryByText("usage-view")).toBeNull()
+  })
+
+  it("view=game 时渲染游戏组件（不切换路由）", () => {
+    mockParams.value = new URLSearchParams("view=game")
+    render(<HomePage />)
+    expect(screen.getByText("game-view")).toBeDefined()
+    expect(screen.queryByText("index-view")).toBeNull()
+    expect(screen.queryByText("schedule-view")).toBeNull()
     expect(screen.queryByText("usage-view")).toBeNull()
   })
 })
