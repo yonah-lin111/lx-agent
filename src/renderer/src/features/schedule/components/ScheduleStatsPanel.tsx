@@ -60,9 +60,9 @@ export const ScheduleStatsPanel = ({
 }: ScheduleStatsPanelProps): React.JSX.Element => {
   const { t } = useTranslation()
   const theme = useAppThemeValue()
-  // Minecraft 像素主题用直角柱形，其余主题保留顶部圆角。
+  // 像素主题用直角柱形，其余主题保留顶部圆角。
   const barRadius: [number, number, number, number] =
-    theme === "minecraft" ? [0, 0, 0, 0] : [3, 3, 0, 0]
+    theme === "pixel" ? [0, 0, 0, 0] : [3, 3, 0, 0]
 
   const completedCount = items.filter((item) => item.completed).length
   const pendingCount = items.length - completedCount

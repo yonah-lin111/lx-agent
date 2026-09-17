@@ -175,8 +175,8 @@ export const HeaderSideBar = ({
   const { theme, setTheme } = useAppTheme()
 
   const THEME_OPTIONS: { id: AppTheme; label: string }[] = [
-    { id: "default", label: "Default" },
-    { id: "minecraft", label: "Minecraft" },
+    { id: "default", label: t("header.themeDefault") },
+    { id: "pixel", label: t("header.themePixel") },
   ]
 
   return (

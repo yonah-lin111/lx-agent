@@ -22,9 +22,9 @@ export const UsageModelDistributionChart = ({
 }: UsageModelDistributionChartProps): React.JSX.Element => {
   const { t } = useTranslation()
   const theme = useAppThemeValue()
-  // Minecraft 像素主题用直角柱形，其余主题保留右侧圆角。
+  // 像素主题用直角柱形，其余主题保留右侧圆角。
   const barRadius: [number, number, number, number] =
-    theme === "minecraft" ? [0, 0, 0, 0] : [0, 3, 3, 0]
+    theme === "pixel" ? [0, 0, 0, 0] : [0, 3, 3, 0]
 
   const visibleStats = useMemo(
     () => modelStats.filter((stat) => stat.totalTokens > 0),

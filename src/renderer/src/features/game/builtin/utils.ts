@@ -38,7 +38,7 @@ export const roundRectPath = (
   ctx.closePath()
 }
 
-// 绘制像素方块（Minecraft 主题的直角描边单元）。
+// 绘制像素方块（像素主题的直角描边单元）。
 export const pixelRect = (
   ctx: CanvasRenderingContext2D,
   x: number,

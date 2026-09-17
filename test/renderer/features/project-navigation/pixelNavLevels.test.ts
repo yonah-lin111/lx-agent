@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
-const minecraftCss = readFileSync(
+const pixelCss = readFileSync(
   fileURLToPath(
-    new URL("../../../../src/renderer/src/styles/themes/minecraft/index.css", import.meta.url),
+    new URL("../../../../src/renderer/src/styles/themes/pixel/index.css", import.meta.url),
   ),
   "utf8",
 )
@@ -12,9 +12,9 @@ const minecraftCss = readFileSync(
 describe("我的世界主题导航层级词表", () => {
   it("三级层级只认数字 data-item-level，临时提示词改用 data-item-variant", () => {
     for (const level of ["1", "2", "3"]) {
-      expect(minecraftCss).toContain(`[data-item-level="${level}"]`)
+      expect(pixelCss).toContain(`[data-item-level="${level}"]`)
     }
-    expect(minecraftCss).toContain('[data-item-variant="temp-prompt"]')
+    expect(pixelCss).toContain('[data-item-variant="temp-prompt"]')
 
     for (const legacy of [
       '[data-item-level="project"]',
@@ -23,34 +23,34 @@ describe("我的世界主题导航层级词表", () => {
       '[data-item-level="temp-prompt"]',
       '[data-item-level="tab"]',
     ]) {
-      expect(minecraftCss).not.toContain(legacy)
+      expect(pixelCss).not.toContain(legacy)
     }
   })
 
   it("不再使用按图标兜底的分组件选择器", () => {
-    expect(minecraftCss).not.toMatch(/:has\(\s*svg\.(text-sky-400|text-amber-400|lucide-file)/)
+    expect(pixelCss).not.toMatch(/:has\(\s*svg\.(text-sky-400|text-amber-400|lucide-file)/)
   })
 
   it("ghost 变体不被主题强制浮雕、边框与文字色", () => {
-    expect(minecraftCss).toContain('.lx-tag:not([data-variant="ghost"])')
-    expect(minecraftCss).toMatch(
+    expect(pixelCss).toContain('.lx-tag:not([data-variant="ghost"])')
+    expect(pixelCss).toMatch(
       /button:not\(\[role="option"\]\):not\(\.agent-tool-diff-toggle\):not\(\[data-variant="ghost"\]\)/,
     )
-    expect(minecraftCss).toMatch(
+    expect(pixelCss).toMatch(
       /\[role="button"\]:not\(\[role="option"\]\):not\(\.agent-tool-diff-toggle\):not\(\[data-variant="ghost"\]\)/,
     )
-    expect(minecraftCss).toContain('.font-semibold:not([data-variant="ghost"])')
-    expect(minecraftCss).toMatch(/\.git-status-item:not\(\[data-variant="ghost"\]\)/)
-    expect(minecraftCss).toMatch(
+    expect(pixelCss).toContain('.font-semibold:not([data-variant="ghost"])')
+    expect(pixelCss).toMatch(/\.git-status-item:not\(\[data-variant="ghost"\]\)/)
+    expect(pixelCss).toMatch(
       /\.git-status-item\[data-unimported="true"\]:not\(\[data-variant="ghost"\]\)/,
     )
   })
 
   it("solid LxTag 对齐按钮级浮雕，高亮态保持凸起不凹陷", () => {
     const readBlock = (selector: string): string => {
-      const start = minecraftCss.indexOf(selector)
+      const start = pixelCss.indexOf(selector)
       expect(start).toBeGreaterThanOrEqual(0)
-      return minecraftCss.slice(start, minecraftCss.indexOf("}", start))
+      return pixelCss.slice(start, pixelCss.indexOf("}", start))
     }
 
     const baseBlock = readBlock('.lx-tag:not([data-variant="ghost"])')

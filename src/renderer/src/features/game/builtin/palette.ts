@@ -21,7 +21,7 @@ const DEFAULT_PALETTE: BuiltinPalette = {
   radius: 8,
 }
 
-const MINECRAFT_PALETTE: BuiltinPalette = {
+const PIXEL_PALETTE: BuiltinPalette = {
   background: "#141419",
   backgroundAlt: "#1b1b26",
   grid: "rgba(255, 255, 255, 0.07)",
@@ -45,4 +45,4 @@ const MINECRAFT_PALETTE: BuiltinPalette = {
  * 按当前 app 主题返回游戏色板。
  */
 export const getBuiltinPalette = (theme: AppTheme): BuiltinPalette =>
-  theme === "minecraft" ? MINECRAFT_PALETTE : DEFAULT_PALETTE
+  theme === "pixel" ? PIXEL_PALETTE : DEFAULT_PALETTE

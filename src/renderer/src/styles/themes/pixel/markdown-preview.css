@@ -1,10 +1,10 @@
 /* ========================================================
- * Minecraft 主题 - Markdown 预览区魔改（HTML 渲染树）
- * 特征：黑曜石/深板岩暗底、硬核 Minecraft 3D 浮雕凹凸、矿石/附魔书高光色阶
+ * 像素主题 - Markdown 预览区魔改（HTML 渲染树）
+ * 特征：黑曜石/深板岩暗底、硬核像素 3D 浮雕凹凸、矿石/附魔书高光色阶
  * ======================================================== */
 
 /* 1. 基础容器与正文排版 */
-[data-theme="minecraft"] .markdown-preview {
+[data-theme="pixel"] .markdown-preview {
   color: #d4d4e4 !important;
   font-family: var(--theme-font-family) !important;
   background-color: transparent !important;
@@ -13,13 +13,13 @@
   box-shadow: none !important;
 }
 
-[data-theme="minecraft"] .markdown-preview p {
+[data-theme="pixel"] .markdown-preview p {
   color: #c4c4d4;
   line-height: 1.7;
 }
 
-/* 2. 标题层级：Minecraft 经典矿物阶梯收敛（钻石蓝 -> 附魔紫 -> 安山岩灰蓝，避免多色杂乱） */
-[data-theme="minecraft"] .markdown-preview h1 {
+/* 2. 标题层级：像素经典矿物阶梯收敛（钻石蓝 -> 附魔紫 -> 安山岩灰蓝，避免多色杂乱） */
+[data-theme="pixel"] .markdown-preview h1 {
   color: #55ffff !important; /* 钻石天蓝 */
   text-shadow: 2px 2px 0px #000000;
   border-bottom: 3px solid #000000 !important;
@@ -28,7 +28,7 @@
   font-weight: 700;
 }
 
-[data-theme="minecraft"] .markdown-preview h2 {
+[data-theme="pixel"] .markdown-preview h2 {
   color: #55ffff !important; /* 钻石天蓝 */
   text-shadow: 2px 2px 0px #000000;
   border-bottom: 2px solid #000000 !important;
@@ -37,64 +37,64 @@
   font-weight: 700;
 }
 
-[data-theme="minecraft"] .markdown-preview h3 {
+[data-theme="pixel"] .markdown-preview h3 {
   color: #c084fc !important; /* 紫水晶/附魔紫 */
   text-shadow: 2px 2px 0px #000000;
   font-weight: 700;
 }
 
-[data-theme="minecraft"] .markdown-preview h4 {
+[data-theme="pixel"] .markdown-preview h4 {
   color: #c084fc !important; /* 紫水晶/附魔紫 */
   text-shadow: 2px 2px 0px #000000;
   font-weight: 700;
 }
 
-[data-theme="minecraft"] .markdown-preview h5 {
+[data-theme="pixel"] .markdown-preview h5 {
   color: #b0b0c8 !important; /* 次级浅灰蓝 */
   text-shadow: 2px 2px 0px #000000;
   font-weight: 700;
 }
 
-[data-theme="minecraft"] .markdown-preview h6 {
+[data-theme="pixel"] .markdown-preview h6 {
   color: #8c8ca0 !important; /* 安山岩中灰 */
   text-shadow: 2px 2px 0px #000000;
   font-weight: 700;
 }
 
 /* 3. 文本行内装饰与链接 */
-[data-theme="minecraft"] .markdown-preview strong,
-[data-theme="minecraft"] .markdown-preview b {
+[data-theme="pixel"] .markdown-preview strong,
+[data-theme="pixel"] .markdown-preview b {
   color: #e6e6f0 !important; /* 柔和浅象牙白，消除纯白眩光 */
   font-weight: 600;
   text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.6);
 }
 
-[data-theme="minecraft"] .markdown-preview em,
-[data-theme="minecraft"] .markdown-preview i {
+[data-theme="pixel"] .markdown-preview em,
+[data-theme="pixel"] .markdown-preview i {
   color: #e2e8f0 !important; /* 浅灰白斜体 */
   font-style: italic;
 }
 
-[data-theme="minecraft"] .markdown-preview del,
-[data-theme="minecraft"] .markdown-preview s {
+[data-theme="pixel"] .markdown-preview del,
+[data-theme="pixel"] .markdown-preview s {
   color: #94a3b8 !important; /* 低调中灰删除线 */
   text-decoration-color: #94a3b8 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview a {
+[data-theme="pixel"] .markdown-preview a {
   color: #55ffff !important; /* 附魔/钻石蓝 */
   text-decoration: none !important;
   border-bottom: 1px dashed rgba(85, 255, 255, 0.4) !important;
   transition: all 150ms ease !important;
 }
 
-[data-theme="minecraft"] .markdown-preview a:hover {
+[data-theme="pixel"] .markdown-preview a:hover {
   color: #77ffff !important;
   border-bottom: 1px solid #77ffff !important;
   text-shadow: 0 0 4px rgba(85, 255, 255, 0.4);
 }
 
-[data-theme="minecraft"] .markdown-preview hr {
+[data-theme="pixel"] .markdown-preview hr {
   border: none !important;
   height: 3px !important;
   background-color: #000000 !important;
@@ -103,7 +103,7 @@
 }
 
 /* 4. 引用块（Blockquote）：重度 3D 浮雕石质凹槽 + 5px 紫水晶边条 */
-[data-theme="minecraft"] .markdown-preview blockquote {
+[data-theme="pixel"] .markdown-preview blockquote {
   border: 2px solid #000000 !important;
   border-left: 5px solid #c084fc !important;
   background-color: #1e1a2c !important;
@@ -117,36 +117,36 @@
 }
 
 /* 5. 列表与有序/无序序号（Lists & Markers） */
-[data-theme="minecraft"] .markdown-preview ul {
+[data-theme="pixel"] .markdown-preview ul {
   list-style-type: disc !important;
   padding-left: 1.8em !important;
 }
 
-[data-theme="minecraft"] .markdown-preview ol {
+[data-theme="pixel"] .markdown-preview ol {
   list-style-type: decimal !important;
   padding-left: 2.4em !important;
 }
 
-[data-theme="minecraft"] .markdown-preview ul > li::marker {
+[data-theme="pixel"] .markdown-preview ul > li::marker {
   color: #55ffff !important; /* 钻石蓝圆点 */
 }
 
-[data-theme="minecraft"] .markdown-preview ol > li::marker {
+[data-theme="pixel"] .markdown-preview ol > li::marker {
   color: #55ffff !important; /* 钻石蓝序号 */
   font-weight: 700;
   text-shadow: 1px 1px 0px #000000;
 }
 
-[data-theme="minecraft"] .markdown-preview li + li {
+[data-theme="pixel"] .markdown-preview li + li {
   margin-top: 0.35em !important;
 }
 
-[data-theme="minecraft"] .markdown-preview li.task-list-item {
+[data-theme="pixel"] .markdown-preview li.task-list-item {
   padding-left: 1.8em !important;
 }
 
 /* 6. 任务清单与复选框（Task List & Checkbox）：重度 3D 像素方格 */
-[data-theme="minecraft"] .markdown-preview .task-list-item-checkbox {
+[data-theme="pixel"] .markdown-preview .task-list-item-checkbox {
   border: 2px solid #000000 !important;
   background-color: #14141d !important;
   box-shadow:
@@ -157,7 +157,7 @@
   cursor: pointer;
 }
 
-[data-theme="minecraft"] .markdown-preview .task-list-item-checkbox:checked {
+[data-theme="pixel"] .markdown-preview .task-list-item-checkbox:checked {
   background-color: #55ff55 !important; /* 经验条荧光绿 */
   border-color: #000000 !important;
   box-shadow:
@@ -167,12 +167,12 @@
     0 0 8px rgba(85, 255, 85, 0.4) !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .task-list-item-checkbox:checked::after {
+[data-theme="pixel"] .markdown-preview .task-list-item-checkbox:checked::after {
   border-color: #000000 !important;
 }
 
 /* 7. 行内代码（Inline Code）：双层 3D 物品框像素槽 */
-[data-theme="minecraft"] .markdown-preview code:not(pre code) {
+[data-theme="pixel"] .markdown-preview code:not(pre code) {
   border: 2px solid #000000 !important;
   background-color: #12121a !important;
   color: #ff7777 !important;
@@ -186,7 +186,7 @@
 }
 
 /* 8. 表格（Table）：重度 3D 物品栏方格与安山岩浮雕槽 */
-[data-theme="minecraft"] .markdown-preview table {
+[data-theme="pixel"] .markdown-preview table {
   border: 2px solid #000000 !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
@@ -198,7 +198,7 @@
   margin: 1.2em 0 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview th {
+[data-theme="pixel"] .markdown-preview th {
   border: 2px solid #000000 !important;
   background-color: #2e2e44 !important;
   color: #ffaa00 !important;
@@ -211,7 +211,7 @@
   padding: 8px 12px !important;
 }
 
-[data-theme="minecraft"] .markdown-preview td {
+[data-theme="pixel"] .markdown-preview td {
   border: 1px solid #000000 !important;
   background-color: #171722 !important;
   color: #e0e0ee !important;
@@ -221,21 +221,21 @@
   padding: 8px 12px !important;
 }
 
-[data-theme="minecraft"] .markdown-preview tr:nth-child(even) td {
+[data-theme="pixel"] .markdown-preview tr:nth-child(even) td {
   background-color: #1d1d2b !important;
 }
 
-[data-theme="minecraft"] .markdown-preview tr:hover td {
+[data-theme="pixel"] .markdown-preview tr:hover td {
   background-color: #28283c !important;
 }
 
 /* 9. 预览区代码块（Code Block）：黑曜石重度 3D 凸起卡片槽（4px 投影） */
-[data-theme="minecraft"] .markdown-preview pre {
+[data-theme="pixel"] .markdown-preview pre {
   border-radius: 0px !important;
   background-color: #12121c !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-block {
+[data-theme="pixel"] .markdown-preview .markdown-code-block {
   border: 2px solid #000000 !important;
   background-color: #12121c !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121c'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
@@ -248,11 +248,11 @@
   margin: 1.2em 0 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview.lx-code-block-wrapper .markdown-code-block {
+[data-theme="pixel"] .markdown-preview.lx-code-block-wrapper .markdown-code-block {
   margin: 0 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-block-header {
+[data-theme="pixel"] .markdown-preview .markdown-code-block-header {
   border-bottom: 2px solid #000000 !important;
   background-color: #242436 !important;
   color: #e6e6f2 !important;
@@ -263,15 +263,15 @@
   font-family: var(--theme-font-family) !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-language {
+[data-theme="pixel"] .markdown-preview .markdown-code-language {
   color: #55ffff !important;
   font-weight: 700;
   text-shadow: 1px 1px 0px #000000;
 }
 
 /* 代码块操作按钮（复制/折叠）：重度 3D 像素按钮 */
-[data-theme="minecraft"] .markdown-preview .markdown-code-actions button,
-[data-theme="minecraft"] .markdown-preview .markdown-template-actions button {
+[data-theme="pixel"] .markdown-preview .markdown-code-actions button,
+[data-theme="pixel"] .markdown-preview .markdown-template-actions button {
   border: 2px solid #000000 !important;
   background-color: #2e2e42 !important;
   color: #c0c0d4 !important;
@@ -282,71 +282,71 @@
   border-radius: 0px !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-actions button:hover,
-[data-theme="minecraft"] .markdown-preview .markdown-template-actions button:hover {
+[data-theme="pixel"] .markdown-preview .markdown-code-actions button:hover,
+[data-theme="pixel"] .markdown-preview .markdown-template-actions button:hover {
   background-color: #3e3e58 !important;
   color: #ffffff !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-actions button:active,
-[data-theme="minecraft"] .markdown-preview .markdown-template-actions button:active {
+[data-theme="pixel"] .markdown-preview .markdown-code-actions button:active,
+[data-theme="pixel"] .markdown-preview .markdown-template-actions button:active {
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.9),
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.2) !important;
 }
 
-/* 10. 代码块语法高亮（HLJS）：Minecraft 经典配色 */
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs {
+/* 10. 代码块语法高亮（HLJS）：像素经典配色 */
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs {
   background: transparent !important;
   color: #f0f0f8 !important;
   font-family: var(--theme-font-family) !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-comment,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-quote {
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-comment,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-quote {
   color: #727288 !important;
   font-style: italic !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-keyword,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-selector-tag,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-meta {
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-keyword,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-selector-tag,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-meta {
   color: #ff5555 !important;
   font-weight: 700;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-string,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-attr,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-template-variable {
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-string,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-attr,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-template-variable {
   color: #55ff55 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-number,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-literal,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-symbol {
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-number,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-literal,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-symbol {
   color: #ffaa00 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-title,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-function,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-property {
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-title,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-function,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-property {
   color: #55ffff !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-built_in,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-type,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-class .hljs-title {
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-built_in,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-type,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-class .hljs-title {
   color: #c084fc !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-variable,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-params {
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-variable,
+[data-theme="pixel"] .markdown-preview .markdown-code-block .hljs-params {
   color: #f0f0f8 !important;
 }
 
 /* 11. 模板块（Template Block）：重度 3D 实体卡片（4px 投影） */
 /* 11. 模板块（Template Block）：重度 3D 实体卡片（4px 投影 + 像素马赛克底纹） */
-[data-theme="minecraft"] .markdown-preview .markdown-template-block {
+[data-theme="pixel"] .markdown-preview .markdown-template-block {
   border: 2px solid #000000 !important;
   background-color: #161420 !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23161420'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%231c1928'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%2312101a'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23191624'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23201d2e'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23181522'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23211e30'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%2314121c'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%231b1727'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%231d1a2a'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23161420'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23242034'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%2314121c'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23100e17'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%231f1b2c'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23181522'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23211e30'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%2328243a'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%232c2740'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230c0a12'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%232c2740'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230c0a12'/%3E%3C/svg%3E") !important;
@@ -361,7 +361,7 @@
   border-radius: 0px !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-template-block-header {
+[data-theme="pixel"] .markdown-preview .markdown-template-block-header {
   border-bottom: 2px solid #000000 !important;
   background-color: #241e34 !important;
   color: #e6e6f2 !important;
@@ -371,7 +371,7 @@
   border-radius: 0px !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-template-block--in-progress {
+[data-theme="pixel"] .markdown-preview .markdown-template-block--in-progress {
   border: 2px solid #000000 !important;
   background-color: #20180d !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2320180d'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23281e10'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231a130a'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23241b0f'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232c2112'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2322190e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232e2313'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231c150c'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23261c10'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23291f11'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2320180d'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23322615'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231c150c'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23161008'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%232a2011'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2322190e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232e2313'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23382b18'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%233e301a'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23120c06'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%233e301a'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23120c06'/%3E%3C/svg%3E") !important;
@@ -383,7 +383,7 @@
     4px 4px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-template-block--done {
+[data-theme="pixel"] .markdown-preview .markdown-template-block--done {
   border: 2px solid #000000 !important;
   background-color: #0e1e14 !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e1e14'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23122619'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230b1810'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23102216'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23152c1d'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%230f2015'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23173020'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%230d1c12'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23112418'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%2313281a'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%230e1e14'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231a3624'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%230d1c12'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%2309140d'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23142a1c'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%230f2015'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23173020'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231e3e29'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2322442d'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23060e09'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2322442d'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23060e09'/%3E%3C/svg%3E") !important;
@@ -395,52 +395,52 @@
     4px 4px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-template-command {
+[data-theme="pixel"] .markdown-preview .markdown-template-command {
   font-weight: 700;
   text-shadow: 1px 1px 0px #000000;
 }
 
-[data-theme="minecraft"]
+[data-theme="pixel"]
   .markdown-preview
   .markdown-template-block[data-template-command="addTemplate"]
   .markdown-template-command {
   color: #55ff55 !important;
 }
 
-[data-theme="minecraft"]
+[data-theme="pixel"]
   .markdown-preview
   .markdown-template-block[data-template-command="bugTemplate"]
   .markdown-template-command {
   color: #ff5555 !important;
 }
 
-[data-theme="minecraft"]
+[data-theme="pixel"]
   .markdown-preview
   .markdown-template-block[data-template-command="refactorTemplate"]
   .markdown-template-command {
   color: #c084fc !important;
 }
 
-[data-theme="minecraft"]
+[data-theme="pixel"]
   .markdown-preview
   .markdown-template-block[data-template-command="commonTemplate"]
   .markdown-template-command {
   color: #55ffff !important;
 }
 
-[data-theme="minecraft"]
+[data-theme="pixel"]
   .markdown-preview
   .markdown-template-block[data-template-command="styleTemplate"]
   .markdown-template-command {
   color: #ff77c2 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-template-title {
+[data-theme="pixel"] .markdown-preview .markdown-template-title {
   color: #ffea88 !important;
   text-shadow: 1px 1px 0px #000000;
 }
 
-[data-theme="minecraft"] .markdown-template-block-header [data-template-status="todo"] {
+[data-theme="pixel"] .markdown-template-block-header [data-template-status="todo"] {
   background-color: #2a2a3a !important;
   color: #a0a0b0 !important;
   border: 2px solid #000000 !important;
@@ -451,7 +451,7 @@
     1px 1px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .markdown-template-block-header [data-template-status="in_progress"] {
+[data-theme="pixel"] .markdown-template-block-header [data-template-status="in_progress"] {
   background-color: #4e3810 !important;
   color: #ffaa00 !important;
   border: 2px solid #000000 !important;
@@ -463,7 +463,7 @@
     0 0 8px rgba(255, 170, 0, 0.35) !important;
 }
 
-[data-theme="minecraft"] .markdown-template-block-header [data-template-status="done"] {
+[data-theme="pixel"] .markdown-template-block-header [data-template-status="done"] {
   background-color: #143e22 !important;
   color: #55ff55 !important;
   border: 2px solid #000000 !important;
@@ -475,14 +475,14 @@
     0 0 8px rgba(85, 255, 85, 0.35) !important;
 }
 
-[data-theme="minecraft"] .markdown-template-comment {
+[data-theme="pixel"] .markdown-template-comment {
   color: #727288 !important;
   font-style: italic;
   font-family: var(--theme-font-family);
 }
 
 /* 10.1 预览区 supple 补充块：青金石/钻石青 3D 像素立体卡片 */
-[data-theme="minecraft"] .markdown-preview .markdown-supple-block {
+[data-theme="pixel"] .markdown-preview .markdown-supple-block {
   margin: 1em 0 !important;
   border: 2px solid #000000 !important;
   background-color: #0c202d !important;
@@ -496,7 +496,7 @@
     4px 4px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-supple-block-header {
+[data-theme="pixel"] .markdown-preview .markdown-supple-block-header {
   border-bottom: 2px solid #000000 !important;
   background-color: #0b2636 !important;
   border-radius: 0px !important;
@@ -504,14 +504,14 @@
   box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25) !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-supple-label {
+[data-theme="pixel"] .markdown-preview .markdown-supple-label {
   color: #bae6fd !important;
   font-weight: bold;
   text-shadow: 1px 1px 0px #000000;
 }
 
 /* 10.2 预览区 log 日志块：海晶石暗青 3D 像素立体卡片 */
-[data-theme="minecraft"] .markdown-preview .markdown-log-block {
+[data-theme="pixel"] .markdown-preview .markdown-log-block {
   margin: 1em 0 !important;
   border: 2px solid #000000 !important;
   background-color: #092623 !important;
@@ -525,7 +525,7 @@
     4px 4px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-log-block-header {
+[data-theme="pixel"] .markdown-preview .markdown-log-block-header {
   border-bottom: 2px solid #000000 !important;
   background-color: #072e2a !important;
   border-radius: 0px !important;
@@ -533,14 +533,14 @@
   box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25) !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-log-label {
+[data-theme="pixel"] .markdown-preview .markdown-log-label {
   color: #99f6e4 !important;
   font-weight: bold;
   text-shadow: 1px 1px 0px #000000;
 }
 
 /* 11. 文件引用标签与 Mention 胶囊：3D 像素立体胶囊 */
-[data-theme="minecraft"] .markdown-preview .markdown-reference {
+[data-theme="pixel"] .markdown-preview .markdown-reference {
   border: 2px solid #000000 !important;
   border-radius: 0px !important;
   box-shadow:
@@ -551,32 +551,32 @@
   font-family: var(--theme-font-family) !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-reference-project {
+[data-theme="pixel"] .markdown-preview .markdown-reference-project {
   background-color: #281e3a !important;
   color: #c4b5fd !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-reference-folder {
+[data-theme="pixel"] .markdown-preview .markdown-reference-folder {
   background-color: #382810 !important;
   color: #fbbf24 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-reference-file {
+[data-theme="pixel"] .markdown-preview .markdown-reference-file {
   background-color: #182c3c !important;
   color: #55ffff !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-reference-image {
+[data-theme="pixel"] .markdown-preview .markdown-reference-image {
   background-color: #381c24 !important;
   color: #ff88aa !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-reference-common {
+[data-theme="pixel"] .markdown-preview .markdown-reference-common {
   background-color: #242434 !important;
   color: #d0d0e0 !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-file-mention-node {
+[data-theme="pixel"] .markdown-preview .markdown-file-mention-node {
   border: 2px solid #000000 !important;
   background-color: #282414 !important;
   color: #fbbf24 !important;
@@ -589,23 +589,23 @@
   padding: 1px 6px !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-file-mention-node:hover {
+[data-theme="pixel"] .markdown-preview .markdown-file-mention-node:hover {
   background-color: #383018 !important;
   color: #ffffff !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-file-mention-node--referenced {
+[data-theme="pixel"] .markdown-preview .markdown-file-mention-node--referenced {
   background-color: #241e34 !important;
   color: #c4b5fd !important;
 }
 
-[data-theme="minecraft"] .markdown-preview .markdown-file-mention-node--referenced:hover {
+[data-theme="pixel"] .markdown-preview .markdown-file-mention-node--referenced:hover {
   background-color: #322848 !important;
   color: #ffffff !important;
 }
 
 /* 12. Mermaid 渲染容器 */
-[data-theme="minecraft"] .markdown-preview .markdown-mermaid {
+[data-theme="pixel"] .markdown-preview .markdown-mermaid {
   border: 2px solid #000000 !important;
   background-color: #14141e !important;
   box-shadow:

@@ -536,7 +536,7 @@ const DateRangePanel = ({
 /**
  * 渲染支持按日 / 按周 / 按月三态、区间双月历与每日角标的日期选择器。
  * popover 形态（默认）经 portal 定位展开；inline 形态直接渲染面板供外层浮层承载。
- * 颜色全部走主题 token，Minecraft 等主题通过 .lx-datepicker-* 类名挂钩覆盖。
+ * 颜色全部走主题 token，像素等主题通过 .lx-datepicker-* 类名挂钩覆盖。
  */
 export const LxDatePicker = (props: LxDatePickerProps): React.JSX.Element => {
   const { t, locale } = useTranslation()

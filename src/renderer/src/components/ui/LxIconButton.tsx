@@ -22,7 +22,7 @@ export type LxIconButtonSize = "small" | "medium" | "large"
 // 图标按钮形状类型。
 export type LxIconButtonShape = "square" | "circle"
 
-// 图标按钮外观变体：solid = 参与主题化（Minecraft 3D 底座）；ghost = 无边框/无底色，主题不得强制浮雕。
+// 图标按钮外观变体：solid = 参与主题化（像素 3D 底座）；ghost = 无边框/无底色，主题不得强制浮雕。
 export type LxIconButtonVariant = "solid" | "ghost"
 
 // 图标按钮内置 Tooltip 配置。

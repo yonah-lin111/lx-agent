@@ -27,7 +27,7 @@ export interface OpenClawTargetSelectProps {
 
 /**
  * OpenClawTargetSelect - 结构、类名及动效完全对齐 AgentModelSelect / LxSelect 的复合选择组件。
- * 默认向上弹出并挂载于 document.body，采用 CSS Token 适配全套主题（包括 Minecraft 像素主题）。
+ * 默认向上弹出并挂载于 document.body，采用 CSS Token 适配全套主题（包括像素主题）。
  */
 export const OpenClawTargetSelect = ({
   offices,

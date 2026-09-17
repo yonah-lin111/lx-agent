@@ -1,7 +1,7 @@
 // 内置游戏标识。
 export type BuiltinGameId = "tetris" | "dodge" | "cake"
 
-// 主题化游戏色板（默认主题霓虹 / Minecraft 像素）。
+// 主题化游戏色板（默认主题霓虹 / 像素主题）。
 export interface BuiltinPalette {
   background: string
   backgroundAlt: string
