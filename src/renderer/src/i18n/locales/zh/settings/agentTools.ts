@@ -121,6 +121,8 @@ export const agentTools = {
   skillsTargetRootLx: "lx 原生目录（.lx/skills）",
   skillsTargetRootAgents: "标准目录（.agents/skills，跨客户端）",
   skillsRenameWarning: '保存后目录将重命名："{{from}}" → "{{to}}"',
+  skillsMetaExpand: "编辑信息",
+  skillsMetaCollapse: "收起信息",
   skillsFiles: "文件",
   skillsFileCreate: "新建文件",
   skillsFileImport: "导入文件",

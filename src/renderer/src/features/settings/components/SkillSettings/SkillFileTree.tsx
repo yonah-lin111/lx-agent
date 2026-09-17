@@ -165,8 +165,8 @@ export const SkillFileTree = ({
   }
 
   return (
-    <div className="settings-item-card flex min-h-0 flex-1 flex-col rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))]">
-      <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] p-2">
+    <div className="flex min-h-0 w-[190px] shrink-0 flex-col border-r border-[var(--color-theme-border,rgba(255,255,255,0.06))]">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] px-2 py-1.5">
         <span className="text-xs font-medium text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
           {t("settings.skillsFiles")} ({entries.length + 1})
         </span>

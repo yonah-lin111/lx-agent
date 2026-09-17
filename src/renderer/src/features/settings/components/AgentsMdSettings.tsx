@@ -1,6 +1,17 @@
 import type { InstructionFileInfo } from "@shared/contracts/agent"
 import type { Project } from "@shared/project"
-import { Check, Copy, FileText, Folder, Globe, Loader2, Lock, TriangleAlert } from "lucide-react"
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  FileText,
+  Folder,
+  Globe,
+  Loader2,
+  Lock,
+  TriangleAlert,
+} from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownEditor } from "@/components/ui/LxMarkdown/LxMarkdownEditor"
@@ -44,6 +55,12 @@ export const AgentsMdSettings = (): React.JSX.Element => {
   const [loadingUser, setLoadingUser] = useState(true)
   const [loadingProjects, setLoadingProjects] = useState<Record<string, boolean>>({})
   const [copiedPath, setCopiedPath] = useState(false)
+  const [chainExpanded, setChainExpanded] = useState(false)
+
+  // 切换 Tab / 项目时收起只读指令链。
+  useEffect(() => {
+    setChainExpanded(false)
+  }, [activeTab, selectedProjectId])
 
   // 1. 初始化：项目列表（仅 filesystem 项目）与用户级指令文件
   useEffect(() => {
@@ -99,8 +116,6 @@ export const AgentsMdSettings = (): React.JSX.Element => {
   const activeDraft = activeTab === "system" ? drafts.user : drafts.projects[selectedProjectId]
   const baseline = activeInfo?.content ?? ""
   const editorValue = activeDraft ?? baseline
-  const isLoading =
-    activeTab === "system" ? loadingUser : Boolean(loadingProjects[selectedProjectId])
 
   // 任一目标存在未保存草稿即视为脏（避免切换 Tab 时静默丢失）
   const isDirty = useMemo(() => {
@@ -185,6 +200,107 @@ export const AgentsMdSettings = (): React.JSX.Element => {
     [projects],
   )
 
+  // 编辑器卡片：头部信息栏 + fallback 提示 + 正文编辑器。
+  const renderEditorCard = (
+    title: string,
+    info: InstructionFileInfo | null,
+    infoLoading: boolean,
+  ): React.JSX.Element => (
+    <div className="settings-item-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))]">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] px-3 py-2">
+        <span className="truncate text-xs font-medium text-[var(--color-theme-text,#ffffff)]">
+          {title}
+        </span>
+        <LxTag size="small" color={info?.exists ? "emerald" : "gray"}>
+          {info?.exists ? t("settings.agentsMdConfigured") : t("settings.agentsMdNotCreated")}
+        </LxTag>
+        {info && info.chain.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setChainExpanded((prev) => !prev)}
+            className={`flex cursor-pointer items-center gap-1 rounded-[6px] border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-300/90 transition-colors hover:bg-amber-500/20 ${
+              chainExpanded ? "text-amber-200" : ""
+            }`}
+          >
+            <Lock className="h-3 w-3 shrink-0" />
+            {t("settings.agentsMdReadonlyChain")} · {info.chain.length}
+            {chainExpanded ? (
+              <ChevronUp className="h-3 w-3 shrink-0" />
+            ) : (
+              <ChevronDown className="h-3 w-3 shrink-0" />
+            )}
+          </button>
+        ) : null}
+        <div className="ml-auto flex min-w-0 items-center gap-1">
+          <span className="truncate font-mono text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+            {info?.path ?? ""}
+          </span>
+          <LxIconButton
+            aria-label={t("common.copy")}
+            title={{
+              content: copiedPath ? t("common.copied") : t("common.copy"),
+              placement: "top",
+            }}
+            onClick={() => info && handleCopyPath(info.path)}
+          >
+            {copiedPath ? <Check className="text-emerald-400" /> : <Copy />}
+          </LxIconButton>
+        </div>
+      </div>
+
+      {/* 只读上级指令链（展开时列出完整路径） */}
+      {info && chainExpanded && info.chain.length > 0 ? (
+        <div className="flex shrink-0 flex-col gap-1 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.01))] px-3 py-1.5">
+          {info.chain.map((entry) => (
+            <div key={entry.path} className="flex items-center gap-1.5">
+              <Lock className="h-3 w-3 shrink-0 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.3))]" />
+              <span className="truncate font-mono text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.45))]">
+                {entry.path}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {info?.fallback ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-amber-500/15 bg-amber-500/[0.07] px-3 py-1.5">
+          <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+          <span className="min-w-0 flex-1 text-xs leading-relaxed text-amber-200/90">
+            {t("settings.agentsMdFallbackHint", { path: info.fallback.path })}
+          </span>
+          <LxIconButton
+            iconOnly={false}
+            icon={<Copy className="h-3.5 w-3.5" />}
+            aria-label={t("settings.agentsMdFallbackCopy")}
+            onClick={handleCopyFallback}
+            className="shrink-0 rounded-[6px] border border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
+          >
+            <span className="text-xs">{t("settings.agentsMdFallbackCopy")}</span>
+          </LxIconButton>
+        </div>
+      ) : null}
+
+      <div className="flex min-h-0 flex-1 flex-col p-3">
+        {infoLoading ? (
+          <div className="flex h-full items-center justify-center gap-1.5 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t("common.loading")}
+          </div>
+        ) : (
+          <LxMarkdownEditor
+            key={editorKey}
+            initialContent={editorValue}
+            onChange={handleDraftChange}
+            onSave={handleEditorSave}
+            isSaved={!isDirty}
+            showSaveStatus
+            showLineNumbers
+          />
+        )}
+      </div>
+    </div>
+  )
+
   const editorKey =
     activeTab === "system" ? "agents-md:user" : `agents-md:project:${selectedProjectId}`
 
@@ -225,31 +341,18 @@ export const AgentsMdSettings = (): React.JSX.Element => {
         ) : null}
       </div>
 
-      {/* 主体两栏布局：左侧目标列表，右侧编辑面板 */}
-      <div className="grid min-h-0 flex-1 gap-3 @[600px]:grid-cols-[240px_minmax(0,1fr)]">
-        {/* 左侧列表 */}
-        <div className="settings-item-card flex min-h-0 flex-col rounded-[6px] border border-white/8 bg-white/[0.02]">
-          {activeTab === "system" ? (
-            <div className="flex min-h-0 flex-1 flex-col p-1.5">
-              <div className="flex flex-col gap-1 rounded-[6px] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.18))] bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] p-2 text-left">
-                <div className="flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-                  <span className="truncate text-xs font-medium text-[var(--color-theme-text,#ffffff)]">
-                    {t("settings.agentsMdGlobalFile")}
-                  </span>
-                  <LxTag size="small" color={userInfo?.exists ? "emerald" : "gray"}>
-                    {userInfo?.exists
-                      ? t("settings.agentsMdConfigured")
-                      : t("settings.agentsMdNotCreated")}
-                  </LxTag>
-                </div>
-                <span className="truncate font-mono text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))]">
-                  {userInfo?.path ?? ""}
-                </span>
-              </div>
+      {/* 主体：系统提示词为单卡片全宽编辑；项目提示词为项目列表 + 编辑器 */}
+      {activeTab === "system" ? (
+        renderEditorCard(t("settings.agentsMdGlobalFile"), userInfo, loadingUser)
+      ) : (
+        <div className="grid min-h-0 flex-1 gap-3 @[640px]:grid-cols-[220px_minmax(0,1fr)]">
+          <div className="settings-item-card flex min-h-0 flex-col rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))]">
+            <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] px-2.5 py-1.5">
+              <span className="text-xs font-medium text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
+                {t("settings.agentsMdProjectTab")} ({projects.length})
+              </span>
             </div>
-          ) : (
-            <div className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto p-1.5">
+            <div className="custom-scrollbar min-h-0 flex-1 space-y-0.5 overflow-y-auto p-1.5">
               {projects.length === 0 ? (
                 <div className="py-8 text-center text-xs text-white/40">
                   {t("settings.agentsMdNoProjects")}
@@ -266,123 +369,50 @@ export const AgentsMdSettings = (): React.JSX.Element => {
                       key={project.id}
                       type="button"
                       onClick={() => setSelectedProjectId(project.id)}
-                      className={`flex w-full flex-col gap-1 rounded-[6px] border p-2 text-left transition-colors cursor-pointer ${
+                      className={`flex w-full items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-left text-xs transition-colors cursor-pointer ${
                         isSelected
-                          ? "border-[var(--color-theme-border-strong,rgba(255,255,255,0.18))] bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
-                          : "border-transparent text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:border-[var(--color-theme-border,rgba(255,255,255,0.06))] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.04))]"
+                          ? "bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
+                          : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.04))]"
                       }`}
                     >
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <Folder className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate text-xs font-medium">{project.name}</span>
-                        {projectDirty ? (
-                          <span
-                            aria-label="Unsaved"
-                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
-                          />
-                        ) : null}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <LxTag size="small" color={info?.exists ? "emerald" : "gray"}>
-                          {info?.exists
-                            ? t("settings.agentsMdConfigured")
-                            : t("settings.agentsMdNotCreated")}
-                        </LxTag>
-                      </div>
+                      <Folder className="h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{project.name}</span>
+                      {projectDirty ? (
+                        <span
+                          aria-label="Unsaved"
+                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+                        />
+                      ) : null}
+                      <LxTag
+                        size="small"
+                        color={info?.exists ? "emerald" : "gray"}
+                        className="shrink-0"
+                      >
+                        {info?.exists
+                          ? t("settings.agentsMdConfigured")
+                          : t("settings.agentsMdNotCreated")}
+                      </LxTag>
                     </button>
                   )
                 })
               )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* 右侧编辑面板 */}
-        <div className="settings-item-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/8 bg-white/[0.02]">
-          {activeTab === "project" && !selectedProject ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-xs text-white/40">
-              <FileText className="h-8 w-8 text-white/20" />
+          {selectedProject ? (
+            renderEditorCard(
+              selectedProject.name,
+              projectInfos[selectedProjectId] ?? null,
+              Boolean(loadingProjects[selectedProjectId]),
+            )
+          ) : (
+            <div className="settings-item-card flex min-h-0 flex-1 flex-col items-center justify-center gap-2 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-6 text-center text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+              <FileText className="h-8 w-8 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.2))]" />
               <span>{t("settings.agentsMdSelectHint")}</span>
             </div>
-          ) : isLoading ? (
-            <div className="flex h-full items-center justify-center gap-1.5 text-xs text-white/40">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t("common.loading")}
-            </div>
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col">
-              {/* 路径与只读上级指令信息带 */}
-              <div className="flex shrink-0 flex-col gap-2 border-b border-white/8 p-3">
-                <div className="flex items-center gap-2">
-                  <span className="shrink-0 text-xs text-white/40">
-                    {t("settings.agentsMdFilePath")}:
-                  </span>
-                  <span className="truncate font-mono text-xs text-white/60">
-                    {activeInfo?.path ?? ""}
-                  </span>
-                  <LxIconButton
-                    aria-label={t("common.copy")}
-                    title={{
-                      content: copiedPath ? t("common.copied") : t("common.copy"),
-                      placement: "top",
-                    }}
-                    onClick={() => activeInfo && handleCopyPath(activeInfo.path)}
-                  >
-                    {copiedPath ? <Check className="text-emerald-400" /> : <Copy />}
-                  </LxIconButton>
-                </div>
-
-                {activeInfo && activeInfo.chain.length > 0 ? (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-white/40">
-                      {t("settings.agentsMdReadonlyChain")}:
-                    </span>
-                    {activeInfo.chain.map((entry) => (
-                      <div key={entry.path} className="flex items-center gap-1.5 pl-1">
-                        <Lock className="h-3 w-3 shrink-0 text-white/30" />
-                        <span className="truncate font-mono text-xs text-white/45">
-                          {entry.path}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                {activeInfo?.fallback ? (
-                  <div className="flex flex-wrap items-center gap-2 rounded-[6px] border border-amber-500/20 bg-amber-500/10 px-2 py-1.5">
-                    <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-                    <span className="min-w-0 flex-1 text-xs leading-relaxed text-amber-200/90">
-                      {t("settings.agentsMdFallbackHint", { path: activeInfo.fallback.path })}
-                    </span>
-                    <LxIconButton
-                      iconOnly={false}
-                      icon={<Copy className="h-3.5 w-3.5" />}
-                      aria-label={t("settings.agentsMdFallbackCopy")}
-                      onClick={handleCopyFallback}
-                      className="shrink-0 rounded-[6px] border border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
-                    >
-                      <span className="text-xs">{t("settings.agentsMdFallbackCopy")}</span>
-                    </LxIconButton>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Markdown 编辑器 */}
-              <div className="flex min-h-0 flex-1 flex-col p-3">
-                <LxMarkdownEditor
-                  key={editorKey}
-                  initialContent={editorValue}
-                  onChange={handleDraftChange}
-                  onSave={handleEditorSave}
-                  isSaved={!isDirty}
-                  showSaveStatus
-                  showLineNumbers
-                />
-              </div>
-            </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   )
 }

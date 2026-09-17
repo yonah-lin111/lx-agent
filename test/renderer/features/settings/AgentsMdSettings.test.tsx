@@ -99,8 +99,11 @@ describe("AgentsMdSettings", () => {
 
     fireEvent.click(screen.getByText("Project Prompt"))
 
-    expect(await screen.findByText(/Read-only Parent Instructions/)).toBeTruthy()
-    expect(screen.getByText("/repo/AGENTS.md")).toBeTruthy()
+    const chainToggle = await screen.findByText(/Read-only Parent Instructions/)
+    expect(chainToggle).toBeTruthy()
+    // 展开只读指令链后列出完整路径
+    fireEvent.click(chainToggle)
+    expect(await screen.findByText("/repo/AGENTS.md")).toBeTruthy()
     expect(screen.getByText(/No AGENTS\.md at the project root/)).toBeTruthy()
 
     fireEvent.click(screen.getByText("Copy Content"))

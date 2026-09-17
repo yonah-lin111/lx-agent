@@ -88,6 +88,7 @@ export const SkillSettings = (): React.JSX.Element => {
   const [contentErrors, setContentErrors] = useState<Record<string, string>>({})
   const [loadingContent, setLoadingContent] = useState(false)
   const [copiedPath, setCopiedPath] = useState(false)
+  const [metaExpanded, setMetaExpanded] = useState(false)
   const [pathModal, setPathModal] = useState<PathModalState | null>(null)
 
   const baselineDisabledRef = useRef<string | null>(null)
@@ -95,6 +96,11 @@ export const SkillSettings = (): React.JSX.Element => {
   const createDraft = useSkillDraftStore((state) => state.createDraft)
   const edits = useSkillDraftStore((state) => state.edits)
   const createMode = createDraft !== null
+
+  // 新建草稿必须展开元数据表单；已有 Skill 默认折叠以留出编辑器空间。
+  useEffect(() => {
+    if (createMode) setMetaExpanded(true)
+  }, [createMode])
 
   // 1. 初始化项目列表（仅 filesystem 项目）并解析默认选中项目
   useEffect(() => {
@@ -692,56 +698,32 @@ export const SkillSettings = (): React.JSX.Element => {
         </div>
       </div>
 
-      {/* 主体两栏布局：左上 Skill 列表、左下文件树、右侧编辑面板 */}
-      <div className="grid min-h-0 flex-1 gap-3 @[700px]:grid-cols-[280px_minmax(0,1fr)]">
-        <div className="flex min-h-0 flex-col gap-3">
-          <SkillListPane
-            skills={filteredSkills}
-            loading={loading}
-            searchQuery={searchQuery}
-            createActive={createMode}
-            createName={createDraft?.meta.name ?? ""}
-            selectedSkillName={selectedSkillName}
-            disabledSkills={disabledSkills}
-            edits={edits}
-            onSearchChange={setSearchQuery}
-            onSelect={handleSelectSkill}
-            onSelectDraft={() => setSelectedSkillName(null)}
-            onCreate={handleBeginCreate}
-            onToggleDisabled={handleToggleDisabled}
-            onDelete={(skill) => void handleDeleteSkill(skill)}
-          />
-
-          {createMode || selectedSkill ? (
-            <SkillFileTree
-              entries={treeEntries}
-              selectedPath={selectedFilePath}
-              skillMdDirty={
-                createMode
-                  ? (createDraft?.files["SKILL.md"] ?? "") !== ""
-                  : activeEdit?.files["SKILL.md"] !== undefined
-              }
-              isLoading={loadingFiles}
-              canImport={!createMode && Boolean(selectedSkill)}
-              onSelect={setSelectedFilePath}
-              onCreateFile={() => setPathModal({ mode: "create", initialValue: "" })}
-              onImport={() => void handleImportFiles()}
-              onRename={(relativePath) =>
-                setPathModal({ mode: "rename", initialValue: relativePath })
-              }
-              onDuplicate={(relativePath) =>
-                setPathModal({ mode: "duplicate", initialValue: suggestCopyPath(relativePath) })
-              }
-              onDelete={handleConfirmDeleteFile}
-            />
-          ) : null}
-        </div>
+      {/* 主体两栏布局：左侧 Skill 列表，右侧编辑面板（文件树内嵌侧栏） */}
+      <div className="grid min-h-0 flex-1 gap-3 @[700px]:grid-cols-[260px_minmax(0,1fr)]">
+        <SkillListPane
+          skills={filteredSkills}
+          loading={loading}
+          searchQuery={searchQuery}
+          createActive={createMode}
+          createName={createDraft?.meta.name ?? ""}
+          selectedSkillName={selectedSkillName}
+          disabledSkills={disabledSkills}
+          edits={edits}
+          onSearchChange={setSearchQuery}
+          onSelect={handleSelectSkill}
+          onSelectDraft={() => setSelectedSkillName(null)}
+          onCreate={handleBeginCreate}
+          onToggleDisabled={handleToggleDisabled}
+          onDelete={(skill) => void handleDeleteSkill(skill)}
+        />
 
         {(createMode && createDraft) || (selectedSkill && activeMeta) ? (
           <SkillEditPanel
             createMode={createMode}
             meta={(createMode && createDraft ? createDraft.meta : activeMeta) as SkillMetaDraft}
             onMetaChange={handleMetaChange}
+            metaExpanded={createMode || metaExpanded}
+            onToggleMeta={() => setMetaExpanded((prev) => !prev)}
             renameWarning={renameWarning}
             targetRoot={createDraft?.targetRoot ?? "lx"}
             onTargetRootChange={(value: SkillTargetRoot) =>
@@ -756,6 +738,29 @@ export const SkillSettings = (): React.JSX.Element => {
             onDeleteSkill={selectedSkill ? () => void handleDeleteSkill(selectedSkill) : null}
             onCopyPath={() => selectedSkill && handleCopyPath(selectedSkill.filePath)}
             copiedPath={copiedPath}
+            fileRail={
+              <SkillFileTree
+                entries={treeEntries}
+                selectedPath={selectedFilePath}
+                skillMdDirty={
+                  createMode
+                    ? (createDraft?.files["SKILL.md"] ?? "") !== ""
+                    : activeEdit?.files["SKILL.md"] !== undefined
+                }
+                isLoading={loadingFiles}
+                canImport={!createMode && Boolean(selectedSkill)}
+                onSelect={setSelectedFilePath}
+                onCreateFile={() => setPathModal({ mode: "create", initialValue: "" })}
+                onImport={() => void handleImportFiles()}
+                onRename={(relativePath) =>
+                  setPathModal({ mode: "rename", initialValue: relativePath })
+                }
+                onDuplicate={(relativePath) =>
+                  setPathModal({ mode: "duplicate", initialValue: suggestCopyPath(relativePath) })
+                }
+                onDelete={handleConfirmDeleteFile}
+              />
+            }
             editorKey={`${activeBaseDir ?? "draft"}::${selectedFilePath}`}
             editorValue={editorValue}
             editorSaved={editorSaved}
