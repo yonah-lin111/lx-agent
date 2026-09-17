@@ -5,7 +5,7 @@ import type { Migration } from "./types"
  * rom_hash（内容 sha256）唯一，作为重复导入去重键；rom_path 指向应用数据目录内的副本。
  */
 export const migration: Migration = {
-  version: 12,
+  version: 13,
   name: "create_game_rom_entry",
   up: (database) => {
     database.exec(`

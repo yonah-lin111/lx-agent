@@ -1,5 +1,5 @@
 import Database from "better-sqlite3"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { runMigrations } from "@/db"
 
 // 测试使用的内存数据库。
@@ -38,7 +38,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 12])
+    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13])
   })
 
   it("迁移后 project_item 移除 sort_order 并保留 worktree_path，project_folder 增加 parent_folder_id", () => {
@@ -105,7 +105,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 12])
+    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13])
     const columns = database.prepare("PRAGMA table_info(project_item)").all() as Array<{
       name: string
     }>
@@ -121,6 +121,31 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 12])
+    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13])
+  })
+
+  it("版本号被其他迁移占用时告警并跳过该迁移", () => {
+    database = new Database(":memory:")
+    database.exec(`
+      CREATE TABLE _migrations (
+        version INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        applied_at TIMESTAMP NOT NULL
+      );
+    `)
+    database
+      .prepare("INSERT INTO _migrations (version, name, applied_at) VALUES (?, ?, ?)")
+      .run(13, "create_arcade_rom_entry", "2026-09-17T00:00:00.000Z")
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    runMigrations(database)
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('已登记为 "create_arcade_rom_entry"'))
+    const tables = database
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+      .all()
+      .map((row) => (row as { name: string }).name)
+    expect(tables).not.toContain("game_rom_entry")
+    warn.mockRestore()
   })
 })

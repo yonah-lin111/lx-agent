@@ -7,7 +7,7 @@ import { migration as migration0008 } from "./0008_remove_agent_session_project_
 import { migration as migration0009 } from "./0009_add_project_is_imported"
 import { migration as migration0010 } from "./0010_create_usage_log"
 import { migration as migration0011 } from "./0011_create_schedule_item"
-import { migration as migration0012 } from "./0012_create_game_rom_entry"
+import { migration as migration0013 } from "./0013_create_game_rom_entry"
 import type { Migration } from "./types"
 
 // 按版本升序排列的全部数据迁移。
@@ -21,5 +21,5 @@ export const migrations: Migration[] = [
   migration0009,
   migration0010,
   migration0011,
-  migration0012,
+  migration0013,
 ]
