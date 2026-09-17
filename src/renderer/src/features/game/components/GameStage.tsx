@@ -216,8 +216,8 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
   }
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3">
-      <div className="flex min-w-0 shrink-0 items-center gap-2">
+    <div className="game-stage flex h-full min-h-0 min-w-0 flex-col gap-3 p-4">
+      <div className="game-stage-toolbar flex min-w-0 shrink-0 items-center gap-2">
         <LxIconButton
           size="small"
           aria-label={t("game.stage.back")}
