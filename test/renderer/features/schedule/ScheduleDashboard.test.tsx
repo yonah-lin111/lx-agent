@@ -66,9 +66,12 @@ describe("ScheduleDashboard", () => {
       expect(screen.getByText("写方案")).toBeDefined()
     })
     expect(screen.getByText("评审代码")).toBeDefined()
-    expect(screen.getByRole("button", { name: "All" })).toBeDefined()
-    expect(screen.getByRole("button", { name: "Pending" })).toBeDefined()
-    expect(screen.getByRole("button", { name: "Done" })).toBeDefined()
+    // 过滤按钮走 LxIconButton 默认方形档（rounded-[6px]），不做胶囊圆角。
+    for (const name of ["All", "Pending", "Done"]) {
+      const button = screen.getByRole("button", { name })
+      expect(button.className).toContain("rounded-[6px]")
+      expect(button.className).not.toContain("rounded-full")
+    }
     expect(api.listByDate).toHaveBeenCalledWith({ entryDate: toLocalDateKey(new Date()) })
     // 月历角标与趋势统计各发起一次区间查询。
     expect(api.listRangeStats).toHaveBeenCalledTimes(2)

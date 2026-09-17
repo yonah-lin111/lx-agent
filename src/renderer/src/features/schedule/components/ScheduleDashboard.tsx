@@ -173,7 +173,7 @@ export const ScheduleDashboard = (): React.JSX.Element => {
                 {formatDateLabel(entryDate, locale)} · {formatWeekdayShort(entryDate, locale)}
               </h2>
 
-              {/* 清单视图下的过滤药丸，紧邻日期展示 */}
+              {/* 清单视图下的过滤切换，紧邻日期展示 */}
               {viewMode === "list" ? (
                 <div className="flex items-center gap-1">
                   {(["all", "pending", "completed"] as const).map((filterKey) => (
@@ -181,7 +181,6 @@ export const ScheduleDashboard = (): React.JSX.Element => {
                       key={filterKey}
                       iconOnly={false}
                       size="small"
-                      shape="circle"
                       highlighted={statusFilter === filterKey}
                       textClass="text-[var(--color-theme-text-muted)]"
                       hoverBgClass="hover:bg-[var(--color-theme-surface-hover)]"
