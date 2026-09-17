@@ -57,7 +57,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | | `job_list` | `{}` | 查询当前会话内所有存活与已终结后台作业状态 |
 | | `job_kill` | `{ job_id; reason? }` | 发送 SIGTERM 并在超时后升级 SIGKILL 终止目标进程树 |
 | **系统** | `time` | `{}` | 获取当前系统精确时间戳、本地格式化时间与时区 |
-| **记忆与规划** | `memory` | `{ action: "view" \| "save" \| "search" \| "delete"; topic?; name?; description?; type?; content?; query?; path? }` | Claude Code 风格项目分层记忆管理（`MEMORY.md` 索引与 Topic Notes；豁免工具） |
+| **记忆与规划** | `memory` | `{ action: "view" \| "save" \| "search" \| "delete"; topic?; name?; description?; type?; content?; query?; path? }` | 项目分层记忆管理（`MEMORY.md` 索引与 Topic Notes；豁免工具） |
 | | `todowrite` | `{ todos: { content; status }[] }` | 任务清单状态机整表替换；驱动状态栏与执行面板；Plan/Review 模式下被硬拦截 |
 | **语言服务** | `lsp` | `{ operation; filePath; line?; character?; query? }` | 9 种 LSP 语义操作：`goToDefinition` / `findReferences` / `hover` / `documentSymbol` / `workspaceSymbol` / `goToImplementation` / `prepareCallHierarchy` / `incomingCalls` / `outgoingCalls`；支持懒安装 |
 | **交互与协作** | `question` | `{ questions: { question; header; options; multiple? }[] }` | 向用户发起结构化交互式提问（支持 Markdown 与选项选择） |
@@ -88,9 +88,9 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 ```typescript
 export const PROMPT_ORDERS = {
   IDENTITY: -100,               // 基础身份定义
-  BEHAVIOR: -50,                // 通用行为规范（对齐 Codex harness 行为层）
+  BEHAVIOR: -50,                // 通用行为规范（行为层基线）
   PERSONA: 0,                   // 人格（pragmatic / friendly）+ 核心操作规范
-  MODEL_ADAPTIVE: 50,           // 模型自适应指令（Codex / Claude / Generic）
+  MODEL_ADAPTIVE: 50,           // 模型自适应指令（按模型家族注入）
   SKILLS: 100,                  // 已激活 Skill 指令正文
   INSTRUCTIONS: 200,            // AGENTS.md 级联注入（Git Root -> CWD）
   WORKSPACE_MEMORY: 250,        // MEMORY.md 索引摘要
@@ -139,7 +139,7 @@ Skill 作为领域级指令包，遵循标准 Markdown 组织格式并具备扩�
 
 1. **用户全局级**：`~/.lx/skills/<name>/SKILL.md`（或直接 `.md` 文件，最高优先级）
 2. **项目私有级**：`<cwd>/.lx/skills/<name>/SKILL.md`
-3. **标准通用级**：`<cwd>/.agents/skills/<name>/SKILL.md`（对齐 Codex / Agents 标准目录）
+3. **标准通用级**：`<cwd>/.agents/skills/<name>/SKILL.md`（跨客户端通用目录）
 
 ### 5.2 双轨调用机制 (Dual-Track Paradigm)
 
@@ -250,7 +250,7 @@ hooksManager.dispatch（串行派发，配置顺序即执行顺序）
 - 非法条目（结构错误 / 未知 handler 类型 / 空命令）→ 警告 + 忽略该条，不阻断会话启动。
 - 读写通道：`settings:hooks:get/save`（`settingsService` 保存后仅清 `global` 缓存）；设置页组件 `HooksSettings.tsx`。
 
-### 7.4 线协议（对齐 Codex / Claude 生态）
+### 7.4 线协议（外部 CLI 生态兼容）
 
 stdin（snake_case，JSON 写入后关闭）：
 
@@ -299,7 +299,7 @@ stdout（camelCase 严格 JSON，允许为空）：
 
 ## 8. view_image 图片查看与投递管道
 
-`view_image` 让模型直接查看项目内本地图片，覆盖 Front Design 产出审查、报错截图定位、设计稿/图表解读三类场景；设计对齐 Codex 的 `view_image` / `image_preparation`。
+`view_image` 让模型直接查看项目内本地图片，覆盖 Front Design 产出审查、报错截图定位、设计稿/图表解读三类场景；对齐主流 CLI agent 的本地图片查看能力。
 
 ### 8.1 工具契约 (`src/main/agent/tools/viewImage.ts`)
 

@@ -1,7 +1,6 @@
 /**
  * 动态分层系统提示词管理器 (SystemPromptManager)
  *
- * 架构参考：deepseek-harness (@deepseek-ai/dsh-system-prompt) 与 pi-main
  * 提供有序系统片段、作用域覆盖 (Scope Overrides)、严格模板变量插值、运行时上下文快照与拦截器支持。
  */
 
@@ -535,7 +534,7 @@ export class SystemPromptManager {
   }
 }
 
-/** 通用模型无关行为规范（对齐 Codex harness 行为层） */
+/** 通用模型无关行为规范（行为层基线） */
 export const DEFAULT_BEHAVIOR_PROMPT = [
   "# General Behavior Guidelines",
   "",
@@ -837,7 +836,7 @@ export function createDefaultSystemPromptManager(
     },
   })
 
-  // 50: 模型自适应指令段（根据 ctx.modelId 注入 GPT-5.2 Codex / Claude / Generic 定制约束）
+  // 50: 模型自适应指令段（根据 ctx.modelId 注入对应模型家族的定制约束）
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.MODEL_ADAPTIVE,
     order: PROMPT_ORDERS.MODEL_ADAPTIVE,
@@ -928,7 +927,7 @@ export function createDefaultSystemPromptManager(
     },
   })
 
-  // 358: 动态上下文容量感知与告警 Harness (对齐 Codex Context Window Guidance)
+  // 358: 动态上下文容量感知与告警 Harness
   manager.registerContext({
     name: PROMPT_SECTION_NAMES.CONTEXT_WINDOW_GUIDANCE,
     order: PROMPT_ORDERS.CONTEXT_WINDOW_GUIDANCE,

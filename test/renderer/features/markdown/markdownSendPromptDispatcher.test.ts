@@ -70,12 +70,12 @@ describe("markdownSendPromptDispatcher", () => {
       const errorToast = vi.fn()
       const writeSpy = vi.spyOn(terminalApi, "write").mockResolvedValue()
 
-      // 设置终端已有 Claude Tab (tab title: cc-switch-main)
+      // 设置终端已有 Claude Tab (tab title: cc-prompt-tool-main)
       useTerminalStore.setState({
         tabs: [
           {
             id: "tab-claude",
-            title: "cc-switch-main",
+            title: "cc-prompt-tool-main",
             panes: {
               "pane-claude": {
                 id: "pane-claude",

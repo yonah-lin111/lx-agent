@@ -46,7 +46,7 @@ import { SubagentRuntime } from "../subagent/subagentRuntime"
 // 子代理最终输出超限阈值（写 spill 文件，父上下文只收有界预览 + 路径标记）。
 const SUBAGENT_MAX_BYTES = DEFAULT_MAX_BYTES
 
-// task 工具输入 schema（对齐 Codex multi_agents 协议）。
+// task 工具输入 schema。
 const TASK_INPUT_SCHEMA = z.object({
   description: z.string().describe("Brief task description (1-5 words) for progress display"),
   prompt: z
@@ -212,7 +212,7 @@ const BASE_DESCRIPTION =
  * 创建 task 工具：委托独立子任务到进程内嵌套 Agent。
  *
  * 子代理在同一 cwd 内以独立上下文运行自己的工具循环（复用父权限门控与沙箱策略），
- * 结构化交互对齐 Codex InterAgentCommunication 规范（author / recipient / triggerTurn）。
+ * 结构化交互遵循 author / recipient / triggerTurn 信元规范。
  */
 export const createTaskTool = (
   deps: TaskToolDeps & { getTools: () => AgentTool<any>[] },

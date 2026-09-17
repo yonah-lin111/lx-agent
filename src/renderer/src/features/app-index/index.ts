@@ -1,4 +1,5 @@
 export { ActivityHeatmap } from "./components/ActivityHeatmap"
 export { AppIndexDashboard } from "./components/AppIndexDashboard"
+export { UpdateNoticeBanner } from "./components/UpdateNoticeBanner"
 export { useDailyActivity } from "./hooks/useDailyActivity"
 export * from "./types"

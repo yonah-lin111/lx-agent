@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/tree.js：tree 输出去掉摘要行并限长。
+// tree 输出去掉摘要行并限长。
 import { TREE_MAX_LINES } from "../constants"
 
 // 压缩 tree 输出：丢弃 "X directories, Y files" 摘要行与首尾空行，超长截断。

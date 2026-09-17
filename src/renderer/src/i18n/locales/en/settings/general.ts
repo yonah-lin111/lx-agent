@@ -53,4 +53,13 @@ Ultra-fast speech-to-text transcription powered by Whisper on Groq.
     "Send a system notification when a task completes; alerts only appear while the app window is unfocused",
   agentNotifyLabel: "Notify me when the Agent completes a task",
   openclawNotifyLabel: "Notify me when an OpenClaw employee completes a task",
+  updateTitle: "Version & Updates",
+  updateDesc: "Check the latest release published on GitHub Releases",
+  updateCurrentVersion: "Current version {{version}}",
+  updateCheck: "Check for updates",
+  updateChecking: "Checking...",
+  updateLatest: "You are on the latest version",
+  updateAvailable: "New version {{version}} is available",
+  updateDownload: "Download",
+  updateFailed: "Check failed, please try again later",
 }

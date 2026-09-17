@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-14
+            build-args: --mac --arm64
+            artifacts: release/*.dmg
+          - name: Windows x64
+            os: windows-latest
+            build-args: --win --x64
+            artifacts: release/*.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 版本号唯一真源是 package.json，tag 必须与其一致，防止产出的包和标签不符。
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          package_tag="v$(node -p "require('./package.json').version")"
+          if [ "$package_tag" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $package_tag"
+            exit 1
+          fi
+
+      - name: Build
+        run: pnpm build
+
+      # 未配置签名证书：跳过 macOS 签名，产出未签名 dmg / exe 供手动下载安装。
+      - name: Package
+        run: pnpm exec electron-builder ${{ matrix.build-args }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      # 直接发布（非 draft）：更新检查读取 /releases/latest，draft 对用户不可见。
+      # 带预发布后缀的 tag 自动标记 prerelease，/releases/latest 不会返回它。
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          prerelease=""
+          case "$tag" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --title "LX Agent $tag" --generate-notes $prerelease || true
+          fi
+          gh release upload "$tag" ${{ matrix.artifacts }} --clobber

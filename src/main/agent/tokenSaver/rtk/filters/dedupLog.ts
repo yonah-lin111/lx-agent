@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/dedupLog.js：连续重复行折叠 + 空行去重 + 硬行数上限。
+// 连续重复行折叠 + 空行去重 + 硬行数上限。
 import { DEDUP_LINE_MAX } from "../constants"
 
 // 压缩通用多行日志：合并连续重复行，压缩空行序列，超过上限截断。

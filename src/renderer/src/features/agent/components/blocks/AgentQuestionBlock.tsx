@@ -34,7 +34,7 @@ const getQuestions = (toolCall: ToolCallBlock): QuestionPrompt[] => {
 /**
  * AgentQuestionBlock - 渲染 question 工具调用：在消息流内直接展示提问与作答控件，
  * 独立成组、不参与执行折叠。多问题用 tab 切换；单选 LxRadio / 多选 LxCheckbox（均纵向排列），
- * 并支持自定义文本输入（对齐 Claude Code 的 Other / opencode 的 custom）。
+ * 并支持自定义文本输入。
  * 挂起期间展示交互表单；作答提交后经 agent:questionResponse 回灌 main。
  */
 export const AgentQuestionBlock = ({

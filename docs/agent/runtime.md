@@ -212,7 +212,7 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 
 ## 6. 分层记忆系统 (`src/main/agent/memories/`)
 
-对齐 Claude Code 记忆设计标准，采用纯工具化召回：
+采用纯工具化召回（不自动注入，全部由模型主动调用）：
 
 1. **两层文件组织**：
    - `<project-root>/.lx/memory/MEMORY.md`：单行高密度索引文件（常驻提示词，加载上限 **200 行 / 25KB**）；

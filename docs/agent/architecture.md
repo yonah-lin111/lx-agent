@@ -113,7 +113,7 @@ src/main/agent/
 ├── hooks/                 # 用户级生命周期钩子引擎 (配置/子进程/解析/派发，详见 tools.md §7)
 ├── prompts/               # 动态提示词与自适应装配
 │   ├── systemPromptManager.ts# 分层装配引擎 (Sections, Contexts, Variables, Interceptors)
-│   ├── modelAdapters.ts      # 模型自适应规则 (Codex, Claude, Generic)
+│   ├── modelAdapters.ts      # 模型自适应规则 (按模型家族注入)
 │   ├── promptTemplateLoader.ts # Slash 命令 Markdown 模板加载器
 │   └── personalities/        # 人格提示词 (pragmatic / friendly)
 ├── memories/              # 分层记忆系统

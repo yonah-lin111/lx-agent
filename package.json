@@ -10,6 +10,8 @@
     "dev": "pnpm rebuild:native:electron && electron-vite dev",
     "prebuild": "node scripts/setupWorktreeNodeModules.mjs",
     "build": "pnpm typecheck && pnpm rebuild:native:electron && electron-vite build",
+    "dist": "electron-builder",
+    "release": "node scripts/release.mjs",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "biome check . --linter-enabled=false",

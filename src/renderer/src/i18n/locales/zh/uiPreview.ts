@@ -311,7 +311,7 @@ export const uiPreview = {
       question: {
         stages: {
           pending: "1. 待作答交互阶段 (Pending)",
-          ascii: "2. 字符图案绘画阶段 (Claude Code ASCII Art)",
+          ascii: "2. 字符图案绘画阶段 (ASCII Art)",
           graphic: "3. 图形化与结构化排版提问阶段 (SVG & HTML Graphic)",
           answered: "4. 已完成展示/折叠阶段 (Answered / Readonly)",
         },

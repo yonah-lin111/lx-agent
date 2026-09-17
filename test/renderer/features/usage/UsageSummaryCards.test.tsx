@@ -35,7 +35,7 @@ const getCacheHitCard = (): HTMLElement | null =>
 describe("UsageSummaryCards", () => {
   afterEach(cleanup)
 
-  it("按 cc-switch 口径渲染五张卡：新增输入为扣除缓存后的新鲜输入", () => {
+  it("按统一统计口径渲染五张卡：新增输入为扣除缓存后的新鲜输入", () => {
     render(<UsageSummaryCards summary={summary} />)
 
     // 新增输入 = 1000 - 100 - 50 = 850，明细展示含缓存的总输入。

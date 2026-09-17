@@ -18,6 +18,9 @@ export const home = {
     settingsDesc: "模型、权限与偏好设置",
     activity: "会话活跃度",
     activityDescription: "过去一年每天活跃的会话数量",
+    updateAvailable: "发现新版本 v{{version}}（当前 v{{current}}）",
+    updateDownload: "前往下载",
+    updateDismiss: "忽略",
   },
   schedule: "日程",
   heatmap: {

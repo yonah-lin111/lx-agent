@@ -12,6 +12,7 @@ import {
   type WebContents,
 } from "electron"
 import { agentSessionService } from "@/services/agentSessionService"
+import { openExternalUrl } from "@/services/externalLinkService"
 import { getOpenClawSettings, getUiSettings } from "@/services/settingsService"
 
 // 同一目标重复完成通知的最小间隔（毫秒）。
@@ -42,8 +43,13 @@ interface NotifyInput {
   // 节流键：同一目标的重复通知按此丢弃。
   key: string
   title: string
+  // 通知类别：决定正文文案与来源开关。
+  kind: "completion" | "update"
   failed: boolean
-  payload: NotificationClickPayload
+  // 点击后推送给渲染进程的跳转目标（更新提醒无渲染跳转时省略）。
+  payload?: NotificationClickPayload
+  // 点击后的主进程副作用（更新提醒直接打开 Release 页）。
+  onClick?: () => void
 }
 
 // OpenClaw 单次 run 结束回调负载。
@@ -103,6 +109,7 @@ class NotificationService {
     this.notify({
       key: `agent:${event.tabId}`,
       title: resolveSessionTitle(event.sessionId),
+      kind: "completion",
       failed: stopReason === "error",
       payload: { source: "agent", tabId: event.tabId },
     })
@@ -114,18 +121,33 @@ class NotificationService {
     this.notify({
       key: `openclaw:${run.instanceId}:${run.agentId}`,
       title: resolveOpenClawAgentName(run.instanceId, run.agentId),
+      kind: "completion",
       failed: false,
       payload: { source: "openclaw", instanceId: run.instanceId, agentId: run.agentId },
+    })
+  }
+
+  // 应用更新入口：点击直接打开 Release 页，不做渲染进程跳转。
+  notifyUpdateAvailable(input: { version: string; releaseUrl: string }): void {
+    this.notify({
+      key: `update:${input.version}`,
+      title: `LX Agent v${input.version}`,
+      kind: "update",
+      failed: false,
+      onClick: () => void openExternalUrl(input.releaseUrl),
     })
   }
 
   // 投递前依次执行来源开关、平台能力、窗口焦点与节流门禁。
   private notify(input: NotifyInput): void {
     const settings = getUiSettings()
+    const source = input.payload?.source
     const enabled =
-      input.payload.source === "agent"
+      source === "agent"
         ? settings.agentCompletionNotifyEnabled !== false
-        : settings.openclawCompletionNotifyEnabled !== false
+        : source === "openclaw"
+          ? settings.openclawCompletionNotifyEnabled !== false
+          : true
     if (!enabled) return
     if (!Notification.isSupported()) return
     if (this.isAppFocused()) return
@@ -135,11 +157,17 @@ class NotificationService {
     this.lastNotifiedAt.set(input.key, now)
 
     const texts = NOTIFICATION_TEXTS[settings.locale] ?? NOTIFICATION_TEXTS.en
+    const body =
+      input.kind === "update"
+        ? texts.updateBody
+        : input.failed
+          ? texts.failedBody
+          : texts.completedBody
     // Electron 39 的 Notification 不支持 id 覆盖，手动关闭同目标旧通知模拟替换。
     this.activeNotifications.get(input.key)?.close()
     const notification = new Notification({
       title: input.title,
-      body: input.failed ? texts.failedBody : texts.completedBody,
+      body,
       icon: getNotificationIcon(),
     })
     this.activeNotifications.set(input.key, notification)
@@ -151,8 +179,9 @@ class NotificationService {
     })
     notification.on("click", () => {
       this.focusMainWindow()
+      input.onClick?.()
       const sender = this.resolveSender?.()
-      if (sender && !sender.isDestroyed()) {
+      if (input.payload && sender && !sender.isDestroyed()) {
         sender.send(NOTIFICATION_CHANNELS.click, input.payload)
       }
     })

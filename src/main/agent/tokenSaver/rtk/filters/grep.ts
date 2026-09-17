@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/grep.js：grep 输出按文件分组并限流。
+// grep 输出按文件分组并限流。
 import { GREP_PER_FILE_MAX } from "../constants"
 
 // 压缩 grep 输出（"file:line:content"）：按文件分组，每文件最多保留 10 条。

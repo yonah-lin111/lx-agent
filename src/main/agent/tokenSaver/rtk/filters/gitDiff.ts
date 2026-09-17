@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/gitDiff.js：压缩 unified diff，逐文件统计改动行。
+// 压缩 unified diff，逐文件统计改动行。
 import { GIT_DIFF_HUNK_MAX_LINES } from "../constants"
 
 // 压缩 git diff：保留文件头与 hunk 头，单 hunk 超限的行折叠为计数行。

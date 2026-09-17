@@ -83,14 +83,14 @@ describe("PersistentShellManager", () => {
 
     const res1 = await persistentShellManager.executeCommand(
       session,
-      'export MY_VAR="hello_codex"',
+      'export MY_VAR="hello_agent"',
       10000,
     )
     expect(res1.exitCode).toBe(0)
 
     const res2 = await persistentShellManager.executeCommand(session, "echo $MY_VAR", 10000)
     expect(res2.exitCode).toBe(0)
-    expect(res2.output).toContain("hello_codex")
+    expect(res2.output).toContain("hello_agent")
   }, 20000)
 
   it("已中止的 signal 立即取消且不写命令", async () => {

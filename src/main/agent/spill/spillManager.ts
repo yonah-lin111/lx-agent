@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { homedir } from "node:os"
 import { join, resolve, sep } from "node:path"
+import { getAppDataRoot, sanitizePathSegment } from "@/paths"
 import { formatSize, type TruncationResult } from "../tools/truncate"
 
 export interface SpillHandleResult {
@@ -8,17 +8,11 @@ export interface SpillHandleResult {
   spillFilePath?: string
 }
 
-// 路径段消毒：仅保留字符白名单（同 callId）；替换后不含 `.`，天然排除 `.`/`..`。
-const sanitizePathSegment = (value: string): string => {
-  const cleaned = value.replace(/[^a-zA-Z0-9_-]/g, "_")
-  return cleaned || "_"
-}
-
 export class SpillManager {
   private readonly baseDir: string
 
   constructor(baseDir?: string) {
-    this.baseDir = baseDir ?? join(homedir(), ".lx", "spill")
+    this.baseDir = baseDir ?? join(getAppDataRoot(), "spill")
   }
 
   getBaseDir(): string {

@@ -1,9 +1,6 @@
 /**
  * 会话事件增量投影状态机 (SessionProjection)
  *
- * 架构参考：deepseek-harness (@deepseek-ai/dsh-client-runtime / session-projection)
- * 与 pi-main (SessionManager)
- *
  * 核心原则：
  * 1. 状态为不可变快照 (Immutable State Snapshot)。
  * 2. `projectSessionEvent(state, event)` 为纯函数状态转换 (Pure Reduction)。

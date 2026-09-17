@@ -19,7 +19,7 @@ const SERVER_ROOT_MARKERS: Record<string, string[]> = {
   python: ["pyproject.toml", "setup.py", "requirements.txt", ".git"],
 }
 
-// 从文件目录向上查找最近的 marker 目录（对齐 opencode StrictNearestRoot）；
+// 从文件目录向上查找最近的 marker 目录（命中即止，不再继续向上）；
 // 一路找到文件系统根仍未命中时回退到会话 cwd。
 export const findWorkspaceRoot = (filePath: string, markers: string[], cwd: string): string => {
   let directory = dirname(filePath)

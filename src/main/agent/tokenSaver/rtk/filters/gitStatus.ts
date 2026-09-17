@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/gitStatus.js：git status 压缩为分支 + 分类计数。
+// git status 压缩为分支 + 分类计数。
 import { STATUS_MAX_FILES, STATUS_MAX_UNTRACKED } from "../constants"
 
 // 压缩 git status（长格式或 porcelain）：输出分支与暂存/修改/未跟踪统计。

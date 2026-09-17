@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/searchList.js：搜索结果列表按目录分组并限流。
+// 搜索结果列表按目录分组并限流。
 import { SEARCH_LIST_PER_DIR_MAX, SEARCH_LIST_TOTAL_DIR_MAX } from "../constants"
 
 // 搜索结果列表头格式："Result of search in '...' (total N files):"。

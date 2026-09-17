@@ -1,6 +1,6 @@
 // todo 清单契约：四态状态、清单项与整表替换语义。
 
-// todo 清单项状态（对齐 Claude Code 四态）。
+// todo 清单项状态（pending / in_progress / completed / cancelled 四态）。
 export type TodoStatus = "pending" | "in_progress" | "completed" | "cancelled"
 
 // 单个 todo 清单项。

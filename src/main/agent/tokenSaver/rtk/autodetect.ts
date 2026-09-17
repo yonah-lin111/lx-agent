@@ -1,4 +1,4 @@
-// 自动探测过滤器（移植自 9router open-sse/rtk/autodetect.js）。
+// 自动探测过滤器：按输出特征选择过滤器。
 // 探测顺序：git-log → git-diff → git-status → build-output → grep → find → tree → ls
 //          → search-list → read-numbered → dedup-log → smart-truncate → null。
 import {

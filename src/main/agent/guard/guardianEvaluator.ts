@@ -1,7 +1,7 @@
 /**
  * Guardian Risk Evaluator
  *
- * Implements the 4-dimensional security risk taxonomy from Codex Guardian Policy:
+ * Implements the 4-dimensional security risk taxonomy used by the Guardian policy:
  * 1. Data Exfiltration
  * 2. Credential Probing
  * 3. Persistent Security Weakening

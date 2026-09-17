@@ -46,7 +46,7 @@ export interface HookDispatchInput {
   signal?: AbortSignal
 }
 
-// hook 子进程 stdin 协议载荷（对齐 Codex / Claude 生态）。
+// hook 子进程 stdin 协议载荷（外部 CLI hook 生态兼容）。
 export interface HookCommandPayload {
   session_id?: string
   turn_id?: string

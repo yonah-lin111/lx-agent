@@ -1,15 +1,13 @@
 /**
  * 指令安全守卫 (Command Safety Guard)
  *
- * 参考 codex-rs/shell-command/src/command_safety/is_dangerous_command.rs
- *
  * 核心机制：
  * 1. 递归拆解 shell 封装层 (如 sudo, env, sh -c, bash -c 等)，最深支持 8 层；
  * 2. rm 的受保护目标 (/, ~, $HOME, .., cwd, 通配清空) 结构化判定，其余绝对破坏性指令 (git reset --hard, git clean -fdx, mkfs 等) 模式匹配，直接判定为 DENY；
  * 3. 仅拦截写入真实文件的重定向与内容改写命令 (如 > file、tee file、sed -i)；丢弃输出 (>/dev/null)、fd 复制 (2>&1) 放行；
  * 4. heredoc 正文按数据处理（未加引号分隔符的正文仅提取命令替换）；命令替换 ($(...)、`...`) 递归评估；
  * 5. 模式匹配敏感指令 (如 git push --force, chmod -R 777, shutdown 等)，动态提升为需要用户确认 (ASK)；
- * 6. 结构性文件操作 (touch/mkdir/cp/mv) 不硬拦截，交由权限确认流程处理 (对齐 Claude Code / Codex)；
+ * 6. 结构性文件操作 (touch/mkdir/cp/mv) 不硬拦截，交由权限确认流程处理；
  * 7. 纯函数设计，不产生副作用，便于单测与跨模块复用。
  *
  * 边界：本守卫只覆盖可枚举的 shell 命令形态，不是沙箱。解释器内写文件 (python -c / node -e)、

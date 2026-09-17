@@ -41,10 +41,26 @@ export const getScreenshotsDir = (): string => join(getAppDataRoot(), "screensho
 export const getDatabasePath = (): string => join(getDatabaseDir(), "lx.db")
 
 /**
+ * 路径段消毒：仅保留字母、数字、下划线与短横线，其余替换为下划线。
+ * 结果不含 `.` 与路径分隔符，跨平台合法（Windows 非法字符一并被替换）。
+ */
+export const sanitizePathSegment = (value: string): string => {
+  const cleaned = value.replace(/[^a-zA-Z0-9_-]/g, "_")
+  return cleaned || "_"
+}
+
+/**
  * 获取指定会话的前端设计目录。
+ * 会话 id 与设计 id 均可能来自模型输出，落盘前统一消毒，避免非法路径或目录越界。
  */
 export const getSessionDesignDir = (sessionId: string, designId: string): string =>
-  join(getAppDataRoot(), "session", sessionId, "design", designId)
+  join(
+    getAppDataRoot(),
+    "session",
+    sanitizePathSegment(sessionId),
+    "design",
+    sanitizePathSegment(designId),
+  )
 
 /**
  * 获取游戏数据根目录（导入的 ROM 与应用侧存档）。

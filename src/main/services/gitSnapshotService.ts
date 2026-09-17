@@ -11,7 +11,7 @@ export interface SnapshotFileChange {
 }
 
 /**
- * Git 工作树快照服务（对齐 opencode snapshot/index.ts）。
+ * Git 工作树快照服务。
  *
  * 对每个 cwd 建**隐藏 git 仓库**（{appData}/snapshots/{cwdHash}/.git），object DB 经 alternates
  * 复用真实仓库的 objects（不重复存储）；快照操作一律 `--git-dir <hidden> --work-tree <cwd>`，

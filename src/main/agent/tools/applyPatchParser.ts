@@ -1,6 +1,6 @@
 /**
  * V4A Apply Patch 解析器与校验器。
- * 格式对齐 OpenAI Codex (apply_patch.rs):
+ * V4A 补丁格式：
  * - 以 `*** Begin Patch` 或 `*** Begin Patch\n` 起始（也可由 `*** Add File: <path>`, `*** Update File: <path>`, `*** Delete File: <path>` 构成）
  * - 结尾可选 `*** End Patch`
  * - 支持三种动作：

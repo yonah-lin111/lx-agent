@@ -10,6 +10,7 @@ import type { OpenClawApi } from "@shared/contracts/openclaw"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { ScheduleApi } from "@shared/contracts/schedule"
 import type { TerminalApi } from "@shared/contracts/terminal"
+import type { UpdateApi } from "@shared/contracts/update"
 import type { UsageApi } from "@shared/contracts/usage"
 import { CLIPBOARD_CHANNELS } from "@shared/ipc/clipboardChannels"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
@@ -28,6 +29,7 @@ import { openclawApi } from "./api/openclaw"
 import { promptHistoryApi } from "./api/promptHistory"
 import { scheduleApi } from "./api/schedule"
 import { terminalApi } from "./api/terminal"
+import { updateApi } from "./api/update"
 import { usageApi } from "./api/usage"
 
 const api: ProjectApi &
@@ -44,6 +46,7 @@ const api: ProjectApi &
   ScheduleApi &
   OpenClawApi &
   NotificationApi &
+  UpdateApi &
   GameApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   saveClipboardImage: (buffer, mimeType) =>
@@ -139,6 +142,7 @@ const api: ProjectApi &
   terminal: terminalApi,
   openclaw: openclawApi,
   notification: notificationApi,
+  update: updateApi,
   game: gameApi,
 }
 

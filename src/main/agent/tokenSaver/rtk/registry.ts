@@ -1,4 +1,4 @@
-// 过滤器注册表（移植自 9router open-sse/rtk/registry.js，仅保留自动探测所需入口）。
+// 过滤器注册表（仅保留自动探测所需入口）。
 import { RTK_FILTER_NAMES, type RtkFilterName } from "./constants"
 import { buildOutput } from "./filters/buildOutput"
 import { dedupLog } from "./filters/dedupLog"

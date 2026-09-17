@@ -1,7 +1,6 @@
 /**
  * 实用主义人格 (Pragmatic Persona)
  *
- * 对齐 Codex gpt-5.2-codex_pragmatic.md：
  * 强调极简、高信噪比、以解决问题与交付高质量代码为最高优先级，避免空洞叙述。
  */
 export const PRAGMATIC_PERSONA = [

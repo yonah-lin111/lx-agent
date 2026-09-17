@@ -8,7 +8,7 @@ import type { ImageContent, TextContent, Usage } from "./primitives"
 // MCP 工具全名命名空间前缀（`mcp__server__tool`），与内置工具名隔离。
 export const MCP_TOOL_NAMESPACE = "mcp__"
 
-// 结构化多 Agent 协作通信信元（对齐 Codex InterAgentCommunication 协议）。
+// 结构化多 Agent 协作通信信元（author / recipient / triggerTurn）。
 export interface InterAgentCommunication {
   // 消息唯一标识
   id?: string

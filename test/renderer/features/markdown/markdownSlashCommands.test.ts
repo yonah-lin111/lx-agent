@@ -448,8 +448,8 @@ describe("Markdown 斜杠命令武装判定", () => {
         panes: { p2: { id: "p2", title: "opencode-fix", detectedCli: "opencode" as const } },
       },
       {
-        title: "cc-switch-main",
-        panes: { p3: { id: "p3", title: "cc-switch-main", detectedCli: "claude" as const } },
+        title: "cc-prompt-tool-main",
+        panes: { p3: { id: "p3", title: "cc-prompt-tool-main", detectedCli: "claude" as const } },
       },
     ]
     const options = getMarkdownSendPromptOptions("zh", tabs)
@@ -634,8 +634,8 @@ describe("Markdown 斜杠命令武装判定", () => {
         panes: { p1: { id: "p1", title: "opencode-dev", detectedCli: "opencode" as const } },
       },
       {
-        title: "cc-switch-main",
-        panes: { p2: { id: "p2", title: "cc-switch-main", detectedCli: "claude" as const } },
+        title: "cc-prompt-tool-main",
+        panes: { p2: { id: "p2", title: "cc-prompt-tool-main", detectedCli: "claude" as const } },
       },
     ]
 
@@ -660,7 +660,7 @@ describe("Markdown 斜杠命令 CLI 标题识别", () => {
     expect(identifyCliTypeFromTitle("OC | 项目")).toBe("opencode")
     expect(identifyCliTypeFromTitle("oc")).toBe("opencode")
 
-    expect(identifyCliTypeFromTitle("cc-switch")).toBe("claude")
+    expect(identifyCliTypeFromTitle("cc-prompt-tool")).toBe("claude")
     expect(identifyCliTypeFromTitle("Claude Code")).toBe("claude")
 
     expect(identifyCliTypeFromTitle("openai codex")).toBe("codex")

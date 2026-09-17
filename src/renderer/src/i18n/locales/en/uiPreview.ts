@@ -332,7 +332,7 @@ export const uiPreview = {
       question: {
         stages: {
           pending: "1. Pending Answer Stage (Pending)",
-          ascii: "2. ASCII Art Stage (Claude Code ASCII Art)",
+          ascii: "2. ASCII Art Stage (ASCII Art)",
           graphic: "3. Graphic & Structured Layout Question Stage (SVG & HTML Graphic)",
           answered: "4. Answered / Readonly Stage (Answered / Readonly)",
         },

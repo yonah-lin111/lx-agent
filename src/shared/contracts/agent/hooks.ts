@@ -1,6 +1,6 @@
 // 钩子契约：生命周期事件名、matcher 判定、运行状态与产物消息。
 
-// 钩子生命周期事件名（对齐 Codex hook wire 协议）。
+// 钩子生命周期事件名（外部 hook 线协议兼容）。
 export type HookEventName =
   | "PreToolUse"
   | "PermissionRequest"

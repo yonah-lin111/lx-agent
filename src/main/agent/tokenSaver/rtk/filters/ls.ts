@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/ls.js：ls -la 输出压缩为紧凑列表 + 摘要。
+// ls -la 输出压缩为紧凑列表 + 摘要。
 import { LS_EXT_SUMMARY_TOP, LS_NOISE_DIRS } from "../constants"
 
 // ls 日期列：月 + 日 + (年 | 时:分)。

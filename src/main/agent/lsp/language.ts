@@ -1,5 +1,5 @@
 // 扩展名（小写，含点）→ 语言名全量映射。
-// 对齐 opencode LANGUAGE_EXTENSIONS：映射全量；仅部分语言在 server.ts 配了真实启动器，
+// 映射保持扩展名全量覆盖；仅部分语言在 server.ts 配了真实启动器，
 // 其余语言映射存在但调用时返回"无启动器"错误。
 export const LANGUAGE_EXTENSIONS: Record<string, string> = {
   ".ts": "typescript",
