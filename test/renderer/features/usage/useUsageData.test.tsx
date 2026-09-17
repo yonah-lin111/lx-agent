@@ -79,7 +79,7 @@ describe("useUsageData", () => {
     })
 
     expect(result.current.summary).toEqual(summary)
-    expect(result.current.range).toBe("today")
+    expect(result.current.rangeSelection).toEqual({ preset: "today" })
     expect(result.current.granularity).toBe("hour")
     expect(result.current.error).toBeNull()
     expect(usageMock.getSummary).toHaveBeenCalledTimes(1)
@@ -93,12 +93,43 @@ describe("useUsageData", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     act(() => {
-      result.current.setRange("7d")
+      result.current.setRangeSelection({ preset: "7d" })
     })
     await waitFor(() => {
       expect(usageMock.getDaily).toHaveBeenLastCalledWith(expect.anything(), "day")
     })
     expect(result.current.granularity).toBe("day")
+  })
+
+  it("自定义区间按起止边界查询并重置页码", async () => {
+    const { result } = renderHook(() => useUsageData())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.setPage(3)
+    })
+    await waitFor(() => {
+      expect(usageMock.listLogs).toHaveBeenLastCalledWith(expect.anything(), 3, 50)
+    })
+
+    act(() => {
+      result.current.setRangeSelection({
+        preset: "custom",
+        startDate: "2026-08-03",
+        endDate: "2026-08-05",
+      })
+    })
+
+    await waitFor(() => {
+      expect(usageMock.getSummary).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          startTime: new Date(2026, 7, 3).getTime(),
+          endTime: new Date(2026, 7, 5, 23, 59, 59, 999).getTime(),
+        }),
+      )
+    })
+    expect(result.current.granularity).toBe("day")
+    expect(usageMock.listLogs).toHaveBeenLastCalledWith(expect.anything(), 1, 50)
   })
 
   it("加载失败时暴露错误信息", async () => {

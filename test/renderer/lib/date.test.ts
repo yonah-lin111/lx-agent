@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  formatDateRangeLabel,
   formatDayOfMonth,
   getMonthGrid,
   getMonthKey,
@@ -84,5 +85,16 @@ describe("date utils", () => {
   it("formatDayOfMonth 输出 M/D", () => {
     expect(formatDayOfMonth("2026-09-06")).toBe("9/6")
     expect(formatDayOfMonth("2026-12-31")).toBe("12/31")
+  })
+
+  it("formatDateRangeLabel 折叠同月区间的重复月份并保留跨年信息", () => {
+    const sameMonth = formatDateRangeLabel("2026-09-01", "2026-09-17", "en-US")
+    expect(sameMonth).toContain("2026")
+    expect(sameMonth).toContain("Sep")
+    expect(sameMonth.match(/Sep/g)).toHaveLength(1)
+
+    const crossYear = formatDateRangeLabel("2025-12-30", "2026-01-02", "en-US")
+    expect(crossYear).toContain("2025")
+    expect(crossYear).toContain("2026")
   })
 })

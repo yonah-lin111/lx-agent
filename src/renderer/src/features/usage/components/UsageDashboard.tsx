@@ -59,14 +59,14 @@ export const UsageDashboard = (): React.JSX.Element => {
           </LxIconButton>
         </div>
         <UsageFilters
-          range={usage.range}
+          rangeSelection={usage.rangeSelection}
           provider={usage.provider}
           model={usage.model}
           projectId={usage.projectId}
           sessionId={usage.sessionId}
           filterOptions={usage.filterOptions}
           refreshIntervalMs={usage.refreshIntervalMs}
-          onRangeChange={usage.setRange}
+          onRangeSelectionChange={usage.setRangeSelection}
           onProviderChange={usage.setProvider}
           onModelChange={usage.setModel}
           onProjectChange={usage.setProjectId}

@@ -210,8 +210,7 @@ export const AppIndexDashboard = (): React.JSX.Element => {
                     type="button"
                     aria-label={t(entry.labelKey)}
                     onClick={() => handleEntryClick(entry)}
-                    style={{ animationDelay: `${index * 24}ms` }}
-                    className={`app-index-entry animate-app-index-entry-in group flex min-w-0 items-start gap-2.5 rounded-[6px] border p-3 text-left transition-[border-color,background-color] duration-150 ${
+                    className={`app-index-entry group flex min-w-0 items-start gap-2.5 rounded-[6px] border p-3 text-left transition-[border-color,background-color] duration-150 ${
                       entry.isPrimary
                         ? "border-[var(--color-theme-accent)]/45 bg-[var(--color-theme-surface-hover)] hover:border-[var(--color-theme-accent)]"
                         : "border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] hover:border-[var(--color-theme-border-strong)] hover:bg-[var(--color-theme-surface-hover)]"

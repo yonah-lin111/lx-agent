@@ -1,4 +1,4 @@
-import { resolveUsageGranularity, resolveUsageRange } from "@shared/contracts/usage"
+import { resolveUsageGranularity, resolveUsageRangeSelection } from "@shared/contracts/usage"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { usageApi } from "../api/usageApi"
 import type {
@@ -10,8 +10,8 @@ import type {
   UsageProviderStats,
   UsageQuery,
   UsageRangeBounds,
+  UsageRangeSelection,
   UsageSummary,
-  UsageTimeRange,
 } from "../types"
 
 const PAGE_SIZE = 50
@@ -26,14 +26,14 @@ const EMPTY_FILTER_OPTIONS: UsageFilterOptions = {
 }
 
 export interface UseUsageDataResult {
-  range: UsageTimeRange
+  rangeSelection: UsageRangeSelection
   provider?: string
   model?: string
   projectId?: string
   sessionId?: string
   page: number
   rangeBounds: UsageRangeBounds
-  // 图表序列粒度：today 为 hour，其余为 day。
+  // 图表序列粒度：单日范围（today 或单日自定义）为 hour，其余为 day。
   granularity: UsageGranularity
   summary: UsageSummary | null
   daily: UsageDailyPoint[]
@@ -45,7 +45,7 @@ export interface UseUsageDataResult {
   error: string | null
   // 自动刷新间隔毫秒（0 = 关闭；关闭时日志写入事件也不触发实时重载）。
   refreshIntervalMs: number
-  setRange: (range: UsageTimeRange) => void
+  setRangeSelection: (selection: UsageRangeSelection) => void
   setProvider: (provider?: string) => void
   setModel: (model?: string) => void
   setProjectId: (projectId?: string) => void
@@ -59,7 +59,9 @@ export interface UseUsageDataResult {
  * 管理用量统计的筛选、分页、聚合查询与日志写入事件刷新。
  */
 export const useUsageData = (): UseUsageDataResult => {
-  const [range, setRangeState] = useState<UsageTimeRange>("today")
+  const [rangeSelection, setRangeSelectionState] = useState<UsageRangeSelection>({
+    preset: "today",
+  })
   const [provider, setProviderState] = useState<string | undefined>(undefined)
   const [model, setModelState] = useState<string | undefined>(undefined)
   const [projectId, setProjectIdState] = useState<string | undefined>(undefined)
@@ -75,23 +77,25 @@ export const useUsageData = (): UseUsageDataResult => {
   const [error, setError] = useState<string | null>(null)
   const [refreshIntervalMs, setRefreshIntervalMs] = useState<number>(0)
   // 图表所需的实时时间边界（每次 load 重新解析，避免挂载时冻结 endTime）。
-  const [rangeBounds, setRangeBounds] = useState<UsageRangeBounds>(() => resolveUsageRange("today"))
+  const [rangeBounds, setRangeBounds] = useState<UsageRangeBounds>(() =>
+    resolveUsageRangeSelection({ preset: "today" }),
+  )
   const requestIdRef = useRef(0)
 
   // 事件回调/定时器读取最新筛选与页码，避免重新订阅。
-  const filtersRef = useRef({ range, provider, model, projectId, sessionId })
-  filtersRef.current = { range, provider, model, projectId, sessionId }
+  const filtersRef = useRef({ rangeSelection, provider, model, projectId, sessionId })
+  filtersRef.current = { rangeSelection, provider, model, projectId, sessionId }
   const pageRef = useRef(page)
   pageRef.current = page
   const refreshIntervalRef = useRef(refreshIntervalMs)
   refreshIntervalRef.current = refreshIntervalMs
 
   const load = useCallback(async (targetPage: number): Promise<void> => {
-    // 时间范围在每次加载时按当前时间重新解析：today/7d/30d 的 endTime = 请求时刻，
-    // 否则刷新/自动刷新会一直查询挂载时刻之前的旧区间，新日志永远不可见。
+    // 时间范围在每次加载时按当前时间重新解析：预设 endTime = 请求时刻、结束日为今天的自定义区间
+    // 截止到当前时刻，否则刷新/自动刷新会一直查询挂载时刻之前的旧区间，新日志永远不可见。
     const latest = filtersRef.current
-    const bounds = resolveUsageRange(latest.range)
-    const granularity = resolveUsageGranularity(latest.range)
+    const bounds = resolveUsageRangeSelection(latest.rangeSelection)
+    const granularity = resolveUsageGranularity(latest.rangeSelection)
     const targetQuery: UsageQuery = {
       ...bounds,
       provider: latest.provider,
@@ -144,7 +148,7 @@ export const useUsageData = (): UseUsageDataResult => {
 
   useEffect(() => {
     void load(page)
-  }, [load, range, provider, model, projectId, sessionId, page])
+  }, [load, rangeSelection, provider, model, projectId, sessionId, page])
 
   // 日志写入后防抖重载：仅在自动刷新开启时生效（off 时不做任何实时更新）。
   useEffect(() => {
@@ -172,8 +176,8 @@ export const useUsageData = (): UseUsageDataResult => {
   }, [refreshIntervalMs, load])
 
   // 筛选变化重置页码；切换 Provider 时级联清空模型；切换项目时级联清空会话。
-  const setRange = useCallback((next: UsageTimeRange): void => {
-    setRangeState(next)
+  const setRangeSelection = useCallback((next: UsageRangeSelection): void => {
+    setRangeSelectionState(next)
     setPage(1)
   }, [])
   const setProvider = useCallback((next?: string): void => {
@@ -200,14 +204,14 @@ export const useUsageData = (): UseUsageDataResult => {
   }, [load])
 
   return {
-    range,
+    rangeSelection,
     provider,
     model,
     projectId,
     sessionId,
     page,
     rangeBounds,
-    granularity: resolveUsageGranularity(range),
+    granularity: resolveUsageGranularity(rangeSelection),
     summary,
     daily,
     modelStats,
@@ -217,7 +221,7 @@ export const useUsageData = (): UseUsageDataResult => {
     isLoading,
     error,
     refreshIntervalMs,
-    setRange,
+    setRangeSelection,
     setProvider,
     setModel,
     setProjectId,

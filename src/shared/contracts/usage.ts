@@ -17,6 +17,11 @@ export type UsageLogStatus = "success" | "error" | "aborted"
 // 统计时间范围预设。
 export type UsageTimeRange = "today" | "7d" | "30d" | "all"
 
+// 时间范围选择：预设（相对当前时刻）或自定义日期区间（YYYY-MM-DD，含首尾）。
+export type UsageRangeSelection =
+  | { preset: UsageTimeRange }
+  | { preset: "custom"; startDate: string; endDate: string }
+
 // 时间序列聚合粒度：按小时（today 视图）或按天。
 export type UsageGranularity = "hour" | "day"
 
@@ -208,9 +213,38 @@ export const resolveUsageRange = (
   return { startTime: start.getTime(), endTime: now }
 }
 
-// today 视图按小时观察当天分布，其余范围按天聚合。
-export const resolveUsageGranularity = (range: UsageTimeRange): UsageGranularity =>
-  range === "today" ? "hour" : "day"
+/**
+ * 解析时间范围选择为本地日边界毫秒时间戳。
+ * 自定义区间：起点为起始日零点；终点取结束日末与当前时刻的较小值，
+ * 结束日为今天时不把时间窗画到未来（与 today 预设 endTime = now 一致）。
+ */
+export const resolveUsageRangeSelection = (
+  selection: UsageRangeSelection,
+  now: number = Date.now(),
+): UsageRangeBounds => {
+  if (selection.preset !== "custom") return resolveUsageRange(selection.preset, now)
+
+  const [startYear, startMonth, startDay] = selection.startDate
+    .split("-")
+    .map((part) => Number.parseInt(part, 10))
+  const [endYear, endMonth, endDay] = selection.endDate
+    .split("-")
+    .map((part) => Number.parseInt(part, 10))
+  const endOfDay = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999)
+
+  return {
+    startTime: new Date(startYear, startMonth - 1, startDay).getTime(),
+    endTime: Math.min(endOfDay.getTime(), now),
+  }
+}
+
+// 单日范围（today 预设或单日自定义区间）按小时观察当天分布，其余范围按天聚合。
+export const resolveUsageGranularity = (selection: UsageRangeSelection): UsageGranularity => {
+  if (selection.preset === "custom") {
+    return selection.startDate === selection.endDate ? "hour" : "day"
+  }
+  return selection.preset === "today" ? "hour" : "day"
+}
 
 // Token 使用统计 preload API 契约。
 export interface UsageApi {

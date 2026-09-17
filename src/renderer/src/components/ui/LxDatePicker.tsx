@@ -13,7 +13,9 @@ import { createPortal } from "react-dom"
 import { useFloatingLayer, useLayerPresence } from "@/components/ui/useFloatingLayer"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import {
+  type DateRange,
   formatDateLabel,
+  formatDateRangeLabel,
   formatMonthLabel,
   getMonthGrid,
   getMonthKey,
@@ -22,20 +24,22 @@ import {
   getWeekStartKey,
   isValidDateKey,
   isValidMonthKey,
+  type MonthGridDay,
   shiftDateKey,
   shiftMonthKey,
 } from "@/lib/date"
 
-// 选择模式：按日 / 按周（值为周一日期键）/ 按月（值为 YYYY-MM）。
-export type LxDatePickerMode = "date" | "week" | "month"
+// 选择模式：按日 / 按周（值为周一日期键）/ 按月（值为 YYYY-MM）/ 按区间（双月历）。
+export type LxDatePickerMode = "date" | "week" | "month" | "range"
 
-// 日期选择器属性。
-export interface LxDatePickerProps {
-  // 当前值：date/week 为 YYYY-MM-DD，month 为 YYYY-MM。
-  value: string
-  // 选择回调。
-  onChange: (value: string) => void
-  mode?: LxDatePickerMode
+// 区间预设项：数据由调用方提供，组件只渲染文案并回传 key。
+export interface LxDateRangePreset {
+  key: string
+  label: string
+}
+
+// 各模式共用属性。
+interface LxDatePickerBaseProps {
   placeholder?: string
   className?: string
   triggerClassName?: string
@@ -50,7 +54,33 @@ export interface LxDatePickerProps {
   quickSelects?: boolean
   // 内联模式：直接渲染日历面板（无触发器与弹层），供外层浮层（如 LxTooltip）承载。
   inline?: boolean
+  // 触发器文案覆盖（区间模式用于展示调用方预设名）。
+  triggerLabel?: string
 }
+
+// 单日 / 周 / 月模式属性。
+interface LxDatePickerSingleProps extends LxDatePickerBaseProps {
+  mode?: "date" | "week" | "month"
+  // 当前值：date/week 为 YYYY-MM-DD，month 为 YYYY-MM。
+  value: string
+  // 选择回调。
+  onChange: (value: string) => void
+}
+
+// 区间模式属性：端点受控，预设数据由调用方提供。
+interface LxDateRangePickerProps extends LxDatePickerBaseProps {
+  mode: "range"
+  // 已确认区间；null 表示无日期边界（如「全部时间」）。
+  rangeValue: DateRange | null
+  // 区间确认回调（双端点齐备时触发）。
+  onRangeChange: (range: DateRange) => void
+  presets?: LxDateRangePreset[]
+  activePresetKey?: string | null
+  onPresetSelect?: (key: string) => void
+}
+
+// 日期选择器属性。
+export type LxDatePickerProps = LxDatePickerSingleProps | LxDateRangePickerProps
 
 // 角标数字上限。
 const BADGE_MAX_COUNT = 99
@@ -64,10 +94,69 @@ const QUICK_SELECTS: Array<{ offset: number; labelKey: TranslationKey }> = [
 
 // 弹层宽度（定位夹取时作为兜底尺寸）。
 const POPOVER_FALLBACK_WIDTH = 292
+const RANGE_POPOVER_FALLBACK_WIDTH = 576
+
+// 预设缺省值，避免每次渲染重建数组。
+const EMPTY_RANGE_PRESETS: LxDateRangePreset[] = []
+
+// 日历单元格属性：单日面板与区间面板共用。
+interface CalendarDayButtonProps {
+  day: MonthGridDay
+  locale: string
+  isSelected: boolean
+  inRange: boolean
+  entryCount?: number
+  onSelect: () => void
+}
+
+/**
+ * 渲染单个日历单元格：选中 / 区间内 / 非当前月三态与今日圆点、条目角标。
+ */
+const CalendarDayButton = ({
+  day,
+  locale,
+  isSelected,
+  inRange,
+  entryCount = 0,
+  onSelect,
+}: CalendarDayButtonProps): React.JSX.Element => {
+  const isToday = day.dateKey === getTodayKey()
+
+  return (
+    <button
+      type="button"
+      aria-label={formatDateLabel(day.dateKey, locale)}
+      aria-pressed={isSelected}
+      data-date={day.dateKey}
+      data-today={isToday ? "true" : undefined}
+      data-outside={day.isCurrentMonth ? undefined : "true"}
+      className={`lx-datepicker-day relative flex aspect-square w-full items-center justify-center rounded-[4px] border text-xs transition-colors ${
+        isSelected
+          ? "border-[var(--color-theme-accent)] bg-[var(--color-theme-surface-hover)] font-semibold text-[var(--color-theme-text)]"
+          : inRange
+            ? "lx-datepicker-range border-transparent bg-[var(--color-theme-surface-hover)] text-[var(--color-theme-text)]"
+            : day.isCurrentMonth
+              ? "border-transparent text-[var(--color-theme-text)] hover:bg-[var(--color-theme-surface-hover)]"
+              : "border-transparent text-[var(--color-theme-text-subtle)] hover:bg-[var(--color-theme-surface-hover)]"
+      }`}
+      onClick={onSelect}
+    >
+      <span>{day.dayOfMonth}</span>
+      {isToday ? (
+        <span className="lx-datepicker-today-dot absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--color-theme-accent)]" />
+      ) : null}
+      {entryCount > 0 ? (
+        <span className="lx-datepicker-badge absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-theme-accent)] px-0.5 text-xs font-bold leading-none text-[var(--color-theme-bg)]">
+          {entryCount > BADGE_MAX_COUNT ? `${BADGE_MAX_COUNT}+` : entryCount}
+        </span>
+      ) : null}
+    </button>
+  )
+}
 
 // 日历面板属性：弹层与内联两种形态共用同一面板实现。
 interface DatePickerPanelProps {
-  mode: LxDatePickerMode
+  mode: Exclude<LxDatePickerMode, "range">
   value: string
   entryCountMap?: Record<string, number>
   onSelect: (value: string) => void
@@ -217,43 +306,21 @@ const DatePickerPanel = ({
       </div>
 
       <div className="mt-1 grid grid-cols-7 gap-1">
-        {gridDays.map((day) => {
-          const entryCount = entryCountMap?.[day.dateKey] ?? 0
-          const isSelected =
-            mode === "week" ? getWeekStartKey(day.dateKey) === value : day.dateKey === value
-          const isToday = day.dateKey === todayKey
-          return (
-            <button
-              key={day.dateKey}
-              type="button"
-              aria-label={formatDateLabel(day.dateKey, locale)}
-              aria-pressed={isSelected}
-              data-date={day.dateKey}
-              data-today={isToday ? "true" : undefined}
-              data-outside={day.isCurrentMonth ? undefined : "true"}
-              className={`lx-datepicker-day relative flex aspect-square w-full items-center justify-center rounded-[4px] border text-xs transition-colors ${
-                isSelected
-                  ? "border-[var(--color-theme-accent)] bg-[var(--color-theme-surface-hover)] font-semibold text-[var(--color-theme-text)]"
-                  : day.isCurrentMonth
-                    ? "border-transparent text-[var(--color-theme-text)] hover:bg-[var(--color-theme-surface-hover)]"
-                    : "border-transparent text-[var(--color-theme-text-subtle)] hover:bg-[var(--color-theme-surface-hover)]"
-              }`}
-              onClick={() =>
-                handleSelect(mode === "week" ? getWeekStartKey(day.dateKey) : day.dateKey)
-              }
-            >
-              <span>{day.dayOfMonth}</span>
-              {isToday ? (
-                <span className="lx-datepicker-today-dot absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--color-theme-accent)]" />
-              ) : null}
-              {entryCount > 0 ? (
-                <span className="lx-datepicker-badge absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-theme-accent)] px-0.5 text-xs font-bold leading-none text-[var(--color-theme-bg)]">
-                  {entryCount > BADGE_MAX_COUNT ? `${BADGE_MAX_COUNT}+` : entryCount}
-                </span>
-              ) : null}
-            </button>
-          )
-        })}
+        {gridDays.map((day) => (
+          <CalendarDayButton
+            key={day.dateKey}
+            day={day}
+            locale={locale}
+            isSelected={
+              mode === "week" ? getWeekStartKey(day.dateKey) === value : day.dateKey === value
+            }
+            inRange={false}
+            entryCount={entryCountMap?.[day.dateKey] ?? 0}
+            onSelect={() =>
+              handleSelect(mode === "week" ? getWeekStartKey(day.dateKey) : day.dateKey)
+            }
+          />
+        ))}
       </div>
 
       {quickSelects ? (
@@ -283,26 +350,176 @@ const DatePickerPanel = ({
   )
 }
 
+// 区间面板属性：双月历与预设行。
+interface DateRangePanelProps {
+  rangeValue: DateRange | null
+  presets: LxDateRangePreset[]
+  activePresetKey: string | null
+  onSelectRange: (range: DateRange) => void
+  onPresetSelect?: (key: string) => void
+}
+
 /**
- * 渲染支持按日 / 按周 / 按月三态与每日角标的日期选择器。
+ * 渲染双月历区间面板：首次点击记起点，第二次点击确认区间（逆序自动交换）。
+ */
+const DateRangePanel = ({
+  rangeValue,
+  presets,
+  activePresetKey,
+  onSelectRange,
+  onPresetSelect,
+}: DateRangePanelProps): React.JSX.Element => {
+  const { t, locale } = useTranslation()
+  const [visibleMonth, setVisibleMonth] = useState<string>(() =>
+    getMonthKey(rangeValue?.startDate ?? getTodayKey()),
+  )
+  const [pendingStart, setPendingStart] = useState<string | null>(null)
+
+  // 外部区间变化时同步可见月份。
+  useEffect(() => {
+    if (rangeValue) setVisibleMonth(getMonthKey(rangeValue.startDate))
+  }, [rangeValue])
+
+  const rightMonth = shiftMonthKey(visibleMonth, 1)
+  const leftDays = useMemo(() => getMonthGrid(visibleMonth), [visibleMonth])
+  const rightDays = useMemo(() => getMonthGrid(rightMonth), [rightMonth])
+  const weekdayLabels = useMemo(() => getWeekdayLabels(locale), [locale])
+
+  // 待定起点优先于已确认区间展示：首次点击后隐藏旧区间的终点。
+  const activeStart = pendingStart ?? rangeValue?.startDate ?? null
+  const activeEnd = pendingStart === null ? (rangeValue?.endDate ?? null) : null
+
+  const handleDaySelect = (dateKey: string): void => {
+    if (pendingStart === null) {
+      setPendingStart(dateKey)
+      return
+    }
+    setPendingStart(null)
+    onSelectRange(
+      pendingStart <= dateKey
+        ? { startDate: pendingStart, endDate: dateKey }
+        : { startDate: dateKey, endDate: pendingStart },
+    )
+  }
+
+  const renderMonth = (monthKey: string, days: MonthGridDay[]): React.JSX.Element => (
+    <div className="lx-datepicker-month-grid">
+      <p className="mb-1 text-center text-xs font-medium text-[var(--color-theme-text-muted)]">
+        {formatMonthLabel(monthKey, locale)}
+      </p>
+      <div className="grid grid-cols-7 gap-1">
+        {weekdayLabels.map((weekdayLabel) => (
+          <span
+            key={weekdayLabel}
+            className="flex h-6 items-center justify-center text-xs text-[var(--color-theme-text-subtle)]"
+          >
+            {weekdayLabel}
+          </span>
+        ))}
+      </div>
+      <div className="mt-1 grid grid-cols-7 gap-1">
+        {days.map((day) => (
+          <CalendarDayButton
+            key={day.dateKey}
+            day={day}
+            locale={locale}
+            isSelected={day.dateKey === activeStart || day.dateKey === activeEnd}
+            inRange={
+              activeStart !== null &&
+              activeEnd !== null &&
+              day.dateKey > activeStart &&
+              day.dateKey < activeEnd
+            }
+            onSelect={() => handleDaySelect(day.dateKey)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="lx-datepicker-caption truncate text-xs uppercase tracking-[0.18em] text-[var(--color-theme-text-subtle)]">
+            {t("common.datePicker.selectRange")}
+          </p>
+          <p className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
+            {rangeValue
+              ? formatDateRangeLabel(rangeValue.startDate, rangeValue.endDate, locale)
+              : formatMonthLabel(visibleMonth, locale)}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            aria-label={t("common.datePicker.previousMonth")}
+            className="lx-datepicker-nav flex h-6 w-6 items-center justify-center rounded-[4px] text-[var(--color-theme-text-muted)] transition-colors hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
+            onClick={() => setVisibleMonth((previous) => shiftMonthKey(previous, -1))}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label={t("common.datePicker.nextMonth")}
+            className="lx-datepicker-nav flex h-6 w-6 items-center justify-center rounded-[4px] text-[var(--color-theme-text-muted)] transition-colors hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
+            onClick={() => setVisibleMonth((previous) => shiftMonthKey(previous, 1))}
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        {renderMonth(visibleMonth, leftDays)}
+        {renderMonth(rightMonth, rightDays)}
+      </div>
+
+      {presets.length > 0 ? (
+        <div className="mt-3 flex items-center gap-1 border-t border-[var(--color-theme-border)] pt-2">
+          {presets.map((preset) => {
+            const isSelected = preset.key === activePresetKey
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                aria-pressed={isSelected}
+                className={`lx-datepicker-quick flex h-6 flex-1 items-center justify-center rounded-[4px] text-xs transition-colors ${
+                  isSelected
+                    ? "bg-[var(--color-theme-surface-hover)] font-semibold text-[var(--color-theme-text)]"
+                    : "text-[var(--color-theme-text-muted)] hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
+                }`}
+                onClick={() => onPresetSelect?.(preset.key)}
+              >
+                {preset.label}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+/**
+ * 渲染支持按日 / 按周 / 按月三态、区间双月历与每日角标的日期选择器。
  * popover 形态（默认）经 portal 定位展开；inline 形态直接渲染面板供外层浮层承载。
  * 颜色全部走主题 token，Minecraft 等主题通过 .lx-datepicker-* 类名挂钩覆盖。
  */
-export const LxDatePicker = ({
-  value,
-  onChange,
-  mode = "date",
-  placeholder,
-  className = "",
-  triggerClassName = "",
-  children,
-  disabled = false,
-  entryCountMap,
-  onVisibleMonthChange,
-  quickSelects = true,
-  inline = false,
-}: LxDatePickerProps): React.JSX.Element => {
+export const LxDatePicker = (props: LxDatePickerProps): React.JSX.Element => {
   const { t, locale } = useTranslation()
+  const {
+    placeholder,
+    className = "",
+    triggerClassName = "",
+    children,
+    disabled = false,
+    entryCountMap,
+    onVisibleMonthChange,
+    quickSelects = true,
+    inline = false,
+    triggerLabel,
+  } = props
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const [popoverPosition, setPopoverPosition] = useState<{ left: number; top: number } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -326,7 +543,9 @@ export const LxDatePicker = ({
       const trigger = containerRef.current
       if (!trigger) return
       const rect = trigger.getBoundingClientRect()
-      const width = popoverRef.current?.offsetWidth ?? POPOVER_FALLBACK_WIDTH
+      const width =
+        popoverRef.current?.offsetWidth ??
+        (props.mode === "range" ? RANGE_POPOVER_FALLBACK_WIDTH : POPOVER_FALLBACK_WIDTH)
       const height = popoverRef.current?.offsetHeight ?? 320
       const margin = 8
       const left = Math.min(
@@ -343,39 +562,64 @@ export const LxDatePicker = ({
     updatePosition()
     window.addEventListener("resize", updatePosition)
     return () => window.removeEventListener("resize", updatePosition)
-  }, [inline, shouldRender])
-
-  if (inline) {
-    return (
-      <div className={`lx-datepicker-inline ${className}`}>
-        <DatePickerPanel
-          mode={mode}
-          value={value}
-          entryCountMap={entryCountMap}
-          quickSelects={quickSelects}
-          onSelect={onChange}
-          onVisibleMonthChange={onVisibleMonthChange}
-        />
-      </div>
-    )
-  }
+  }, [inline, shouldRender, props.mode])
 
   const handleToggle = (): void => {
     if (disabled) return
     setIsOpen((previous) => !previous)
   }
 
-  const handleSelect = (nextValue: string): void => {
+  const handleSingleSelect = (nextValue: string): void => {
     setIsOpen(false)
-    onChange(nextValue)
+    if (props.mode !== "range") props.onChange(nextValue)
+  }
+
+  const handleRangeSelect = (range: DateRange): void => {
+    setIsOpen(false)
+    if (props.mode === "range") props.onRangeChange(range)
+  }
+
+  const handlePresetSelect = (key: string): void => {
+    setIsOpen(false)
+    if (props.mode === "range") props.onPresetSelect?.(key)
   }
 
   const displayLabel = (): string => {
     const fallbackLabel = placeholder ?? t("common.datePicker.placeholder")
-    if (mode === "month") {
-      return isValidMonthKey(value) ? formatMonthLabel(value, locale) : fallbackLabel
+    if (props.mode === "range") {
+      if (triggerLabel) return triggerLabel
+      return props.rangeValue
+        ? formatDateRangeLabel(props.rangeValue.startDate, props.rangeValue.endDate, locale)
+        : fallbackLabel
     }
-    return isValidDateKey(value) ? formatDateLabel(value, locale) : fallbackLabel
+    if (props.mode === "month") {
+      return isValidMonthKey(props.value) ? formatMonthLabel(props.value, locale) : fallbackLabel
+    }
+    return isValidDateKey(props.value) ? formatDateLabel(props.value, locale) : fallbackLabel
+  }
+
+  const renderPanel = (closeOnSelect: boolean): React.JSX.Element =>
+    props.mode === "range" ? (
+      <DateRangePanel
+        rangeValue={props.rangeValue}
+        presets={props.presets ?? EMPTY_RANGE_PRESETS}
+        activePresetKey={props.activePresetKey ?? null}
+        onSelectRange={closeOnSelect ? handleRangeSelect : props.onRangeChange}
+        onPresetSelect={closeOnSelect ? handlePresetSelect : props.onPresetSelect}
+      />
+    ) : (
+      <DatePickerPanel
+        mode={props.mode ?? "date"}
+        value={props.value}
+        entryCountMap={entryCountMap}
+        quickSelects={quickSelects}
+        onSelect={closeOnSelect ? handleSingleSelect : props.onChange}
+        onVisibleMonthChange={onVisibleMonthChange}
+      />
+    )
+
+  if (inline) {
+    return <div className={`lx-datepicker-inline ${className}`}>{renderPanel(false)}</div>
   }
 
   // 自定义触发器：合并子元素自身 onClick 后接管展开 / 收起。
@@ -424,26 +668,21 @@ export const LxDatePicker = ({
             ref={popoverRef}
             role="dialog"
             aria-label={t(
-              mode === "week"
+              props.mode === "week"
                 ? "common.datePicker.selectWeek"
-                : mode === "month"
+                : props.mode === "month"
                   ? "common.datePicker.selectMonth"
-                  : "common.datePicker.selectDate",
+                  : props.mode === "range"
+                    ? "common.datePicker.selectRange"
+                    : "common.datePicker.selectDate",
             )}
-            data-mode={mode}
-            className={`lx-datepicker fixed z-[9999] w-[292px] rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface)] p-3 text-[var(--color-theme-text)] shadow-[0_18px_60px_rgba(0,0,0,0.55)] ${
-              isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-            }`}
+            data-mode={props.mode ?? "date"}
+            className={`lx-datepicker fixed z-[9999] rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface)] p-3 text-[var(--color-theme-text)] shadow-[0_18px_60px_rgba(0,0,0,0.55)] ${
+              props.mode === "range" ? "w-[576px]" : "w-[292px]"
+            } ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"}`}
             style={{ ...(popoverPosition ?? undefined) }}
           >
-            <DatePickerPanel
-              mode={mode}
-              value={value}
-              entryCountMap={entryCountMap}
-              quickSelects={quickSelects}
-              onSelect={handleSelect}
-              onVisibleMonthChange={onVisibleMonthChange}
-            />
+            {renderPanel(true)}
           </div>,
           document.body,
         )}

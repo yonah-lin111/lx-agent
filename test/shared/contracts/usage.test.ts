@@ -2,6 +2,7 @@ import {
   computeUsageRates,
   resolveUsageGranularity,
   resolveUsageRange,
+  resolveUsageRangeSelection,
   type UsageTokens,
 } from "@shared/contracts/usage"
 import { describe, expect, it } from "vitest"
@@ -77,10 +78,58 @@ describe("resolveUsageRange", () => {
     expect(resolveUsageRange("30d", now.getTime()).startTime).toBe(thirtyDays.getTime())
   })
 
-  it("today 按小时聚合，其余范围按天聚合", () => {
-    expect(resolveUsageGranularity("today")).toBe("hour")
-    expect(resolveUsageGranularity("7d")).toBe("day")
-    expect(resolveUsageGranularity("30d")).toBe("day")
-    expect(resolveUsageGranularity("all")).toBe("day")
+  it("单日范围按小时聚合，其余范围按天聚合", () => {
+    expect(resolveUsageGranularity({ preset: "today" })).toBe("hour")
+    expect(resolveUsageGranularity({ preset: "7d" })).toBe("day")
+    expect(resolveUsageGranularity({ preset: "30d" })).toBe("day")
+    expect(resolveUsageGranularity({ preset: "all" })).toBe("day")
+  })
+})
+
+describe("resolveUsageRangeSelection", () => {
+  it("预设复用 resolveUsageRange 的结果", () => {
+    const now = new Date(2026, 8, 11, 15, 30, 0).getTime()
+
+    expect(resolveUsageRangeSelection({ preset: "today" }, now)).toEqual(
+      resolveUsageRange("today", now),
+    )
+    expect(resolveUsageRangeSelection({ preset: "30d" }, now)).toEqual(
+      resolveUsageRange("30d", now),
+    )
+    expect(resolveUsageRangeSelection({ preset: "all" }, now)).toEqual({})
+  })
+
+  it("自定义区间取起始日零点到结束日末", () => {
+    const now = new Date(2026, 8, 11, 15, 30, 0).getTime()
+
+    expect(
+      resolveUsageRangeSelection(
+        { preset: "custom", startDate: "2026-08-03", endDate: "2026-08-05" },
+        now,
+      ),
+    ).toEqual({
+      startTime: new Date(2026, 7, 3).getTime(),
+      endTime: new Date(2026, 7, 5, 23, 59, 59, 999).getTime(),
+    })
+  })
+
+  it("自定义区间结束日为今天时截止到当前时刻", () => {
+    const now = new Date(2026, 8, 11, 15, 30, 0).getTime()
+
+    expect(
+      resolveUsageRangeSelection(
+        { preset: "custom", startDate: "2026-09-11", endDate: "2026-09-11" },
+        now,
+      ),
+    ).toEqual({ startTime: new Date(2026, 8, 11).getTime(), endTime: now })
+  })
+
+  it("单日自定义区间按小时聚合，跨日按天聚合", () => {
+    expect(
+      resolveUsageGranularity({ preset: "custom", startDate: "2026-09-11", endDate: "2026-09-11" }),
+    ).toBe("hour")
+    expect(
+      resolveUsageGranularity({ preset: "custom", startDate: "2026-09-01", endDate: "2026-09-11" }),
+    ).toBe("day")
   })
 })

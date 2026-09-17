@@ -15,17 +15,15 @@ const filterOptions: UsageFilterOptions = {
 }
 
 const createProps = (overrides: Partial<Parameters<typeof UsageFilters>[0]> = {}) => ({
-  range: "today" as const,
+  rangeSelection: { preset: "today" } as const,
   filterOptions,
-  isLoading: false,
   refreshIntervalMs: 0,
-  onRangeChange: vi.fn(),
+  onRangeSelectionChange: vi.fn(),
   onProviderChange: vi.fn(),
   onModelChange: vi.fn(),
   onProjectChange: vi.fn(),
   onSessionChange: vi.fn(),
   onRefreshIntervalChange: vi.fn(),
-  onRefresh: vi.fn(),
   ...overrides,
 })
 
@@ -61,5 +59,51 @@ describe("UsageFilters", () => {
     fireEvent.mouseDown(screen.getByRole("option", { name: /All Sessions|全部会话/ }))
 
     expect(onSessionChange).toHaveBeenCalledWith(undefined)
+  })
+
+  it("时间范围控件展示预设名并展开双月历与预设行", () => {
+    render(<UsageFilters {...createProps()} />)
+
+    const trigger = document.querySelector(".lx-datepicker-trigger") as HTMLElement
+    expect(trigger.textContent).toMatch(/Today|今日/)
+
+    fireEvent.click(trigger)
+
+    expect(document.querySelectorAll(".lx-datepicker-month-grid")).toHaveLength(2)
+    expect(screen.getByRole("button", { name: /Last 7 days|近 7 天/ })).toBeDefined()
+    expect(screen.getByRole("button", { name: /All time|全部时间/ })).toBeDefined()
+  })
+
+  it("选择时间预设回调预设选择", () => {
+    const onRangeSelectionChange = vi.fn()
+    render(<UsageFilters {...createProps({ onRangeSelectionChange })} />)
+
+    fireEvent.click(document.querySelector(".lx-datepicker-trigger") as HTMLElement)
+    fireEvent.click(screen.getByRole("button", { name: /Last 7 days|近 7 天/ }))
+
+    expect(onRangeSelectionChange).toHaveBeenCalledWith({ preset: "7d" })
+  })
+
+  it("选择自定义区间回调 custom 选择", () => {
+    const onRangeSelectionChange = vi.fn()
+    render(
+      <UsageFilters
+        {...createProps({
+          rangeSelection: { preset: "custom", startDate: "2026-09-01", endDate: "2026-09-17" },
+          onRangeSelectionChange,
+        })}
+      />,
+    )
+
+    fireEvent.click(document.querySelector(".lx-datepicker-trigger") as HTMLElement)
+    // 区间端点：先点起点再点终点。
+    fireEvent.click(document.querySelector('[data-date="2026-09-20"]') as HTMLElement)
+    fireEvent.click(document.querySelector('[data-date="2026-09-25"]') as HTMLElement)
+
+    expect(onRangeSelectionChange).toHaveBeenCalledWith({
+      preset: "custom",
+      startDate: "2026-09-20",
+      endDate: "2026-09-25",
+    })
   })
 })

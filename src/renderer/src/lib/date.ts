@@ -142,6 +142,19 @@ export const formatMonthLabel = (monthKey: string, locale: string): string =>
   )
 
 /**
+ * 日期区间标签（同一月 / 同年自动折叠，如 Sep 1 – 17, 2026）。
+ */
+export const formatDateRangeLabel = (
+  startDateKey: string,
+  endDateKey: string,
+  locale: string,
+): string =>
+  new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "numeric" }).formatRange(
+    parseDateKey(startDateKey),
+    parseDateKey(endDateKey),
+  )
+
+/**
  * 日期键 → 短周几标签（如 周一 / Mon）。
  */
 export const formatWeekdayShort = (dateKey: string, locale: string): string =>

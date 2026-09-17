@@ -54,6 +54,7 @@ export const common = {
     selectDate: "Select Date",
     selectWeek: "Select Week",
     selectMonth: "Select Month",
+    selectRange: "Select Date Range",
     today: "Today",
     yesterday: "Yesterday",
     tomorrow: "Tomorrow",

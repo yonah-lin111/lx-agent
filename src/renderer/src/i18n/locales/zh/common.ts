@@ -54,6 +54,7 @@ export const common = {
     selectDate: "选择日期",
     selectWeek: "选择周",
     selectMonth: "选择月份",
+    selectRange: "选择日期范围",
     today: "今天",
     yesterday: "昨天",
     tomorrow: "明天",

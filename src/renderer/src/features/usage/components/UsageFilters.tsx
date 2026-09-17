@@ -1,17 +1,21 @@
+import { resolveUsageRangeSelection } from "@shared/contracts/usage"
 import { useMemo } from "react"
+import { LxDatePicker, type LxDateRangePreset } from "@/components/ui/LxDatePicker"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
-import { useTranslation } from "@/i18n"
-import type { UsageFilterOptions, UsageTimeRange } from "../types"
+import { type TranslationKey, useTranslation } from "@/i18n"
+import type { DateRange } from "@/lib/date"
+import type { UsageFilterOptions, UsageRangeSelection, UsageTimeRange } from "../types"
+import { toLocalDateKey } from "../utils"
 
 export interface UsageFiltersProps {
-  range: UsageTimeRange
+  rangeSelection: UsageRangeSelection
   provider?: string
   model?: string
   projectId?: string
   sessionId?: string
   filterOptions: UsageFilterOptions
   refreshIntervalMs: number
-  onRangeChange: (range: UsageTimeRange) => void
+  onRangeSelectionChange: (selection: UsageRangeSelection) => void
   onProviderChange: (provider?: string) => void
   onModelChange: (model?: string) => void
   onProjectChange: (projectId?: string) => void
@@ -21,21 +25,29 @@ export interface UsageFiltersProps {
 
 const ALL_VALUE = "__all__"
 
+// 范围预设选项与文案 key（顺序即展示顺序）。
+const RANGE_PRESET_KEYS: Record<UsageTimeRange, TranslationKey> = {
+  today: "usage.timeRange.today",
+  "7d": "usage.timeRange.7d",
+  "30d": "usage.timeRange.30d",
+  all: "usage.timeRange.all",
+}
+
 // 自动刷新间隔选项（毫秒，0 = 关闭）。
 const REFRESH_INTERVAL_OPTIONS_MS = [0, 5000, 10000, 30000] as const
 
 /**
- * 用量页筛选栏：时间预设、Provider / Model / 项目 / 会话筛选。
+ * 用量页筛选栏：时间范围（预设 + 自定义区间）、Provider / Model / 项目 / 会话筛选。
  */
 export const UsageFilters = ({
-  range,
+  rangeSelection,
   provider,
   model,
   projectId,
   sessionId,
   filterOptions,
   refreshIntervalMs,
-  onRangeChange,
+  onRangeSelectionChange,
   onProviderChange,
   onModelChange,
   onProjectChange,
@@ -44,15 +56,38 @@ export const UsageFilters = ({
 }: UsageFiltersProps): React.JSX.Element => {
   const { t } = useTranslation()
 
-  const rangeOptions: LxSelectOption<UsageTimeRange>[] = useMemo(
-    () => [
-      { value: "today", label: t("usage.timeRange.today") },
-      { value: "7d", label: t("usage.timeRange.7d") },
-      { value: "30d", label: t("usage.timeRange.30d") },
-      { value: "all", label: t("usage.timeRange.all") },
-    ],
+  const rangePresets: LxDateRangePreset[] = useMemo(
+    () =>
+      (Object.keys(RANGE_PRESET_KEYS) as UsageTimeRange[]).map((preset) => ({
+        key: preset,
+        label: t(RANGE_PRESET_KEYS[preset]),
+      })),
     [t],
   )
+
+  // 月历高亮区间：复用契约解析结果，避免在组件内重复预设的日数推导；all 无边界。
+  const rangeValue: DateRange | null = useMemo(() => {
+    if (rangeSelection.preset === "all") return null
+    const { startTime, endTime } = resolveUsageRangeSelection(rangeSelection)
+    if (startTime === undefined || endTime === undefined) return null
+    return { startDate: toLocalDateKey(startTime), endDate: toLocalDateKey(endTime) }
+  }, [rangeSelection])
+
+  const activePresetKey = rangeSelection.preset === "custom" ? null : rangeSelection.preset
+  const triggerLabel =
+    rangeSelection.preset === "custom" ? undefined : t(RANGE_PRESET_KEYS[rangeSelection.preset])
+
+  const handlePresetSelect = (key: string): void => {
+    const preset = (Object.keys(RANGE_PRESET_KEYS) as UsageTimeRange[]).find(
+      (candidate) => candidate === key,
+    )
+    if (!preset) return
+    onRangeSelectionChange({ preset })
+  }
+
+  const handleRangeChange = (range: DateRange): void => {
+    onRangeSelectionChange({ preset: "custom", startDate: range.startDate, endDate: range.endDate })
+  }
 
   const refreshIntervalOptions: LxSelectOption<string>[] = useMemo(
     () =>
@@ -97,8 +132,17 @@ export const UsageFilters = ({
 
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <div className="w-32 shrink-0">
-        <LxSelect size="small" value={range} options={rangeOptions} onChange={onRangeChange} />
+      <div className="w-40 shrink-0">
+        <LxDatePicker
+          mode="range"
+          className="w-full"
+          rangeValue={rangeValue}
+          presets={rangePresets}
+          activePresetKey={activePresetKey}
+          triggerLabel={triggerLabel}
+          onPresetSelect={handlePresetSelect}
+          onRangeChange={handleRangeChange}
+        />
       </div>
       <div className="w-40 shrink-0">
         <LxSelect
