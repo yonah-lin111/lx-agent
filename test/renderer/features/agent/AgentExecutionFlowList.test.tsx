@@ -89,7 +89,9 @@ describe("AgentExecutionFlowList", () => {
     expect(groupHeader).not.toBeNull()
     fireEvent.click(groupHeader!)
 
-    expect(screen.getAllByText("MCP · search · code").length).toBeGreaterThanOrEqual(1)
+    // 工具标题按分类展示：MCP 分类标签 + 「服务名 · 方法名」标题
+    expect(screen.getAllByText("MCP").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("search · code").length).toBeGreaterThanOrEqual(1)
 
     // 点击工具步骤头部展开详情
     const toolStepHeader = container.querySelector(

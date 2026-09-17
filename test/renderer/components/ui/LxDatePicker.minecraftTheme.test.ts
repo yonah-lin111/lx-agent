@@ -84,7 +84,8 @@ describe("我的世界主题日程组件", () => {
   })
 
   it("日程列表卡片去掉马赛克底纹，条目行保持纯平铺", () => {
-    const cardBlock = getRuleBlock('[data-theme="minecraft"] .lx-schedule-board {')
+    // 选择器与 .lx-schedule-week-strip 合并成组，此处按前缀读取。
+    const cardBlock = getRuleBlock('[data-theme="minecraft"] .lx-schedule-board')
     expect(cardBlock).toContain("background-image: none !important")
     expect(cardBlock).toContain("background-color: #1e1e2a !important")
 

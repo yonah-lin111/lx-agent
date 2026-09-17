@@ -58,8 +58,15 @@ describe("我的世界主题导航层级词表", () => {
     expect(baseBlock).toContain("inset -2px -2px 0px 0px")
     expect(baseBlock).toContain("2px 2px 0px 0px #000000")
 
-    for (const selector of [
+    // 高亮标签只覆盖底色与文字色：抬升浮雕由基础 .lx-tag 规则继承，不得改为凹陷。
+    const highlightedTagBlock = readBlock(
       '.lx-tag[data-highlighted="true"]:not([data-variant="ghost"])',
+    )
+    expect(highlightedTagBlock).toContain("background-color: #14141c !important")
+    expect(highlightedTagBlock).not.toContain("box-shadow")
+    expect(highlightedTagBlock).not.toMatch(/inset 2px 2px 0px 0px rgba\(0, 0, 0, 0\.9/)
+
+    for (const selector of [
       '.project-recent-tag[data-color="default"][data-highlighted="true"] {',
       '.project-recent-tag[data-color="amber"][data-highlighted="true"] {',
       '.project-recent-tag[data-color="emerald"][data-highlighted="true"] {',
