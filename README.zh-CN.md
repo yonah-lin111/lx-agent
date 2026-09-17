@@ -54,7 +54,7 @@ LX Agent 是一个 Electron 桌面应用，让你与具备编码能力的 Agent 
 
 | Front Design 画布 | OpenClaw 多实例工作区 |
 | :---: | :---: |
-| ![Front Design 画布实时渲染 Agent 生成的设计稿](./docs/assets/front-design-canvas.png) | ![OpenClaw 工作区：办公区、员工与合流对话](./docs/assets/openclaw-workspace.png) |
+| ![Front Design 画布实时渲染 Agent 生成的设计稿，右侧同步展示生成的代码与迭代入口](./docs/assets/front-design-canvas.png) | ![OpenClaw 工作区：办公区、员工与合流对话](./docs/assets/openclaw-workspace.png) |
 
 ### 像素主题
 

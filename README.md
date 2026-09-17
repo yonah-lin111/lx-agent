@@ -59,7 +59,7 @@ versioned in the same workspace, with an agent that can read and patch real file
 
 | Front Design canvas | OpenClaw multi-instance workspace |
 | :---: | :---: |
-| ![Front Design canvas rendering an agent-generated design live](./docs/assets/front-design-canvas.png) | ![OpenClaw workspace with offices, team members and a merged conversation](./docs/assets/openclaw-workspace.png) |
+| ![Front Design canvas rendering an agent-generated design live, with the generated code and iterate actions alongside](./docs/assets/front-design-canvas.png) | ![OpenClaw workspace with offices, team members and a merged conversation](./docs/assets/openclaw-workspace.png) |
 
 ### Pixel theme
 
