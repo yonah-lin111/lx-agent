@@ -1,9 +1,9 @@
 // 权限与协作模式契约：权限三态、沙箱策略、请求/决策/响应与模式归一化。
 
-// 权限确认模式（对齐 Claude Code 权限体系三态）。
+// 权限确认模式（default / acceptEdits / bypassPermissions 三态）。
 export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions"
 
-// 协作模式（对齐 Codex 执行协作模式三态与前端设计模式，支持向后兼容 "default" 归一化为 "build"）。
+// 协作模式（build / plan / review / design，支持向后兼容 "default" 归一化为 "build"）。
 export type CollaborationMode = "build" | "plan" | "review" | "design"
 
 // 协作模式向后兼容与归一化辅助函数
@@ -14,7 +14,7 @@ export const normalizeCollaborationMode = (mode?: string | null): CollaborationM
   return "build"
 }
 
-// 沙箱策略（对齐 Codex 执行沙箱三态）。
+// 沙箱策略（read-only / workspace-write / danger-full-access 三态）。
 export type SandboxPolicy = "read-only" | "workspace-write" | "danger-full-access"
 
 // 权限配置（~/.lx/config.json 的 agent.permissions 节点）。

@@ -1,7 +1,7 @@
 /**
  * 重复工具调用守卫 (Repeat Tool Guard)
  *
- * 借鉴 deepseek-harness 的 dsh-repeat-tool-reminder 机制：
+ * 对连续重复调用同一工具的逐级干预机制：
  * 1. 规范化参数 (深度排序 Key + Canonical JSON)。
  * 2. 统计以完全相同的规范化参数连续调用同一工具的次数。
  * 3. 排除特定对链透明的工具 (如 todowrite, question 等)。

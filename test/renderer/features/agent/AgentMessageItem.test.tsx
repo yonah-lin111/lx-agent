@@ -225,7 +225,7 @@ describe("AgentMessageItem", () => {
           kind: "toolCall",
           toolCallId: "tool-1",
           toolName: "read",
-          args: { path: "/Users/yonah/projects/agent/pi-main" },
+          args: { path: "/Users/yonah/projects/agent/project-alpha" },
           status: "error",
         },
         {
@@ -239,7 +239,7 @@ describe("AgentMessageItem", () => {
           kind: "toolCall",
           toolCallId: "tool-3",
           toolName: "read",
-          args: { path: "/Users/yonah/projects/agent/codex-main" },
+          args: { path: "/Users/yonah/projects/agent/project-beta" },
           status: "done",
         },
       ],
@@ -251,7 +251,7 @@ describe("AgentMessageItem", () => {
     expect(screen.getAllByText("Read")).toHaveLength(1)
     expect(
       screen.getByText(
-        "/Users/.../agent/pi-main、/Users/.../agent/lx-agent、/Users/.../agent/codex-main",
+        "/Users/.../agent/project-alpha、/Users/.../agent/lx-agent、/Users/.../agent/project-beta",
       ),
     ).not.toBeNull()
   })

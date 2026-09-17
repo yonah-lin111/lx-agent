@@ -5,7 +5,7 @@ import { zh } from "@/i18n/locales/zh"
 import type { MarkdownSendPromptOption, MarkdownSendPromptTargetId } from "./types"
 
 /**
- * 根据标题识别对应的 CLI 类型（如 opencode-dev -> opencode，OC | xxx -> opencode，cc-switch -> claude 等）。
+ * 根据标题识别对应的 CLI 类型（如 opencode-dev -> opencode，OC | xxx -> opencode，无关键字标题回退 claude 等）。
  */
 export const identifyCliTypeFromTitle = (title: string): MarkdownSendPromptTargetId | null => {
   const t = title.toLowerCase().trim()

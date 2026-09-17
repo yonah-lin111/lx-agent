@@ -1,4 +1,4 @@
-// RTK 过滤器常量（移植自 9router open-sse/rtk/constants.js，行为保持一致）。
+// RTK 过滤器常量。
 
 // 单条工具输出参与压缩的字符窗口：低于下限跳过，超过上限直接放行。
 export const MIN_COMPRESS_SIZE = 500

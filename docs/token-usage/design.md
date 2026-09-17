@@ -1,6 +1,6 @@
 # Token Usage 统计设计
 
-参考 `cc-switch` 的使用统计形态，在 LX Agent 中新增请求日志采集、手动计价与成本计算，并在主页侧栏新增 Usage 入口与统计页面（汇总卡 + 图表 + 表格）。
+在 LX Agent 中新增请求日志采集、手动计价与成本计算，并在主页侧栏新增 Usage 入口与统计页面（汇总卡 + 图表 + 表格）。
 
 ## 1. 目标与非目标
 
@@ -213,7 +213,7 @@ features/usage/
   types.ts / utils.ts / index.ts
 ```
 
-- 图表库：`recharts@^3.5.1`（与 cc-switch 一致，支持 React 19）。
+- 图表库：`recharts@^3.5.1`（支持 React 19）。
 - 所有样式使用 CSS Token（`--color-theme-*` 等），圆角 6px，禁止渐变。
 - 全部文案接入 `useTranslation`，`zh.ts` / `en.ts` 同步新增 `usage.*` 键。
 

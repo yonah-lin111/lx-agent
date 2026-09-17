@@ -91,7 +91,7 @@ export const models = {
   defaultVariant: "默认等级",
   defaultVariantNone: "默认（无思考等级）",
   presetVariantOpenAI: "OpenAI 档位 (low / medium / high)",
-  presetVariantOpenRouter: "OpenRouter / 9Router (reasoning.effort)",
+  presetVariantOpenRouter: "OpenRouter (reasoning.effort)",
   presetVariantAnthropic: "Anthropic 思考预算 (budgetTokens)",
   presetVariantReasoningEffort: "通用推理等级 (reasoning_effort)",
   invalidVariantJson: "参数 JSON 格式不合法",

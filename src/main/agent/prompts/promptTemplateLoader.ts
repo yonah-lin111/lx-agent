@@ -87,7 +87,7 @@ export function parseCommandArgs(argsString: string): string[] {
 }
 
 /**
- * 替换模板中的参数占位符（对齐 pi-main 语法）：
+ * 替换模板中的参数占位符：
  * - $1, $2, ...：位置参数
  * - $@ 与 $ARGUMENTS：全部参数（空格拼接）
  * - ${N:-default}：位置参数缺省默认值

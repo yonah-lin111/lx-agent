@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/find.js：find 输出按目录分组并限流。
+// find 输出按目录分组并限流。
 import { FIND_PER_DIR_MAX, FIND_TOTAL_DIR_MAX } from "../constants"
 
 // 压缩 find 输出：按父目录分组展示文件名，每目录与总目录数均有上限。

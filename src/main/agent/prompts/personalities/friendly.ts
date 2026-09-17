@@ -1,7 +1,6 @@
 /**
  * 友好协作人格 (Friendly Persona)
  *
- * 对齐 Codex gpt-5.2-codex_friendly.md：
  * 强调协作导师、假设与实验驱动、在用户遇到困难时提供更具建设性的解释与多套方案。
  */
 export const FRIENDLY_PERSONA = [

@@ -4,7 +4,7 @@ import type { AgentMessage } from "./messages"
 import type { AgentCapabilitySnapshot } from "./runtime"
 import type { TodoList } from "./todos"
 
-// Agent 人格类型（对齐 Codex Personalities: pragmatic 实用主义 / friendly 友好协作）。
+// Agent 人格类型（pragmatic 实用主义 / friendly 友好协作）。
 export type AgentPersonality = "pragmatic" | "friendly"
 
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内，支持多会话/多 Tab 路由）。

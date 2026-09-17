@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/gitLog.js：压缩 git log，保留提交头与主题行。
+// 压缩 git log，保留提交头与主题行。
 import { GIT_LOG_MAX_LINES } from "../constants"
 
 // 压缩 git log：保留 commit/Author/Date/主题/stat 摘要，丢弃正文与内嵌 diff。

@@ -26,7 +26,7 @@ Defines the **physical boundaries and safety restrictions** for the Agent's envi
   permissionModeDesc: "Determines how gated tools are handled when no rule is matched.",
   permissionModeDoc: `### Permission Mode
 
-Controls the **interactive approval behavior** between Agent and human user (aligned with Claude Code).
+Controls the **interactive approval behavior** between Agent and human user.
 
 - **\`default\` (Ask per rule - Recommended)**: Non-exempt tools like \`bash\` or MCP require interactive confirmation when no rule matches.
 - **\`acceptEdits\` (Auto-allow write/edit)**: Automatically grants file edits (\`write\`, \`edit\`, \`apply_patch\`), while \`bash\` commands still prompt.

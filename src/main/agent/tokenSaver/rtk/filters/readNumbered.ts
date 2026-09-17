@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/readNumbered.js：带行号文件输出（"  N|content"）头尾截断。
+// 带行号文件输出（"  N|content"）头尾截断。
 import { SMART_TRUNCATE_HEAD, SMART_TRUNCATE_MIN_LINES, SMART_TRUNCATE_TAIL } from "../constants"
 
 // 带行号文件行格式。

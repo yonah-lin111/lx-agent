@@ -1,7 +1,6 @@
 /**
  * Current Time Reminder 状态机
  *
- * 参考 Codex `core/src/session/time_reminder.rs`
  * 周期性记录时间戳并在每轮对话跨越时间窗口或阈值时计算时间提醒片段。
  */
 
@@ -34,7 +33,7 @@ export class TimeReminderTracker {
   }
 
   /**
-   * 格式化时间提醒注入块（遵循 Codex 规范）
+   * 格式化时间提醒注入块（遵循统一注入格式）
    */
   public static formatReminder(date: Date = new Date()): string {
     const utc = date.toISOString()

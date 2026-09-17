@@ -4,7 +4,7 @@
  * A capped symmetric buffer that preserves a stable prefix ("head") and suffix ("tail"),
  * dropping the middle once it exceeds the configured maximum bytes.
  *
- * Follows the symmetrical 50/50 budget model from codex-rs/core/src/unified_exec/head_tail_buffer.rs.
+ * Follows a symmetrical 50/50 head/tail budget model.
  */
 
 export const DEFAULT_UNIFIED_EXEC_OUTPUT_MAX_BYTES = 1024 * 1024 // 1 MiB

@@ -130,7 +130,7 @@ export const loadInstructions = (cwd: string): InstructionFile[] => {
   return instructions
 }
 
-// 指令文件注入块（对齐 opencode：`Instructions from: <abs path>\n<content>`）。
+// 指令文件注入块（`Instructions from: <abs path>\n<content>`）。
 // 无指令时返回空串（不污染 system prompt）。
 export const formatInstructions = (instructions: InstructionFile[]): string => {
   if (instructions.length === 0) return ""

@@ -24,7 +24,7 @@ export const permissions = {
   permissionModeDesc: "决定未命中规则时门控工具的默认处理方式。",
   permissionModeDoc: `### 权限模式 (Permission Mode)
 
-控制 Agent 执行操作时与人类的**交互与确认行为**（对齐 Claude Code 权限体系）。
+控制 Agent 执行操作时与人类的**交互与确认行为**。
 
 - **\`default\` (逐次询问 - 推荐)**: 未命中白名单规则时，终端命令 (\`bash\`) 与 MCP 工具调用均需人工弹窗确认。
 - **\`acceptEdits\` (自动放行编辑)**: 自动信任并放行所有代码与文件修改 (\`write\`, \`edit\`, \`apply_patch\`)，终端命令仍会询问确认。

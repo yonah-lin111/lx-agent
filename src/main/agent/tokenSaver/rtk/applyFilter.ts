@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/applyFilter.js：过滤器异常安全执行。
+// 过滤器异常安全执行：任何异常回退原始文本。
 
 import { detectFilter } from "./autodetect"
 import { MIN_COMPRESS_SIZE, RAW_CAP, RTK_FILTER_NAMES, type RtkFilterName } from "./constants"

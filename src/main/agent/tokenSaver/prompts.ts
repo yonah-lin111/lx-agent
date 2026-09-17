@@ -1,5 +1,5 @@
 // Caveman 与 Ponytail 输出风格提示词。
-// 移植自 9router open-sse/rtk/cavemanPrompts.js 与 ponytailPrompt.js，文本保持一致。
+// Token Saver 风格提示词（caveman / ponytail）的固定文本定义。
 import type { CavemanLevel, PonytailLevel, TokenSaverSettings } from "@shared/settings"
 
 const SHARED_BOUNDARIES =

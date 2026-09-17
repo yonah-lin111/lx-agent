@@ -1,7 +1,6 @@
 /**
  * WorldState 增量差分与动态上下文管理系统 (WorldStateManager)
  *
- * 对齐 Codex `world_state` 架构：
  * 维护 Turn 间的状态快照（Environment, ContextWindowGuidance, MultiAgent, Permissions 等），
  * 仅在状态发生变化时计算并渲染增量差异片段（`renderDiff`），避免全量冗余注入。
  */

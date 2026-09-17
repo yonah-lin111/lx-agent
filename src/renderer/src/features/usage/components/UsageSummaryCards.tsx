@@ -7,7 +7,7 @@ export interface UsageSummaryCardsProps {
 }
 
 /**
- * 用量汇总卡：新增输入、输出、缓存写入、缓存命中与缓存命中率（对齐 cc-switch 统计口径）。
+ * 用量汇总卡：新增输入、输出、缓存写入、缓存命中与缓存命中率。
  */
 export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JSX.Element => {
   const { t } = useTranslation()

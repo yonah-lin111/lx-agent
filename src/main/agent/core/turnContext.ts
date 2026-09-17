@@ -23,7 +23,7 @@ export interface TurnContextOptions {
 
 /**
  * 封装单轮对话（Turn）的执行上下文与环境切片。
- * 遵循 Codex 的 Turn 状态机模型，保证环境感知与运行时状态的确定性与隔离。
+ * 保证环境感知与运行时状态的确定性与隔离。
  */
 export class TurnContext {
   public readonly turnId: string

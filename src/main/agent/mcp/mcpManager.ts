@@ -13,7 +13,7 @@ import type { AgentTool } from "../core/types"
 import { formatSize, truncateHead } from "../tools/truncate"
 import { jsonSchemaToZod } from "./jsonSchemaToZod"
 
-// MCP server 配置（config.json `agent.mcp` 节点，字段对齐 opencode Local）。
+// MCP server 配置（config.json `agent.mcp` 节点，字段保持外部 MCP 配置兼容）。
 export type McpServerConfig = {
   command: string[]
   cwd?: string

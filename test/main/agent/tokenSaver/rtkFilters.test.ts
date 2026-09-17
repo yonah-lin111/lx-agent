@@ -1,4 +1,4 @@
-// RTK 过滤器单测：移植自 9router tests/unit/rtk.test.js，行为逐条对齐参考实现。
+// RTK 过滤器单测：逐条校验压缩行为契约。
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {

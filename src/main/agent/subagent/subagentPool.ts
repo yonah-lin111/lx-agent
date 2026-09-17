@@ -51,7 +51,7 @@ export class SubagentPool {
   }
 
   /**
-   * 按 subagentId 或 name 解析子代理实例（对齐 Codex resolve_agent_target 容错机制）
+   * 按 subagentId 或 name 解析子代理实例（精确匹配优先，未命中时回退角色名）
    */
   resolve(target: string): ManagedSubagent | undefined {
     this.pruneIdle()

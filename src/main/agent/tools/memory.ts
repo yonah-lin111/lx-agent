@@ -51,7 +51,7 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
   name: "memory",
   label: "Project memory",
   description:
-    "Manage long-term project memory aligned with Claude Code conventions. Use this tool to view the memory index/notes, save new learnings or user preferences, search existing memories, or delete outdated memories.",
+    "Manage long-term project memory. Use this tool to view the memory index/notes, save new learnings or user preferences, search existing memories, or delete outdated memories.",
   inputSchema: memoryInputSchema,
   execute: async (_toolCallId, params, signal) => {
     const throwIfAborted = (): void => {

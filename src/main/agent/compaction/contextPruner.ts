@@ -3,7 +3,7 @@ import type { AgentMessage, TextContent, ToolResultMessage } from "@shared/contr
 /**
  * 上下文智能修剪配置 (Context Pruner Config)
  *
- * 借鉴 oh-my-pi 的 session-maintenance / pruneToolOutputs 机制：
+ * 只读大输出修剪机制：
  * 在消息进入模型上下文或生成摘要之前，修剪历史较早的只读大输出（read, grep, find, ls, webfetch），
  * 替换为纯文本占位符，从而极大压缩长会话上下文 Token 消耗。
  */

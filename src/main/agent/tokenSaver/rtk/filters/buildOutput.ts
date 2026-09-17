@@ -1,4 +1,4 @@
-// 移植自 9router open-sse/rtk/filters/buildOutput.js：压缩构建输出，保留错误/警告/摘要。
+// 压缩构建输出，保留错误/警告/摘要。
 // Cargo/rustc 错误续行：" --> file:line"、"  |"、"N | code"、"  = note: ..."。
 const RE_CARGO_ERR_CONT = /^\s*(-->|\||\d+\s*\||=)/
 // 保留的弃用警告条数。

@@ -204,7 +204,7 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       return { ok: false, error: "会话不存在。" }
     }
 
-    // 切割点定位：forkSeq 对应 entry 必须是 user 消息轮，否则拒绝（对齐 pi invalid_fork_target）。
+    // 切割点定位：forkSeq 对应 entry 必须是 user 消息轮，否则拒绝。
     let forkUserTimestamp: number | undefined
     if (forkSeq !== undefined) {
       const forkEntry = this.listEntries(sessionId).find((entry) => entry.seq === forkSeq)
@@ -419,7 +419,7 @@ export const createAgentSessionService = (getConnection: () => Database.Database
 // 生成业务键（供 agent_session / entry / call 使用）。
 export const createExternalId = (): string => randomUUID()
 
-// 分支会话标题：探测源标题的 `(fork #N)` 后缀递增，否则追加 `(fork #1)`（对齐 opencode getForkedTitle）。
+// 分支会话标题：探测源标题的 `(fork #N)` 后缀递增，否则追加 `(fork #1)`。
 export const getForkedTitle = (title: string): string => {
   const match = /^(.*?)\s*\(fork #(\d+)\)$/.exec(title)
   if (match) {
