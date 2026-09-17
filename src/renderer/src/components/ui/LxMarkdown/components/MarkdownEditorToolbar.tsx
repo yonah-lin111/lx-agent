@@ -36,8 +36,6 @@ const markdownShortcuts: { keys: string; descKey: TranslationKey }[] = [
   { keys: "Cmd / Ctrl + Alt + C", descKey: "markdown.shortcutInlineCode" },
   { keys: "Cmd / Ctrl + Shift + Alt + T", descKey: "markdown.shortcutInsertTable" },
   { keys: "Cmd / Ctrl + Shift + F", descKey: "markdown.shortcutFormat" },
-  { keys: "Cmd / Ctrl + Shift + E", descKey: "markdown.shortcutSplitView" },
-  { keys: "Cmd / Ctrl + Shift + V", descKey: "markdown.shortcutPreviewOnly" },
 ]
 
 /**

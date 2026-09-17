@@ -700,8 +700,8 @@ export const SkillSettings = (): React.JSX.Element => {
         </div>
       </div>
 
-      {/* 主体两栏布局：左侧 Skill 列表，右侧编辑面板（文件树内嵌侧栏） */}
-      <div className="grid min-h-0 flex-1 gap-3 @[700px]:grid-cols-[260px_minmax(0,1fr)]">
+      {/* 主体两栏布局：左侧 Skill 列表，右侧编辑面板（文件树内嵌侧栏）；窄容器下堆叠并由容器滚动 */}
+      <div className="custom-scrollbar grid min-h-0 flex-1 gap-3 overflow-y-auto @[560px]:overflow-hidden @[560px]:grid-cols-[220px_minmax(0,1fr)]">
         <SkillListPane
           skills={filteredSkills}
           loading={loading}

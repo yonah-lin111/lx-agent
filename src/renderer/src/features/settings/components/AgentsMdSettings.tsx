@@ -344,8 +344,8 @@ export const AgentsMdSettings = (): React.JSX.Element => {
       {activeTab === "system" ? (
         renderEditorCard(t("settings.agentsMdGlobalFile"), userInfo, loadingUser)
       ) : (
-        <div className="grid min-h-0 flex-1 gap-3 @[640px]:grid-cols-[220px_minmax(0,1fr)]">
-          <div className="settings-item-card flex min-h-0 flex-col rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))]">
+        <div className="custom-scrollbar grid min-h-0 flex-1 gap-3 overflow-y-auto @[480px]:overflow-hidden @[480px]:grid-cols-[200px_minmax(0,1fr)]">
+          <div className="settings-item-card flex max-h-[38vh] min-h-0 flex-col rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] @[480px]:max-h-none">
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] px-2.5 py-1.5">
               <span className="text-xs font-medium text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
                 {t("settings.agentsMdProjectTab")} ({projects.length})

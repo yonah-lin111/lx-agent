@@ -1,7 +1,11 @@
 import { HighlightStyle } from "@codemirror/language"
 import { EditorView } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
-import type { MarkdownTableAlignment, MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
+import type {
+  EditorScrollAnchor,
+  MarkdownTableAlignment,
+  MarkdownTableSize,
+} from "@/components/ui/LxMarkdown/types"
 
 export const editorTheme = EditorView.theme(
   {
@@ -465,100 +469,34 @@ export const selectAllPreservingScrollPosition = (view: EditorView): boolean => 
   return true
 }
 
-// Markdown 同步滚动锚点。
-interface MarkdownScrollAnchor {
-  line: number
-  top: number
-}
-
-const getPreviewScrollAnchors = (preview: HTMLElement): MarkdownScrollAnchor[] =>
-  Array.from(preview.querySelectorAll<HTMLElement>(".markdown-preview-content > [data-line]"))
-    .map((element) => ({
-      line: Number(element.dataset.line),
-      top:
-        element.getBoundingClientRect().top -
-        preview.getBoundingClientRect().top +
-        preview.scrollTop,
-    }))
-    .filter((anchor) => Number.isFinite(anchor.line))
-
-const getAnchorIndex = (
-  anchors: MarkdownScrollAnchor[],
-  position: number,
-  key: "line" | "top",
-): number => {
-  for (let index = anchors.length - 1; index >= 0; index -= 1) {
-    if (anchors[index][key] <= position) return index
+/**
+ * 记录编辑器当前可见行和相对偏移，供文档重排后恢复视觉位置。
+ */
+export const captureEditorScrollAnchor = (view: EditorView): EditorScrollAnchor => {
+  const { scrollLeft, scrollTop } = view.scrollDOM
+  const block = view.lineBlockAtHeight(scrollTop)
+  return {
+    left: scrollLeft,
+    line: view.state.doc.lineAt(block.from).number,
+    offset: scrollTop - block.top,
   }
-
-  return -1
 }
 
-const getEditorLineTop = (view: EditorView, line: number): number =>
-  line === 0 ? 0 : view.lineBlockAt(view.state.doc.line(line + 1).from).top
-
-const synchronizeScrollPosition = (
-  sourcePosition: number,
-  sourceStart: number,
-  sourceEnd: number,
-  targetStart: number,
-  targetEnd: number,
-): number => {
-  if (sourceEnd <= sourceStart || targetEnd <= targetStart) return targetStart
-
-  const progress = Math.min(
-    1,
-    Math.max(0, (sourcePosition - sourceStart) / (sourceEnd - sourceStart)),
-  )
-  return targetStart + (targetEnd - targetStart) * progress
-}
-
-export const synchronizeEditorToPreview = (view: EditorView, preview: HTMLElement): void => {
-  const editor = view.scrollDOM
-  const anchors = getPreviewScrollAnchors(preview)
-  if (anchors.length === 0) return
-
-  const block = view.lineBlockAtHeight(editor.scrollTop)
-  const line = view.state.doc.lineAt(block.from).number - 1
-  const index = getAnchorIndex(anchors, line, "line")
-  const anchor = anchors[index]
-  const nextAnchor = anchors[index + 1]
-  const sourceStart = anchor ? getEditorLineTop(view, anchor.line) : 0
-  const sourceEnd = nextAnchor
-    ? getEditorLineTop(view, nextAnchor.line)
-    : editor.scrollHeight - editor.clientHeight
-  const targetStart = anchor?.top ?? 0
-  const targetEnd = nextAnchor ? nextAnchor.top : preview.scrollHeight - preview.clientHeight
-
-  preview.scrollTop = synchronizeScrollPosition(
-    editor.scrollTop,
-    sourceStart,
-    sourceEnd,
-    targetStart,
-    targetEnd,
-  )
-}
-
-export const synchronizePreviewToEditor = (preview: HTMLElement, view: EditorView): void => {
-  const editor = view.scrollDOM
-  const anchors = getPreviewScrollAnchors(preview)
-  if (anchors.length === 0) return
-
-  const index = getAnchorIndex(anchors, preview.scrollTop, "top")
-  const anchor = anchors[index]
-  const nextAnchor = anchors[index + 1]
-  const sourceStart = anchor?.top ?? 0
-  const sourceEnd = nextAnchor ? nextAnchor.top : preview.scrollHeight - preview.clientHeight
-  const targetStart = anchor ? getEditorLineTop(view, anchor.line) : 0
-  const targetEnd = nextAnchor
-    ? getEditorLineTop(view, nextAnchor.line)
-    : editor.scrollHeight - editor.clientHeight
-
-  editor.scrollTop = synchronizeScrollPosition(
-    preview.scrollTop,
-    sourceStart,
-    sourceEnd,
-    targetStart,
-    targetEnd,
-  )
+/**
+ * 在 CodeMirror 完成文档测量后恢复之前的滚动位置。
+ */
+export const restoreEditorScrollAnchor = (view: EditorView, anchor: EditorScrollAnchor): void => {
+  view.requestMeasure({
+    read: () => anchor,
+    write: (scrollAnchor, measuredView) => {
+      const line = measuredView.state.doc.line(
+        Math.min(scrollAnchor.line, measuredView.state.doc.lines),
+      )
+      const block = measuredView.lineBlockAt(line.from)
+      measuredView.scrollDOM.scrollTo({
+        left: scrollAnchor.left,
+        top: block.top + scrollAnchor.offset,
+      })
+    },
+  })
 }

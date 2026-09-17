@@ -21,15 +21,17 @@ import { languages } from "@codemirror/language-data"
 import { EditorState } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
-import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Redo2, Undo2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
 import {
+  captureEditorScrollAnchor,
   createMarkdownTable,
   editorTheme,
   formatMarkdown,
   mapMarkdownPosition,
   markdownHighlightStyle,
+  restoreEditorScrollAnchor,
   selectAllPreservingScrollPosition,
 } from "@/components/ui/LxMarkdown/extensions/markdownEditorExtensions"
 import {
@@ -37,19 +39,11 @@ import {
   markdownHeadingFolding,
 } from "@/components/ui/LxMarkdown/extensions/markdownFolding"
 import { markdownMarkerHighlight } from "@/components/ui/LxMarkdown/extensions/markdownMarkerHighlight"
-import { useEditorScrollSync } from "@/components/ui/LxMarkdown/hooks/useEditorScrollSync"
-import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import type {
-  LxMarkdownEditorProps,
-  MarkdownPreviewMode,
-  MarkdownToolbarAction,
-} from "@/components/ui/LxMarkdown/types"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import type { LxMarkdownEditorProps, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
 import { useTranslation } from "@/i18n"
-import { isMacOS } from "@/lib/platform"
 
 /**
- * 渲染可编辑、预览和分栏浏览模式的 Markdown 编辑器。
+ * 渲染 Markdown 编辑器（编辑模式，无预览分栏）。
  */
 export const LxMarkdownEditor = ({
   initialContent = "",
@@ -65,50 +59,10 @@ export const LxMarkdownEditor = ({
 }: LxMarkdownEditorProps): React.JSX.Element => {
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const editorViewRef = useRef<EditorView | null>(null)
-  const previewRef = useRef<HTMLElement>(null)
   const onChangeRef = useRef(onChange)
   const onSaveRef = useRef(onSave)
 
   const [content, setContent] = useState(initialContent)
-  const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
-
-  const previewHtml = useMemo(() => markdownRenderer.render(content), [content])
-
-  const { captureScrollAnchor } = useEditorScrollSync({
-    editorViewRef,
-    previewRef,
-    previewMode,
-    previewHtml,
-  })
-
-  const previewModeRef = useRef(previewMode)
-  useEffect(() => {
-    previewModeRef.current = previewMode
-  }, [previewMode])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      const isModKey = event.metaKey || event.ctrlKey
-      const isShift = event.shiftKey
-      if (!isModKey || !isShift) return
-
-      const key = event.key.toLowerCase()
-      if (key === "e") {
-        event.preventDefault()
-        const currentMode = previewModeRef.current
-        changePreviewMode(currentMode === "split" ? "edit" : "split")
-      } else if (key === "v") {
-        event.preventDefault()
-        const currentMode = previewModeRef.current
-        changePreviewMode(currentMode === "preview" ? "edit" : "preview")
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown)
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [])
 
   useEffect(() => {
     onChangeRef.current = onChange
@@ -187,7 +141,7 @@ export const LxMarkdownEditor = ({
     if (!view) return
 
     const sourceContent = view.state.doc.toString()
-    captureScrollAnchor()
+    const anchor = captureEditorScrollAnchor(view)
     const formattedContent = formatMarkdown(sourceContent)
     if (formattedContent === sourceContent) return
 
@@ -199,6 +153,7 @@ export const LxMarkdownEditor = ({
         head: mapMarkdownPosition(sourceContent, formattedContent, selection.head),
       },
     })
+    restoreEditorScrollAnchor(view, anchor)
     view.focus()
   }
 
@@ -226,14 +181,6 @@ export const LxMarkdownEditor = ({
    */
   const addHeading = (level: number): void => {
     prefixLines(`${"#".repeat(level)} `, "Heading")
-  }
-
-  /**
-   * 在编辑区宽度变更前记录首个可见行，供测量完成后恢复视觉位置。
-   */
-  const changePreviewMode = (mode: MarkdownPreviewMode): void => {
-    captureScrollAnchor()
-    setPreviewMode(mode)
   }
 
   useEffect(() => {
@@ -359,13 +306,6 @@ export const LxMarkdownEditor = ({
 
   const { t } = useTranslation()
 
-  const splitLabel = t("markdown.splitViewShortcut", {
-    shortcut: isMacOS() ? "Cmd+Shift+E" : "Ctrl+Shift+E",
-  })
-  const previewLabel = t("markdown.previewShortcut", {
-    shortcut: isMacOS() ? "Cmd+Shift+V" : "Ctrl+Shift+V",
-  })
-
   const actions: MarkdownToolbarAction[] = [
     {
       icon: Undo2,
@@ -376,19 +316,6 @@ export const LxMarkdownEditor = ({
       icon: Redo2,
       label: t("common.redo"),
       onClick: () => editorViewRef.current && redo(editorViewRef.current),
-    },
-    {
-      icon: SquareSplitHorizontal,
-      label: splitLabel,
-      onClick: () => changePreviewMode(previewMode === "split" ? "edit" : "split"),
-      alignRight: true,
-      highlighted: previewMode === "split",
-    },
-    {
-      icon: Eye,
-      label: previewLabel,
-      onClick: () => changePreviewMode(previewMode === "preview" ? "edit" : "preview"),
-      highlighted: previewMode === "preview",
     },
   ]
 
@@ -410,13 +337,8 @@ export const LxMarkdownEditor = ({
       <div className={`min-h-0 flex text-sm ${autoHeight ? "" : "flex-1"}`}>
         <div
           ref={editorContainerRef}
-          className={`min-w-0 ${autoHeight ? "" : "custom-scrollbar min-h-0 flex-1"} ${
-            previewMode === "preview" ? "hidden" : ""
-          }`}
+          className={`min-w-0 ${autoHeight ? "" : "custom-scrollbar min-h-0 flex-1"}`}
         />
-        {previewMode !== "edit" && (
-          <LxMarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
-        )}
       </div>
     </section>
   )

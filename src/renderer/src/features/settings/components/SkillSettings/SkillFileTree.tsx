@@ -30,10 +30,8 @@ interface FileMenuState {
   anchor: HTMLElement
 }
 
-// 行缩进：与 LxNavItem 的 depth 阶梯保持一致（depth 从 1 起算）。
-const indentForDepth = (depth: number): React.CSSProperties => ({
-  marginLeft: 10 + Math.max(depth - 1, 0) * 12,
-})
+// 行缩进：每层 10px，保持文件树紧凑（LxNavItem 的 depth=1 即 10px）。
+const indentForDepth = (depth: number): React.CSSProperties => ({ marginLeft: depth * 10 })
 
 // 选中/默认文字样式。
 const rowClass = (isSelected: boolean): string =>
@@ -82,10 +80,10 @@ export const SkillFileTree = ({
       key="SKILL.md"
       size="small"
       level={3}
-      depth={1}
+      depth={0}
       aria-current={selectedPath === "SKILL.md" ? "true" : undefined}
       data-selected={selectedPath === "SKILL.md" ? "true" : undefined}
-      className={rowClass(selectedPath === "SKILL.md")}
+      className={`w-max min-w-full ${rowClass(selectedPath === "SKILL.md")}`}
       onClick={() => onSelect("SKILL.md")}
       prefix={<FileText className="h-3.5 w-3.5 shrink-0 text-sky-400" />}
       suffix={
@@ -94,7 +92,7 @@ export const SkillFileTree = ({
         ) : null
       }
     >
-      <span className="min-w-0 flex-1 truncate font-mono">SKILL.md</span>
+      <span className="whitespace-nowrap font-mono">SKILL.md</span>
     </LxNavItem>,
   )
 
@@ -111,11 +109,11 @@ export const SkillFileTree = ({
       rows.push(
         <div
           key={`dir:${prefix}`}
-          style={indentForDepth(i + 1)}
-          className="flex h-6 items-center gap-1.5 px-2 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]"
+          style={indentForDepth(i)}
+          className="flex h-6 w-max min-w-full items-center gap-1.5 px-2 text-xs whitespace-nowrap text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]"
         >
           <Folder className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{segments[i]}</span>
+          <span>{segments[i]}</span>
         </div>,
       )
     }
@@ -126,11 +124,11 @@ export const SkillFileTree = ({
         key={entry.relativePath}
         size="small"
         level={3}
-        depth={fileDepth + 1}
+        depth={fileDepth}
         aria-current={isSelected ? "true" : undefined}
         data-selected={isSelected ? "true" : undefined}
         data-menu-open={fileMenu?.path === entry.relativePath ? "true" : undefined}
-        className={rowClass(isSelected)}
+        className={`w-max min-w-full ${rowClass(isSelected)}`}
         onClick={() => onSelect(entry.relativePath)}
         onContextMenu={(event) => openFileMenu(event, entry.relativePath)}
         prefix={<File className="h-3.5 w-3.5 shrink-0" />}
@@ -140,13 +138,13 @@ export const SkillFileTree = ({
           ) : null
         }
       >
-        <span className="min-w-0 flex-1 truncate font-mono">{segments[segments.length - 1]}</span>
+        <span className="whitespace-nowrap font-mono">{segments[segments.length - 1]}</span>
       </LxNavItem>,
     )
   }
 
   return (
-    <div className="flex min-h-0 w-[190px] shrink-0 flex-col border-r border-[var(--color-theme-border,rgba(255,255,255,0.06))]">
+    <div className="flex min-h-0 w-[150px] shrink-0 flex-col border-r border-[var(--color-theme-border,rgba(255,255,255,0.06))] @[700px]:w-[190px]">
       <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] px-2 py-1.5">
         <span className="text-xs font-medium text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
           {t("settings.skillsFiles")} ({entries.length + 1})
@@ -179,7 +177,7 @@ export const SkillFileTree = ({
         </div>
       </div>
 
-      <div className="custom-scrollbar min-h-0 flex-1 space-y-0.5 overflow-y-auto p-1.5">
+      <div className="custom-scrollbar min-h-0 flex-1 space-y-0.5 overflow-auto p-1.5">
         {isLoading ? (
           <div className="flex h-20 items-center justify-center text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
