@@ -40,6 +40,21 @@ export const getSessionDesignDir = (sessionId: string, designId: string): string
   join(getAppDataRoot(), "session", sessionId, "design", designId)
 
 /**
+ * 获取游戏数据根目录（导入的 ROM 与应用侧存档）。
+ */
+export const getGameDir = (): string => join(getAppDataRoot(), "game")
+
+/**
+ * 获取游戏 ROM 存放目录（文件名固定为 <entryId>.gba）。
+ */
+export const getGameRomsDir = (): string => join(getGameDir(), "roms")
+
+/**
+ * 获取游戏存档根目录（每条例目一个子目录，内含 sram.sav 与 sram.sav.bak）。
+ */
+export const getGameSavesDir = (): string => join(getGameDir(), "saves")
+
+/**
  * 检测并创建 SQLite 数据库存储目录。
  */
 export const ensureDatabaseDir = (databaseDir = getDatabaseDir()): void => {

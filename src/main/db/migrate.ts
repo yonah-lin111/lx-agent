@@ -53,9 +53,17 @@ export const runMigrations = (database: Database.Database): void => {
 
   for (const migration of migrations) {
     const applied = database
-      .prepare(`SELECT 1 FROM ${MIGRATIONS_TABLE} WHERE version = ?`)
-      .get(migration.version)
-    if (applied) continue
+      .prepare(`SELECT name FROM ${MIGRATIONS_TABLE} WHERE version = ?`)
+      .get(migration.version) as { name: string } | undefined
+    if (applied) {
+      // 版本号被其他分支的迁移占用：只按版本号判断会静默跳过当前迁移，这里显式告警。
+      if (applied.name !== migration.name) {
+        console.warn(
+          `迁移版本 ${migration.version} 已登记为 "${applied.name}"，与当前定义的 "${migration.name}" 不一致，已跳过；请为该迁移换用更大的版本号。`,
+        )
+      }
+      continue
+    }
 
     database.transaction(() => {
       migration.up(database)

@@ -1,4 +1,4 @@
-import { BarChart3, CalendarCheck, LayoutDashboard, type LucideIcon } from "lucide-react"
+import { BarChart3, CalendarCheck, Gamepad2, LayoutDashboard, type LucideIcon } from "lucide-react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -35,6 +35,12 @@ const HOME_NAV_ITEMS: HomeNavItem[] = [
     labelKey: "usage.title",
     icon: BarChart3,
     iconClassName: "text-emerald-400",
+  },
+  {
+    view: "game",
+    labelKey: "game.title",
+    icon: Gamepad2,
+    iconClassName: "text-amber-400",
   },
 ]
 

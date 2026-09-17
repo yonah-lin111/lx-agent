@@ -3,6 +3,7 @@ import { arcade } from "./arcade"
 import { bottomBar } from "./bottomBar"
 import { common } from "./common"
 import { frontDesign } from "./frontDesign"
+import { game } from "./game"
 import { git } from "./git"
 import { header } from "./header"
 import { home } from "./home"
@@ -36,6 +37,7 @@ export const en = {
   project,
   uiPreview,
   frontDesign,
+  game,
 }
 
 export type TranslationDictionary = typeof en
