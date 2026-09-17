@@ -47,7 +47,7 @@ export interface LxMarkdownEditorProps {
   showToolbar?: boolean
   // 编辑器整体高度（px）；不设置时随父容器 flex 撑满。
   height?: number
-  // 高度自适应内容：编辑/预览区随内容伸缩，不内部滚动，超出时由外层容器滚动。
+  // 高度自适应内容：编辑区随内容伸缩，不内部滚动，超出时由外层容器滚动。
   autoHeight?: boolean
   showLineNumbers?: boolean
   showFolding?: boolean

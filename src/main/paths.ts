@@ -9,6 +9,13 @@ import { join } from "node:path"
 export const getAppDataRoot = (): string => process.env.LX_AGENT_DATA_ROOT ?? join(homedir(), ".lx")
 
 /**
+ * 获取跨客户端标准 Skill 目录（默认 ~/.agents/skills）。
+ * LX_AGENT_AGENTS_HOME 可覆盖默认路径（测试隔离用）。
+ */
+export const getStandardSkillsDir = (): string =>
+  join(process.env.LX_AGENT_AGENTS_HOME ?? join(homedir(), ".agents"), "skills")
+
+/**
  * 获取模型 Provider 配置文件路径。
  */
 export const getConfigPath = (): string => join(getAppDataRoot(), "config.json")

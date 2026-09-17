@@ -5,9 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { LoadedSkill } from "@/agent/skills/skillLoader"
 
 let appDataRoot = ""
+let standardSkillsDir = ""
 
 vi.mock("@/paths", () => ({
   getAppDataRoot: () => appDataRoot,
+  getStandardSkillsDir: () => standardSkillsDir,
   getConfigPath: () => join(appDataRoot, "config.json"),
 }))
 
@@ -22,6 +24,7 @@ beforeEach(() => {
   vi.resetModules()
   rootDir = mkdtempSync(join(tmpdir(), "lx-skills-"))
   appDataRoot = rootDir
+  standardSkillsDir = join(rootDir, "agents-home", "skills")
   projectCwd = join(rootDir, "project")
   mkdirSync(projectCwd, { recursive: true })
 })
@@ -256,6 +259,38 @@ policy:
     expect(skillA?.description).toBe("agents 目录技能")
     expect(dupSkill).toBeDefined()
     expect(dupSkill?.description).toBe("lx 版本")
+  })
+
+  it("user 级标准目录 ~/.agents/skills 参与加载，且 ~/.lx/skills 同名优先", async () => {
+    const { skillLoader, getUserSkillDirs } = await importLoader()
+
+    const standardSkillDir = join(standardSkillsDir, "std-skill")
+    mkdirSync(standardSkillDir, { recursive: true })
+    writeFileSync(
+      join(standardSkillDir, "SKILL.md"),
+      "---\nname: std-skill\ndescription: 标准目录技能\n---\n\nbody\n",
+    )
+
+    const lxDir = join(appDataRoot, "skills", "dup-std")
+    mkdirSync(lxDir, { recursive: true })
+    writeFileSync(
+      join(lxDir, "SKILL.md"),
+      "---\nname: dup-std\ndescription: lx 版本\n---\n\nbody\n",
+    )
+    const standardDupDir = join(standardSkillsDir, "dup-std")
+    mkdirSync(standardDupDir, { recursive: true })
+    writeFileSync(
+      join(standardDupDir, "SKILL.md"),
+      "---\nname: dup-std\ndescription: 标准版本\n---\n\nbody\n",
+    )
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const skills = skillLoader.load(projectCwd)
+    warnSpy.mockRestore()
+
+    expect(skills.find((skill) => skill.name === "std-skill")?.description).toBe("标准目录技能")
+    expect(skills.find((skill) => skill.name === "dup-std")?.description).toBe("lx 版本")
+    expect(getUserSkillDirs()).toEqual([join(appDataRoot, "skills"), standardSkillsDir])
   })
 
   it("符号链接环（loop -> ..）有限递归、不爆栈并记诊断", async () => {

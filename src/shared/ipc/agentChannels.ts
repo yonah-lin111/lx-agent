@@ -22,6 +22,17 @@ export const AGENT_CHANNELS = {
   listPromptTemplates: "agent:listPromptTemplates",
   listSkills: "agent:listSkills",
   getSkillContent: "agent:getSkillContent",
+  // Skill 工作区目录/文件操作
+  listSkillFiles: "agent:listSkillFiles",
+  readSkillFile: "agent:readSkillFile",
+  writeSkillFile: "agent:writeSkillFile",
+  deleteSkillFile: "agent:deleteSkillFile",
+  moveSkillFile: "agent:moveSkillFile",
+  importSkillFiles: "agent:importSkillFiles",
+  saveSkill: "agent:saveSkill",
+  // AGENTS.md 指令文件读写
+  getInstruction: "agent:getInstruction",
+  saveInstruction: "agent:saveInstruction",
   suggestedQuestions: "agent:suggestedQuestions",
   // 获取系统默认的桌面路径
   getDefaultPath: "agent:getDefaultPath",

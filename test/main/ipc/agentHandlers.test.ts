@@ -29,8 +29,10 @@ describe("agent IPC handlers", () => {
 
   it("为共享 agent channel 注册所有 invoke handler（event 为推送 channel）", async () => {
     const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
+    const { registerSkillHandlers } = await import("@/ipc/skillHandlers")
 
     registerAgentHandlers(() => ({ send, isDestroyed: () => false }) as never)
+    registerSkillHandlers()
 
     const invokeChannels = Object.values(AGENT_CHANNELS).filter(
       (channel) => channel !== AGENT_CHANNELS.event,

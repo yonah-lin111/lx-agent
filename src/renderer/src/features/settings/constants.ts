@@ -3,6 +3,7 @@ import {
   Code,
   Code2,
   Coins,
+  FileText,
   type LucideIcon,
   Mic,
   Network,
@@ -26,6 +27,7 @@ export interface SettingsSection {
     | "settings.hooks"
     | "settings.subagents"
     | "settings.customCommands"
+    | "settings.agentsMd"
     | "settings.cli"
     | "settings.lsp"
     | "settings.mcp"
@@ -44,6 +46,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "mcp", labelKey: "settings.mcp", icon: Plug },
   { id: "openclaw", labelKey: "settings.openclaw", icon: Network },
   { id: "skills", labelKey: "settings.skills", icon: Sparkles },
+  { id: "agents-md", labelKey: "settings.agentsMd", icon: FileText },
   { id: "models", labelKey: "settings.models", icon: Bot },
   { id: "providers", labelKey: "settings.providers", icon: Server },
   { id: "token-saver", labelKey: "settings.tokenSaver", icon: Coins },

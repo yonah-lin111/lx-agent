@@ -1,9 +1,8 @@
-import { basename, dirname, join, resolve } from "node:path"
 import type { SkillSettings } from "@shared/settings"
-import { shell } from "electron"
 
 import { skillLoader } from "@/agent/skills/skillLoader"
-import { getAppDataRoot, getConfigPath } from "@/paths"
+import { getConfigPath } from "@/paths"
+import { deleteSkillSafe } from "@/services/skillWorkspaceService"
 import { isRecord, readRawConfig, updateRawConfig } from "./rawConfig"
 
 /**
@@ -55,27 +54,8 @@ export const saveSkillSettings = (input: SkillSettings): SkillSettings => {
 }
 
 /**
- * 安全删除全局 Skill（仅限 ~/.lx/skills，移至系统废纸篓）。
+ * 安全删除 Skill（限 ~/.lx/skills、~/.agents/skills 与项目内 .lx/.agents 目录之下，移至系统废纸篓）。
  */
 export const deleteSkill = async (
   filePath: string,
-): Promise<{ success: boolean; error?: string }> => {
-  const globalSkillsDir = resolve(join(getAppDataRoot(), "skills"))
-  const resolvedTarget = resolve(filePath)
-  if (!resolvedTarget.startsWith(globalSkillsDir)) {
-    return { success: false, error: "Only user global skills in ~/.lx/skills can be deleted" }
-  }
-
-  const dir = dirname(resolvedTarget)
-  // 若为目录型 skill（.../skills/skillName/SKILL.md），删除其专属子目录；否则删除单文件
-  const targetToDelete =
-    basename(resolvedTarget) === "SKILL.md" && dir !== globalSkillsDir ? dir : resolvedTarget
-
-  try {
-    await shell.trashItem(targetToDelete)
-    skillLoader.clearCache()
-    return { success: true }
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) }
-  }
-}
+): Promise<{ success: boolean; error?: string }> => deleteSkillSafe(filePath)

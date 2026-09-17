@@ -2,6 +2,7 @@
 
 import type { ModelSelection } from "@shared/settings"
 import type { AgentEvent } from "./events"
+import type { InstructionFileInfo, InstructionScope, SaveInstructionInput } from "./instructions"
 import type { AgentMessage, ModelSwitchMessage, SuggestedQuestionContextMessage } from "./messages"
 import type { CollaborationMode, PermissionResponse } from "./permissions"
 import type { PromptAssembly, PromptTemplateItem, SkillItem } from "./promptAssembly"
@@ -32,6 +33,14 @@ import type {
   ExportSessionOptions,
   ExportSessionResult,
 } from "./session"
+import type {
+  ImportSkillFilesResult,
+  SaveSkillInput,
+  SaveSkillResult,
+  SkillFileContent,
+  SkillFileEntry,
+  SkillFileOpResult,
+} from "./skills"
 
 // 渲染进程可调用的 Agent IPC 接口。
 export interface AgentApi {
@@ -95,6 +104,36 @@ export interface AgentApi {
     listSkills: (cwd?: string, force?: boolean) => Promise<SkillItem[]>
     // 获取指定 Skill 的 Markdown 正文内容。
     getSkillContent: (name: string, cwd?: string) => Promise<string | null>
+    // 列出 Skill 目录内的文件树（不含隐藏项与 node_modules）。
+    listSkillFiles: (skillDir: string) => Promise<SkillFileEntry[]>
+    // 读取 Skill 目录内的文本文件。
+    readSkillFile: (skillDir: string, relativePath: string) => Promise<SkillFileContent>
+    // 写入 Skill 目录内的文本文件（自动创建父目录）。
+    writeSkillFile: (
+      skillDir: string,
+      relativePath: string,
+      content: string,
+    ) => Promise<SkillFileOpResult>
+    // 删除 Skill 目录内的文件（移入系统回收站；SKILL.md 需走整体删除）。
+    deleteSkillFile: (skillDir: string, relativePath: string) => Promise<SkillFileOpResult>
+    // 移动/重命名 Skill 目录内的文件（含目录）。
+    moveSkillFile: (
+      skillDir: string,
+      fromRelativePath: string,
+      toRelativePath: string,
+    ) => Promise<SkillFileOpResult>
+    // 打开系统文件选择器并复制选中文件进 Skill 目录（返回新相对路径；dialogTitle 为本地化标题）。
+    importSkillFiles: (
+      skillDir: string,
+      targetDirRelativePath: string,
+      dialogTitle?: string,
+    ) => Promise<ImportSkillFilesResult>
+    // 新建或更新 Skill（frontmatter 合并保留未知键；改名即重命名目录）。
+    saveSkill: (input: SaveSkillInput) => Promise<SaveSkillResult>
+    // 读取 AGENTS.md 指令文件信息（用户级或项目级）。
+    getInstruction: (scope: InstructionScope, projectPath?: string) => Promise<InstructionFileInfo>
+    // 保存 AGENTS.md 指令文件（不存在时创建）。
+    saveInstruction: (input: SaveInstructionInput) => Promise<InstructionFileInfo>
     // 导出会话（HTML / Markdown / JSONL）。
     exportSession: (options: ExportSessionOptions) => Promise<ExportSessionResult>
     // 复制会话内容（Markdown 全文或最后一条 Assistant 回复）。

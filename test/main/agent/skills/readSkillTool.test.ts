@@ -10,6 +10,7 @@ let appDataRoot = ""
 
 vi.mock("@/paths", () => ({
   getAppDataRoot: () => appDataRoot,
+  getStandardSkillsDir: () => join(appDataRoot, "agents-home", "skills"),
   getConfigPath: () => join(appDataRoot, "config.json"),
 }))
 

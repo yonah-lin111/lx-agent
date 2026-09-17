@@ -23,8 +23,14 @@ const COMPONENT_PATTERN = /<(LxInput|LxSelect|LxIconButton|LxTag|LxNavItem|LxChe
 const SIZE_PATTERN = /size="([a-z]+)"/
 const TARGET_COMPONENTS = new Set(["LxInput", "LxSelect", "LxIconButton"])
 
-// 仅选择/导航语义的控件保留原生 <button>：分段切换（CustomCommandSettings）与列表行（OpenClawSettings）。
-const NATIVE_BUTTON_ALLOWED_FILES = new Set(["CustomCommandSettings.tsx", "OpenClawSettings.tsx"])
+// 仅选择/导航语义的控件保留原生 <button>：分段切换（CustomCommandSettings / AgentsMdSettings /
+// SkillSettings）与列表行（OpenClawSettings / AgentsMdSettings / SkillSettings）。
+const NATIVE_BUTTON_ALLOWED_PATHS = new Set([
+  "components/CustomCommandSettings.tsx",
+  "components/OpenClawSettings.tsx",
+  "components/AgentsMdSettings.tsx",
+  "components/SkillSettings/index.tsx",
+])
 
 const collectViolations = (files: string[]): string[] => {
   const violations: string[] = []
@@ -54,7 +60,10 @@ describe("设置页控件尺寸缺省", () => {
   it("设置内动作按钮统一使用 LxIconButton，仅分段切换与列表行保留原生 button", () => {
     const featureDir = path.join(repoRoot, "src/renderer/src/features/settings")
     const violations = collectFiles(featureDir)
-      .filter((file) => !NATIVE_BUTTON_ALLOWED_FILES.has(path.basename(file)))
+      .filter((file) => {
+        const relative = path.relative(featureDir, file).split(path.sep).join("/")
+        return !NATIVE_BUTTON_ALLOWED_PATHS.has(relative)
+      })
       .filter((file) => /<button\b/.test(readFileSync(file, "utf8")))
       .map((file) => path.relative(repoRoot, file))
     expect(violations).toEqual([])

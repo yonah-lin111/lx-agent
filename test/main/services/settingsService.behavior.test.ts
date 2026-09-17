@@ -1,4 +1,12 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ALL_CLI_IDS, DEFAULT_LSP_SETTINGS, DEFAULT_VOICE_SETTINGS } from "@shared/settings"
@@ -318,6 +326,11 @@ describe("deleteSkill 安全边界", () => {
 
   it("目录型 skill 删除 SKILL.md 所在子目录", async () => {
     const skillDir = join(holder.appDataRoot, "skills", "my-skill")
+    mkdirSync(skillDir, { recursive: true })
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      "---\nname: my-skill\ndescription: 测试\n---\n\nbody\n",
+    )
 
     const result = await deleteSkill(join(skillDir, "SKILL.md"))
 
@@ -326,11 +339,21 @@ describe("deleteSkill 安全边界", () => {
   })
 
   it("skills 根目录下的单文件按文件删除", async () => {
-    const skillFile = join(holder.appDataRoot, "skills", "single.md")
+    const skillsRoot = join(holder.appDataRoot, "skills")
+    mkdirSync(skillsRoot, { recursive: true })
+    const skillFile = join(skillsRoot, "single.md")
+    writeFileSync(skillFile, "---\nname: single\ndescription: 测试\n---\n\nbody\n")
 
     const result = await deleteSkill(skillFile)
 
     expect(result).toEqual({ success: true })
     expect(trashItem).toHaveBeenCalledWith(skillFile)
+  })
+
+  it("拒绝删除不存在的路径且不触发废纸篓", async () => {
+    const result = await deleteSkill(join(holder.appDataRoot, "skills", "ghost", "SKILL.md"))
+
+    expect(result.success).toBe(false)
+    expect(trashItem).not.toHaveBeenCalled()
   })
 })
