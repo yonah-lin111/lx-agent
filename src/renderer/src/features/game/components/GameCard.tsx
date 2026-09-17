@@ -69,7 +69,7 @@ export const GameCard = ({
     <>
       <div className="game-card flex min-w-0 flex-col gap-2 rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-4 transition-colors hover:border-[var(--color-theme-border-strong)] hover:bg-[var(--color-theme-surface-hover)]">
         <div className="flex min-w-0 items-center justify-between gap-2">
-          <Gamepad2 className="h-5 w-5 shrink-0 text-emerald-400" />
+          <Gamepad2 className="game-card-icon h-5 w-5 shrink-0 text-emerald-400" />
           <LxTooltip
             closeOnOutsideClick
             content={
@@ -86,6 +86,7 @@ export const GameCard = ({
             <button
               ref={menuButtonRef}
               type="button"
+              data-variant="ghost"
               aria-label={t("game.card.more")}
               className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-[4px] text-[var(--color-theme-text-muted)] transition-colors hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
               onClick={handleOpenMenu}
@@ -97,6 +98,7 @@ export const GameCard = ({
 
         <button
           type="button"
+          data-variant="ghost"
           className="flex min-w-0 cursor-pointer flex-col gap-1 text-left"
           onClick={() => onPlay(entry)}
         >

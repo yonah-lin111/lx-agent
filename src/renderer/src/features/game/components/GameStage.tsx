@@ -226,7 +226,7 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
         >
           <ArrowLeft />
         </LxIconButton>
-        <Gamepad2 className="h-4 w-4 shrink-0 text-emerald-400" />
+        <Gamepad2 className="game-stage-icon h-4 w-4 shrink-0 text-emerald-400" />
         <span className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
           {entry.title}
         </span>
@@ -235,7 +235,7 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
         </span>
       </div>
 
-      <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-black">
+      <div className="game-stage-viewport relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-black">
         {preloadUrl ? (
           <webview
             key={`${entry.id}-${runId}`}
@@ -258,21 +258,29 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/80 px-6 text-center">
             <span className="text-sm text-white/80">{t("game.stage.error")}</span>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 transition-colors hover:bg-white/20"
+              <LxIconButton
+                iconOnly={false}
+                size="small"
+                variant="ghost"
+                icon={<RotateCcw />}
+                textClass="text-white/90"
+                hoverBgClass="hover:bg-white/20"
+                className="cursor-pointer rounded-[6px] border border-white/15 bg-white/10"
                 onClick={handleRetry}
               >
-                <RotateCcw className="h-3.5 w-3.5" />
-                {t("game.stage.retry")}
-              </button>
-              <button
-                type="button"
-                className="cursor-pointer rounded-[6px] border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/10"
+                <span>{t("game.stage.retry")}</span>
+              </LxIconButton>
+              <LxIconButton
+                iconOnly={false}
+                size="small"
+                variant="ghost"
+                textClass="text-white/70"
+                hoverBgClass="hover:bg-white/10"
+                className="cursor-pointer rounded-[6px] border border-white/15"
                 onClick={requestExit}
               >
-                {t("game.stage.back")}
-              </button>
+                <span>{t("game.stage.back")}</span>
+              </LxIconButton>
             </div>
           </div>
         ) : null}

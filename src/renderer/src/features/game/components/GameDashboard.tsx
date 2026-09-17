@@ -95,9 +95,9 @@ export const GameDashboard = (): React.JSX.Element => {
 
   return (
     <div className="game-dashboard relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-4 custom-scrollbar [scrollbar-gutter:stable]">
-      <section className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Gamepad2 className="h-4 w-4 shrink-0 text-emerald-400" />
+      <section className="game-dashboard-header flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <div className="game-section-title flex min-w-0 items-center gap-2">
+          <Gamepad2 className="game-section-icon game-section-icon--game h-4 w-4 shrink-0 text-amber-400" />
           <h2 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
             {t("game.title")}
           </h2>
@@ -135,7 +135,7 @@ export const GameDashboard = (): React.JSX.Element => {
       ) : null}
 
       {entries.length === 0 && !isLoading ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-[var(--theme-radius-base)] border border-dashed border-[var(--color-theme-border)] py-14 text-center">
+        <div className="game-empty-state flex flex-col items-center justify-center gap-2 rounded-[var(--theme-radius-base)] border border-dashed border-[var(--color-theme-border)] py-14 text-center">
           <span className="text-xs text-[var(--color-theme-text-muted)]">{t("game.empty")}</span>
           <span className="max-w-[420px] text-xs leading-relaxed text-[var(--color-theme-text-subtle)]">
             {t("game.emptyHint")}

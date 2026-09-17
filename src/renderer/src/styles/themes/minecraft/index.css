@@ -1488,6 +1488,77 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     2px 2px 0px 0px #000000 !important;
 }
 
+/* ========================================================
+ * 主页游戏视图（GBA 卡片网格与模拟器）
+ * ======================================================== */
+/* 游戏页区块头与子区块：仅作内容分组，不再作为独立凹凸容器 */
+[data-theme="minecraft"] .game-dashboard > section {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+[data-theme="minecraft"] .game-section-title {
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .game-section-icon {
+  filter: drop-shadow(1px 1px 0px #000000) !important;
+  image-rendering: pixelated !important;
+}
+
+[data-theme="minecraft"] .game-section-icon--game {
+  color: #ffaa00 !important;
+}
+
+/* 卡片与模拟器工具栏图标：经验条绿 + 像素投影 */
+[data-theme="minecraft"] .game-card-icon,
+[data-theme="minecraft"] .game-stage-icon {
+  color: #55ff55 !important;
+  filter: drop-shadow(1px 1px 0px #000000) !important;
+}
+
+/* 游戏卡片：与彩蛋游戏卡片一致的像素浮雕容器（卡片内部按钮为 ghost 变体，不叠加二级浮雕） */
+[data-theme="minecraft"] .game-card {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .game-card:hover {
+  background-color: #242434 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* 空态占位：基岩色像素凹槽 */
+[data-theme="minecraft"] .game-empty-state {
+  border: 2px dashed #484860 !important;
+  background-color: #1b1b28 !important;
+  background-image: none !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* 模拟器视口：石质黑边凹槽，内部保持黑色画面 */
+[data-theme="minecraft"] .game-stage-viewport {
+  border: 2px solid #000000 !important;
+  background-color: #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.06),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
+}
+
 /* 绿墙热力图像素风格单元格：经典 Minecraft 绿色阶梯与立体像素槽 */
 [data-theme="minecraft"] .activity-heatmap-cell {
   border-radius: 0px !important;
