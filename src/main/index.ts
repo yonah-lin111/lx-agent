@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
+import { GAME_PROTOCOL } from "@shared/contracts/game"
 import { FRONT_DESIGN_PROTOCOL } from "@shared/frontDesign"
 import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
 import { app, BrowserWindow, nativeImage, protocol } from "electron"
@@ -12,6 +13,7 @@ import { registerActivityHandlers } from "@/ipc/activityHandlers"
 import { registerAgentHandlers } from "@/ipc/agentHandlers"
 import { registerClipboardHandlers } from "@/ipc/clipboardHandlers"
 import { registerCustomCommandHandlers } from "@/ipc/customCommandHandlers"
+import { registerGameHandlers } from "@/ipc/gameHandlers"
 import { registerGitHandlers } from "@/ipc/gitHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
 import { registerOpenClawHandlers } from "@/ipc/openclawHandlers"
@@ -22,6 +24,7 @@ import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
 import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
+import { registerGameProtocol } from "@/protocols/gameProtocol"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
 import { openExternalUrl } from "@/services/externalLinkService"
 import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
@@ -35,6 +38,10 @@ protocol.registerSchemesAsPrivileged([
   },
   {
     scheme: FRONT_DESIGN_PROTOCOL,
+    privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true },
+  },
+  {
+    scheme: GAME_PROTOCOL,
     privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true },
   },
 ])
@@ -78,6 +85,7 @@ app.whenReady().then(() => {
   initDatabase()
   registerLocalImageProtocol()
   registerFrontDesignProtocol()
+  registerGameProtocol()
   registerActivityHandlers()
   registerScheduleHandlers()
   registerProjectHandlers()
@@ -91,6 +99,7 @@ app.whenReady().then(() => {
   registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerOpenClawHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerUsageHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
+  registerGameHandlers()
 
   const stopScreenshotCleanup = startScreenshotCleanupScheduler()
 

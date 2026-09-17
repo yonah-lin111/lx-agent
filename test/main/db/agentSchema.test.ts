@@ -32,6 +32,7 @@ describe("agent 表结构与约束", () => {
       "agent_session",
       "agent_session_entry",
       "agent_snapshot",
+      "game_rom_entry",
       "project",
       "project_folder",
       "project_item",

@@ -4,6 +4,7 @@ import type { ClipboardApi } from "@shared/clipboard"
 import type { ActivityApi } from "@shared/contracts/activity"
 import type { AgentApi } from "@shared/contracts/agent"
 import type { CustomCommandApi } from "@shared/contracts/customCommand"
+import type { GameApi } from "@shared/contracts/game"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
@@ -35,7 +36,8 @@ declare global {
       ActivityApi &
       UsageApi &
       ScheduleApi &
-      OpenClawApi
+      OpenClawApi &
+      GameApi
   }
 
   namespace JSX {

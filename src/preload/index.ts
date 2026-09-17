@@ -2,6 +2,7 @@ import type { ClipboardApi } from "@shared/clipboard"
 import type { ActivityApi } from "@shared/contracts/activity"
 import type { AgentApi } from "@shared/contracts/agent"
 import type { CustomCommandApi } from "@shared/contracts/customCommand"
+import type { GameApi } from "@shared/contracts/game"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
@@ -18,6 +19,7 @@ import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { activityApi } from "./api/activity"
 import { agentApi } from "./api/agent"
 import { customCommandApi } from "./api/customCommand"
+import { gameApi } from "./api/game"
 import { gitApi } from "./api/git"
 import { markdownApi } from "./api/markdown"
 import { openclawApi } from "./api/openclaw"
@@ -38,7 +40,8 @@ const api: ProjectApi &
   ActivityApi &
   UsageApi &
   ScheduleApi &
-  OpenClawApi = {
+  OpenClawApi &
+  GameApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   saveClipboardImage: (buffer, mimeType) =>
     ipcRenderer.invoke(CLIPBOARD_CHANNELS.saveImage, buffer, mimeType),
@@ -132,6 +135,7 @@ const api: ProjectApi &
   promptHistory: promptHistoryApi,
   terminal: terminalApi,
   openclaw: openclawApi,
+  game: gameApi,
 }
 
 contextBridge.exposeInMainWorld("api", api)
