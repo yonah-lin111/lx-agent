@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)](#)
 
-![LX Agent on the pixel theme](./docs/assets/hero.svg)
+![LX Agent home dashboard on the pixel theme](./docs/assets/home-dashboard.png)
 
 </div>
 
@@ -49,9 +49,21 @@ versioned in the same workspace, with an agent that can read and patch real file
 
 ## Screenshots
 
-| Agent conversation | Pixel theme |
-| :--- | :--- |
-| ![Agent conversation with tool execution and structured cards](./docs/assets/screenshot-agent.svg) | ![Settings and canvas surfaces on the pixel theme](./docs/assets/screenshot-theme-pixel.svg) |
+### Agent sessions and execution flow
+
+| Execution flow (per-turn tokens and tool timings) | Integrated terminal (OpenCode / Claude Code) |
+| :---: | :---: |
+| ![Agent execution flow view with system prompt, initial model and grouped tool calls](./docs/assets/agent-execution-flow.png) | ![Integrated terminal running OpenCode and Claude Code](./docs/assets/terminal-cli.png) |
+
+### Design and collaboration
+
+| Front Design canvas | OpenClaw multi-instance workspace |
+| :---: | :---: |
+| ![Front Design canvas rendering an agent-generated design live](./docs/assets/front-design-canvas.png) | ![OpenClaw workspace with offices, team members and a merged conversation](./docs/assets/openclaw-workspace.png) |
+
+### Pixel theme
+
+![Settings on the pixel theme](./docs/assets/settings-pixel-theme.png)
 
 ## Tech stack
 

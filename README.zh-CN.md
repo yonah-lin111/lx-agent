@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)](#)
 
-![LX Agent 像素主题主界面](./docs/assets/hero.svg)
+![LX Agent 像素主题首页总览](./docs/assets/home-dashboard.png)
 
 </div>
 
@@ -44,9 +44,21 @@ LX Agent 是一个 Electron 桌面应用，让你与具备编码能力的 Agent 
 
 ## 界面截图
 
-| Agent 对话 | 像素主题 |
-| :--- | :--- |
-| ![包含工具执行与结构化卡片的 Agent 对话](./docs/assets/screenshot-agent.svg) | ![像素主题下的设置页与画布界面](./docs/assets/screenshot-theme-pixel.svg) |
+### Agent 会话与执行流
+
+| 执行流视图（逐轮 Token 与工具耗时） | 集成终端（OpenCode / Claude Code） |
+| :---: | :---: |
+| ![Agent 执行流视图：系统提示词、初始模型与工具调用分组](./docs/assets/agent-execution-flow.png) | ![内置终端中运行 OpenCode 与 Claude Code](./docs/assets/terminal-cli.png) |
+
+### 设计与协作
+
+| Front Design 画布 | OpenClaw 多实例工作区 |
+| :---: | :---: |
+| ![Front Design 画布实时渲染 Agent 生成的设计稿](./docs/assets/front-design-canvas.png) | ![OpenClaw 工作区：办公区、员工与合流对话](./docs/assets/openclaw-workspace.png) |
+
+### 像素主题
+
+![像素主题下的设置页](./docs/assets/settings-pixel-theme.png)
 
 ## 技术栈
 
