@@ -61,6 +61,10 @@ versioned in the same workspace, with an agent that can read and patch real file
 | :---: | :---: |
 | ![Front Design canvas rendering an agent-generated design live, with the generated code and iterate actions alongside](./docs/assets/front-design-canvas.png) | ![OpenClaw workspace with offices, team members and a merged conversation](./docs/assets/openclaw-workspace.png) |
 
+### Projects and markdown
+
+![Project tree with folders, a markdown document using template blocks, and a multi-worktree terminal](./docs/assets/projects-markdown-editor.png)
+
 ### Pixel theme
 
 ![Settings on the pixel theme](./docs/assets/settings-pixel-theme.png)
