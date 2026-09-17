@@ -11,6 +11,7 @@ const manager = {
   listSessions: vi.fn(),
   createSession: vi.fn(),
   sendMessage: vi.fn(),
+  deleteTurn: vi.fn(),
   abort: vi.fn(),
 }
 
@@ -30,18 +31,31 @@ describe("openclaw IPC handlers", () => {
 
     registerOpenClawHandlers(() => undefined)
 
-    const expectedChannels = [
-      OPENCLAW_CHANNELS.connect,
-      OPENCLAW_CHANNELS.disconnect,
-      OPENCLAW_CHANNELS.fetchAgents,
-      OPENCLAW_CHANNELS.getSnapshot,
-      OPENCLAW_CHANNELS.listSessions,
-      OPENCLAW_CHANNELS.createSession,
-      OPENCLAW_CHANNELS.sendMessage,
-      OPENCLAW_CHANNELS.abort,
-    ].sort()
+    // event 为主进程 → 渲染进程广播，不注册 handler；其余 channel 必须全部注册。
+    const expectedChannels = Object.values(OPENCLAW_CHANNELS)
+      .filter((channel) => channel !== OPENCLAW_CHANNELS.event)
+      .sort()
 
     expect(handle.mock.calls.map(([channel]) => channel).sort()).toEqual(expectedChannels)
+  })
+
+  it("转发删除轮次参数到会话管理器", async () => {
+    const { registerOpenClawHandlers } = await import("@/ipc/openclawHandlers")
+    registerOpenClawHandlers(() => undefined)
+
+    const deleteCall = handle.mock.calls.find(
+      ([channel]) => channel === OPENCLAW_CHANNELS.deleteTurn,
+    )
+    const handler = deleteCall?.[1] as (
+      event: unknown,
+      instanceId: string,
+      agentId: string,
+      messageId: string,
+    ) => void
+
+    handler({}, "local", "lily", "msg-1")
+
+    expect(manager.deleteTurn).toHaveBeenCalledWith("local", "lily", "msg-1")
   })
 
   it("转发新建会话参数到会话管理器", async () => {
