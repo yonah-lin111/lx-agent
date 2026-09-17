@@ -129,6 +129,42 @@ describe("AgentsMdSettings", () => {
     expect(useSettingsDraftStore.getState().isDirty).toBe(false)
   })
 
+  it("项目列表行点击切换选中项目并加载对应指令文件", async () => {
+    getInstruction.mockImplementation(async (scope: string, projectPath?: string) =>
+      scope === "user"
+        ? userInfo()
+        : { ...projectInfo(), path: `${projectPath}/AGENTS.md`, content: null },
+    )
+    window.api = {
+      agent: { getInstruction, saveInstruction },
+      project: {
+        projects: {
+          list: async () => [
+            { id: "p1", name: "Web App", path: "/repo/apps/web" },
+            { id: "p2", name: "Second App", path: "/repo/second" },
+          ],
+        },
+        items: { list: async () => [] },
+      },
+      settings: { getUiSettings: async () => ({ locale: "en" as const }) },
+    } as unknown as typeof window.api
+
+    renderComponent()
+    await screen.findByText("Global AGENTS.md")
+    fireEvent.click(screen.getByText("Project Prompt"))
+
+    await waitFor(() => {
+      expect(getInstruction).toHaveBeenCalledWith("project", "/repo/apps/web")
+    })
+
+    fireEvent.click(screen.getByText("Second App"))
+
+    await waitFor(() => {
+      expect(getInstruction).toHaveBeenCalledWith("project", "/repo/second")
+    })
+    expect(screen.getAllByText("/repo/second/AGENTS.md").length).toBeGreaterThan(0)
+  })
+
   it("重置丢弃当前草稿回到基线内容", async () => {
     renderComponent()
     await screen.findByText("Global AGENTS.md")

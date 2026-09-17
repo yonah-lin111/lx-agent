@@ -519,7 +519,9 @@ export const SkillSettings = (): React.JSX.Element => {
     if (createDraft) {
       useSkillDraftStore.getState().removeCreateFile(relativePath)
     } else if (selectedSkill) {
-      useSkillDraftStore.getState().deleteEditFile(selectedSkill.baseDir, relativePath)
+      const state = useSkillDraftStore.getState()
+      state.ensureEdit(selectedSkill.baseDir, toMetaDraft(selectedSkill))
+      state.deleteEditFile(selectedSkill.baseDir, relativePath)
     }
     if (selectedFilePath === relativePath) setSelectedFilePath("SKILL.md")
   }

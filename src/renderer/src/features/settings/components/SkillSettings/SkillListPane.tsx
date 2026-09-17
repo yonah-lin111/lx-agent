@@ -122,6 +122,7 @@ export const SkillListPane = ({
                     key={skill.baseDir}
                     role="button"
                     tabIndex={0}
+                    aria-current={isSelected ? "true" : undefined}
                     data-selected={isSelected ? "true" : undefined}
                     onClick={() => onSelect(skill.name)}
                     onKeyDown={(e) => {

@@ -294,7 +294,6 @@ export const AgentsMdSettings = (): React.JSX.Element => {
             onSave={handleEditorSave}
             isSaved={!isDirty}
             showSaveStatus
-            showLineNumbers
           />
         )}
       </div>
@@ -365,34 +364,48 @@ export const AgentsMdSettings = (): React.JSX.Element => {
                     drafts.projects[project.id] !== null &&
                     drafts.projects[project.id] !== (info?.content ?? "")
                   return (
-                    <button
+                    <div
                       key={project.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
+                      aria-current={isSelected ? "true" : undefined}
+                      data-selected={isSelected ? "true" : undefined}
                       onClick={() => setSelectedProjectId(project.id)}
-                      className={`flex w-full items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-left text-xs transition-colors cursor-pointer ${
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          setSelectedProjectId(project.id)
+                        }
+                      }}
+                      className={`group flex cursor-pointer flex-col gap-1 rounded-[6px] border px-2 py-1.5 text-left transition-colors ${
                         isSelected
-                          ? "bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
-                          : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.04))]"
+                          ? "border-[var(--color-theme-border-strong,rgba(255,255,255,0.18))] bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
+                          : "border-transparent text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:border-[var(--color-theme-border,rgba(255,255,255,0.06))] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.04))]"
                       }`}
                     >
-                      <Folder className="h-3.5 w-3.5 shrink-0" />
-                      <span className="min-w-0 flex-1 truncate">{project.name}</span>
-                      {projectDirty ? (
-                        <span
-                          aria-label="Unsaved"
-                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
-                        />
-                      ) : null}
-                      <LxTag
-                        size="small"
-                        color={info?.exists ? "emerald" : "gray"}
-                        className="shrink-0"
-                      >
-                        {info?.exists
-                          ? t("settings.agentsMdConfigured")
-                          : t("settings.agentsMdNotCreated")}
-                      </LxTag>
-                    </button>
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <Folder className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
+                          <span className="truncate text-xs font-medium text-[var(--color-theme-text,#ffffff)]">
+                            {project.name}
+                          </span>
+                          {projectDirty ? (
+                            <span
+                              aria-label="Unsaved"
+                              className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1">
+                        <LxTag size="small" color={info?.exists ? "emerald" : "gray"}>
+                          {info?.exists
+                            ? t("settings.agentsMdConfigured")
+                            : t("settings.agentsMdNotCreated")}
+                        </LxTag>
+                      </div>
+                    </div>
                   )
                 })
               )}

@@ -1,7 +1,10 @@
-import { Copy, File, FileText, Folder, Import, Loader2, Pencil, Plus, Trash2 } from "lucide-react"
+import { File, FileText, Folder, Import, Loader2, Plus } from "lucide-react"
+import { useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
+import { SkillFileMenu } from "./SkillFileMenu"
 import type { SkillTreeEntry } from "./skillDrafts"
 
 // Skill 文件树属性。
@@ -19,8 +22,24 @@ export interface SkillFileTreeProps {
   onDelete: (relativePath: string) => void
 }
 
-// 文件行左侧缩进（按目录深度递增）。
-const indentStyle = (depth: number): React.CSSProperties => ({ paddingLeft: 8 + depth * 12 })
+// 右键菜单状态。
+interface FileMenuState {
+  path: string
+  x: number
+  y: number
+  anchor: HTMLElement
+}
+
+// 行缩进：与 LxNavItem 的 depth 阶梯保持一致（depth 从 1 起算）。
+const indentForDepth = (depth: number): React.CSSProperties => ({
+  marginLeft: 10 + Math.max(depth - 1, 0) * 12,
+})
+
+// 选中/默认文字样式。
+const rowClass = (isSelected: boolean): string =>
+  isSelected
+    ? "bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
+    : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]"
 
 /**
  * 渲染 Skill 目录的文件树（SKILL.md 固定项 + references/scripts/assets 等附加文件）。
@@ -39,37 +58,44 @@ export const SkillFileTree = ({
   onDelete,
 }: SkillFileTreeProps): React.JSX.Element => {
   const { t } = useTranslation()
+  const [fileMenu, setFileMenu] = useState<FileMenuState | null>(null)
 
   const rows: React.JSX.Element[] = []
   const renderedDirs = new Set<string>()
 
+  /**
+   * 打开文件行的右键菜单。
+   */
+  const openFileMenu = (event: React.MouseEvent, relativePath: string): void => {
+    event.preventDefault()
+    setFileMenu({
+      path: relativePath,
+      x: event.clientX,
+      y: event.clientY,
+      anchor: event.currentTarget as HTMLElement,
+    })
+  }
+
   // SKILL.md 固定行（不可重命名/删除，正文由编辑器 meta 流程保存）。
   rows.push(
-    <div
+    <LxNavItem
       key="SKILL.md"
-      role="button"
-      tabIndex={0}
+      size="small"
+      level={3}
+      depth={1}
+      aria-current={selectedPath === "SKILL.md" ? "true" : undefined}
       data-selected={selectedPath === "SKILL.md" ? "true" : undefined}
+      className={rowClass(selectedPath === "SKILL.md")}
       onClick={() => onSelect("SKILL.md")}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onSelect("SKILL.md")
-        }
-      }}
-      style={indentStyle(0)}
-      className={`group flex cursor-pointer items-center gap-1.5 rounded-[6px] py-1 pr-1 text-xs ${
-        selectedPath === "SKILL.md"
-          ? "bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
-          : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.04))]"
-      }`}
+      prefix={<FileText className="h-3.5 w-3.5 shrink-0 text-sky-400" />}
+      suffix={
+        skillMdDirty ? (
+          <span aria-label="Unsaved" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+        ) : null
+      }
     >
-      <FileText className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-      <span className="truncate font-mono">SKILL.md</span>
-      {skillMdDirty ? (
-        <span aria-label="Unsaved" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
-      ) : null}
-    </div>,
+      <span className="min-w-0 flex-1 truncate font-mono">SKILL.md</span>
+    </LxNavItem>,
   )
 
   for (const entry of entries) {
@@ -85,8 +111,8 @@ export const SkillFileTree = ({
       rows.push(
         <div
           key={`dir:${prefix}`}
-          style={indentStyle(i)}
-          className="flex items-center gap-1.5 py-1 pr-1 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]"
+          style={indentForDepth(i + 1)}
+          className="flex h-6 items-center gap-1.5 px-2 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]"
         >
           <Folder className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{segments[i]}</span>
@@ -96,71 +122,26 @@ export const SkillFileTree = ({
 
     const isSelected = selectedPath === entry.relativePath
     rows.push(
-      <div
+      <LxNavItem
         key={entry.relativePath}
-        role="button"
-        tabIndex={0}
+        size="small"
+        level={3}
+        depth={fileDepth + 1}
+        aria-current={isSelected ? "true" : undefined}
         data-selected={isSelected ? "true" : undefined}
+        data-menu-open={fileMenu?.path === entry.relativePath ? "true" : undefined}
+        className={rowClass(isSelected)}
         onClick={() => onSelect(entry.relativePath)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
-            onSelect(entry.relativePath)
-          }
-        }}
-        style={indentStyle(fileDepth)}
-        className={`group flex cursor-pointer items-center gap-1.5 rounded-[6px] py-1 pr-1 text-xs ${
-          isSelected
-            ? "bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
-            : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.04))]"
-        }`}
+        onContextMenu={(event) => openFileMenu(event, entry.relativePath)}
+        prefix={<File className="h-3.5 w-3.5 shrink-0" />}
+        suffix={
+          entry.isDirty ? (
+            <span aria-label="Unsaved" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+          ) : null
+        }
       >
-        <File className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate font-mono">{segments[segments.length - 1]}</span>
-        {entry.isDirty ? (
-          <span aria-label="Unsaved" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
-        ) : null}
-        <div
-          className="ml-auto flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <LxTooltip content={t("settings.skillsFileRename")} placement="top">
-            <LxIconButton
-              variant="ghost"
-              showHoverBg={false}
-              aria-label={t("settings.skillsFileRename")}
-              onClick={() => onRename(entry.relativePath)}
-            >
-              <Pencil />
-            </LxIconButton>
-          </LxTooltip>
-          <LxTooltip content={t("settings.skillsFileDuplicate")} placement="top">
-            <LxIconButton
-              variant="ghost"
-              showHoverBg={false}
-              aria-label={t("settings.skillsFileDuplicate")}
-              onClick={() => onDuplicate(entry.relativePath)}
-            >
-              <Copy />
-            </LxIconButton>
-          </LxTooltip>
-          <LxTooltip
-            title={t("settings.skillsConfirmDeleteFileTitle")}
-            content={t("settings.skillsConfirmDeleteFileContent", { path: entry.relativePath })}
-            placement="top"
-            onConfirm={() => onDelete(entry.relativePath)}
-          >
-            <LxIconButton
-              variant="ghost"
-              showHoverBg={false}
-              hoverTextClass="hover:text-rose-400"
-              aria-label={t("common.delete")}
-            >
-              <Trash2 />
-            </LxIconButton>
-          </LxTooltip>
-        </div>
-      </div>,
+        <span className="min-w-0 flex-1 truncate font-mono">{segments[segments.length - 1]}</span>
+      </LxNavItem>,
     )
   }
 
@@ -208,6 +189,30 @@ export const SkillFileTree = ({
           rows
         )}
       </div>
+
+      <SkillFileMenu
+        isOpen={fileMenu !== null}
+        anchor={fileMenu?.anchor ?? null}
+        title={fileMenu?.path ?? ""}
+        x={fileMenu?.x ?? 0}
+        y={fileMenu?.y ?? 0}
+        onRename={() => {
+          const path = fileMenu?.path
+          setFileMenu(null)
+          if (path) onRename(path)
+        }}
+        onDuplicate={() => {
+          const path = fileMenu?.path
+          setFileMenu(null)
+          if (path) onDuplicate(path)
+        }}
+        onDelete={() => {
+          const path = fileMenu?.path
+          setFileMenu(null)
+          if (path) onDelete(path)
+        }}
+        onClose={() => setFileMenu(null)}
+      />
     </div>
   )
 }

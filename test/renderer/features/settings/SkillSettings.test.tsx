@@ -187,6 +187,48 @@ describe("SkillSettings", () => {
     })
   })
 
+  it("右键文件行打开操作菜单，二次确认后从树中删除文件", async () => {
+    renderComponent()
+    await screen.findByText("pdf-tools")
+    await waitFor(() => {
+      expect(screen.getByText("api.md")).toBeTruthy()
+    })
+
+    fireEvent.contextMenu(screen.getByText("api.md"))
+    expect(await screen.findByText("Rename / Move")).toBeTruthy()
+    expect(screen.getByText("Duplicate")).toBeTruthy()
+
+    fireEvent.click(screen.getByText("Delete"))
+    fireEvent.click(screen.getByText("Confirm Delete"))
+
+    await waitFor(() => {
+      expect(screen.queryByText("api.md")).toBeNull()
+    })
+    expect(useSettingsDraftStore.getState().isDirty).toBe(true)
+  })
+
+  it("右键菜单复制副本：弹窗预填目标路径，确认后出现新文件行", async () => {
+    renderComponent()
+    await screen.findByText("pdf-tools")
+    await waitFor(() => {
+      expect(screen.getByText("api.md")).toBeTruthy()
+    })
+
+    fireEvent.contextMenu(screen.getByText("api.md"))
+    fireEvent.click(await screen.findByText("Duplicate"))
+
+    const targetInput = (await screen.findByPlaceholderText(
+      "references/api-errors.md",
+    )) as HTMLInputElement
+    expect(targetInput.value).toBe("references/api-copy.md")
+
+    fireEvent.click(screen.getByLabelText("Confirm"))
+
+    await waitFor(() => {
+      expect(screen.getByText("api-copy.md")).toBeTruthy()
+    })
+  })
+
   it("编辑正文后全局保存写回 SKILL.md（originalDir 锚定）", async () => {
     renderComponent()
     await screen.findByText("pdf-tools")

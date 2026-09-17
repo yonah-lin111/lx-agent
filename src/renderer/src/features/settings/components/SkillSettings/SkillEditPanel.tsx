@@ -1,5 +1,5 @@
 import type { SkillItem, SkillTargetRoot } from "@shared/contracts/agent"
-import { Check, ChevronUp, Copy, Loader2, Settings2, Trash2, TriangleAlert } from "lucide-react"
+import { Check, Copy, Loader2, SlidersHorizontal, Trash2, TriangleAlert } from "lucide-react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
@@ -112,17 +112,17 @@ export const SkillEditPanel = ({
           ) : null}
 
           <LxIconButton
-            iconOnly={false}
-            aria-label={
-              metaExpanded ? t("settings.skillsMetaCollapse") : t("settings.skillsMetaExpand")
-            }
-            icon={metaExpanded ? <ChevronUp /> : <Settings2 />}
+            aria-label={t("settings.skillsMetaExpand")}
+            title={{
+              content: metaExpanded
+                ? t("settings.skillsMetaCollapse")
+                : t("settings.skillsMetaExpand"),
+              placement: "bottom",
+            }}
+            highlighted={metaExpanded}
             onClick={onToggleMeta}
-            className="rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]"
           >
-            <span className="text-xs">
-              {metaExpanded ? t("settings.skillsMetaCollapse") : t("settings.skillsMetaExpand")}
-            </span>
+            <SlidersHorizontal />
           </LxIconButton>
         </div>
       </div>
@@ -271,7 +271,6 @@ export const SkillEditPanel = ({
               onSave={onEditorSave}
               isSaved={editorSaved}
               showSaveStatus
-              showLineNumbers
             />
           )}
         </div>

@@ -131,6 +131,7 @@ export const agentTools = {
   skillsFileImportSuccess: "已导入 {{count}} 个文件",
   skillsFileRename: "重命名 / 移动",
   skillsFileDuplicate: "复制副本",
+  skillsFileMenuLabel: "{{name}} 文件操作",
   skillsFileExists: "该路径已存在",
   skillsConfirmDeleteFileTitle: "确认移入废纸篓",
   skillsConfirmDeleteFileContent: '确定将 "{{path}}" 移入废纸篓吗？',
