@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { GameRomEntry } from "@shared/contracts/game"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { GameDashboard } from "@/features/game"
 import { BUILTIN_BEST_SCORES_STORAGE_KEY } from "@/features/game/builtin/constants"
@@ -65,6 +65,39 @@ describe("GameDashboard", () => {
     expect(screen.getByText(/64MB/)).toBeDefined()
   })
 
+  it("两个分区标题使用不同图标与配色，卡片图标跟随分区配色", async () => {
+    installApi(createApiMock())
+
+    const { container } = render(<GameDashboard />)
+    await screen.findByText("Built-in games")
+
+    const builtinIcon = container.querySelector(".game-dashboard-builtin .game-section-icon")
+    const importedIcon = container.querySelector(".game-dashboard-imported .game-section-icon")
+    expect(builtinIcon?.classList.contains("lucide-joystick")).toBe(true)
+    expect(importedIcon?.classList.contains("lucide-memory-stick")).toBe(true)
+    expect(builtinIcon?.classList.contains("text-emerald-400")).toBe(true)
+    expect(importedIcon?.classList.contains("text-amber-400")).toBe(true)
+
+    // 内置卡片为绿色且不携带导入分区修饰类
+    const builtinCardIcon = container.querySelector(".builtin-game-card svg")
+    expect(builtinCardIcon?.classList.contains("game-card-icon--builtin")).toBe(true)
+    expect(builtinCardIcon?.classList.contains("game-card-icon--imported")).toBe(false)
+    expect(builtinCardIcon?.classList.contains("text-emerald-400")).toBe(true)
+  })
+
+  it("导入按钮位于「导入游戏」分区标题行内并注明 GBA", async () => {
+    installApi(createApiMock())
+
+    const { container } = render(<GameDashboard />)
+    await screen.findByText("Imported games")
+
+    const importedSection = container.querySelector(".game-dashboard-imported")
+    expect(importedSection).not.toBeNull()
+    expect(
+      within(importedSection as HTMLElement).getByRole("button", { name: "Import GBA Game" }),
+    ).toBeDefined()
+  })
+
   it("内置卡片展示本机最高分", async () => {
     localStorage.setItem(BUILTIN_BEST_SCORES_STORAGE_KEY, JSON.stringify({ tetris: 420 }))
     installApi(createApiMock())
@@ -98,7 +131,8 @@ describe("GameDashboard", () => {
     render(<GameDashboard />)
 
     expect(await screen.findByText("Demo Game")).toBeDefined()
-    expect(screen.getByText("1.0 MB · Never played")).toBeDefined()
+    expect(screen.getByText("1.0 MB")).toBeDefined()
+    expect(screen.getByText("Never played")).toBeDefined()
     expect(screen.getByText("Imported")).toBeDefined()
     expect(api.list).toHaveBeenCalledTimes(1)
   })
@@ -114,7 +148,7 @@ describe("GameDashboard", () => {
     render(<GameDashboard />)
     await screen.findByText("No imported games yet")
 
-    fireEvent.click(screen.getByRole("button", { name: /Import Game/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Import GBA Game/i }))
 
     expect(await screen.findByText("Demo Game")).toBeDefined()
     expect(api.list).toHaveBeenCalledTimes(2)
@@ -132,7 +166,7 @@ describe("GameDashboard", () => {
     render(<GameDashboard />)
     await screen.findByText("Demo Game")
 
-    fireEvent.click(screen.getByRole("button", { name: /Import Game/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Import GBA Game/i }))
 
     await waitFor(() => {
       expect(api.list).toHaveBeenCalledTimes(2)
@@ -172,7 +206,7 @@ describe("GameDashboard", () => {
     // jsdom 元素没有 webview.send，退出流程走异常兜底路径直接返回列表。
     fireEvent.click(backButton)
 
-    expect(await screen.findByText(/Import Game/)).toBeDefined()
+    expect(await screen.findByText(/Import GBA Game/)).toBeDefined()
     await waitFor(() => {
       expect(api.list).toHaveBeenCalledTimes(2)
     })

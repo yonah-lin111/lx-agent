@@ -24,7 +24,7 @@ export const BuiltinGameCard = ({
   return (
     <div className="builtin-game-card flex min-w-0 flex-col gap-2 rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-4 transition-colors hover:border-[var(--color-theme-border-strong)] hover:bg-[var(--color-theme-surface-hover)]">
       <div className="flex min-w-0 items-center justify-between gap-2">
-        <Icon className={`game-card-icon h-5 w-5 shrink-0 ${meta.iconClassName}`} />
+        <Icon className="game-card-icon game-card-icon--builtin h-5 w-5 shrink-0 text-emerald-400" />
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">
           <LxTag size="small">{t("game.builtin.tag")}</LxTag>
           <LxInfoTooltip markdown={t(meta.infoKey)} />
@@ -40,10 +40,10 @@ export const BuiltinGameCard = ({
         <span className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
           {t(meta.nameKey)}
         </span>
-        <span className="truncate text-xs text-[var(--color-theme-text-muted)]">
+        <span className="text-xs leading-relaxed break-words text-[var(--color-theme-text-muted)]">
           {t(meta.descriptionKey)}
         </span>
-        <span className="text-[11px] leading-relaxed text-[var(--color-theme-text-subtle)]">
+        <span className="text-xs leading-relaxed text-[var(--color-theme-text-subtle)]">
           {t(meta.controlsKey)}
         </span>
       </button>

@@ -1,5 +1,5 @@
 import type { GameRomEntry } from "@shared/contracts/game"
-import { Check, Ellipsis, Gamepad2, Pencil, Trash2 } from "lucide-react"
+import { Check, Ellipsis, Pencil, Trash2 } from "lucide-react"
 import type React from "react"
 import { useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -9,6 +9,7 @@ import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxModal } from "@/components/ui/LxModal"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { GbaIcon } from "@/features/game/components/GbaIcon"
 import { formatPlayedAt, formatRomSize } from "@/features/game/utils"
 import { useTranslation } from "@/i18n"
 
@@ -70,7 +71,7 @@ export const GameCard = ({
     <>
       <div className="game-card flex min-w-0 flex-col gap-2 rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-4 transition-colors hover:border-[var(--color-theme-border-strong)] hover:bg-[var(--color-theme-surface-hover)]">
         <div className="flex min-w-0 items-center justify-between gap-2">
-          <Gamepad2 className="game-card-icon h-5 w-5 shrink-0 text-emerald-400" />
+          <GbaIcon className="game-card-icon game-card-icon--imported h-5 w-5 shrink-0 text-amber-400" />
           <div className="flex min-w-0 shrink-0 items-center gap-1.5">
             <LxTag size="small">{t("game.imported.tag")}</LxTag>
             <LxTooltip
@@ -86,16 +87,14 @@ export const GameCard = ({
               onCancel={() => setIsConfirmingRemove(false)}
               onConfirm={isConfirmingRemove ? () => void handleRemoveConfirm() : undefined}
             >
-              <button
+              <LxIconButton
                 ref={menuButtonRef}
-                type="button"
-                data-variant="ghost"
+                icon={<Ellipsis />}
+                size="small"
                 aria-label={t("game.card.more")}
-                className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-[4px] text-[var(--color-theme-text-muted)] transition-colors hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
+                className="cursor-pointer rounded-[6px] border border-[var(--color-theme-border)] hover:border-[var(--color-theme-border-strong)]"
                 onClick={handleOpenMenu}
-              >
-                <Ellipsis className="h-4 w-4" />
-              </button>
+              />
             </LxTooltip>
           </div>
         </div>
@@ -106,11 +105,16 @@ export const GameCard = ({
           className="flex min-w-0 cursor-pointer flex-col gap-1 text-left"
           onClick={() => onPlay(entry)}
         >
-          <span className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
+          <span className="text-sm font-semibold break-words text-[var(--color-theme-text)]">
             {entry.title}
           </span>
-          <span className="truncate text-xs text-[var(--color-theme-text-muted)]">
-            {formatRomSize(entry.romSize)} · {playedLabel}
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="font-mono text-xs text-[var(--color-theme-text-muted)]">
+              {formatRomSize(entry.romSize)}
+            </span>
+            <span className="text-xs leading-relaxed text-[var(--color-theme-text-subtle)]">
+              {playedLabel}
+            </span>
           </span>
         </button>
       </div>

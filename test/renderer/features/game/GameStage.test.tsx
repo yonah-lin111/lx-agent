@@ -36,6 +36,8 @@ const mountStage = async (
   const webview = await waitFor(() => {
     const element = document.querySelector("webview")
     expect(element).not.toBeNull()
+    // webview 挂载后由 effect 异步写入 src，需等待属性出现再断言，避免竞态。
+    expect(element?.getAttribute("src")).toBeTruthy()
     return element as HTMLElement
   })
 

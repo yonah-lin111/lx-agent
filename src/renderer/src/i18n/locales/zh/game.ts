@@ -1,7 +1,7 @@
 export const game = {
   title: "游戏",
   subtitle: "导入本地 GBA ROM，模拟器离线运行，存档保存在本机应用数据目录。",
-  import: "导入游戏",
+  import: "导入 GBA 游戏",
   importing: "导入中…",
   loading: "加载游戏列表…",
   builtin: {

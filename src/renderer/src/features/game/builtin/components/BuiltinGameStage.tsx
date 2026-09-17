@@ -165,7 +165,7 @@ export const BuiltinGameStage = ({
             <span className="text-xs font-medium tracking-wide text-white/60">
               {t("game.builtin.result.title")}
             </span>
-            <span className="font-mono text-3xl font-bold text-white">{result.score}</span>
+            <span className="font-mono text-lg font-bold text-white">{result.score}</span>
             <span className="font-mono text-xs text-white/60">
               {result.isNewBest
                 ? t("game.builtin.result.newBest")

@@ -1,5 +1,5 @@
 import type { GameRomEntry } from "@shared/contracts/game"
-import { Gamepad2, Plus, Sparkles } from "lucide-react"
+import { Gamepad2, Joystick, MemoryStick, Plus } from "lucide-react"
 import type React from "react"
 import { useCallback, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -113,26 +113,13 @@ export const GameDashboard = (): React.JSX.Element => {
 
   return (
     <div className="game-dashboard relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-4 custom-scrollbar [scrollbar-gutter:stable]">
-      <section className="game-dashboard-header flex min-w-0 flex-wrap items-center justify-between gap-2">
+      <section className="game-dashboard-header flex min-w-0 items-center gap-2">
         <div className="game-section-title flex min-w-0 items-center gap-2">
           <Gamepad2 className="game-section-icon game-section-icon--game h-4 w-4 shrink-0 text-amber-400" />
           <h2 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
             {t("game.title")}
           </h2>
         </div>
-
-        <LxIconButton
-          iconOnly={false}
-          size="small"
-          icon={<Plus />}
-          disabled={isImporting}
-          textClass="text-[var(--color-theme-text)]"
-          hoverBgClass="hover:bg-[var(--color-theme-surface-hover)]"
-          className="cursor-pointer rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] hover:border-[var(--color-theme-border-strong)]"
-          onClick={() => void handleImport()}
-        >
-          <span>{isImporting ? t("game.importing") : t("game.import")}</span>
-        </LxIconButton>
       </section>
 
       <p className="text-xs leading-relaxed text-[var(--color-theme-text-muted)]">
@@ -154,7 +141,7 @@ export const GameDashboard = (): React.JSX.Element => {
 
       <section className="game-dashboard-builtin flex min-w-0 flex-col gap-2">
         <div className="game-section-title flex min-w-0 items-center gap-2">
-          <Sparkles className="game-section-icon game-section-icon--builtin h-4 w-4 shrink-0 text-emerald-400" />
+          <Joystick className="game-section-icon game-section-icon--builtin h-4 w-4 shrink-0 text-emerald-400" />
           <h2 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
             {t("game.builtin.sectionTitle")}
           </h2>
@@ -172,11 +159,24 @@ export const GameDashboard = (): React.JSX.Element => {
       </section>
 
       <section className="game-dashboard-imported flex min-w-0 flex-col gap-2">
-        <div className="game-section-title flex min-w-0 items-center gap-2">
-          <Gamepad2 className="game-section-icon game-section-icon--imported h-4 w-4 shrink-0 text-sky-400" />
+        <div className="game-section-title flex min-w-0 flex-wrap items-center gap-2">
+          <MemoryStick className="game-section-icon game-section-icon--imported h-4 w-4 shrink-0 text-amber-400" />
           <h2 className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
             {t("game.imported.sectionTitle")}
           </h2>
+
+          <LxIconButton
+            iconOnly={false}
+            size="small"
+            icon={<Plus />}
+            disabled={isImporting}
+            textClass="text-[var(--color-theme-text)]"
+            hoverBgClass="hover:bg-[var(--color-theme-surface-hover)]"
+            className="ml-auto cursor-pointer rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] hover:border-[var(--color-theme-border-strong)]"
+            onClick={() => void handleImport()}
+          >
+            <span>{isImporting ? t("game.importing") : t("game.import")}</span>
+          </LxIconButton>
         </div>
 
         {entries.length === 0 && !isLoading ? (

@@ -33,8 +33,47 @@ describe("GameCard", () => {
     )
 
     expect(screen.getByText("口袋测试")).toBeDefined()
-    expect(screen.getByText(/512.0 KB · Last played/)).toBeDefined()
+    // 体积与游玩时间分行独立展示，避免窄卡内被省略号截断
+    expect(screen.getByText("512.0 KB")).toBeDefined()
+    expect(screen.getByText(/Last played Sep 16, 2026/)).toBeDefined()
     expect(screen.getByText("Imported")).toBeDefined()
+  })
+
+  it("使用 GBA 掌机图标标识 ROM 卡片", () => {
+    const { container } = render(
+      <GameCard entry={createEntry()} onPlay={vi.fn()} onRename={vi.fn()} onRemove={vi.fn()} />,
+    )
+
+    const icon = container.querySelector("svg.game-card-icon")
+    expect(icon).not.toBeNull()
+    // 自绘 GBA 掌机图标：单条 evenodd 路径承载机身与镂空，而非 lucide 通用手柄
+    expect(icon?.querySelectorAll("path")).toHaveLength(1)
+    expect(icon?.querySelector("path")?.getAttribute("fill-rule")).toBe("evenodd")
+    expect(icon?.classList.contains("lucide-gamepad-2")).toBe(false)
+    // 导入区配色：始终挂 --imported 修饰类与琥珀色，与内置区绿色卡片区分
+    expect(icon?.classList.contains("game-card-icon--imported")).toBe(true)
+    expect(icon?.classList.contains("text-amber-400")).toBe(true)
+  })
+
+  it("更多按钮为默认 solid 变体、带主题边框的 small 档位 LxIconButton", () => {
+    render(
+      <GameCard entry={createEntry()} onPlay={vi.fn()} onRename={vi.fn()} onRemove={vi.fn()} />,
+    )
+
+    const moreButton = screen.getByRole("button", { name: "More actions" })
+    // 默认 solid 变体：Minecraft 主题据此套用像素描边按钮，与相邻「导入」标签一致
+    expect(moreButton.getAttribute("data-variant")).toBe("solid")
+    expect(moreButton.className).toContain("h-6")
+    expect(moreButton.className).toContain("w-6")
+    expect(moreButton.className).toContain("rounded-[6px]")
+    expect(moreButton.className).toContain("border border-[var(--color-theme-border)]")
+    // 默认主题下不加底色，只保留描边
+    expect(moreButton.className).not.toContain("bg-[var(--color-theme-surface)]")
+    expect(moreButton.className).toContain("focus-visible:outline")
+    // 不覆盖组件默认配色：沿用 text-white/45 + hover:bg-white/10 hover:text-white
+    expect(moreButton.className).toContain("text-white/45")
+    expect(moreButton.className).toContain("hover:bg-white/10")
+    expect(moreButton.className).toContain("hover:text-white")
   })
 
   it("点击卡片主体触发播放", () => {

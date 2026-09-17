@@ -19,7 +19,6 @@ export interface BuiltinGameMeta {
   // 玩法与计分说明（Markdown，供 LxInfoTooltip 展示）。
   infoKey: TranslationKey
   icon: LucideIcon
-  iconClassName: string
 }
 
 // 按 id 索引的内置游戏元信息（id 与类型一一对应，查找必然命中）。
@@ -31,7 +30,6 @@ export const BUILTIN_GAME_META: Record<BuiltinGameId, BuiltinGameMeta> = {
     controlsKey: "game.builtin.games.tetris.controls",
     infoKey: "game.builtin.games.tetris.info",
     icon: Blocks,
-    iconClassName: "text-emerald-400",
   },
   dodge: {
     id: "dodge",
@@ -40,7 +38,6 @@ export const BUILTIN_GAME_META: Record<BuiltinGameId, BuiltinGameMeta> = {
     controlsKey: "game.builtin.games.dodge.controls",
     infoKey: "game.builtin.games.dodge.info",
     icon: Sparkles,
-    iconClassName: "text-sky-400",
   },
   cake: {
     id: "cake",
@@ -49,7 +46,6 @@ export const BUILTIN_GAME_META: Record<BuiltinGameId, BuiltinGameMeta> = {
     controlsKey: "game.builtin.games.cake.controls",
     infoKey: "game.builtin.games.cake.info",
     icon: Cake,
-    iconClassName: "text-amber-400",
   },
 }
 

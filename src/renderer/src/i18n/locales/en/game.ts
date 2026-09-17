@@ -2,7 +2,7 @@ export const game = {
   title: "Games",
   subtitle:
     "Import local GBA ROMs. The emulator runs offline and save data stays in the local app data directory.",
-  import: "Import Game",
+  import: "Import GBA Game",
   importing: "Importing…",
   loading: "Loading games…",
   builtin: {

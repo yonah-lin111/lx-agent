@@ -37,11 +37,17 @@ describe("我的世界主题游戏视图", () => {
     )
   })
 
-  it("卡片与工具栏图标使用经验条绿与像素投影", () => {
+  it("卡片与工具栏图标使用像素投影，并按分区着色", () => {
     const block = getRuleBlock('[data-theme="minecraft"] .game-card-icon,')
 
-    expect(block).toContain("color: #55ff55 !important")
     expect(block).toContain("drop-shadow(1px 1px 0px #000000)")
+
+    expect(getRuleBlock('[data-theme="minecraft"] .game-card-icon--builtin,')).toContain(
+      "color: #55ff55 !important",
+    )
+    expect(getRuleBlock('[data-theme="minecraft"] .game-card-icon--imported')).toContain(
+      "color: #ffaa00 !important",
+    )
   })
 
   it("游戏卡片使用与内置游戏卡片一致的像素浮雕", () => {

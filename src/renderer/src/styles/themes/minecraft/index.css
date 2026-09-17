@@ -1521,11 +1521,21 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   color: #ffaa00 !important;
 }
 
-/* 卡片与模拟器工具栏图标：经验条绿 + 像素投影 */
+/* 卡片与模拟器工具栏图标：像素投影（颜色按下方分区规则声明） */
 [data-theme="minecraft"] .game-card-icon,
 [data-theme="minecraft"] .game-stage-icon {
-  color: #55ff55 !important;
   filter: drop-shadow(1px 1px 0px #000000) !important;
+}
+
+/* 内置区卡片与模拟器工具栏图标：经验条绿 */
+[data-theme="minecraft"] .game-card-icon--builtin,
+[data-theme="minecraft"] .game-stage-icon {
+  color: #55ff55 !important;
+}
+
+/* 导入区卡片图标：金锭橙，与内置区一眼可分 */
+[data-theme="minecraft"] .game-card-icon--imported {
+  color: #ffaa00 !important;
 }
 
 /* 游戏卡片：与内置游戏卡片一致的像素浮雕容器（卡片内部按钮为 ghost 变体，不叠加二级浮雕） */
