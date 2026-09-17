@@ -46,6 +46,16 @@ const fail = (message) => {
   process.exit(1)
 }
 
+/**
+ * 解析推送参数：优先当前分支上游；无上游时使用唯一远端（多个远端时按约定用 origin）。
+ * 远端未必叫 origin，不能硬编码。
+ */
+export const resolvePushArgs = (upstream, remotes) => {
+  if (upstream) return ["push", "--follow-tags"]
+  const remote = remotes.length === 1 ? remotes[0] : "origin"
+  return ["push", remote, "HEAD", "--follow-tags"]
+}
+
 const main = () => {
   const input = process.argv[2]
   if (!input) fail("用法：pnpm release <patch|minor|major|x.y.z>（示例：pnpm release minor）")
@@ -59,13 +69,25 @@ const main = () => {
   if (git(["status", "--porcelain"])) fail("工作区存在未提交改动，请先提交后再发版")
   if (git(["tag", "--list", tag])) fail(`tag ${tag} 已存在`)
 
+  let upstream = ""
+  try {
+    upstream = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+  } catch {
+    upstream = ""
+  }
+  const remotes = git(["remote"])
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+  if (!upstream && remotes.length === 0) fail("仓库未配置远端，无法推送 tag。")
+
   // 只改版本号一行，避免整文件重排格式。
   const raw = readFileSync(packagePath, "utf8")
   writeFileSync(packagePath, raw.replace(/^(\s{2}"version":\s*")[^"]+(")/m, `$1${nextVersion}$2`))
   git(["add", "package.json"])
   git(["commit", "-m", `chore(release): ${tag}`])
   git(["tag", "-a", tag, "-m", `LX Agent ${tag}`])
-  git(["push", "origin", "HEAD", "--follow-tags"])
+  git(resolvePushArgs(upstream, remotes))
 
   console.log(`[release] ${tag} 已推送，GitHub Actions 将自动构建并发布 Release。`)
 }
