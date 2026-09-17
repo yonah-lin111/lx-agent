@@ -17,12 +17,14 @@ import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
+import { useUpdateNotice } from "@/features/update"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { HOME_VIEW_QUERY_KEY } from "@/lib/homeView"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import logoImg from "../../../../../../resources/icons/lx-op-logo.png"
 import { useDailyActivity } from "../hooks/useDailyActivity"
 import { ActivityHeatmap } from "./ActivityHeatmap"
+import { UpdateNoticeBanner } from "./UpdateNoticeBanner"
 
 // 快速入口定义。
 interface QuickEntry {
@@ -120,6 +122,7 @@ export const AppIndexDashboard = (): React.JSX.Element => {
   const navigate = useNavigate()
   const { warning } = useLxToast()
   const { entries, isLoading, error, refresh } = useDailyActivity()
+  const updateNotice = useUpdateNotice()
 
   const handleEntryClick = useCallback(
     (entry: QuickEntry): void => {
@@ -163,6 +166,11 @@ export const AppIndexDashboard = (): React.JSX.Element => {
             >
               {t("home.index.badge")}
             </LxTag>
+            {updateNotice.currentVersion ? (
+              <LxTag size="small" className="font-mono">
+                {`v${updateNotice.currentVersion}`}
+              </LxTag>
+            ) : null}
           </div>
           <p className="mt-1.5 truncate text-sm text-[var(--color-theme-text)]">
             {t("home.index.tagline")}
@@ -172,6 +180,8 @@ export const AppIndexDashboard = (): React.JSX.Element => {
           </p>
         </div>
       </section>
+
+      <UpdateNoticeBanner notice={updateNotice} />
 
       {error ? (
         <div className="mt-4 flex items-center justify-between gap-2 rounded-[6px] border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">

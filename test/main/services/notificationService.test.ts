@@ -31,6 +31,7 @@ const holder = vi.hoisted(() => ({
   },
   openclawInstances: {} as Record<string, { agents: Array<{ id: string; name: string }> }>,
   sessions: {} as Record<string, { title: string }>,
+  openExternalUrl: vi.fn(),
 }))
 
 vi.mock("electron", () => {
@@ -65,6 +66,10 @@ vi.mock("@/services/settingsService", () => ({
 
 vi.mock("@/services/agentSessionService", () => ({
   agentSessionService: { getSession: (sessionId: string) => holder.sessions[sessionId] },
+}))
+
+vi.mock("@/services/externalLinkService", () => ({
+  openExternalUrl: holder.openExternalUrl,
 }))
 
 import { notificationService } from "@/services/notificationService"
@@ -106,6 +111,7 @@ describe("notificationService", () => {
     }
     holder.openclawInstances = {}
     holder.sessions = { "sess-1": { title: "修复登录" } }
+    holder.openExternalUrl.mockClear()
   })
 
   afterEach(() => {
@@ -233,5 +239,33 @@ describe("notificationService", () => {
       body: "已完成",
     })
     expect(holder.notifications[1]?.options.title).toBe("a-unknown")
+  })
+
+  it("更新通知按版本号投递，点击打开 Release 页且不受完成通知开关约束", () => {
+    holder.uiSettings.agentCompletionNotifyEnabled = false
+    holder.uiSettings.openclawCompletionNotifyEnabled = false
+    const releaseUrl = "https://github.com/yonah-lin111/lx-agent/releases/tag/v0.2.0"
+
+    notificationService.notifyUpdateAvailable({ version: "0.2.0", releaseUrl })
+
+    expect(holder.notifications).toHaveLength(1)
+    expect(holder.notifications[0]?.options).toMatchObject({
+      title: "LX Agent v0.2.0",
+      body: "发现新版本，点击查看。",
+    })
+
+    holder.notifications[0]?.clickHandlers[0]?.()
+    expect(holder.openExternalUrl).toHaveBeenCalledWith(releaseUrl)
+  })
+
+  it("窗口聚焦时不投递更新通知", () => {
+    holder.windows = [createWindow(true)]
+
+    notificationService.notifyUpdateAvailable({
+      version: "0.3.0",
+      releaseUrl: "https://github.com/yonah-lin111/lx-agent/releases/tag/v0.3.0",
+    })
+
+    expect(holder.notifications).toHaveLength(0)
   })
 })

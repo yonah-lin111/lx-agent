@@ -19,6 +19,9 @@ export const home = {
     settingsDesc: "Models, permissions and preferences",
     activity: "Activity",
     activityDescription: "Sessions active per day over the past year",
+    updateAvailable: "New version v{{version}} is available (current v{{current}})",
+    updateDownload: "Download",
+    updateDismiss: "Ignore",
   },
   schedule: "Schedule",
   heatmap: {

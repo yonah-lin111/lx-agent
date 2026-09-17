@@ -52,4 +52,13 @@ export const general = {
   completionNotifyDesc: "任务完成时发送系统通知；仅在应用窗口未聚焦时提醒",
   agentNotifyLabel: "Agent 任务完成时提醒我",
   openclawNotifyLabel: "OpenClaw 员工任务完成时提醒我",
+  updateTitle: "版本与更新",
+  updateDesc: "从 GitHub Releases 检查已发布的最新版本",
+  updateCurrentVersion: "当前版本 {{version}}",
+  updateCheck: "检查更新",
+  updateChecking: "检查中...",
+  updateLatest: "已是最新版本",
+  updateAvailable: "发现新版本 {{version}}",
+  updateDownload: "前往下载",
+  updateFailed: "检查失败，请稍后重试",
 }

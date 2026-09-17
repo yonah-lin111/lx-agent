@@ -23,6 +23,7 @@ import { registerScheduleHandlers } from "@/ipc/scheduleHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
 import { registerSkillHandlers } from "@/ipc/skillHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
+import { registerUpdateHandlers } from "@/ipc/updateHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
 import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerGameProtocol } from "@/protocols/gameProtocol"
@@ -32,6 +33,7 @@ import { notificationService } from "@/services/notificationService"
 import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
 import { startScreenshotCleanupScheduler } from "@/services/screenshotCleanupService"
 import { terminalService } from "@/services/terminalService"
+import { updateService } from "@/services/updateService"
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -103,9 +105,13 @@ app.whenReady().then(() => {
   registerOpenClawHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerUsageHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerGameHandlers()
+  registerUpdateHandlers()
 
   // 系统通知点击出口：聚焦窗口后把跳转目标推给渲染进程。
   notificationService.attachSender(() => BrowserWindow.getAllWindows()[0]?.webContents)
+  // 更新检查结果出口：打包态启动后延迟自动检查一次（开发态仅支持手动检查）。
+  updateService.attachSender(() => BrowserWindow.getAllWindows()[0]?.webContents)
+  updateService.startAutoCheck()
   // Windows 开发态通知需要显式 AppUserModelId（打包后由安装器写入快捷方式）。
   if (process.platform === "win32" && !app.isPackaged) {
     app.setAppUserModelId(process.execPath)

@@ -12,6 +12,7 @@ import type { OpenClawApi } from "@shared/contracts/openclaw"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { ScheduleApi } from "@shared/contracts/schedule"
 import type { TerminalApi } from "@shared/contracts/terminal"
+import type { UpdateApi } from "@shared/contracts/update"
 import type { UsageApi } from "@shared/contracts/usage"
 import type { ProjectApi } from "@shared/project"
 import type { SettingsApi } from "@shared/settings"
@@ -39,6 +40,7 @@ declare global {
       ScheduleApi &
       OpenClawApi &
       NotificationApi &
+      UpdateApi &
       GameApi
   }
 

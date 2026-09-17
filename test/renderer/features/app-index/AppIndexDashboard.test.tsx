@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { UpdateState } from "@shared/contracts/update"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
@@ -27,12 +28,39 @@ const activityEntries = [
   { date: "2026-09-16", count: 2 },
 ]
 
+const RELEASE_URL = "https://github.com/yonah-lin111/lx-agent/releases/tag/v0.2.0"
+
+// 更新状态替身：用例中按需改写后渲染。
+const updateHolder: { state: UpdateState } = {
+  state: {
+    currentVersion: "0.1.0",
+    latestVersion: null,
+    hasUpdate: false,
+    releaseUrl: null,
+    checkedAt: null,
+    failed: false,
+  },
+}
+
 describe("AppIndexDashboard", () => {
   beforeEach(() => {
+    updateHolder.state = {
+      currentVersion: "0.1.0",
+      latestVersion: null,
+      hasUpdate: false,
+      releaseUrl: null,
+      checkedAt: null,
+      failed: false,
+    }
     // @ts-expect-error Mock window.api
     window.api = {
       activity: {
         getDaily: vi.fn().mockResolvedValue(activityEntries),
+      },
+      update: {
+        getState: vi.fn(() => Promise.resolve(updateHolder.state)),
+        check: vi.fn(() => Promise.resolve(updateHolder.state)),
+        onStateChanged: vi.fn(() => () => {}),
       },
     }
   })
@@ -132,5 +160,52 @@ describe("AppIndexDashboard", () => {
     await waitFor(() => {
       expect(getDaily).toHaveBeenCalledTimes(2)
     })
+  })
+
+  it("Hero 展示当前版本号", async () => {
+    render(<AppIndexDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText("v0.1.0")).toBeDefined()
+    })
+  })
+
+  it("有可用新版本时展示更新横幅，点击忽略后本会话不再展示", async () => {
+    updateHolder.state = {
+      currentVersion: "0.1.0",
+      latestVersion: "0.2.0",
+      hasUpdate: true,
+      releaseUrl: RELEASE_URL,
+      checkedAt: 1,
+      failed: false,
+    }
+
+    render(<AppIndexDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText("New version v0.2.0 is available (current v0.1.0)")).toBeDefined()
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Ignore" }))
+
+    await waitFor(() => {
+      expect(screen.queryByText("New version v0.2.0 is available (current v0.1.0)")).toBeNull()
+    })
+  })
+
+  it("更新横幅下载入口指向对应 Release 页", async () => {
+    updateHolder.state = {
+      currentVersion: "0.1.0",
+      latestVersion: "0.3.0",
+      hasUpdate: true,
+      releaseUrl: RELEASE_URL,
+      checkedAt: 1,
+      failed: false,
+    }
+
+    render(<AppIndexDashboard />)
+
+    const link = await screen.findByText("Download")
+    expect(link.getAttribute("href")).toBe(RELEASE_URL)
   })
 })
