@@ -13,7 +13,7 @@ interface FakeWindow {
 }
 
 interface FakeNotificationInstance {
-  options: { title?: string; body?: string }
+  options: { title?: string; body?: string; icon?: unknown }
   show: ReturnType<typeof vi.fn>
   close: ReturnType<typeof vi.fn>
   clickHandlers: Array<() => void>
@@ -23,6 +23,7 @@ const holder = vi.hoisted(() => ({
   windows: [] as FakeWindow[],
   notifications: [] as FakeNotificationInstance[],
   supported: true,
+  createFromPath: vi.fn(() => ({ isEmpty: () => false })),
   uiSettings: {
     locale: "zh" as "zh" | "en",
     agentCompletionNotifyEnabled: true as boolean | undefined,
@@ -34,14 +35,14 @@ const holder = vi.hoisted(() => ({
 
 vi.mock("electron", () => {
   class FakeNotification {
-    options: { title?: string; body?: string }
+    options: { title?: string; body?: string; icon?: unknown }
     show = vi.fn()
     close = vi.fn()
     clickHandlers: Array<() => void> = []
     static isSupported(): boolean {
       return holder.supported
     }
-    constructor(options: { title?: string; body?: string }) {
+    constructor(options: { title?: string; body?: string; icon?: unknown }) {
       this.options = options
       holder.notifications.push(this)
     }
@@ -52,6 +53,8 @@ vi.mock("electron", () => {
   return {
     BrowserWindow: { getAllWindows: () => holder.windows },
     Notification: FakeNotification,
+    app: { isPackaged: false, getAppPath: () => "/tmp/lx-agent" },
+    nativeImage: { createFromPath: holder.createFromPath },
   }
 })
 
@@ -125,6 +128,10 @@ describe("notificationService", () => {
       title: "修复登录",
       body: "已完成",
     })
+    expect(holder.notifications[0]?.options.icon).toBeDefined()
+    expect(holder.createFromPath).toHaveBeenCalledWith(
+      expect.stringContaining("resources/icons/lx-logo.png"),
+    )
     expect(holder.notifications[0]?.show).toHaveBeenCalledOnce()
   })
 

@@ -1,8 +1,16 @@
+import { join } from "node:path"
 import type { AgentEvent, AgentMessage, AssistantMessage } from "@shared/contracts/agent"
 import type { NotificationClickPayload } from "@shared/contracts/notification"
 import { NOTIFICATION_CHANNELS } from "@shared/ipc/notificationChannels"
 import { NOTIFICATION_TEXTS } from "@shared/notificationTexts"
-import { BrowserWindow, Notification, type WebContents } from "electron"
+import {
+  app,
+  BrowserWindow,
+  type NativeImage,
+  Notification,
+  nativeImage,
+  type WebContents,
+} from "electron"
 import { agentSessionService } from "@/services/agentSessionService"
 import { getOpenClawSettings, getUiSettings } from "@/services/settingsService"
 
@@ -11,6 +19,23 @@ const NOTIFY_THROTTLE_MS = 3000
 
 // 会话标题缺失时的通知标题兜底。
 const FALLBACK_TITLE = "LX Agent"
+
+// 通知图标路径：开发态取仓库 resources，打包态取 extraResources（macOS 忽略，使用应用自身图标）。
+const resolveNotificationIconPath = (): string =>
+  app.isPackaged
+    ? join(process.resourcesPath, "resources", "icons", "lx-logo.png")
+    : join(app.getAppPath(), "resources", "icons", "lx-logo.png")
+
+// 懒加载的通知图标；文件缺失或加载失败时回退系统默认图标。
+let cachedNotificationIcon: NativeImage | null | undefined
+
+const getNotificationIcon = (): NativeImage | undefined => {
+  if (cachedNotificationIcon === undefined) {
+    const icon = nativeImage.createFromPath(resolveNotificationIconPath())
+    cachedNotificationIcon = icon.isEmpty() ? null : icon
+  }
+  return cachedNotificationIcon ?? undefined
+}
 
 // 单条通知的投递参数。
 interface NotifyInput {
@@ -115,6 +140,7 @@ class NotificationService {
     const notification = new Notification({
       title: input.title,
       body: input.failed ? texts.failedBody : texts.completedBody,
+      icon: getNotificationIcon(),
     })
     this.activeNotifications.set(input.key, notification)
     notification.on("close", () => {
