@@ -109,6 +109,7 @@ A cake layer swings above the tower — press **click / Space** to drop it.
     retry: "Retry",
     back: "Back to games",
     exitHint: "ESC to exit",
+    speed: "Speed ×{{ratio}}",
   },
   error: {
     listFailed: "Failed to load the game list",

@@ -108,6 +108,7 @@ export const game = {
     retry: "重试",
     back: "返回游戏列表",
     exitHint: "ESC 退出",
+    speed: "倍速 ×{{ratio}}",
   },
   error: {
     listFailed: "读取游戏列表失败",

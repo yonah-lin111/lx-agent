@@ -25,9 +25,11 @@ interface WebviewElement extends HTMLElement {
 
 // guest 上报消息。
 interface GameGuestMessage {
-  type: "ready" | "started" | "save" | "save-restored" | "escape" | "flushed" | "error"
+  type: "ready" | "started" | "save" | "save-restored" | "escape" | "flushed" | "error" | "speed"
   data?: unknown
   message?: string
+  // 当前倍速（仅 speed 消息携带）。
+  ratio?: number
 }
 
 type StageStatus = "loading" | "running" | "error"
@@ -58,6 +60,12 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
     isGuestReadyRef.current = isGuestReady
   }, [isGuestReady])
   const [runId, setRunId] = useState(0)
+  const [speedRatio, setSpeedRatio] = useState(1)
+
+  // 重新加载 guest（换游戏或重试）时先把倍速徽标归位，等 guest 上报真实值。
+  useEffect(() => {
+    setSpeedRatio(1)
+  }, [entry.id, runId])
 
   // 预加载脚本路径由主进程按 dev / 打包两种目录解析。
   useEffect(() => {
@@ -159,6 +167,9 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
           flushResolverRef.current?.()
           flushResolverRef.current = null
           break
+        case "speed":
+          setSpeedRatio(typeof payload.ratio === "number" ? payload.ratio : 1)
+          break
         case "error":
           setStatus("error")
           break
@@ -230,7 +241,16 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
         <span className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
           {entry.title}
         </span>
-        <span className="ml-auto shrink-0 font-mono text-xs text-[var(--color-theme-text-subtle)]">
+        <span
+          className={`ml-auto shrink-0 font-mono text-xs ${
+            speedRatio > 1
+              ? "text-[var(--color-theme-accent)]"
+              : "text-[var(--color-theme-text-subtle)]"
+          }`}
+        >
+          {t("game.stage.speed", { ratio: speedRatio })}
+        </span>
+        <span className="shrink-0 font-mono text-xs text-[var(--color-theme-text-subtle)]">
           {t("game.stage.exitHint")}
         </span>
       </div>

@@ -98,6 +98,18 @@ describe("GameStage", () => {
     })
   })
 
+  it("收到 speed 上报后顶部徽标显示当前倍速", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { webview } = await mountStage()
+    expect(screen.getByText("Speed ×1")).toBeDefined()
+
+    dispatchGuestMessage(webview, { type: "speed", ratio: 8 })
+
+    expect(screen.getByText("Speed ×8")).toBeDefined()
+  })
+
   it("ESC 退出：先请求 flush，收到回执后退出", async () => {
     const api = createApiMock()
     installApi(api)
