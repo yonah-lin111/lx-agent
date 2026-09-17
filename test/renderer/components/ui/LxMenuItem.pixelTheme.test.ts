@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
-const minecraftCss = readFileSync(
+const pixelCss = readFileSync(
   fileURLToPath(
-    new URL("../../../../src/renderer/src/styles/themes/minecraft/index.css", import.meta.url),
+    new URL("../../../../src/renderer/src/styles/themes/pixel/index.css", import.meta.url),
   ),
   "utf8",
 )
@@ -16,9 +16,9 @@ const extractBlockFrom = (css: string, selector: string): string => {
   return css.slice(start, css.indexOf("}", start))
 }
 
-describe("LxMenuItem Minecraft 主题", () => {
+describe("LxMenuItem 像素 主题", () => {
   it("item 保持不透明纯色 3D 块并显式禁用马赛克纹理", () => {
-    const block = extractBlockFrom(minecraftCss, '[data-theme="minecraft"] .lx-menu-item,')
+    const block = extractBlockFrom(pixelCss, '[data-theme="pixel"] .lx-menu-item,')
 
     expect(block).toContain("background-color: #1e1e2a !important")
     expect(block).toContain("background-image: none !important")
@@ -27,27 +27,25 @@ describe("LxMenuItem Minecraft 主题", () => {
 
   it("选中态按 data-active 分派绿色指示条，不再嗅探 Tailwind 类名", () => {
     const block = extractBlockFrom(
-      minecraftCss,
-      '[data-theme="minecraft"] .lx-menu-item[data-active="true"]',
+      pixelCss,
+      '[data-theme="pixel"] .lx-menu-item[data-active="true"]',
     )
 
     expect(block).toContain("background-color: #14141c !important")
     expect(block).toContain("border-left: 4px solid #55ff55 !important")
-    expect(minecraftCss).not.toContain(
-      '[data-theme="minecraft"] [role="menu"] [role="menuitem"].bg-white\\/8',
+    expect(pixelCss).not.toContain(
+      '[data-theme="pixel"] [role="menu"] [role="menuitem"].bg-white\\/8',
     )
-    expect(minecraftCss).not.toContain(
-      '[data-theme="minecraft"] [role="menu"] [role="menuitem"].bg-white\\/5',
+    expect(pixelCss).not.toContain(
+      '[data-theme="pixel"] [role="menu"] [role="menuitem"].bg-white\\/5',
     )
   })
 
   it("悬停态排除选中项，避免覆盖绿色指示条", () => {
-    expect(minecraftCss).toContain(
-      '[data-theme="minecraft"] .lx-menu-item:hover:not([data-active="true"])',
-    )
+    expect(pixelCss).toContain('[data-theme="pixel"] .lx-menu-item:hover:not([data-active="true"])')
   })
 
   it("主题菜单特例样式已随统一 item 移除", () => {
-    expect(minecraftCss).not.toContain(".theme-menu-option")
+    expect(pixelCss).not.toContain(".theme-menu-option")
   })
 })

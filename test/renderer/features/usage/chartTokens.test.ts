@@ -10,16 +10,16 @@ const extractChartTokens = (css: string): string[] =>
 
 describe("usage 图表主题变量", () => {
   const defaultCss = readSource("src/renderer/src/styles/themes/default.css")
-  const minecraftCss = readSource("src/renderer/src/styles/themes/minecraft/index.css")
+  const pixelCss = readSource("src/renderer/src/styles/themes/pixel/index.css")
   const globalCss = readSource("src/renderer/src/styles.css")
 
-  it("default 与 minecraft 定义同一组图表变量", () => {
+  it("default 与 pixel 定义同一组图表变量", () => {
     const defaultTokens = extractChartTokens(defaultCss)
-    const minecraftTokens = extractChartTokens(minecraftCss)
+    const pixelTokens = extractChartTokens(pixelCss)
 
     // 7 个语义色 + 8 个 Provider 循环色。
     expect(defaultTokens.length).toBe(15)
-    expect(minecraftTokens).toEqual(defaultTokens)
+    expect(pixelTokens).toEqual(defaultTokens)
   })
 
   it("仅屏蔽鼠标点击产生的图表焦点框，保留键盘 focus-visible 轮廓", () => {

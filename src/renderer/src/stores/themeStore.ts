@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 
-export type AppTheme = "default" | "minecraft"
+export type AppTheme = "default" | "pixel"
 
 const THEME_STORAGE_KEY = "lx_app_theme"
-const VALID_THEMES: readonly AppTheme[] = ["default", "minecraft"]
+const VALID_THEMES: readonly AppTheme[] = ["default", "pixel"]
 
 /**
  * 获取当前持久化的主题配置，默认为 default。

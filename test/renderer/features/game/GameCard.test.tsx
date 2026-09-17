@@ -61,7 +61,7 @@ describe("GameCard", () => {
     )
 
     const moreButton = screen.getByRole("button", { name: "More actions" })
-    // 默认 solid 变体：Minecraft 主题据此套用像素描边按钮，与相邻「导入」标签一致
+    // 默认 solid 变体：像素 主题据此套用像素描边按钮，与相邻「导入」标签一致
     expect(moreButton.getAttribute("data-variant")).toBe("solid")
     expect(moreButton.className).toContain("h-6")
     expect(moreButton.className).toContain("w-6")

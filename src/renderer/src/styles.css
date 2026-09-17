@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "@xterm/xterm/css/xterm.css";
 @import "./styles/themes/default.css";
-@import "./styles/themes/minecraft/index.css";
+@import "./styles/themes/pixel/index.css";
 
 @theme {
   /* 字号预设仅三档：xs=12px、sm=14px（默认正文字号）、lg=16px（大字体） */

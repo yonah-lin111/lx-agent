@@ -15,7 +15,7 @@ export interface LxChartTooltipProps {
 
 /**
  * 通用图表 tooltip：主题化外观与可定制数值格式。
- * 颜色走主题 token，Minecraft 等主题通过 .lx-chart-tooltip 类名挂钩覆盖。
+ * 颜色走主题 token，像素等主题通过 .lx-chart-tooltip 类名挂钩覆盖。
  */
 export const LxChartTooltip = ({
   active,

@@ -93,7 +93,7 @@ const QuestionToolMeta = ({ content }: FlowItemQuestionContentProps): React.JSX.
  * FlowItemQuestionContent - 执行流步骤内 question 工具的精简问答面板：
  * 挂起时全部问题纵向排列直接作答（单选 LxRadio / 多选 LxCheckbox + 自定义输入），
  * 统一底部提交；作答完成后只读回显问答记录。
- * 样式复用 agent-question-* 类名，主题（如 minecraft）全局覆盖自动生效。
+ * 样式复用 agent-question-* 类名，主题（如 pixel）全局覆盖自动生效。
  */
 export const FlowItemQuestionContent = ({
   content,

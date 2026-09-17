@@ -16,7 +16,7 @@ export interface LxChartCardProps {
 
 /**
  * 通用图表卡片外壳：标题、副标题与空态占位。
- * 颜色走主题 token，Minecraft 等主题通过 .lx-chart-card 类名挂钩覆盖。
+ * 颜色走主题 token，像素等主题通过 .lx-chart-card 类名挂钩覆盖。
  */
 export const LxChartCard = ({
   title,

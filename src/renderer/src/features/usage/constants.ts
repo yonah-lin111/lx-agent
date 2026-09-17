@@ -1,4 +1,4 @@
-// 图表数据配色：引用主题级 CSS 变量（default / minecraft 各自定义），随主题切换自动生效。
+// 图表数据配色：引用主题级 CSS 变量（default / pixel 各自定义），随主题切换自动生效。
 export const USAGE_CHART_COLORS = {
   freshInput: "var(--color-usage-chart-fresh-input)",
   output: "var(--color-usage-chart-output)",

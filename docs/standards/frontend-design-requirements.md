@@ -12,7 +12,7 @@
 
 主题采用 CSS Token 驱动 + DOM 属性分发（`data-theme`）架构：
 
-- 业务组件禁止写死主题分支逻辑（如 `if (theme === "minecraft")` 渲染不同 DOM），外观差异全部由 CSS 选择器承载。
+- 业务组件禁止写死主题分支逻辑（如 `if (theme === "pixel")` 渲染不同 DOM），外观差异全部由 CSS 选择器承载。
 - 主题由 `themeStore` 统一管理并持久化至 `localStorage`（键名 `lx_app_theme`），在 `main.tsx` 中于 React 挂载前同步至 `document.documentElement`，根治首屏闪烁。
 - 每个主题必须在根选择器（`[data-theme="<theme_id>"]`）下声明标准 Token：
 
@@ -39,7 +39,7 @@ src/renderer/src/
   stores/themeStore.ts           主题状态、DOM 分发与持久化
   styles/themes/
     default.css                  默认暗色主题 Token
-    minecraft/                   复杂主题模块化示例
+    pixel/                       复杂主题模块化示例
       index.css                  入口：Token、全局重置、布局与核心控件
       markdown-editor.css        CodeMirror 编辑器定制
       markdown-preview.css       Markdown 预览排版

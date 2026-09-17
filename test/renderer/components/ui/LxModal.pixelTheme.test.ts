@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
-const minecraftCss = readFileSync(
+const pixelCss = readFileSync(
   fileURLToPath(
-    new URL("../../../../src/renderer/src/styles/themes/minecraft/index.css", import.meta.url),
+    new URL("../../../../src/renderer/src/styles/themes/pixel/index.css", import.meta.url),
   ),
   "utf8",
 )
@@ -14,12 +14,9 @@ const extractRuleBlock = (css: string, selectorPattern: string): string => {
   return match?.[1] ?? ""
 }
 
-describe("LxModal Minecraft 主题面板", () => {
+describe("LxModal 像素 主题面板", () => {
   it("面板保留实体底色与容器 3D 浮雕，仅移除马赛克底纹", () => {
-    const panelBlock = extractRuleBlock(
-      minecraftCss,
-      '\\[data-theme="minecraft"\\] \\.lx-modal-panel',
-    )
+    const panelBlock = extractRuleBlock(pixelCss, '\\[data-theme="pixel"\\] \\.lx-modal-panel')
 
     expect(panelBlock).toContain("background-color: #222232 !important")
     expect(panelBlock).toContain("background-image: none !important")
@@ -29,8 +26,8 @@ describe("LxModal Minecraft 主题面板", () => {
 
   it("标题行并入平面，移除独立容器边框/底纹/浮雕", () => {
     const headerBlock = extractRuleBlock(
-      minecraftCss,
-      '\\[data-theme="minecraft"\\] \\.lx-modal-panel header',
+      pixelCss,
+      '\\[data-theme="pixel"\\] \\.lx-modal-panel header',
     )
 
     expect(headerBlock).toContain("border: none !important")
@@ -40,8 +37,8 @@ describe("LxModal Minecraft 主题面板", () => {
 
   it("遮罩层规则保持透明无纹理", () => {
     const backdropBlock = extractRuleBlock(
-      minecraftCss,
-      '\\[data-theme="minecraft"\\] \\.lx-modal-backdrop',
+      pixelCss,
+      '\\[data-theme="pixel"\\] \\.lx-modal-backdrop',
     )
 
     expect(backdropBlock).toContain("background-color: transparent !important")
