@@ -14,6 +14,14 @@
   var autosaveTimer = null
   var saveListenerAttached = false
 
+  // 离线约束：拦截 EmulatorJS 的版本检查等外部请求，guest 页不做任何出网访问。
+  var nativeFetch = window.fetch.bind(window)
+  window.fetch = function (input, init) {
+    var url = typeof input === "string" ? input : input && input.url ? input.url : ""
+    if (/^(https?|ftp):/i.test(url)) return Promise.reject(new Error("offline"))
+    return nativeFetch(input, init)
+  }
+
   function report(type, payload) {
     try {
       bridge.report(Object.assign({ type: type }, payload || {}))

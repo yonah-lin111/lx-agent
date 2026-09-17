@@ -3,6 +3,9 @@
 // 自定义协议 scheme：webview 模拟器宿主页、静态资产、ROM 与存档均经此协议加载。
 export const GAME_PROTOCOL = "lx-game"
 
+// webview 模拟器宿主页使用的持久化分区；主进程必须在该 session 上单独注册协议，否则加载会失败。
+export const GAME_WEBVIEW_PARTITION = "persist:lx-game"
+
 // ROM 扩展名白名单（小写，含点）。
 export const GAME_ROM_EXTENSIONS = [".gba"] as const
 

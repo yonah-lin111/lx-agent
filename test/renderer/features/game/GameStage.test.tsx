@@ -134,6 +134,26 @@ describe("GameStage", () => {
     })
   })
 
+  it("guest 迟迟不就绪时超时进入错误态", async () => {
+    vi.useFakeTimers()
+    try {
+      const api = createApiMock()
+      installApi(api)
+
+      render(<GameStage entry={createEntry()} onExit={vi.fn()} />)
+      await act(async () => {})
+      expect(document.querySelector("webview")).not.toBeNull()
+
+      await act(async () => {
+        vi.advanceTimersByTime(20000)
+      })
+
+      expect(screen.getByText("Failed to load the emulator")).toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("运行时错误上报后展示错误态与重试入口", async () => {
     const api = createApiMock()
     installApi(api)

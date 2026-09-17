@@ -1,4 +1,4 @@
-import { GAME_PROTOCOL, type GameRomEntry } from "@shared/contracts/game"
+import { GAME_PROTOCOL, GAME_WEBVIEW_PARTITION, type GameRomEntry } from "@shared/contracts/game"
 import { ArrowLeft, Gamepad2, RotateCcw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -14,6 +14,9 @@ const HOST_CHANNEL = "lx-game-host"
 
 // 退出前等待存档 flush 回执的上限。
 const FLUSH_TIMEOUT_MS = 1500
+
+// guest 页（宿主页 + 模拟器实例）就绪的上限：超时按加载失败处理，避免永远停在加载态。
+const GUEST_READY_TIMEOUT_MS = 20000
 
 // webview 元素的最小方法接口（send 为 Electron 注入）。
 interface WebviewElement extends HTMLElement {
@@ -49,6 +52,11 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
 
   const [preloadUrl, setPreloadUrl] = useState<string | null>(null)
   const [status, setStatus] = useState<StageStatus>("loading")
+  const [isGuestReady, setIsGuestReady] = useState(false)
+  const isGuestReadyRef = useRef(isGuestReady)
+  useEffect(() => {
+    isGuestReadyRef.current = isGuestReady
+  }, [isGuestReady])
   const [runId, setRunId] = useState(0)
 
   // 预加载脚本路径由主进程按 dev / 打包两种目录解析。
@@ -129,7 +137,11 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
       if (!payload || typeof payload !== "object") return
 
       switch (payload.type) {
+        case "ready":
+          setIsGuestReady(true)
+          break
         case "started":
+          setIsGuestReady(true)
           setStatus("running")
           void gameApi.markPlayed(entry.id).catch(() => undefined)
           break
@@ -164,7 +176,17 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
     webview.addEventListener("ipc-message", handleIpcMessage)
     webview.addEventListener("did-fail-load", handleFailed)
     webview.addEventListener("render-process-gone", handleFailed)
+
+    // 监听就绪后再触发加载：webview 一挂载就开始加载时，早期失败事件会在监听前派发而丢失。
+    webview.setAttribute("src", src)
+    const readyTimeoutId = window.setTimeout(() => {
+      setStatus((current) =>
+        current === "loading" && !isGuestReadyRef.current ? "error" : current,
+      )
+    }, GUEST_READY_TIMEOUT_MS)
+
     return () => {
+      window.clearTimeout(readyTimeoutId)
       webview.removeEventListener("ipc-message", handleIpcMessage)
       webview.removeEventListener("did-fail-load", handleFailed)
       webview.removeEventListener("render-process-gone", handleFailed)
@@ -185,10 +207,11 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
         webview.removeEventListener("ipc-message", handleLastSave)
       }
     }
-  }, [entry.id, errorToast, preloadUrl, runId, t])
+  }, [entry.id, errorToast, preloadUrl, runId, src, t])
 
   const handleRetry = (): void => {
     setStatus("loading")
+    setIsGuestReady(false)
     setRunId((current) => current + 1)
   }
 
@@ -219,15 +242,14 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
             ref={(node) => {
               webviewRef.current = node as WebviewElement | null
             }}
-            src={src}
             preload={preloadUrl}
-            partition="persist:lx-game"
+            partition={GAME_WEBVIEW_PARTITION}
             className="h-full w-full"
           />
         ) : null}
 
         <LxLoadingOverlay
-          isLoading={status === "loading"}
+          isLoading={!isGuestReady && status !== "error"}
           text={t("game.stage.loading")}
           rounded="rounded-[var(--theme-radius-base)]"
         />

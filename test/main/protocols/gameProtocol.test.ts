@@ -1,12 +1,16 @@
 import { mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
-import { GAME_PROTOCOL } from "@shared/contracts/game"
+import { GAME_PROTOCOL, GAME_WEBVIEW_PARTITION } from "@shared/contracts/game"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const handleProtocol = vi.fn()
+const handlePartitionProtocol = vi.fn()
 
-vi.mock("electron", () => ({ protocol: { handle: handleProtocol } }))
+vi.mock("electron", () => ({
+  protocol: { handle: handleProtocol },
+  session: { fromPartition: () => ({ protocol: { handle: handlePartitionProtocol } }) },
+}))
 vi.mock("@/lib/emulatorAssets", () => ({
   getEmulatorAssetsDir: () => resolve(process.cwd(), "resources", "emulator"),
 }))
@@ -29,15 +33,18 @@ const captureHandler = async (): Promise<(request: Request) => Response> => {
 
 beforeEach(() => {
   handleProtocol.mockClear()
+  handlePartitionProtocol.mockClear()
 })
 
 describe("gameProtocol", () => {
-  it("协议常量规范为 lx-game，且以 emulator 主机注册 handler", async () => {
+  it("协议常量规范为 lx-game，并在默认与 webview 分区 session 上都注册 handler", async () => {
     expect(GAME_PROTOCOL).toBe("lx-game")
+    expect(GAME_WEBVIEW_PARTITION).toBe("persist:lx-game")
 
     await captureHandler()
 
     expect(handleProtocol).toHaveBeenCalledWith(GAME_PROTOCOL, expect.any(Function))
+    expect(handlePartitionProtocol).toHaveBeenCalledWith(GAME_PROTOCOL, expect.any(Function))
   })
 
   it("宿主页返回 HTML 并附带放行 WASM 的独立 CSP", async () => {
@@ -48,7 +55,12 @@ describe("gameProtocol", () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get("content-type")).toContain("text/html")
-    expect(response.headers.get("content-security-policy")).toContain("'wasm-unsafe-eval'")
+    const csp = response.headers.get("content-security-policy") ?? ""
+    expect(csp).toContain("'wasm-unsafe-eval'")
+    // EmulatorJS 解包 7z 核心与经 blob 装载核心脚本/实例化 wasm 所需。
+    expect(csp).toContain("'unsafe-eval'")
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' blob:")
+    expect(csp).toContain("connect-src 'self' blob:")
     expect(response.headers.get("cache-control")).toBe("no-store")
     expect(html).toContain("data/loader.js")
   })
