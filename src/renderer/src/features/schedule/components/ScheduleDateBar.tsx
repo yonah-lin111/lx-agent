@@ -1,7 +1,6 @@
-import { ChevronLeft, ChevronRight } from "lucide-react"
 import { LxDatePicker } from "@/components/ui/LxDatePicker"
 import { useTranslation } from "@/i18n"
-import { getTodayKey, shiftDateKey } from "@/lib/date"
+import { getTodayKey } from "@/lib/date"
 
 // 日期导航条属性。
 export interface ScheduleDateBarProps {
@@ -14,7 +13,7 @@ export interface ScheduleDateBarProps {
 }
 
 /**
- * 渲染日程日期导航：前一天 / 日期选择 / 后一天 / 回到今天。
+ * 渲染日程日期导航：前一天 / 日期选择 / 后一天（切换按钮由日期选择器内置）/ 回到今天。
  */
 export const ScheduleDateBar = ({
   entryDate,
@@ -27,31 +26,14 @@ export const ScheduleDateBar = ({
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
-      <button
-        type="button"
-        aria-label={t("schedule.previousDay")}
-        className="lx-schedule-nav flex h-7 w-7 items-center justify-center rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface)] text-[var(--color-theme-text-muted)] transition-colors hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
-        onClick={() => onChange(shiftDateKey(entryDate, -1))}
-      >
-        <ChevronLeft className="h-3.5 w-3.5" />
-      </button>
-
       <LxDatePicker
         value={entryDate}
         entryCountMap={entryCountMap}
         onChange={onChange}
         onVisibleMonthChange={onVisibleMonthChange}
+        showNavButtons
         triggerClassName="w-[176px] justify-center"
       />
-
-      <button
-        type="button"
-        aria-label={t("schedule.nextDay")}
-        className="lx-schedule-nav flex h-7 w-7 items-center justify-center rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface)] text-[var(--color-theme-text-muted)] transition-colors hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
-        onClick={() => onChange(shiftDateKey(entryDate, 1))}
-      >
-        <ChevronRight className="h-3.5 w-3.5" />
-      </button>
 
       <button
         type="button"

@@ -32,6 +32,9 @@ import {
 // 选择模式：按日 / 按周（值为周一日期键）/ 按月（值为 YYYY-MM）/ 按区间（双月历）。
 export type LxDatePickerMode = "date" | "week" | "month" | "range"
 
+// 触发器尺寸档位：仅触发器与两侧切换按钮缩放，弹层容器不随之变化。
+export type LxDatePickerSize = "small" | "medium" | "large"
+
 // 区间预设项：数据由调用方提供，组件只渲染文案并回传 key。
 export interface LxDateRangePreset {
   key: string
@@ -54,6 +57,12 @@ interface LxDatePickerBaseProps {
   quickSelects?: boolean
   // 内联模式：直接渲染日历面板（无触发器与弹层），供外层浮层（如 LxTooltip）承载。
   inline?: boolean
+  // 是否展示内置触发器前置日历图标，默认展示；自定义触发器不受影响。
+  showIcon?: boolean
+  // 是否在触发器两侧渲染前一 / 后一周期切换按钮，默认不展示（区间模式不支持）。
+  showNavButtons?: boolean
+  // 触发器尺寸档位，默认 medium。
+  size?: LxDatePickerSize
   // 触发器文案覆盖（区间模式用于展示调用方预设名）。
   triggerLabel?: string
 }
@@ -95,6 +104,29 @@ const QUICK_SELECTS: Array<{ offset: number; labelKey: TranslationKey }> = [
 // 弹层宽度（定位夹取时作为兜底尺寸）。
 const POPOVER_FALLBACK_WIDTH = 292
 const RANGE_POPOVER_FALLBACK_WIDTH = 576
+
+// 尺寸阶梯：medium 与历史观感一致；small / large 对齐 LxSelect 的档位高度。
+const SIZE_TRIGGER_CLASSES: Record<LxDatePickerSize, string> = {
+  small: "h-6 px-2 text-xs",
+  medium: "h-7 px-2.5 text-xs",
+  large: "h-8 px-3 text-sm",
+}
+
+const SIZE_ICON_CLASSES: Record<LxDatePickerSize, string> = {
+  small: "h-3 w-3",
+  medium: "h-3.5 w-3.5",
+  large: "h-4 w-4",
+}
+
+const SIZE_NAV_BUTTON_CLASSES: Record<LxDatePickerSize, string> = {
+  small: "h-6 w-6",
+  medium: "h-7 w-7",
+  large: "h-8 w-8",
+}
+
+// 两侧切换按钮基础样式（外观与触发器一致）。
+const NAV_BUTTON_CLASSES =
+  "lx-datepicker-nav-button flex shrink-0 items-center justify-center rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface)] text-[var(--color-theme-text-muted)] transition-colors hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)] disabled:cursor-not-allowed disabled:opacity-40"
 
 // 预设缺省值，避免每次渲染重建数组。
 const EMPTY_RANGE_PRESETS: LxDateRangePreset[] = []
@@ -518,11 +550,16 @@ export const LxDatePicker = (props: LxDatePickerProps): React.JSX.Element => {
     onVisibleMonthChange,
     quickSelects = true,
     inline = false,
+    showIcon = true,
+    showNavButtons = false,
+    size = "medium",
     triggerLabel,
   } = props
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const [popoverPosition, setPopoverPosition] = useState<{ left: number; top: number } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  // 弹层定位锚定触发器本身（而非含切换按钮的整组），避免按钮占位导致弹层偏移。
+  const anchorRef = useRef<HTMLDivElement | null>(null)
   const popoverRef = useRef<HTMLDivElement | null>(null)
 
   // 挂载 / 退场状态机与外部关闭（点击外部、Esc、滚动）。inline 形态无浮层，跳过。
@@ -540,7 +577,7 @@ export const LxDatePicker = (props: LxDatePickerProps): React.JSX.Element => {
   useLayoutEffect(() => {
     if (inline || !shouldRender) return
     const updatePosition = (): void => {
-      const trigger = containerRef.current
+      const trigger = anchorRef.current
       if (!trigger) return
       const rect = trigger.getBoundingClientRect()
       const width =
@@ -583,6 +620,26 @@ export const LxDatePicker = (props: LxDatePickerProps): React.JSX.Element => {
     setIsOpen(false)
     if (props.mode === "range") props.onPresetSelect?.(key)
   }
+
+  // 两侧切换按钮：按模式平移一个周期（date ±1 天 / week ±7 天 / month ±1 月）。
+  const shiftPeriod = (direction: -1 | 1): void => {
+    if (props.mode === "range") return
+    if (props.mode === "month") {
+      if (isValidMonthKey(props.value)) props.onChange(shiftMonthKey(props.value, direction))
+      return
+    }
+    if (!isValidDateKey(props.value)) return
+    props.onChange(shiftDateKey(props.value, props.mode === "week" ? direction * 7 : direction))
+  }
+
+  const navLabelKeys: { previous: TranslationKey; next: TranslationKey } =
+    props.mode === "month"
+      ? { previous: "common.datePicker.previousMonth", next: "common.datePicker.nextMonth" }
+      : props.mode === "week"
+        ? { previous: "common.datePicker.previousWeek", next: "common.datePicker.nextWeek" }
+        : { previous: "common.datePicker.previousDay", next: "common.datePicker.nextDay" }
+
+  const shouldShowNavButtons = showNavButtons && props.mode !== "range"
 
   const displayLabel = (): string => {
     const fallbackLabel = placeholder ?? t("common.datePicker.placeholder")
@@ -644,13 +701,17 @@ export const LxDatePicker = (props: LxDatePickerProps): React.JSX.Element => {
         disabled={disabled}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
-        className={`lx-datepicker-trigger flex h-7 w-full items-center gap-1.5 rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface)] px-2.5 text-left text-xs text-[var(--color-theme-text)] outline-none transition-colors duration-150 hover:bg-[var(--color-theme-surface-hover)] disabled:cursor-not-allowed disabled:opacity-40 ${triggerClassName}`}
+        className={`lx-datepicker-trigger flex w-full items-center gap-1.5 rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface)] text-left text-[var(--color-theme-text)] outline-none transition-colors duration-150 hover:bg-[var(--color-theme-surface-hover)] disabled:cursor-not-allowed disabled:opacity-40 ${SIZE_TRIGGER_CLASSES[size]} ${triggerClassName}`}
         onClick={handleToggle}
       >
-        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-[var(--color-theme-text-muted)]" />
+        {showIcon ? (
+          <CalendarDays
+            className={`lx-datepicker-trigger-icon shrink-0 text-[var(--color-theme-text-muted)] ${SIZE_ICON_CLASSES[size]}`}
+          />
+        ) : null}
         <span className="min-w-0 flex-1 truncate">{displayLabel()}</span>
         <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-[var(--color-theme-text-subtle)] transition-transform duration-150 ${
+          className={`shrink-0 text-[var(--color-theme-text-subtle)] transition-transform duration-150 ${SIZE_ICON_CLASSES[size]} ${
             isOpen ? "rotate-180" : ""
           }`}
         />
@@ -659,8 +720,34 @@ export const LxDatePicker = (props: LxDatePickerProps): React.JSX.Element => {
   })()
 
   return (
-    <div ref={containerRef} className={`relative inline-block ${className}`}>
-      {triggerElement}
+    <div ref={containerRef} className={`relative inline-flex items-center gap-1.5 ${className}`}>
+      {shouldShowNavButtons ? (
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={t(navLabelKeys.previous)}
+          className={`${NAV_BUTTON_CLASSES} ${SIZE_NAV_BUTTON_CLASSES[size]}`}
+          onClick={() => shiftPeriod(-1)}
+        >
+          <ChevronLeft className={SIZE_ICON_CLASSES[size]} />
+        </button>
+      ) : null}
+
+      <div ref={anchorRef} className="min-w-0 flex-1">
+        {triggerElement}
+      </div>
+
+      {shouldShowNavButtons ? (
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={t(navLabelKeys.next)}
+          className={`${NAV_BUTTON_CLASSES} ${SIZE_NAV_BUTTON_CLASSES[size]}`}
+          onClick={() => shiftPeriod(1)}
+        >
+          <ChevronRight className={SIZE_ICON_CLASSES[size]} />
+        </button>
+      ) : null}
 
       {shouldRender &&
         createPortal(

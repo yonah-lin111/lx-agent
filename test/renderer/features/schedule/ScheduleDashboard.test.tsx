@@ -74,6 +74,25 @@ describe("ScheduleDashboard", () => {
     expect(api.listRangeStats).toHaveBeenCalledTimes(2)
   })
 
+  it("切换按钮平移查询日期：下一天请求明天的条目", async () => {
+    const api = createApiMock([])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    render(<ScheduleDashboard />)
+    await waitFor(() => {
+      expect(api.listByDate).toHaveBeenCalledWith({ entryDate: toLocalDateKey(new Date()) })
+    })
+
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    fireEvent.click(screen.getByLabelText("Next day"))
+
+    await waitFor(() => {
+      expect(api.listByDate).toHaveBeenLastCalledWith({ entryDate: toLocalDateKey(tomorrow) })
+    })
+  })
+
   it("回车提交新条目并按当前优先级创建", async () => {
     const api = createApiMock([])
     // @ts-expect-error Mock window.api

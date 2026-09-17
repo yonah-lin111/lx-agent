@@ -30,6 +30,38 @@ describe("我的世界主题日程组件", () => {
     expect(block).toContain("color: #000000 !important")
   })
 
+  it("触发器对齐 LxSelect 触发器：同底色、直角与像素浮雕", () => {
+    const block = getRuleBlock('[data-theme="minecraft"] .lx-datepicker-trigger {')
+    expect(block).toContain("border: 2px solid #000000 !important")
+    expect(block).toContain("background-color: #1e1e2a !important")
+    expect(block).toContain("border-radius: 0px !important")
+    expect(block).toContain("rgba(255, 255, 255, 0.15)")
+
+    const hoverBlock = getRuleBlock(
+      '[data-theme="minecraft"] .lx-datepicker-trigger:hover:not(:disabled)',
+    )
+    expect(hoverBlock).toContain("background-color: #2b2b3b !important")
+  })
+
+  it("触发器日历图标与 LxIconButton 图标同色阶", () => {
+    const block = getRuleBlock('[data-theme="minecraft"] .lx-datepicker-trigger-icon')
+    expect(block).toContain("color: #a6a6bc !important")
+    expect(block).not.toContain("crispEdges")
+  })
+
+  it("两侧周期切换按钮与触发器同款像素外壳", () => {
+    const block = getRuleBlock('[data-theme="minecraft"] .lx-datepicker-nav-button {')
+    expect(block).toContain("border: 2px solid #000000 !important")
+    expect(block).toContain("background-color: #1e1e2a !important")
+    expect(block).toContain("border-radius: 0px !important")
+    expect(block).toContain("color: #a6a6bc !important")
+
+    const hoverBlock = getRuleBlock(
+      '[data-theme="minecraft"] .lx-datepicker-nav-button:hover:not(:disabled)',
+    )
+    expect(hoverBlock).toContain("background-color: #2b2b3b !important")
+  })
+
   it("优先级徽标保持直角与像素边框", () => {
     const block = getRuleBlock('[data-theme="minecraft"] .lx-schedule-priority')
     expect(block).toContain("border-radius: 0px !important")

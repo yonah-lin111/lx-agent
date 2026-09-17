@@ -9,8 +9,6 @@ export const schedule = {
   moveToDate: "移动到指定日期",
   deleteAction: "删除待办",
   deleteConfirm: "确认删除该待办？",
-  previousDay: "前一天",
-  nextDay: "后一天",
   backToToday: "回到今天",
   sortByPriority: "按优先级重排",
   progress: "已完成 {{done}} / {{total}}",

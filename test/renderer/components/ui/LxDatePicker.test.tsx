@@ -92,6 +92,90 @@ describe("LxDatePicker", () => {
     fireEvent.click(trigger)
     expect(screen.queryByRole("dialog")).toBeNull()
   })
+
+  it("showIcon 默认展示日历图标，关闭后仅保留展开箭头", () => {
+    render(<LxDatePicker value="2026-09-16" onChange={vi.fn()} />)
+    expect(document.querySelectorAll(".lx-datepicker-trigger svg")).toHaveLength(2)
+    expect(document.querySelector(".lx-datepicker-trigger-icon")).not.toBeNull()
+    cleanup()
+
+    render(<LxDatePicker value="2026-09-16" showIcon={false} onChange={vi.fn()} />)
+    expect(document.querySelectorAll(".lx-datepicker-trigger svg")).toHaveLength(1)
+    expect(document.querySelector(".lx-datepicker-trigger-icon")).toBeNull()
+  })
+})
+
+describe("LxDatePicker 尺寸档位", () => {
+  afterEach(cleanup)
+
+  it("默认 medium 档保持既有触发器与图标尺寸", () => {
+    render(<LxDatePicker value="2026-09-16" onChange={vi.fn()} />)
+
+    expect(document.querySelector(".lx-datepicker-trigger")?.className).toContain("h-7")
+    expect(document.querySelector(".lx-datepicker-trigger-icon")?.getAttribute("class")).toContain(
+      "h-3.5 w-3.5",
+    )
+  })
+
+  it("small / large 档同步缩放触发器、图标与切换按钮", () => {
+    render(<LxDatePicker value="2026-09-16" size="small" showNavButtons onChange={vi.fn()} />)
+    expect(document.querySelector(".lx-datepicker-trigger")?.className).toContain("h-6")
+    expect(document.querySelector(".lx-datepicker-trigger-icon")?.getAttribute("class")).toContain(
+      "h-3 w-3",
+    )
+    expect(document.querySelector(".lx-datepicker-nav-button")?.className).toContain("h-6 w-6")
+    cleanup()
+
+    render(<LxDatePicker value="2026-09-16" size="large" showNavButtons onChange={vi.fn()} />)
+    expect(document.querySelector(".lx-datepicker-trigger")?.className).toContain("h-8")
+    expect(document.querySelector(".lx-datepicker-trigger-icon")?.getAttribute("class")).toContain(
+      "h-4 w-4",
+    )
+    expect(document.querySelector(".lx-datepicker-nav-button")?.className).toContain("h-8 w-8")
+  })
+})
+
+describe("LxDatePicker 两侧切换按钮", () => {
+  afterEach(cleanup)
+
+  it("默认不渲染，开启后按天平移当前值", () => {
+    const handleChange = vi.fn()
+    render(<LxDatePicker value="2026-09-16" onChange={handleChange} />)
+    expect(screen.queryByLabelText("Previous day")).toBeNull()
+    cleanup()
+
+    render(<LxDatePicker value="2026-09-16" showNavButtons onChange={handleChange} />)
+    expect(screen.getByLabelText("Previous day")).toBeDefined()
+
+    fireEvent.click(screen.getByLabelText("Next day"))
+    expect(handleChange).toHaveBeenCalledWith("2026-09-17")
+    fireEvent.click(screen.getByLabelText("Previous day"))
+    expect(handleChange).toHaveBeenCalledWith("2026-09-15")
+  })
+
+  it("周模式按周平移，月模式按月平移", () => {
+    const handleWeekChange = vi.fn()
+    render(
+      <LxDatePicker mode="week" value="2026-09-14" showNavButtons onChange={handleWeekChange} />,
+    )
+    fireEvent.click(screen.getByLabelText("Next week"))
+    expect(handleWeekChange).toHaveBeenCalledWith("2026-09-21")
+    cleanup()
+
+    const handleMonthChange = vi.fn()
+    render(
+      <LxDatePicker mode="month" value="2026-09" showNavButtons onChange={handleMonthChange} />,
+    )
+    fireEvent.click(screen.getByLabelText("Next month"))
+    expect(handleMonthChange).toHaveBeenCalledWith("2026-10")
+  })
+
+  it("区间模式不渲染切换按钮", () => {
+    render(<LxDatePicker mode="range" rangeValue={null} showNavButtons onRangeChange={vi.fn()} />)
+
+    expect(screen.queryByLabelText("Previous day")).toBeNull()
+    expect(screen.queryByLabelText("Next day")).toBeNull()
+  })
 })
 
 describe("LxDatePicker range 模式", () => {

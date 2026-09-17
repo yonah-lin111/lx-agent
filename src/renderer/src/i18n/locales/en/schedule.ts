@@ -9,8 +9,6 @@ export const schedule = {
   moveToDate: "Move to date",
   deleteAction: "Delete task",
   deleteConfirm: "Delete this task?",
-  previousDay: "Previous day",
-  nextDay: "Next day",
   backToToday: "Today",
   sortByPriority: "Sort by priority",
   progress: "{{done}} / {{total}} completed",

@@ -136,6 +136,8 @@ export const UsageFilters = ({
         <LxDatePicker
           mode="range"
           className="w-full"
+          size="small"
+          showIcon={false}
           rangeValue={rangeValue}
           presets={rangePresets}
           activePresetKey={activePresetKey}

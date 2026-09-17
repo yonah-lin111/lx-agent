@@ -66,6 +66,8 @@ describe("UsageFilters", () => {
 
     const trigger = document.querySelector(".lx-datepicker-trigger") as HTMLElement
     expect(trigger.textContent).toMatch(/Today|今日/)
+    // 用量页隐藏日历图标，仅保留展开箭头。
+    expect(document.querySelectorAll(".lx-datepicker-trigger svg")).toHaveLength(1)
 
     fireEvent.click(trigger)
 
