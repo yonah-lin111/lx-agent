@@ -8,6 +8,7 @@ import { PageContent } from "@/components/layout/PageContent"
 import { RightSideBar } from "@/components/layout/RightSidebar"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxToastProvider } from "@/components/ui/LxToast"
+import { useNotificationClickRouter } from "@/features/notification"
 import { I18nProvider } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { FrontDesignLeftSideBar } from "@/pages/front-design"
@@ -23,6 +24,8 @@ import { PageRouter } from "@/routes/PageRouter"
  */
 export const App = () => {
   const { pathname } = useLocation()
+  // 系统通知点击跳转（右侧栏标签页 / OpenClaw 办公区）。
+  useNotificationClickRouter()
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true)
   const isBottomSideBarCoveringRightSideBar = useBottomSideBarStore(
     (state) => state.isCoveringRightSideBar,

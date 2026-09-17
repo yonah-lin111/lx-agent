@@ -30,6 +30,7 @@ import {
   getCliSettings,
   getLspSettings,
   getMcpSettings,
+  getUiSettings,
   getVoiceSettings,
   normalizeSkillSettings,
   normalizeVoiceSettings,
@@ -88,6 +89,24 @@ describe("settingsService 写盘不变量", () => {
 
     expect(existsSync(holder.configPath)).toBe(true)
     expect(readConfig()).toMatchObject({ cli: { enabled: ["gemini"], customPaths: {} } })
+  })
+
+  it("ui 完成通知开关缺省回退为启用，显式关闭后持久化", () => {
+    writeConfig({ ui: { locale: "en" } })
+    expect(getUiSettings()).toMatchObject({
+      agentCompletionNotifyEnabled: true,
+      openclawCompletionNotifyEnabled: true,
+    })
+
+    saveUiSettings({
+      locale: "en",
+      agentCompletionNotifyEnabled: false,
+      openclawCompletionNotifyEnabled: false,
+    })
+    expect(getUiSettings()).toMatchObject({
+      agentCompletionNotifyEnabled: false,
+      openclawCompletionNotifyEnabled: false,
+    })
   })
 
   it("配置文件非法 JSON 时保存抛错，且不产生临时文件", () => {

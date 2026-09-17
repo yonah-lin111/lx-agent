@@ -28,6 +28,7 @@ import { getUserSkillDirs, skillLoader, stripFrontmatter } from "@/agent/skills/
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
 import { getSessionDesignDir, getStandardSkillsDir } from "@/paths"
 import { saveFrontDesignToDisk } from "@/services/frontDesignService"
+import { notificationService } from "@/services/notificationService"
 import { compileTailwindCss } from "@/services/tailwindCompilerService"
 
 // 会话标题长度上限（对齐 createTitle 的 40 字符截断）。
@@ -190,7 +191,11 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     }
   }
 
-  agentRunner.attachEventSink(sendToRenderer)
+  // 主 Agent 事件分流：推送给渲染进程，同时交给通知服务判定完成提醒。
+  agentRunner.attachEventSink((event: AgentEvent) => {
+    sendToRenderer(event)
+    notificationService.handleAgentEvent(event)
+  })
   // 权限确认请求经事件流推送到 renderer 命令面板（附带目标会话 sessionId）。
   permissionManager.attachSender((request) =>
     sendToRenderer({

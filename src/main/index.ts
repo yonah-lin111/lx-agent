@@ -28,6 +28,7 @@ import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerGameProtocol } from "@/protocols/gameProtocol"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
 import { openExternalUrl } from "@/services/externalLinkService"
+import { notificationService } from "@/services/notificationService"
 import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
 import { startScreenshotCleanupScheduler } from "@/services/screenshotCleanupService"
 import { terminalService } from "@/services/terminalService"
@@ -102,6 +103,13 @@ app.whenReady().then(() => {
   registerOpenClawHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerUsageHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerGameHandlers()
+
+  // 系统通知点击出口：聚焦窗口后把跳转目标推给渲染进程。
+  notificationService.attachSender(() => BrowserWindow.getAllWindows()[0]?.webContents)
+  // Windows 开发态通知需要显式 AppUserModelId（打包后由安装器写入快捷方式）。
+  if (process.platform === "win32" && !app.isPackaged) {
+    app.setAppUserModelId(process.execPath)
+  }
 
   const stopScreenshotCleanup = startScreenshotCleanupScheduler()
 

@@ -15,9 +15,19 @@ const normalizeUiSettings = (raw: unknown): UiSettings => {
     typeof raw.screenshotCleanupEnabled === "boolean"
       ? raw.screenshotCleanupEnabled
       : DEFAULT_UI_SETTINGS.screenshotCleanupEnabled
+  const agentCompletionNotifyEnabled =
+    typeof raw.agentCompletionNotifyEnabled === "boolean"
+      ? raw.agentCompletionNotifyEnabled
+      : DEFAULT_UI_SETTINGS.agentCompletionNotifyEnabled
+  const openclawCompletionNotifyEnabled =
+    typeof raw.openclawCompletionNotifyEnabled === "boolean"
+      ? raw.openclawCompletionNotifyEnabled
+      : DEFAULT_UI_SETTINGS.openclawCompletionNotifyEnabled
   return {
     locale,
     screenshotCleanupEnabled,
+    agentCompletionNotifyEnabled,
+    openclawCompletionNotifyEnabled,
   }
 }
 

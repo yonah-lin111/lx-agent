@@ -48,4 +48,9 @@ Ultra-fast speech-to-text transcription powered by Whisper on Groq.
   voiceLanguage: "Audio Language",
   voiceLanguageDesc: "Primary language spoken in audio; select Auto or a specific language",
   permissionsDesc: "Configure agent tool execution permissions and confirmation modes",
+  completionNotify: "Completion Notifications",
+  completionNotifyDesc:
+    "Send a system notification when a task completes; alerts only appear while the app window is unfocused",
+  agentNotifyLabel: "Notify me when the Agent completes a task",
+  openclawNotifyLabel: "Notify me when an OpenClaw employee completes a task",
 }
