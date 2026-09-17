@@ -48,4 +48,8 @@ export const general = {
   voiceLanguage: "音频语言",
   voiceLanguageDesc: "语音说话的主要语言，选择自动检测或固定语言以优化识别准确率",
   permissionsDesc: "配置 Agent 工具执行权限与确认模式",
+  completionNotify: "完成通知",
+  completionNotifyDesc: "任务完成时发送系统通知；仅在应用窗口未聚焦时提醒",
+  agentNotifyLabel: "Agent 任务完成时提醒我",
+  openclawNotifyLabel: "OpenClaw 员工任务完成时提醒我",
 }

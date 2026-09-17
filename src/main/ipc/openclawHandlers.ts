@@ -1,6 +1,7 @@
 import type { OpenClawSendMessageInput } from "@shared/contracts/openclaw"
 import { OPENCLAW_CHANNELS } from "@shared/ipc/openclawChannels"
 import { ipcMain, type WebContents } from "electron"
+import { notificationService } from "@/services/notificationService"
 import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
 
 // 校验 IPC 字符串入参（IPC 输入边界）。
@@ -31,6 +32,15 @@ export const registerOpenClawHandlers = (resolveSender: () => WebContents | unde
     if (sender && !sender.isDestroyed()) {
       sender.send(OPENCLAW_CHANNELS.event, event)
     }
+  })
+
+  // run 结束信号转交通知服务：窗口未聚焦时投递系统通知。
+  openClawClientManager.setRunFinishedListener((connection, session, aborted) => {
+    notificationService.handleOpenClawRunFinished({
+      instanceId: connection.instanceId,
+      agentId: session.agentId,
+      aborted,
+    })
   })
 
   ipcMain.handle(OPENCLAW_CHANNELS.connect, (_, instanceId: unknown) =>

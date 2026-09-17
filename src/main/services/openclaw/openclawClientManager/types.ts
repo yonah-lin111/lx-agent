@@ -44,6 +44,10 @@ export interface InstanceConnection {
 export interface OpenClawClientManagerHost {
   readonly connections: Map<string, InstanceConnection>
   readonly eventSink: ((event: OpenClawSessionEvent) => void) | null
+  // 单次 run 结束（流式 true → false）回调；aborted 表示用户主动中止。
+  readonly runFinishedListener:
+    | ((connection: InstanceConnection, session: AgentSession, aborted: boolean) => void)
+    | null
   emitSnapshot(connection: InstanceConnection, session: AgentSession): void
   toSnapshot(connection: InstanceConnection, session: AgentSession): OpenClawSessionSnapshot
   handleEvent(connection: InstanceConnection, event: EventFrame): void

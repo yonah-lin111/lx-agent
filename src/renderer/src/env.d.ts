@@ -7,6 +7,7 @@ import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GameApi } from "@shared/contracts/game"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
+import type { NotificationApi } from "@shared/contracts/notification"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { ScheduleApi } from "@shared/contracts/schedule"
@@ -37,6 +38,7 @@ declare global {
       UsageApi &
       ScheduleApi &
       OpenClawApi &
+      NotificationApi &
       GameApi
   }
 

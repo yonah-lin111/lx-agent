@@ -5,6 +5,7 @@ import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GameApi } from "@shared/contracts/game"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
+import type { NotificationApi } from "@shared/contracts/notification"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { ScheduleApi } from "@shared/contracts/schedule"
@@ -22,6 +23,7 @@ import { customCommandApi } from "./api/customCommand"
 import { gameApi } from "./api/game"
 import { gitApi } from "./api/git"
 import { markdownApi } from "./api/markdown"
+import { notificationApi } from "./api/notification"
 import { openclawApi } from "./api/openclaw"
 import { promptHistoryApi } from "./api/promptHistory"
 import { scheduleApi } from "./api/schedule"
@@ -41,6 +43,7 @@ const api: ProjectApi &
   UsageApi &
   ScheduleApi &
   OpenClawApi &
+  NotificationApi &
   GameApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   saveClipboardImage: (buffer, mimeType) =>
@@ -135,6 +138,7 @@ const api: ProjectApi &
   promptHistory: promptHistoryApi,
   terminal: terminalApi,
   openclaw: openclawApi,
+  notification: notificationApi,
   game: gameApi,
 }
 

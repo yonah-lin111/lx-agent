@@ -39,10 +39,22 @@ export class OpenClawClientManager implements OpenClawClientManagerHost {
   // 内部协作面：连接池与会话投影由本类独占持有，模块经 host 读取/改写。
   connections = new Map<string, InstanceConnection>()
   eventSink: ((event: OpenClawSessionEvent) => void) | null = null
+  runFinishedListener:
+    | ((connection: InstanceConnection, session: AgentSession, aborted: boolean) => void)
+    | null = null
 
   // 注册渲染进程事件出口。
   setEventSink(sink: (event: OpenClawSessionEvent) => void): void {
     this.eventSink = sink
+  }
+
+  // 注册 run 结束监听（通知服务消费）。
+  setRunFinishedListener(
+    listener:
+      | ((connection: InstanceConnection, session: AgentSession, aborted: boolean) => void)
+      | null,
+  ): void {
+    this.runFinishedListener = listener
   }
 
   // ---- 内部协作面：openclawClientManager/ 模块的跨模块回调入口 ----

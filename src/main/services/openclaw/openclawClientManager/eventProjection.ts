@@ -101,6 +101,7 @@ export function handleAgentEvent(
     }
 
     if (data.phase === "end" && runId) {
+      const wasStreaming = session.isStreaming
       const message = findMessage(session, runId)
       if (message && message.status === "streaming") {
         message.status = data.aborted === true ? "error" : "completed"
@@ -109,6 +110,10 @@ export function handleAgentEvent(
       session.isStreaming = false
       session.activeRunId = null
       emitSnapshot(host, connection, session)
+      // 流式 true → false 才视为一次 run 结束，避免与 chat final 重复回调。
+      if (wasStreaming) {
+        host.runFinishedListener?.(connection, session, data.aborted === true)
+      }
       void host.refreshStats(connection, session)
       return
     }
@@ -162,6 +167,9 @@ export function handleChatEvent(
   }
 
   if (state === "final") {
+    const wasStreaming = session.isStreaming
+    // lifecycle end 已按 aborted 把消息标记为 error，此处保留该判定。
+    const wasAborted = message.status === "error"
     if (text) message.content = text
     // run 结束回填该条消息生成时的模型与 token 用量（权威值）。
     const model = rawMessage ? readTrimmedString(rawMessage.model) : undefined
@@ -180,6 +188,10 @@ export function handleChatEvent(
     session.isStreaming = false
     session.activeRunId = null
     emitSnapshot(host, connection, session)
+    // 流式 true → false 才视为一次 run 结束，避免与 lifecycle end 重复回调。
+    if (wasStreaming) {
+      host.runFinishedListener?.(connection, session, wasAborted)
+    }
     return
   }
 

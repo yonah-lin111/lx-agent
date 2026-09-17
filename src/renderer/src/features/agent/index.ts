@@ -1,6 +1,7 @@
 export { AgentPage } from "./AgentPage"
 export * from "./components"
 export { buildExecutionSteps } from "./executionFlow"
+export { agentTabStore } from "./hooks/agentTabStore"
 export { type AgentViewMode, agentViewStore } from "./hooks/agentViewStore"
 export {
   getModelDisplayName,

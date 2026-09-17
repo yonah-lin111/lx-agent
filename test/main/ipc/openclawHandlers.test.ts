@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const handle = vi.fn()
 const manager = {
   setEventSink: vi.fn(),
+  setRunFinishedListener: vi.fn(),
   connect: vi.fn(),
   disconnect: vi.fn(),
   fetchAgents: vi.fn(),
@@ -14,15 +15,18 @@ const manager = {
   deleteTurn: vi.fn(),
   abort: vi.fn(),
 }
+const notification = { handleOpenClawRunFinished: vi.fn() }
 
 vi.mock("electron", () => ({ ipcMain: { handle } }))
 vi.mock("@/services/openclaw/openclawClientManager", () => ({
   openClawClientManager: manager,
 }))
+vi.mock("@/services/notificationService", () => ({ notificationService: notification }))
 
 describe("openclaw IPC handlers", () => {
   beforeEach(() => {
     handle.mockClear()
+    notification.handleOpenClawRunFinished.mockClear()
     for (const method of Object.values(manager)) method.mockClear()
   })
 
@@ -56,6 +60,24 @@ describe("openclaw IPC handlers", () => {
     handler({}, "local", "lily", "msg-1")
 
     expect(manager.deleteTurn).toHaveBeenCalledWith("local", "lily", "msg-1")
+  })
+
+  it("run 结束信号转交通知服务", async () => {
+    const { registerOpenClawHandlers } = await import("@/ipc/openclawHandlers")
+    registerOpenClawHandlers(() => undefined)
+
+    const listener = manager.setRunFinishedListener.mock.calls[0]?.[0] as (
+      connection: { instanceId: string },
+      session: { agentId: string },
+      aborted: boolean,
+    ) => void
+    listener({ instanceId: "i1" }, { agentId: "a1" }, false)
+
+    expect(notification.handleOpenClawRunFinished).toHaveBeenCalledWith({
+      instanceId: "i1",
+      agentId: "a1",
+      aborted: false,
+    })
   })
 
   it("转发新建会话参数到会话管理器", async () => {

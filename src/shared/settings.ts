@@ -99,11 +99,17 @@ export type UiSettings = {
   locale: Locale
   // 是否自动清理超过 14 天的剪贴板截图缓存（默认启用）。
   screenshotCleanupEnabled?: boolean
+  // 主 Agent 完成系统通知开关（默认启用）。
+  agentCompletionNotifyEnabled?: boolean
+  // OpenClaw 完成系统通知开关（默认启用）。
+  openclawCompletionNotifyEnabled?: boolean
 }
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {
   locale: "en",
   screenshotCleanupEnabled: true,
+  agentCompletionNotifyEnabled: true,
+  openclawCompletionNotifyEnabled: true,
 }
 
 // 支持的 CLI 工具标识。
