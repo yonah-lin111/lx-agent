@@ -281,7 +281,7 @@ export const AgentsMdSettings = (): React.JSX.Element => {
       ) : null}
 
       <div className="flex min-h-0 flex-1 flex-col p-3">
-        {infoLoading ? (
+        {infoLoading || !info ? (
           <div className="flex h-full items-center justify-center gap-1.5 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t("common.loading")}

@@ -333,6 +333,13 @@ export const SkillSettings = (): React.JSX.Element => {
   const editorValue = draftFileContent ?? editorBaseline
   const editorSaved = draftFileContent === undefined
   const editorError = contentErrors[cacheKey] ?? null
+  // 正文未就绪（缓存被保存清理后尚未回读、磁盘读取进行中）时不挂载编辑器，避免空基线覆盖真实内容。
+  const isContentPending =
+    !createMode &&
+    draftFileContent === undefined &&
+    contentsCache[cacheKey] === undefined &&
+    contentErrors[cacheKey] === undefined &&
+    !isVirtualFile
 
   // 6. 脏数据判定：新建草稿 + 全部 Skill 修改 + 启停列表
   const isDirty = useMemo(() => {
@@ -766,7 +773,7 @@ export const SkillSettings = (): React.JSX.Element => {
             editorKey={`${activeBaseDir ?? "draft"}::${selectedFilePath}`}
             editorValue={editorValue}
             editorSaved={editorSaved}
-            isEditorLoading={loadingContent}
+            isEditorLoading={loadingContent || isContentPending}
             editorError={editorError}
             onEditorChange={handleEditorChange}
             onEditorSave={handleEditorSave}

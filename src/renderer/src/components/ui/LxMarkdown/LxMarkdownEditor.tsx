@@ -22,7 +22,7 @@ import { EditorState } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { Redo2, Undo2 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
 import {
   captureEditorScrollAnchor,
@@ -61,8 +61,34 @@ export const LxMarkdownEditor = ({
   const editorViewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   const onSaveRef = useRef(onSave)
+  // 编辑器自身回传给外部的最后内容，用于区分外部变更与输入回响。
+  const lastEmittedContentRef = useRef(initialContent)
+  // 创建视图时使用的最新外部内容（挂载后外部内容可能已更新）。
+  const initialContentRef = useRef(initialContent)
 
-  const [content, setContent] = useState(initialContent)
+  useEffect(() => {
+    initialContentRef.current = initialContent
+  }, [initialContent])
+
+  // 外部内容变更（保存后重载、重置、刷新）时同步正文；自身输入不触发替换，避免光标跳变。
+  useEffect(() => {
+    const view = editorViewRef.current
+    if (!view) return
+
+    const currentContent = view.state.doc.toString()
+    if (initialContent === currentContent) {
+      lastEmittedContentRef.current = initialContent
+      return
+    }
+    if (initialContent === lastEmittedContentRef.current) return
+
+    const anchor = captureEditorScrollAnchor(view)
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: initialContent },
+    })
+    restoreEditorScrollAnchor(view, anchor)
+    lastEmittedContentRef.current = initialContent
+  }, [initialContent])
 
   useEffect(() => {
     onChangeRef.current = onChange
@@ -188,7 +214,7 @@ export const LxMarkdownEditor = ({
     if (!container) return
 
     const state = EditorState.create({
-      doc: content,
+      doc: initialContentRef.current,
       extensions: [
         history(),
         markdown({
@@ -290,7 +316,7 @@ export const LxMarkdownEditor = ({
           if (!update.docChanged) return
 
           const nextContent = update.state.doc.toString()
-          setContent(nextContent)
+          lastEmittedContentRef.current = nextContent
           onChangeRef.current?.(nextContent)
         }),
       ],
