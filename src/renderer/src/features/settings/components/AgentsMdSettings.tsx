@@ -305,7 +305,7 @@ export const AgentsMdSettings = (): React.JSX.Element => {
     activeTab === "system" ? "agents-md:user" : `agents-md:project:${selectedProjectId}`
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
+    <div className="@container flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
       {/* 顶部 Tab 与项目选择栏 */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-3">
         <div className="custom-command-tab-group flex items-center gap-1">

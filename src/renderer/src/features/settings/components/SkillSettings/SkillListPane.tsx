@@ -130,7 +130,7 @@ export const SkillListPane = ({
                         onSelect(skill.name)
                       }
                     }}
-                    className={`group flex cursor-pointer flex-col gap-1 rounded-[6px] border p-2 text-left transition-colors ${
+                    className={`group flex cursor-pointer flex-col gap-1 rounded-[6px] border px-2 py-1.5 text-left transition-colors ${
                       isSelected
                         ? "border-[var(--color-theme-border-strong,rgba(255,255,255,0.18))] bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
                         : "border-transparent text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:border-[var(--color-theme-border,rgba(255,255,255,0.06))] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.04))]"
@@ -190,7 +190,7 @@ export const SkillListPane = ({
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1">
                       {skill.isGlobal ? (
                         <LxTag size="small" color="gray">
                           <Globe className="mr-0.5 inline h-2.5 w-2.5" />
