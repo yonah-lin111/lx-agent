@@ -26,7 +26,7 @@ const clampWidth = (value: number): number => Math.min(Math.max(value, MIN_WIDTH
 export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const { t } = useTranslation()
-  const { warning } = useLxAgentToast()
+  const { warning, success, error: errorToast } = useLxAgentToast()
 
   const tabs = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getTabs)
   const activeTabId = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getActiveTabId)
@@ -85,6 +85,30 @@ export const RightSideBar = (): React.JSX.Element => {
       .catch(() => {
         // 删除失败：保持现状。
       })
+  }
+
+  // 批量删除会话：选中含活动 Tab 且生成中则整批拒绝；成功后一次移除并重置相关 Tab。
+  const handleDeleteSessions = async (sessionIds: string[]): Promise<boolean> => {
+    if (sessionIds.length === 0) return true
+    const boundTabs = sessionIds.flatMap((sessionId) => {
+      const tab = agentTabStore.findTabBySessionId(sessionId)
+      return tab ? [{ tabId: tab.id }] : []
+    })
+    if (boundTabs.some((item) => item.tabId === activeTabId) && blockIfGenerating()) {
+      return false
+    }
+    try {
+      await agentApi.deleteSessions(sessionIds)
+    } catch {
+      errorToast(t("common.failed"))
+      return false
+    }
+    sessionListStore.removeSessions(sessionIds)
+    for (const item of boundTabs) {
+      tabActionsRef.current[item.tabId]?.newChat?.()
+    }
+    success(t("agent.sessionsDeleted", { count: sessionIds.length }))
+    return true
   }
 
   // 解析当前选中的项目 item（URL itemId → 项目）。
@@ -321,6 +345,7 @@ export const RightSideBar = (): React.JSX.Element => {
                   currentProjectPath={currentProject?.path}
                   projects={projects}
                   onDeleteSession={handleDeleteSession}
+                  onDeleteSessions={handleDeleteSessions}
                 />
               </div>
             ))}

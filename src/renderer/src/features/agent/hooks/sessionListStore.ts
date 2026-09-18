@@ -40,6 +40,14 @@ const notify = (): void => {
   listeners.forEach((listener) => listener())
 }
 
+// 与 main 侧 listSessions SQL 排序保持一致：置顶优先，其余按 updated_at DESC、id DESC。
+const compareSessions = (a: AgentSessionSummary, b: AgentSessionSummary): number => {
+  if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+  if (a.updatedAt !== b.updatedAt) return a.updatedAt < b.updatedAt ? 1 : -1
+  if (a.id === b.id) return 0
+  return a.id < b.id ? 1 : -1
+}
+
 /**
  * 会话列表存储：替换原内存 chatHistoryStore，列表数据来自 main 进程 DB。
  */
@@ -114,12 +122,26 @@ export const sessionListStore = {
     notify()
   },
 
-  // 删除会话后本地移除。
+  // 设置会话置顶并本地重排（与 DB 排序一致，避免全量刷新）。
+  updateSessionPinned(id: string, pinned: boolean): void {
+    sessions = sessions
+      .map((session) => (session.id === id ? { ...session, pinned } : session))
+      .sort(compareSessions)
+    notify()
+  },
+
+  // 删除会话后本地移除（兼容单条删除）。
   removeSession(id: string): void {
-    sessions = sessions.filter((session) => session.id !== id)
-    if (pendingSessionIds.has(id)) {
+    sessionListStore.removeSessions([id])
+  },
+
+  // 批量删除后本地移除（一次 notify，避免多行删除触发多次渲染）。
+  removeSessions(ids: string[]): void {
+    const idSet = new Set(ids)
+    sessions = sessions.filter((session) => !idSet.has(session.id))
+    if (ids.some((id) => pendingSessionIds.has(id))) {
       const next = new Set(pendingSessionIds)
-      next.delete(id)
+      for (const id of ids) next.delete(id)
       pendingSessionIds = next
     }
     recomputeBinding()

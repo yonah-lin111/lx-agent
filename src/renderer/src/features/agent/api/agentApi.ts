@@ -107,7 +107,11 @@ export const agentApi = {
     window.api.agent.restoreSession(sessionId, tabId),
   renameSession: (sessionId: string, title: string): Promise<void> =>
     window.api.agent.renameSession(sessionId, title),
+  setSessionPinned: (sessionId: string, pinned: boolean): Promise<void> =>
+    window.api.agent.setSessionPinned(sessionId, pinned),
   deleteSession: (sessionId: string): Promise<void> => window.api.agent.deleteSession(sessionId),
+  deleteSessions: (sessionIds: string[]): Promise<void> =>
+    window.api.agent.deleteSessions(sessionIds),
   deleteMessageTurn: (sessionId: string, userMessageTimestamp: number): Promise<void> =>
     window.api.agent.deleteMessageTurn(sessionId, userMessageTimestamp),
   forkSession: (sessionId: string, userMessageTimestamp?: number): Promise<AgentForkResult> =>

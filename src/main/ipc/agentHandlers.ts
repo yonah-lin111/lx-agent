@@ -439,11 +439,35 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     agentRunner.renameSession(sessionId, trimmed)
   })
 
+  ipcMain.handle(AGENT_CHANNELS.setSessionPinned, (_, sessionId: unknown, pinned: unknown) => {
+    if (typeof sessionId !== "string" || !sessionId.trim()) {
+      throw new Error("INVALID_SESSION_ID")
+    }
+    if (typeof pinned !== "boolean") {
+      throw new Error("INVALID_SESSION_PINNED")
+    }
+    agentRunner.setSessionPinned(sessionId, pinned)
+  })
+
   ipcMain.handle(AGENT_CHANNELS.deleteSession, (_, sessionId: unknown) => {
     if (typeof sessionId !== "string" || !sessionId.trim()) {
       throw new Error("INVALID_SESSION_ID")
     }
     agentRunner.deleteSession(sessionId)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.deleteSessions, (_, sessionIds: unknown) => {
+    if (!Array.isArray(sessionIds)) {
+      throw new Error("INVALID_SESSION_IDS")
+    }
+    const validIds = sessionIds.filter(
+      (sessionId): sessionId is string =>
+        typeof sessionId === "string" && Boolean(sessionId.trim()),
+    )
+    if (validIds.length !== sessionIds.length) {
+      throw new Error("INVALID_SESSION_IDS")
+    }
+    agentRunner.deleteSessions(validIds)
   })
 
   ipcMain.handle(AGENT_CHANNELS.deleteMessageTurn, (_, sessionId: unknown, timestamp: unknown) => {

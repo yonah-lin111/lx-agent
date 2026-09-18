@@ -8,13 +8,17 @@ import {
   FileText,
   Globe,
   History,
+  ListChecks,
   MessageSquare,
+  Pin,
+  PinOff,
   Search,
   Trash2,
   X,
 } from "lucide-react"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenu, LxMenuSeparator } from "@/components/ui/LxMenu"
@@ -45,6 +49,8 @@ interface AgentHistoryPanelProps {
   onRestore: (sessionId: string) => void
   // 删除会话。
   onDelete: (sessionId: string) => void
+  // 多选批量删除；返回 false = 被守卫拒绝或失败，面板保留多选态。
+  onDeleteMany: (sessionIds: string[]) => Promise<boolean>
 }
 
 // 项目筛选 tag（单选）：全部 / 指定项目 / 当前项目。
@@ -54,6 +60,10 @@ const PROJECT_TAGS: { value: ProjectTag; labelKey: TranslationKey }[] = [
   { value: "project", labelKey: "agent.historyFilterProject" },
   { value: "current", labelKey: "agent.historyFilterCurrentProject" },
 ]
+
+// 触底分页：默认渲染条数与每次追加条数（仅普通会话参与，置顶项恒显）。
+const HISTORY_PAGE_SIZE = 30
+const HISTORY_PAGE_STEP = 20
 
 /**
  * AgentHistoryPanel - 从顶部向下展开、恰好覆盖消息列表的历史会话面板。
@@ -68,6 +78,7 @@ export const AgentHistoryPanel = ({
   projects,
   onRestore,
   onDelete,
+  onDeleteMany,
 }: AgentHistoryPanelProps): React.JSX.Element => {
   const [query, setQuery] = useState("")
   const [projectTag, setProjectTag] = useState<ProjectTag>("all")
@@ -92,8 +103,18 @@ export const AgentHistoryPanel = ({
   // 删除二次确认状态（记录正在确认删除的会话 id）。
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
   const [titleDraft, setTitleDraft] = useState("")
+  // 多选模式：进入后行内显示复选框，点击行切换勾选。
+  const [isSelectMode, setIsSelectMode] = useState(false)
+  // 多选勾选的会话 id 集合。
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set())
+  // 批量删除二次确认态。
+  const [isBatchDeleteConfirm, setIsBatchDeleteConfirm] = useState(false)
+  // 触底分页：当前渲染的普通会话条数（置顶项不占名额）。
+  const [visibleCount, setVisibleCount] = useState(HISTORY_PAGE_SIZE)
   // 会话列表滚动容器（打开面板时用于将当前会话居中）。
   const listRef = useRef<HTMLDivElement>(null)
+  // 触底哨兵：进入视口后追加一页。
+  const loadMoreRef = useRef<HTMLDivElement>(null)
   // 本次打开是否已完成居中（避免筛选/列表刷新反复回拉滚动条）。
   const centeredRef = useRef(false)
 
@@ -113,6 +134,17 @@ export const AgentHistoryPanel = ({
       })
   }
 
+  // 切换会话置顶：写入 DB 成功后本地同步并重排，失败保持原状。
+  const toggleSessionPinned = (session: AgentSessionSummary): void => {
+    const pinned = !session.pinned
+    void agentApi
+      .setSessionPinned(session.id, pinned)
+      .then(() => sessionListStore.updateSessionPinned(session.id, pinned))
+      .catch(() => {
+        errorToast(t("common.failed"))
+      })
+  }
+
   const filteredSessions = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase()
     return sessions.filter((session) => {
@@ -129,13 +161,65 @@ export const AgentHistoryPanel = ({
     })
   }, [query, sessions, projectTag, selectedProjectId, currentProjectId])
 
-  // 打开面板时重置筛选，确保当前会话一定在列表中（关闭态不卸载，需手动复位）。
+  // 置顶项与普通项分流：置顶恒显，普通项按 visibleCount 截断。
+  const { pinnedSessions, regularSessions } = useMemo(() => {
+    const pinned: AgentSessionSummary[] = []
+    const regular: AgentSessionSummary[] = []
+    for (const session of filteredSessions) {
+      if (session.pinned) pinned.push(session)
+      else regular.push(session)
+    }
+    return { pinnedSessions: pinned, regularSessions: regular }
+  }, [filteredSessions])
+
+  const visibleRegularSessions = useMemo(
+    () => regularSessions.slice(0, visibleCount),
+    [regularSessions, visibleCount],
+  )
+  const hasMoreRegular = regularSessions.length > visibleCount
+
+  // 打开面板时重置筛选与多选/分页态，确保当前会话一定在列表中（关闭态不卸载，需手动复位）。
   useEffect(() => {
     if (!isOpen) return
     setQuery("")
     setProjectTag("all")
     setSelectedProjectId(null)
+    setVisibleCount(HISTORY_PAGE_SIZE)
+    setIsSelectMode(false)
+    setSelectedSessionIds(new Set())
+    setIsBatchDeleteConfirm(false)
   }, [isOpen])
+
+  // 筛选变化时分页重置回第一页。
+  useEffect(() => {
+    setVisibleCount(HISTORY_PAGE_SIZE)
+  }, [query, projectTag, selectedProjectId])
+
+  // 当前会话超出分页范围时扩页纳入，保证其始终可见并可被居中。
+  useEffect(() => {
+    if (!isOpen || !currentSessionId) return
+    const index = regularSessions.findIndex((session) => session.id === currentSessionId)
+    if (index < 0 || index < visibleCount) return
+    setVisibleCount(Math.ceil((index + 1) / HISTORY_PAGE_STEP) * HISTORY_PAGE_STEP)
+  }, [isOpen, currentSessionId, regularSessions, visibleCount])
+
+  // 触底分页：哨兵进入滚动视口时追加一页（列表不足一屏时浏览器会连续触发直至填满）。
+  useEffect(() => {
+    if (!isOpen || !hasMoreRegular) return
+    const sentinel = loadMoreRef.current
+    const container = listRef.current
+    if (!sentinel || !container) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleCount((count) => count + HISTORY_PAGE_STEP)
+        }
+      },
+      { root: container, rootMargin: "120px 0px" },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [isOpen, hasMoreRegular, filteredSessions])
 
   // 打开面板时将当前会话滚动到列表视口中间，无需手动调整滚动条（每次打开只居中一次）。
   useEffect(() => {
@@ -166,10 +250,10 @@ export const AgentHistoryPanel = ({
     setDeletingSessionId(null)
   }
 
-  // 打开会话右键菜单（标题生成中的行不响应）。
+  // 打开会话右键菜单（多选模式或标题生成中的行不响应）。
   const openSessionMenu = (session: AgentSessionSummary, event: React.MouseEvent): void => {
     event.preventDefault()
-    if (pendingSessionIds.has(session.id)) return
+    if (isSelectMode || pendingSessionIds.has(session.id)) return
     setDeletingSessionId(null)
     setMenuTarget({
       session,
@@ -178,6 +262,51 @@ export const AgentHistoryPanel = ({
       anchor: event.currentTarget as HTMLElement,
     })
     setIsMenuOpen(true)
+  }
+
+  // 进入多选模式：清空旧选择与菜单。
+  const enterSelectMode = (): void => {
+    closeSessionMenu()
+    setEditingSessionId(null)
+    setIsSelectMode(true)
+    setSelectedSessionIds(new Set())
+    setIsBatchDeleteConfirm(false)
+  }
+
+  // 退出多选模式：清空选择并重置分页。
+  const exitSelectMode = (): void => {
+    setIsSelectMode(false)
+    setSelectedSessionIds(new Set())
+    setIsBatchDeleteConfirm(false)
+    setVisibleCount(HISTORY_PAGE_SIZE)
+  }
+
+  // 切换单条勾选（改变选择后重置删除确认态，避免误删）。
+  const toggleSessionSelected = (sessionId: string, checked: boolean): void => {
+    setSelectedSessionIds((previous) => {
+      const next = new Set(previous)
+      if (checked) next.add(sessionId)
+      else next.delete(sessionId)
+      return next
+    })
+    setIsBatchDeleteConfirm(false)
+  }
+
+  // 批量删除：首次点击进入确认态，确认后回调；失败保留多选态。
+  const handleDeleteSelected = (): void => {
+    if (!isBatchDeleteConfirm) {
+      setIsBatchDeleteConfirm(true)
+      return
+    }
+    const sessionIds = Array.from(selectedSessionIds)
+    if (sessionIds.length === 0) return
+    void onDeleteMany(sessionIds).then((ok) => {
+      if (!ok) return
+      setIsSelectMode(false)
+      setSelectedSessionIds(new Set())
+      setIsBatchDeleteConfirm(false)
+      setVisibleCount(HISTORY_PAGE_SIZE)
+    })
   }
 
   const projectOptions: LxSelectOption<string>[] = projects.map((project) => ({
@@ -200,20 +329,56 @@ export const AgentHistoryPanel = ({
         pointerEvents: isOpen ? "auto" : "none",
       }}
     >
-      {/* 面板头部：历史标题 + 关闭。 */}
+      {/* 面板头部：普通态 = 历史标题 + 多选/关闭；多选态 = 已选计数 + 删除/取消。 */}
       <div className="agent-history-panel-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <History className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-          <span className="truncate text-sm text-white/80">{t("agent.historyTitle")}</span>
-        </div>
-        <LxIconButton
-          size="small"
-          aria-label={t("agent.closeHistoryPanel")}
-          title={{ content: t("agent.collapsePanel"), placement: "bottom" }}
-          onClick={onClose}
-        >
-          <X />
-        </LxIconButton>
+        {isSelectMode ? (
+          <>
+            <span className="min-w-0 truncate text-xs text-white/70">
+              {t("agent.selectedSessionsCount", { count: selectedSessionIds.size })}
+            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              <LxIconButton
+                size="small"
+                preset="delete"
+                icon={<Trash2 />}
+                disabled={selectedSessionIds.size === 0}
+                onClick={handleDeleteSelected}
+              >
+                {isBatchDeleteConfirm
+                  ? t("common.confirmDelete")
+                  : t("agent.deleteSelectedSessions")}
+              </LxIconButton>
+              <LxIconButton size="small" variant="ghost" onClick={exitSelectMode}>
+                {t("common.cancel")}
+              </LxIconButton>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <History className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+              <span className="truncate text-sm text-white/80">{t("agent.historyTitle")}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <LxIconButton
+                size="small"
+                aria-label={t("agent.selectSessions")}
+                title={{ content: t("agent.selectSessions"), placement: "bottom" }}
+                onClick={enterSelectMode}
+              >
+                <ListChecks />
+              </LxIconButton>
+              <LxIconButton
+                size="small"
+                aria-label={t("agent.closeHistoryPanel")}
+                title={{ content: t("agent.collapsePanel"), placement: "bottom" }}
+                onClick={onClose}
+              >
+                <X />
+              </LxIconButton>
+            </div>
+          </>
+        )}
       </div>
 
       {/* 面板内容：搜索 + 项目筛选 + 会话列表。 */}
@@ -250,24 +415,59 @@ export const AgentHistoryPanel = ({
         )}
         <div ref={listRef} className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-0.5">
-            {filteredSessions.map((session) => {
+            {[...pinnedSessions, ...visibleRegularSessions].map((session) => {
               const isCurrent = session.id === currentSessionId
               const isEditing = editingSessionId === session.id
+              const isSelected = selectedSessionIds.has(session.id)
+              const isSelectable = !pendingSessionIds.has(session.id)
+              const pinnedRowClass = session.pinned
+                ? `agent-history-session-row--pinned border-l-2 border-[var(--color-theme-accent)] ${
+                    isCurrent ? "" : "bg-[var(--color-theme-surface-hover)]"
+                  }`
+                : ""
               return (
                 <LxNavItem
                   key={session.id}
                   level={2}
                   aria-current={isCurrent ? "page" : undefined}
                   data-session-current={isCurrent ? "true" : undefined}
+                  data-pinned={session.pinned ? "true" : undefined}
                   data-menu-open={
                     isMenuOpen && menuTarget?.session.id === session.id ? "true" : undefined
                   }
-                  className={`agent-history-session-row ${
+                  prefix={
+                    isSelectMode ? (
+                      <LxCheckbox
+                        size="small"
+                        checked={isSelected}
+                        disabled={!isSelectable}
+                        aria-label={session.title}
+                        onChange={(checked) => toggleSessionSelected(session.id, checked)}
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                    ) : undefined
+                  }
+                  suffix={
+                    session.pinned ? (
+                      <Pin
+                        className="h-3.5 w-3.5 shrink-0 text-[var(--color-theme-accent)]"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      />
+                    ) : undefined
+                  }
+                  className={`agent-history-session-row ${pinnedRowClass} ${
                     isCurrent
-                      ? "agent-history-session-row--current cursor-default bg-white/5 text-white"
+                      ? `agent-history-session-row--current bg-white/5 text-white ${
+                          isSelectMode ? "" : "cursor-default"
+                        }`
                       : "text-white/70"
                   }`}
                   onClick={() => {
+                    if (isSelectMode) {
+                      if (isSelectable) toggleSessionSelected(session.id, !isSelected)
+                      return
+                    }
                     if (isCurrent) return
                     onRestore(session.id)
                   }}
@@ -309,13 +509,14 @@ export const AgentHistoryPanel = ({
               )
             })}
           </div>
+          {hasMoreRegular && <div ref={loadMoreRef} aria-hidden="true" className="h-px w-full" />}
           {filteredSessions.length === 0 && (
             <div className="py-4 text-center text-xs text-white/45">{t("agent.noHistory")}</div>
           )}
         </div>
       </div>
 
-      {/* 会话右键菜单：导出子菜单 + 重命名 + 删除（二次确认）。 */}
+      {/* 会话右键菜单：置顶 + 导出子菜单 + 重命名 + 删除（二次确认）。 */}
       <LxMenu
         ariaLabel={t("common.more")}
         anchor={menuTarget?.anchor ?? null}
@@ -326,6 +527,23 @@ export const AgentHistoryPanel = ({
       >
         {menuSession && (
           <>
+            <LxMenuItem
+              leading={
+                menuSession.pinned ? (
+                  <PinOff className="h-3.5 w-3.5 text-[var(--color-theme-accent)]" />
+                ) : (
+                  <Pin className="h-3.5 w-3.5 text-white/45" />
+                )
+              }
+              onClick={() => {
+                const session = menuSession
+                closeSessionMenu()
+                toggleSessionPinned(session)
+              }}
+            >
+              {menuSession.pinned ? t("agent.unpinSession") : t("agent.pinSession")}
+            </LxMenuItem>
+            <LxMenuSeparator />
             <LxTooltip
               placement="right"
               trigger="hover"

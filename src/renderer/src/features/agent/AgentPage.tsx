@@ -44,6 +44,8 @@ export interface AgentPageProps {
   projects?: { id: string; name: string }[]
   // 删除历史会话（由右侧栏统一处理多 Tab 重置）。
   onDeleteSession?: (sessionId: string) => void
+  // 批量删除历史会话（多选删除；返回 false = 被守卫拒绝或失败）。
+  onDeleteSessions?: (sessionIds: string[]) => Promise<boolean>
 }
 
 /**
@@ -61,6 +63,7 @@ export const AgentPage = ({
   currentProjectPath,
   projects,
   onDeleteSession,
+  onDeleteSessions,
 }: AgentPageProps): React.JSX.Element => {
   const {
     messages,
@@ -559,11 +562,6 @@ export const AgentPage = ({
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Escape") return
-      // 历史面板优先关闭，其次子代理面板
-      if (isHistoryOpen) {
-        setIsHistoryOpen(false)
-        return
-      }
       // 若处于子代理面板打开状态，让子代理面板优先关闭
       if (activeSubagentId !== null) {
         setActiveSubagentId(null)
@@ -859,6 +857,7 @@ export const AgentPage = ({
           projects={projects ?? []}
           onRestore={handleHistoryRestore}
           onDelete={(sessionId) => onDeleteSession?.(sessionId)}
+          onDeleteMany={(sessionIds) => onDeleteSessions?.(sessionIds) ?? Promise.resolve(true)}
         />
       </div>
       <AgentInput
