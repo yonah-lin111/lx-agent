@@ -35,17 +35,36 @@ const getCacheHitCard = (): HTMLElement | null =>
 describe("UsageSummaryCards", () => {
   afterEach(cleanup)
 
-  it("按统一统计口径渲染五张卡：新增输入为扣除缓存后的新鲜输入", () => {
-    render(<UsageSummaryCards summary={summary} />)
+  it("按统一统计口径渲染六张卡：三列布局，真实消耗为 totalTokens 且各卡补充明细", () => {
+    const { container } = render(<UsageSummaryCards summary={summary} />)
 
-    // 新增输入 = 1000 - 100 - 50 = 850，明细展示含缓存的总输入。
+    // 宽屏一行 3 个卡片。
+    expect(container.firstElementChild?.className).toContain("lg:grid-cols-3")
+
+    // 真实消耗 = totalTokens（1200 -> 1.2k），明细拆分输入 / 输出。
+    const realTotalCard = findStatCard(/真实消耗 Tokens|Tokens Processed/)
+    expect(realTotalCard?.textContent).toContain("1.2k")
+    expect(realTotalCard?.textContent).toMatch(/Input 1\.0k · Output 200|输入 1\.0k · 输出 200/)
+
+    // 新增输入 = 1000 - 100 - 50 = 850，明细展示占总输入比例（不再展示总输入数值）。
     const freshInputCard = findStatCard(/Fresh Input|新增输入/)
     expect(freshInputCard?.textContent).toContain("850")
-    expect(freshInputCard?.textContent).toContain("1.0k")
+    expect(freshInputCard?.textContent).toMatch(/85\.0% of total input|占总输入 85\.0%/)
+    expect(freshInputCard?.textContent).not.toContain("1.0k")
 
-    expect(findStatCard(/^Output Tokens$|^输出 Tokens$/)).toBeDefined()
-    expect(findStatCard(/^Cache Write$|^缓存写入$/)).toBeDefined()
-    expect(findStatCard(/^Cache Read$|^缓存读取$/)).toBeDefined()
+    // 输出卡展示平均每请求输出（200 / 3 ≈ 67）。
+    expect(findStatCard(/^Output Tokens$|^输出 Tokens$/)?.textContent).toMatch(
+      /67 avg per request|平均每请求 67/,
+    )
+
+    // 缓存写入 / 读取卡展示各自占总输入比例。
+    expect(findStatCard(/^Cache Write$|^缓存写入$/)?.textContent).toMatch(
+      /5\.0% of total input|占总输入 5\.0%/,
+    )
+    expect(findStatCard(/^Cache Read$|^缓存读取$/)?.textContent).toMatch(
+      /10\.0% of total input|占总输入 10\.0%/,
+    )
+
     expect(findStatCard(/Cache Hit Rate|缓存命中率/)).toBeDefined()
   })
 
@@ -77,6 +96,9 @@ describe("UsageSummaryCards", () => {
 
   it("summary 为空时全部卡片回退零值", () => {
     render(<UsageSummaryCards summary={null} />)
+
+    const realTotalCard = findStatCard(/真实消耗 Tokens|Tokens Processed/)
+    expect(realTotalCard?.textContent).toContain("0")
 
     const freshInputCard = findStatCard(/Fresh Input|新增输入/)
     expect(freshInputCard?.textContent).toContain("0")

@@ -18,12 +18,15 @@ export const usage = {
   summary: {
     requests: "请求数",
     totalTokens: "总 Tokens",
+    realTotalTokens: "真实消耗 Tokens",
     totalCost: "总成本",
     totalInput: "总输入（含缓存）",
     outputTokens: "输出 Tokens",
     cacheReadTokens: "缓存读取",
     cacheWriteTokens: "缓存写入",
     cacheHitRate: "缓存命中率",
+    shareOfInput: "占总输入 {{percent}}",
+    avgPerRequest: "平均每请求 {{value}}",
   },
   tokens: {
     freshInput: "新增输入",

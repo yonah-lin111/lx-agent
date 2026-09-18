@@ -92,9 +92,10 @@ export const useFlowSteps = ({
       if (step.toolContent?.toolName === "question") {
         return step.toolContent.question !== undefined
       }
-      // 默认规则：全部用户 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；审查卡片 reviewFindings 默认展开；todowrite 工具默认展开；每个已完成 turn 的最后一个 step 默认展开；其余全部折叠
+      // 默认规则：全部用户 item 与 AI 回复 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；审查卡片 reviewFindings 默认展开；todowrite 工具默认展开；每个已完成 turn 的最后一个 step 默认展开；其余全部折叠
       if (
         step.kind === "user" ||
+        step.kind === "assistant" ||
         step.kind === "error" ||
         step.kind === "proposedPlan" ||
         step.kind === "reviewFindings" ||
