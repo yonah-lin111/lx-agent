@@ -54,11 +54,10 @@ jobs:
       - name: Build
         run: pnpm build
 
-      # 未配置签名证书：跳过 macOS 签名，产出未签名 dmg / exe 供手动下载安装。
+      # 未配置签名证书：macOS 走 ad-hoc 签名（package.json mac.identity="-" 且关闭 hardenedRuntime），
+      # 否则 arm64 产物未签名会被 Gatekeeper 直接判定为“已损坏”；Windows 仍为未签名。
       - name: Package
         run: pnpm exec electron-builder ${{ matrix.build-args }} --publish never
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       # 直接发布（非 draft）：更新检查读取 /releases/latest，draft 对用户不可见。
       # 带预发布后缀的 tag 自动标记 prerelease，/releases/latest 不会返回它。

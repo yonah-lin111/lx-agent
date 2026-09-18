@@ -5,6 +5,7 @@ node_modules
 out/
 dist/
 dist-electron/
+release/
 build/
 .cache/
 coverage/

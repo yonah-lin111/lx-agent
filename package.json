@@ -1,6 +1,6 @@
 {
   "name": "lx-agent",
-  "version": "0.1.2",
+  "version": "0.1.0",
   "description": "专用于生产提示词的 LX Agent 桌面应用。",
   "private": true,
   "type": "module",
@@ -104,7 +104,9 @@
     ],
     "mac": {
       "icon": "resources/icons/lx-logo.png",
-      "target": "dmg"
+      "target": "dmg",
+      "identity": "-",
+      "hardenedRuntime": false
     },
     "win": {
       "icon": "resources/icons/lx-logo.png",
