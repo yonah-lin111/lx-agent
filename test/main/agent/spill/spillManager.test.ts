@@ -69,6 +69,27 @@ describe("SpillManager", () => {
     expect(notice).toContain("Use 'read' tool with offset/limit")
   })
 
+  it("上游已丢中段时通知不得宣称 Full output，并说明不可恢复", () => {
+    const truncation: TruncationResult = {
+      content: "preview",
+      truncated: true,
+      truncatedBy: "bytes",
+      totalLines: 100,
+      outputLines: 50,
+      totalBytes: 1024 * 1024,
+      outputBytes: 50 * 1024,
+      lastLinePartial: false,
+      firstLineExceedsLimit: false,
+      maxLines: 2000,
+      maxBytes: 50 * 1024,
+    }
+    const notice = manager.formatSpillNotice("/tmp/spill/file.txt", truncation, undefined, 4096)
+
+    expect(notice).not.toContain("Full output saved")
+    expect(notice).toContain("Truncated preview saved to: /tmp/spill/file.txt")
+    expect(notice).toContain("4096 bytes")
+  })
+
   it("handleTruncation 未截断时直接返回原始内容", () => {
     const truncation: TruncationResult = {
       content: "short",

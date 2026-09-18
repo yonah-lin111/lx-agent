@@ -456,4 +456,13 @@ describe("agentRunner 消息队列（deferred queue）", () => {
     expect(restored.currentSessionId).toBe("Y")
     expect(runner.currentSessionId).toBe("X")
   })
+
+  it("getRunner 兜底不得把其他会话的 runner 当成目标返回", async () => {
+    const { agentRunner } = await importRunner()
+    const runner = agentRunner.getOrCreateRunner("X", "tab-x")
+    expect(runner.currentSessionId).toBe("X")
+
+    expect(agentRunner.getRunner("Y")).toBeUndefined()
+    expect(agentRunner.getRunner("Y", "tab-y")).toBeUndefined()
+  })
 })

@@ -205,6 +205,7 @@ export const createBashTool = (
     const { text, details } = formatOutput(execRes.output, truncation, {
       sessionId: activeSessionId,
       toolCallId,
+      omittedBytes: execRes.omittedBytes,
     })
 
     if (execRes.exitCode !== 0 && execRes.exitCode !== null) {
@@ -229,7 +230,7 @@ const appendStatus = (text: string, status: string): string =>
 const formatOutput = (
   rawOutput: string,
   truncation: TruncationResult,
-  options?: { sessionId?: string; toolCallId?: string },
+  options?: { sessionId?: string; toolCallId?: string; omittedBytes?: number },
 ): { text: string; details?: BashToolDetails } => {
   let text = truncation.content || "(No output)"
   let details: BashToolDetails | undefined
@@ -238,6 +239,7 @@ const formatOutput = (
     const { text: spilledText } = spillManager.handleTruncation(rawOutput, truncation, {
       sessionId: options?.sessionId,
       toolCallId: options?.toolCallId,
+      omittedBytes: options?.omittedBytes,
       customActionHint: "Use 'read' tool with offset/limit to view full bash log.",
     })
     text = spilledText

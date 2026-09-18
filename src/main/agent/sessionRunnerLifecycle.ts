@@ -9,6 +9,7 @@ import { permissionManager } from "./permissions/permissionManager"
 import { questionManager } from "./question/questionManager"
 import type { SessionRunnerHost } from "./sessionRunner.types"
 import { resolveInjectedSkills, resolveMcpTools } from "./sessionRunnerInput"
+import { discardPendingTurn } from "./sessionRunnerTurns"
 import { unifiedExecManager } from "./shell/unifiedExecManager"
 
 /**
@@ -33,6 +34,9 @@ export const freezeNewSession = (host: SessionRunnerHost, context: AgentSendCont
 
 // 清理当前会话的权限、提问、LSP、终端与子代理资源。
 export const cleanUp = (host: SessionRunnerHost): void => {
+  // 先丢弃进行中的 turn：abort 后的收尾事件仍会到达，若落盘输入未清，
+  // 会话删除路径会向已删除的会话 flushTurn（外键错误）。
+  discardPendingTurn(host)
   host.abort()
   if (host.currentSessionId) {
     permissionManager.clearSession(host.currentSessionId)

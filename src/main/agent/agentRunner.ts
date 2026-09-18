@@ -147,11 +147,16 @@ export class SessionRunnerManager {
     if (!runner && this.runners.has(this.lastActiveKey)) {
       runner = this.runners.get(this.lastActiveKey)
     }
+    // 兜底命中（lastActive/首个）可能属于其他会话：带 sessionId 查询时不得错路由。
+    if (runner && sessionId && runner.currentSessionId !== sessionId) {
+      return undefined
+    }
     if (runner) {
       // 通过 sess: key 直接命中时同样需要按当前 tab 重绑定（continue/compact/abort 等路径）。
       this.bindRunnerToTab(runner, sessionId, tabId)
     }
-    return runner ?? this.runners.values().next().value
+    if (runner) return runner
+    return sessionId ? undefined : this.runners.values().next().value
   }
 
   public getMessages(sessionId?: string, tabId?: string): AgentMessage[] {

@@ -90,6 +90,26 @@ describe("LspManager", () => {
     expect(created[0]?.initializeCalls).toBe(1)
   })
 
+  it("并发首次 getClient 只 spawn 一次，落败方复用同一 in-flight 初始化", async () => {
+    const created: FakeClient[] = []
+    let releaseGate!: () => void
+    const gate = new Promise<void>((resolve) => {
+      releaseGate = resolve
+    })
+    const { manager } = makeManager(created, { initializeGate: gate })
+    const file = "/tmp/lx-concurrent/a.ts"
+
+    const first = manager.getClient("s1", file, "/tmp/lx-concurrent")
+    const second = manager.getClient("s1", file, "/tmp/lx-concurrent")
+    releaseGate()
+    const [r1, r2] = await Promise.all([first, second])
+
+    expect("client" in r1 && "client" in r2).toBe(true)
+    expect(created).toHaveLength(1)
+    expect(created[0]?.initializeCalls).toBe(1)
+    expect(created[0]?.shutdownCalls).toBe(0)
+  })
+
   it("同会话不同语言各自 spawn", async () => {
     const created: FakeClient[] = []
     const { manager } = makeManager(created)

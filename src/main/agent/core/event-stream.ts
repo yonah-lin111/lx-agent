@@ -28,6 +28,9 @@ export class EventStream<T, R = T> implements AsyncIterable<T>, Disposable {
       this.resolveFinalResult = resolve
       this.rejectFinalResult = reject
     })
+    // 消费方可能未等待最终结果就提前退出（iterator.return/dispose）：
+    // 预挂 handler 避免无人观察的 rejection 触发 unhandledRejection；result() 的 reject 语义不变。
+    void this.finalResultPromise.catch(() => {})
   }
 
   // 推送新事件。

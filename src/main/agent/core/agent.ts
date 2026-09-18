@@ -111,13 +111,15 @@ function createMutableAgentState(
 ): MutableAgentState {
   let tools = initialState?.tools?.slice() ?? []
   let messages = initialState?.messages?.slice() ?? []
+  let pendingToolCalls = new Set<string>()
 
   return {
     systemPrompt: initialState?.systemPrompt ?? "",
     model: initialState?.model ?? DEFAULT_MODEL,
     thinkingLevel: initialState?.thinkingLevel ?? "off",
+    // 读取用途；返回快照副本，消费方无法通过引用旁路修改内部数组。变更请整体赋值。
     get tools() {
-      return tools
+      return tools.slice()
     },
     set tools(nextTools: AgentTool<any>[]) {
       tools = nextTools.slice()
@@ -138,7 +140,13 @@ function createMutableAgentState(
     },
     isStreaming: false,
     streamingMessage: undefined,
-    pendingToolCalls: new Set<string>(),
+    // 读取返回副本，防止外部 add/delete 旁路修改内部集合；内部通过整体赋值演进。
+    get pendingToolCalls() {
+      return new Set(pendingToolCalls)
+    },
+    set pendingToolCalls(next: Set<string>) {
+      pendingToolCalls = next
+    },
     errorMessage: undefined,
   }
 }

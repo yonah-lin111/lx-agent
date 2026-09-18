@@ -63,6 +63,13 @@ const findWithFd = async (
   })
   signal?.removeEventListener("abort", onAbort)
 
+  // 中止必须作为中止语义返回：否则会落入 Node 重扫并因 signal.aborted 得到"No matching files found"。
+  if (signal?.aborted) {
+    return {
+      content: [{ type: "text", text: "Search aborted." }],
+      details: { error: "aborted" },
+    }
+  }
   if (spawnFailed || exitCode === null) {
     return undefined
   }

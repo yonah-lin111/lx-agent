@@ -170,6 +170,7 @@ export const switchModel = (
   }
 
   const now = new Date().toISOString()
+  let insertedSeq: number | undefined
   agentSessionService.transaction(() => {
     const seq = agentSessionService.nextSeq(sessionId)
     agentSessionService.insertEntry({
@@ -181,8 +182,12 @@ export const switchModel = (
       createdAt: now,
     })
     agentSessionService.touchSession(sessionId, now)
-    host.turnStore.getMessageSeqs().push(seq)
+    insertedSeq = seq
   })
+  // 事务提交成功后再对齐内存 seq（回滚不得留下幽灵 seq）。
+  if (insertedSeq !== undefined) {
+    host.turnStore.getMessageSeqs().push(insertedSeq)
+  }
 
   if (host.agent) {
     host.agent.state.appendMessage(message)

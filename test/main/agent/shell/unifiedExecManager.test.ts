@@ -106,6 +106,29 @@ describe("UnifiedExecManager", () => {
     })
   })
 
+  describe("pruneCompleted", () => {
+    it("清理超过保留期的已完成条目，运行中条目保留", async () => {
+      const finished = await unifiedExecManager.execCommand({
+        command: "echo done",
+        cwd: process.cwd(),
+        yieldTimeMs: 5000,
+      })
+      const running = await unifiedExecManager.execCommand({
+        command: "sleep 5",
+        cwd: process.cwd(),
+        yieldTimeMs: 250,
+      })
+
+      expect(unifiedExecManager.getProcess(finished.processId)).toBeDefined()
+      const pruned = unifiedExecManager.pruneCompleted(0)
+
+      expect(pruned).toBe(1)
+      expect(unifiedExecManager.getProcess(finished.processId)).toBeUndefined()
+      expect(unifiedExecManager.getProcess(running.processId)).toBeDefined()
+      unifiedExecManager.killProcess(running.processId)
+    })
+  })
+
   describe("writeStdin and interactive flow", () => {
     it("writes input to stdin of running process", async () => {
       const execResult = await unifiedExecManager.execCommand({

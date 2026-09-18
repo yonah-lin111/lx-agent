@@ -159,6 +159,21 @@ describe("AgentSessionRunner 生命周期与工作区/项目切换", () => {
     expect(runner.guardReminders.size).toBe(0)
   })
 
+  it("cleanUp 先丢弃进行中的 turn 再 abort（删除会话后不得再向已删会话落库）", () => {
+    const runner = new AgentSessionRunner({ sessionId: "session-del", tabId: "tab-1" })
+    const order: string[] = []
+    vi.spyOn(runner.turnStore, "discardTurn").mockImplementation(() => {
+      order.push("discard")
+    })
+    vi.spyOn(runner, "abort").mockImplementation(() => {
+      order.push("abort")
+    })
+
+    runner.cleanUp()
+
+    expect(order).toEqual(["discard", "abort"])
+  })
+
   it("dispose 派发 SessionEnd、清理运行态并重置 SessionStart 标记", () => {
     const runner = new AgentSessionRunner({ sessionId: "session-5", tabId: "tab-1" })
     runner.sessionStartFired = true
