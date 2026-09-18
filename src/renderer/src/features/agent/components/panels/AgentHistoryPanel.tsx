@@ -316,64 +316,32 @@ export const AgentHistoryPanel = ({
         pointerEvents: isOpen ? "auto" : "none",
       }}
     >
-      {/* 面板头部：普通态 = 历史标题 + 多选/关闭；多选态 = 已选计数 + 删除/取消。 */}
+      {/* 面板头部：历史标题 + 多选/关闭（多选操作收敛到底部 bar）。 */}
       <div className="agent-history-panel-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-        {isSelectMode ? (
-          <>
-            <span className="min-w-0 truncate text-xs text-white/70">
-              {t("agent.selectedSessionsCount", { count: selectedSessionIds.size })}
-            </span>
-            <div className="flex shrink-0 items-center gap-1">
-              <LxIconButton
-                size="small"
-                preset="delete"
-                disabled={selectedSessionIds.size === 0}
-                aria-label={t("agent.deleteSelectedSessions")}
-                title={{
-                  content: t("agent.deleteSessionsConfirm", {
-                    count: selectedSessionIds.size,
-                  }),
-                  placement: "bottom",
-                  onConfirm: handleDeleteSelected,
-                }}
-              />
-              <LxIconButton
-                size="small"
-                variant="ghost"
-                aria-label={t("common.cancel")}
-                title={{ content: t("common.cancel"), placement: "bottom" }}
-                onClick={exitSelectMode}
-              >
-                <X />
-              </LxIconButton>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex min-w-0 items-center gap-1.5">
-              <History className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-              <span className="truncate text-sm text-white/80">{t("agent.historyTitle")}</span>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <LxIconButton
-                size="small"
-                aria-label={t("agent.selectSessions")}
-                title={{ content: t("agent.selectSessions"), placement: "bottom" }}
-                onClick={enterSelectMode}
-              >
-                <ListChecks />
-              </LxIconButton>
-              <LxIconButton
-                size="small"
-                aria-label={t("agent.closeHistoryPanel")}
-                title={{ content: t("agent.collapsePanel"), placement: "bottom" }}
-                onClick={onClose}
-              >
-                <X />
-              </LxIconButton>
-            </div>
-          </>
-        )}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <History className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+          <span className="truncate text-sm text-white/80">{t("agent.historyTitle")}</span>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {!isSelectMode && (
+            <LxIconButton
+              size="small"
+              aria-label={t("agent.selectSessions")}
+              title={{ content: t("agent.selectSessions"), placement: "bottom" }}
+              onClick={enterSelectMode}
+            >
+              <ListChecks />
+            </LxIconButton>
+          )}
+          <LxIconButton
+            size="small"
+            aria-label={t("agent.closeHistoryPanel")}
+            title={{ content: t("agent.collapsePanel"), placement: "bottom" }}
+            onClick={onClose}
+          >
+            <X />
+          </LxIconButton>
+        </div>
       </div>
 
       {/* 面板内容：搜索 + 项目筛选 + 会话列表。 */}
@@ -512,6 +480,39 @@ export const AgentHistoryPanel = ({
           )}
         </div>
       </div>
+
+      {/* 多选操作栏：列表底部浮现，左侧已选计数、右侧删除（Tooltip 二次确认）/取消。 */}
+      {isSelectMode && (
+        <div className="agent-history-select-bar flex shrink-0 items-center justify-between gap-2 border-t border-white/10 px-3 py-2">
+          <span className="min-w-0 truncate text-xs text-white/70">
+            {t("agent.selectedSessionsCount", { count: selectedSessionIds.size })}
+          </span>
+          <div className="flex shrink-0 items-center gap-1">
+            <LxIconButton
+              size="small"
+              preset="delete"
+              disabled={selectedSessionIds.size === 0}
+              aria-label={t("agent.deleteSelectedSessions")}
+              title={{
+                content: t("agent.deleteSessionsConfirm", {
+                  count: selectedSessionIds.size,
+                }),
+                placement: "top",
+                onConfirm: handleDeleteSelected,
+              }}
+            />
+            <LxIconButton
+              size="small"
+              variant="ghost"
+              aria-label={t("common.cancel")}
+              title={{ content: t("common.cancel"), placement: "top" }}
+              onClick={exitSelectMode}
+            >
+              <X />
+            </LxIconButton>
+          </div>
+        </div>
+      )}
 
       {/* 会话右键菜单：置顶 + 导出子菜单 + 重命名 + 删除（二次确认）。 */}
       <LxMenu

@@ -303,9 +303,11 @@ describe("AgentHistoryPanel", () => {
 
   it("多选模式勾选会话并在二次确认后批量删除", async () => {
     const onDeleteMany = vi.fn().mockResolvedValue(true)
-    renderPanel({ onDeleteMany })
+    const { container } = renderPanel({ onDeleteMany })
+    expect(container.querySelector(".agent-history-select-bar")).toBeNull()
 
     fireEvent.click(screen.getByRole("button", { name: "Select Sessions" }))
+    expect(container.querySelector(".agent-history-select-bar")).not.toBeNull()
     expect(screen.getAllByRole("checkbox")).toHaveLength(2)
     expect(screen.getByText("0 selected")).not.toBeNull()
 
@@ -321,6 +323,7 @@ describe("AgentHistoryPanel", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Select Sessions" })).not.toBeNull()
     })
+    expect(container.querySelector(".agent-history-select-bar")).toBeNull()
   })
 
   it("多选模式下点击复选框不会重复切换勾选", () => {
@@ -350,11 +353,12 @@ describe("AgentHistoryPanel", () => {
   })
 
   it("多选模式下可取消并退出多选", () => {
-    renderPanel()
+    const { container } = renderPanel()
     fireEvent.click(screen.getByRole("button", { name: "Select Sessions" }))
     fireEvent.click(screen.getByText("Alpha session"))
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
     expect(screen.queryByRole("checkbox")).toBeNull()
+    expect(container.querySelector(".agent-history-select-bar")).toBeNull()
     expect(screen.getByRole("button", { name: "Select Sessions" })).not.toBeNull()
   })
 

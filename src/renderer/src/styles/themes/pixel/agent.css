@@ -2070,6 +2070,22 @@
   text-shadow: 1px 1px 0px #000000;
 }
 
+/* 多选操作栏（列表底部）：与头部对称的浮雕条 */
+[data-theme="pixel"] .agent-history-select-bar {
+  border-radius: 0px !important;
+  border-top: 2px solid #000000 !important;
+  background-color: #222232 !important;
+  font-family: var(--theme-font-family) !important;
+  box-shadow:
+    inset 0px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    0px -2px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .agent-history-select-bar span {
+  color: #f0f0f8 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
 /* 会话行：方块浮雕由 LxNavItem 二级行（data-item-level="2"）统一承担，此处仅保留标题与当前会话强调 */
 
 /* 会话标题：浮雕由整行承载，标题只保留文字表现 */
