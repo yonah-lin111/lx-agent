@@ -1,9 +1,11 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { OpenClawSessionEvent, OpenClawSessionSnapshot } from "@shared/contracts/openclaw"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+
+import { writeConfigTree } from "../../helpers/configLayout"
 
 // 端到端测试需要一个真实的本地 OpenClaw Gateway：
 //   OPENCLAW_E2E_GATEWAY_URL=ws://127.0.0.1:18789 \
@@ -34,23 +36,20 @@ describe.skipIf(!runE2E)("OpenClawClientManager E2E", () => {
     tmpDir = mkdtempSync(join(tmpdir(), "openclaw-e2e-"))
     holder.appDataRoot = tmpDir
     mkdirSync(tmpDir, { recursive: true })
-    writeFileSync(
-      join(tmpDir, "config.json"),
-      JSON.stringify({
-        openclaw: {
-          instances: {
-            [instanceId]: {
-              name: "E2E Local",
-              gatewayUrl,
-              authMode: "token",
-              token: gatewayToken,
-              enabled: true,
-              agents: [],
-            },
+    writeConfigTree(join(tmpDir, "config.json"), {
+      openclaw: {
+        instances: {
+          [instanceId]: {
+            name: "E2E Local",
+            gatewayUrl,
+            authMode: "token",
+            token: gatewayToken,
+            enabled: true,
+            agents: [],
           },
         },
-      }),
-    )
+      },
+    })
 
     const module = await import("@/services/openclaw/openclawClientManager")
     manager = module.openClawClientManager

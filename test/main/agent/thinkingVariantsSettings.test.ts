@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { ModelProviderSettings } from "@shared/settings"
@@ -22,7 +22,6 @@ describe("Model Settings Thinking Variants", () => {
   beforeEach(async () => {
     tmpDir = mkdtempSync(join(tmpdir(), "variants-test-"))
     holder.configPath = join(tmpDir, "config.json")
-    writeFileSync(holder.configPath, JSON.stringify({}))
   })
 
   afterEach(() => {

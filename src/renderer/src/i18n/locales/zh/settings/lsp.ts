@@ -21,7 +21,7 @@ export const lsp = {
 ---
 
 #### 📝 自定义配置示例
-在 \`~/.lx/config.json\` 的 \`agent.lsp\` 节点中：
+在 \`~/.lx/config/agent.json\` 的 \`agent.lsp\` 节点中：
 \`\`\`json
 {
   "agent": {

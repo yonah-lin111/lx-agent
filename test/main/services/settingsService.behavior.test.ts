@@ -12,6 +12,13 @@ import { join } from "node:path"
 import { ALL_CLI_IDS, DEFAULT_LSP_SETTINGS, DEFAULT_VOICE_SETTINGS } from "@shared/settings"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import {
+  type ConfigTree,
+  getTestConfigDir,
+  readConfigTree,
+  writeConfigTree,
+} from "../../helpers/configLayout"
+
 const holder = vi.hoisted(() => ({ configPath: "", appDataRoot: "" }))
 const trashItem = vi.hoisted(() => vi.fn(async () => undefined))
 
@@ -45,11 +52,10 @@ import {
 
 let tmpDir: string
 
-const readConfig = (): Record<string, unknown> =>
-  JSON.parse(readFileSync(holder.configPath, "utf8")) as Record<string, unknown>
+const readConfig = (): Record<string, unknown> => readConfigTree(holder.configPath)
 
 const writeConfig = (config: unknown): void => {
-  writeFileSync(holder.configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8")
+  writeConfigTree(holder.configPath, config as ConfigTree)
 }
 
 beforeEach(() => {
@@ -73,7 +79,9 @@ describe("settingsService 写盘不变量", () => {
 
     saveUiSettings({ locale: "zh", screenshotCleanupEnabled: true })
 
-    expect(readdirSync(tmpDir)).toEqual(["config.json"])
+    expect(
+      readdirSync(getTestConfigDir(holder.configPath)).filter((file) => file.endsWith(".tmp")),
+    ).toEqual([])
     const config = readConfig()
     expect(config).toMatchObject({
       ui: { locale: "zh", screenshotCleanupEnabled: true, unknownUiKey: 1 },
@@ -87,7 +95,7 @@ describe("settingsService 写盘不变量", () => {
 
     saveCliSettings({ enabled: ["gemini"], customPaths: {} })
 
-    expect(existsSync(holder.configPath)).toBe(true)
+    expect(existsSync(getTestConfigDir(holder.configPath))).toBe(true)
     expect(readConfig()).toMatchObject({ cli: { enabled: ["gemini"], customPaths: {} } })
   })
 
@@ -109,12 +117,23 @@ describe("settingsService 写盘不变量", () => {
     })
   })
 
-  it("配置文件非法 JSON 时保存抛错，且不产生临时文件", () => {
-    writeFileSync(holder.configPath, "{ 非法 json", "utf8")
+  it("单个布局文件非法 JSON 时隔离该文件，保存其他域不受影响且无临时文件", () => {
+    const configDir = getTestConfigDir(holder.configPath)
+    mkdirSync(configDir, { recursive: true })
+    writeFileSync(join(configDir, "agent.json"), "{ 非法 json", "utf8")
 
-    expect(() => saveVoiceSettings({ apiKey: "k", model: "m", language: "zh" })).toThrow()
-    expect(readFileSync(holder.configPath, "utf8")).toBe("{ 非法 json")
-    expect(readdirSync(tmpDir)).toEqual(["config.json"])
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      saveVoiceSettings({ apiKey: "k", model: "m", language: "zh" })
+    } finally {
+      warnSpy.mockRestore()
+    }
+
+    expect(readConfig()).toMatchObject({
+      voice: { apiKey: "k", model: "m", language: "zh" },
+    })
+    expect(readFileSync(join(configDir, "agent.json.corrupt"), "utf8")).toBe("{ 非法 json")
+    expect(readdirSync(configDir).filter((file) => file.endsWith(".tmp"))).toEqual([])
   })
 
   it("规范化校验失败时抛错且配置文件保持不变", () => {

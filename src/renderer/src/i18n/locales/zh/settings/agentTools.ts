@@ -14,7 +14,7 @@ export const agentTools = {
 
 #### ⚙️ 执行语义
 - 命令经 stdin 接收 JSON 载荷，stdout 返回严格 JSON（\`additionalContext\` / \`systemMessage\` / \`decision\`）；执行失败、超时或输出非法一律 fail-open。
-- 配置写入 \`~/.lx/config.json\` 的 \`agent.hooks\`；同一事件内按列表顺序执行，可用上/下移调整。
+- 配置写入 \`~/.lx/config/agent.json\` 的 \`agent.hooks\`；同一事件内按列表顺序执行，可用上/下移调整。
 - 保存后仅对**新会话**生效，运行中的会话沿用旧配置。`,
   hooksAdd: "添加 Hook",
   hooksAddTitle: "添加 Hook",

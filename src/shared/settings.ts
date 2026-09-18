@@ -63,7 +63,7 @@ export type ModelProviderSettings = {
 // 默认流式空闲超时时间（60 秒 / 1 分钟）。
 export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 60_000
 
-// 上下文压缩配置（~/.lx/config.json 的 ai.compaction 节点）。
+// 上下文压缩配置（~/.lx/config/ai.json 的 ai.compaction 节点）。
 export type CompactionSettings = {
   enabled: boolean
   contextWindow: number
@@ -94,7 +94,7 @@ export type FetchModelsInput = {
 // 支持的语言类型。
 export type Locale = "en" | "zh"
 
-// UI 客户端配置（~/.lx/config.json 的 ui 节点）。
+// UI 客户端配置（~/.lx/config/app.json 的 ui 节点）。
 export type UiSettings = {
   locale: Locale
   // 是否自动清理超过 14 天的剪贴板截图缓存（默认启用）。
@@ -115,7 +115,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
 // 支持的 CLI 工具标识。
 export type CliId = "claude" | "codex" | "gemini" | "opencode" | "agy" | "grok"
 
-// CLI 设置（~/.lx/config.json 的 cli 节点）。
+// CLI 设置（~/.lx/config/app.json 的 cli 节点）。
 export interface CliSettings {
   enabled: CliId[]
   customPaths?: Partial<Record<CliId, string>>
@@ -177,7 +177,7 @@ export interface LspLanguageConfig {
   args?: string[]
 }
 
-// LSP 设置（~/.lx/config.json 的 agent.lsp 节点）。
+// LSP 设置（~/.lx/config/agent.json 的 agent.lsp 节点）。
 export interface LspSettings {
   languages: Partial<Record<LspLanguageId, LspLanguageConfig>>
 }
@@ -204,7 +204,7 @@ export interface LspServerDetailInfo {
   enabled: boolean
 }
 
-// MCP server 配置（~/.lx/config.json 的 agent.mcp 节点）。
+// MCP server 配置（~/.lx/config/agent.json 的 agent.mcp 节点）。
 export interface McpServerConfig {
   command: string[]
   cwd?: string
@@ -213,7 +213,7 @@ export interface McpServerConfig {
   timeout?: number
 }
 
-// MCP 设置（~/.lx/config.json 的 agent.mcp 节点）。
+// MCP 设置（~/.lx/config/agent.json 的 agent.mcp 节点）。
 export interface McpSettings {
   servers: Record<string, McpServerConfig>
 }
@@ -222,7 +222,7 @@ export const DEFAULT_MCP_SETTINGS: McpSettings = {
   servers: {},
 }
 
-// Skill 设置（~/.lx/config.json 的 agent.skills 节点）。
+// Skill 设置（~/.lx/config/agent.json 的 agent.skills 节点）。
 export interface SkillSettings {
   disabled: string[]
 }
@@ -231,7 +231,7 @@ export const DEFAULT_SKILL_SETTINGS: SkillSettings = {
   disabled: [],
 }
 
-// 语音输入/转文字配置（~/.lx/config.json 的 voice 节点）。
+// 语音输入/转文字配置（~/.lx/config/app.json 的 voice 节点）。
 export interface VoiceSettings {
   // Groq API Key
   apiKey?: string
@@ -290,7 +290,7 @@ export const CAVEMAN_WENYAN_LEVELS: readonly CavemanLevel[] = [
 // Ponytail 全部档位。
 export const PONYTAIL_LEVELS: readonly PonytailLevel[] = ["lite", "full", "ultra"]
 
-// Token Saver 设置（~/.lx/config.json 的 tokenSaver 节点）。
+// Token Saver 设置（~/.lx/config/app.json 的 tokenSaver 节点）。
 export interface TokenSaverSettings {
   // RTK：压缩工具输出（git diff / grep / ls / tree / log / 构建输出等）。
   rtkEnabled: boolean
@@ -336,7 +336,7 @@ export interface OpenClawInstanceConfig {
   agents: OpenClawAgentItem[]
 }
 
-// OpenClaw 全局配置（~/.lx/config.json 的 openclaw 节点）。
+// OpenClaw 全局配置（~/.lx/config/openclaw.json 的 openclaw 节点）。
 export interface OpenClawSettings {
   instances: Record<string, OpenClawInstanceConfig>
   defaultInstanceId?: string
@@ -380,7 +380,7 @@ export interface SubagentRoleConfig {
   tools?: string[]
 }
 
-// 子代理全局设置（~/.lx/config.json 的 agent.subagents 节点）。
+// 子代理全局设置（~/.lx/config/agent.json 的 agent.subagents 节点）。
 export interface SubagentSettings {
   roles: Record<string, SubagentRoleConfig>
   maxConcurrent?: number

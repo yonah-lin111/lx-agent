@@ -1,9 +1,16 @@
 // Token Saver 设置读写测试：默认值、非法值回退、写盘保留其他节点。
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { DEFAULT_TOKEN_SAVER_SETTINGS } from "@shared/settings"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import {
+  type ConfigTree,
+  getTestConfigDir,
+  readConfigTree,
+  writeConfigTree,
+} from "../../helpers/configLayout"
 
 const holder = vi.hoisted(() => ({ configPath: "" }))
 
@@ -23,11 +30,10 @@ import {
 
 let tmpDir: string
 
-const readConfig = (): Record<string, unknown> =>
-  JSON.parse(readFileSync(holder.configPath, "utf8")) as Record<string, unknown>
+const readConfig = (): Record<string, unknown> => readConfigTree(holder.configPath)
 
 const writeConfig = (config: unknown): void => {
-  writeFileSync(holder.configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8")
+  writeConfigTree(holder.configPath, config as ConfigTree)
 }
 
 beforeEach(() => {
@@ -102,7 +108,9 @@ describe("getTokenSaverSettings / saveTokenSaverSettings", () => {
 
     expect(saved.rtkEnabled).toBe(false)
     expect(getTokenSaverSettings()).toEqual(saved)
-    expect(readdirSync(tmpDir)).toEqual(["config.json"])
+    expect(
+      readdirSync(getTestConfigDir(holder.configPath)).filter((file) => file.endsWith(".tmp")),
+    ).toEqual([])
     expect(readConfig()).toMatchObject({
       ui: { locale: "zh" },
       topLevelUnknown: { a: 1 },

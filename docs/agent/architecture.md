@@ -286,7 +286,7 @@ Renderer 采用 **Feature-First** 模块化设计（`src/renderer/src/features/a
 | 1 | 存储形态 | 混合：entry 树为真相源 + `agent_call` 独立视图表 |
 | 2 | session 归属 | 全局会话，不按页面分桶；归属（project_id/page）建会话时绑定，仅作项目 tag 客户端筛选依据 |
 | 3 | 调用记录 | 统一 `agent_call` + `kind` 四分类（builtin/mcp/subagent/skill）；子代理嵌套经 `parent_call_id` 同表自关联 |
-| 4 | 能力快照 | 激活能力集随会话以 `active_capabilities` entry 冻结；config.json 仅作新建会话的默认装配源 |
+| 4 | 能力快照 | 激活能力集随会话以 `active_capabilities` entry 冻结；配置文件（~/.lx/config/）仅作新建会话的默认装配源 |
 | 5 | id 规范 | `id INTEGER PRIMARY KEY` + `external_id TEXT UNIQUE`（uuid 业务键）+ `created_at/updated_at`；FK 引用 external_id |
 | 6 | 空会话不入库 | 新建对话仅内存态；首次发消息才 INSERT 会话行——空会话天然不可恢复 |
 | 7 | 写入者 | main 单写者同步事务；每 turn 一个事务 |
@@ -365,5 +365,34 @@ agent_end     ──► flushTurn 单事务：
 
 | 方向 | 触发条件 | 留口位点 |
 |------|----------|----------|
-| 会话全文搜索 | 历史面板标题搜索不够用时 | entries 结构支持 FTS5 影子表增量维护 |
+| 会话全文搜索 | 历史面板标题搜索不够用用时 | entries 结构支持 FTS5 影子表增量维护 |
 | 项目删除保留会话审计 | 出现"删项目留会话"诉求 | 改软删/归档，评估 CASCADE 影响 |
+
+---
+
+## 9. 配置文件布局（`~/.lx/config/`）
+
+设置由 `src/main/services/settingsService/` 统一读写，物理上按领域拆分为多个 JSON 文件，每个文件为「顶层 key 包装」结构。
+
+### 9.1 文件与顶层 key 映射
+
+| 文件 | 顶层 key | 说明 |
+|------|----------|------|
+| `config/ai.json` | `ai`、`bailian` | Provider / 模型选择 / webSearch / compaction / streamIdleTimeoutMs；`bailian` 为兼容旧 provider 别名 |
+| `config/agent.json` | `agent` | `mcp` / `permissions` / `skills` / `lsp` / `subagents` / `hooks` |
+| `config/openclaw.json` | `openclaw` | OpenClaw 实例与默认选择 |
+| `config/app.json` | `ui`、`cli`、`voice`、`tokenSaver` | 客户端级设置 |
+| `config/extra.json` | 其余未知 key | 兜底保留，任何读写不得丢弃未知顶层 key |
+
+### 9.2 读写语义
+
+- **合并读**：`readRawConfig` 合并全部布局文件为一个配置树；同名顶层 key 冲突时按固定文件顺序后者覆盖并告警。
+- **按域写**：`updateRawConfig` 对变更函数结果做顶层 key 脏检测，只原子重写发生变化的 key 所属文件（临时文件 + rename），其余文件不动。
+- **故障隔离**：单个文件 JSON 损坏时告警、按空对象读取并改名为 `<file>.corrupt` 保留现场，其余域不受影响。
+
+### 9.3 旧文件迁移与备份
+
+- 首次读取配置时懒迁移：旧 `~/.lx/config.json` 先拆分写入 `config.tmp/`，再整体改名为 `config/`（同文件系统原子改名，崩溃后重跑幂等），成功后旧文件改名为 `config.json.bak`。
+- 迁移后代码只认 `config/` 目录，不回读旧文件；损坏的旧文件保持原样并跳过迁移，仅告警一次。
+- 迁移失败或需要回滚时可手工将 `config.json.bak` 改回 `config.json` 并删除 `config/` 目录。
+

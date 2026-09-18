@@ -1,7 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { readConfigTree, writeConfigTree } from "../../helpers/configLayout"
 
 const holder = vi.hoisted(() => ({ configPath: "" }))
 
@@ -22,11 +24,10 @@ describe("settingsService 权限配置", () => {
     rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  const readConfig = (): Record<string, unknown> =>
-    JSON.parse(readFileSync(holder.configPath, "utf8"))
+  const readConfig = (): Record<string, unknown> => readConfigTree(holder.configPath)
 
   it("缺失节点回退默认（default 模式 + 空规则）", () => {
-    writeFileSync(holder.configPath, "{}\n", "utf8")
+    writeConfigTree(holder.configPath, {})
     expect(getPermissionSettings()).toEqual({
       defaultMode: "default",
       sandboxPolicy: "workspace-write",
@@ -37,20 +38,16 @@ describe("settingsService 权限配置", () => {
   })
 
   it("读取已有配置（含非法条目降级）", () => {
-    writeFileSync(
-      holder.configPath,
-      JSON.stringify({
-        agent: {
-          permissions: {
-            defaultMode: "acceptEdits",
-            allow: ["Bash(git status)", 42],
-            deny: [],
-            ask: ["Bash(docker *)"],
-          },
+    writeConfigTree(holder.configPath, {
+      agent: {
+        permissions: {
+          defaultMode: "acceptEdits",
+          allow: ["Bash(git status)", 42],
+          deny: [],
+          ask: ["Bash(docker *)"],
         },
-      }),
-      "utf8",
-    )
+      },
+    })
     expect(getPermissionSettings()).toEqual({
       defaultMode: "acceptEdits",
       sandboxPolicy: "workspace-write",
@@ -61,26 +58,20 @@ describe("settingsService 权限配置", () => {
   })
 
   it("defaultMode 非法回退 default", () => {
-    writeFileSync(
-      holder.configPath,
-      JSON.stringify({ agent: { permissions: { defaultMode: "plan" } } }),
-      "utf8",
-    )
+    writeConfigTree(holder.configPath, {
+      agent: { permissions: { defaultMode: "plan" } },
+    })
     expect(getPermissionSettings().defaultMode).toBe("default")
   })
 
   it("保存合并 agent.permissions 并保留 agent.mcp 与其他节点", () => {
-    writeFileSync(
-      holder.configPath,
-      JSON.stringify({
-        ai: { defaultModel: { provider: "p", model: "m" } },
-        agent: {
-          mcp: { servers: [{ name: "codegraph" }] },
-          permissions: { defaultMode: "default", allow: [], deny: [], ask: [] },
-        },
-      }),
-      "utf8",
-    )
+    writeConfigTree(holder.configPath, {
+      ai: { defaultModel: { provider: "p", model: "m" } },
+      agent: {
+        mcp: { servers: [{ name: "codegraph" }] },
+        permissions: { defaultMode: "default", allow: [], deny: [], ask: [] },
+      },
+    })
 
     savePermissionSettings({
       defaultMode: "bypassPermissions",

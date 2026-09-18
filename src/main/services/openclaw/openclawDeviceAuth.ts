@@ -7,7 +7,7 @@ import { getAppDataRoot } from "@/paths"
 // Ed25519 SPKI DER 前缀：前 12 字节固定，其后 32 字节为原始公钥。
 const ED25519_SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex")
 
-// 设备身份与 device token 的落盘文件（明文，与 ~/.lx/config.json 同目录同策略）。
+// 设备身份与 device token 的落盘文件（明文，与 ~/.lx/config/ 同目录同策略）。
 const getDeviceStorePath = (): string => join(getAppDataRoot(), "openclaw-device.json")
 
 // 持久化的设备身份。

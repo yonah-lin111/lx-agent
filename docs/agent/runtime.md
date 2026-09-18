@@ -137,7 +137,7 @@ User Input / Drain
 
 ### 4.6 Token Saver 出站请求治理 (`src/main/agent/tokenSaver/`)
 
-Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与风格注入，持久化历史与 UI 展示始终保持原始内容；转换全程 fail-open（任何异常原样放行）。仅对 `chat` / `subagent` purpose 生效，标题、建议问题与压缩摘要等请求不受影响。配置节点 `~/.lx/config.json` → `tokenSaver`（设置 → Token Saver，保存后下一轮请求生效）：
+Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与风格注入，持久化历史与 UI 展示始终保持原始内容；转换全程 fail-open（任何异常原样放行）。仅对 `chat` / `subagent` purpose 生效，标题、建议问题与压缩摘要等请求不受影响。配置节点 `~/.lx/config/agent.json` → `tokenSaver`（设置 → Token Saver，保存后下一轮请求生效）：
 
 - **RTK 工具输出压缩**（`rtkEnabled`，默认开启）：单条工具输出低于 500 字符跳过、高于 10 MiB 放行；自动探测输出类型后经 12 个过滤器压缩（`git diff` / `git log` / `git status` / `grep` / `find` / `ls` / `tree` / 构建输出 / 通用日志去重 / 编号行读取 / 搜索结果列表 / 智能截断），保留行数上限按过滤器定义（如 git diff 单 hunk 100 行、git log 200 行、grep 每文件 10 条）；工具错误结果一律跳过。
 - **Caveman 输出风格**（`cavemanEnabled`，默认关闭）：档位 `lite` / `full` / `ultra` 与文言档 `wenyan-lite` / `wenyan` / `wenyan-ultra`，以英文提示词注入系统提示词，压缩回复篇幅但保留代码、路径、错误字符串与安全警告原文。
@@ -150,7 +150,7 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 
 ### 5.1 角色目录与派发
 
-- **角色派发**：`task` 工具通过 `agent_type` 从内置角色（`explorer` / `worker`）与用户角色（`~/.lx/config.json` → `agent.subagents.roles`）中显式选型；未知值返回错误并列出可用角色，不静默回退。`task` 工具 description 在会话装配时动态注入 `Available agent types:` 目录，配置了 `maxConcurrent` 时追加并发提示行。
+- **角色派发**：`task` 工具通过 `agent_type` 从内置角色（`explorer` / `worker`）与用户角色（`~/.lx/config/agent.json` → `agent.subagents.roles`）中显式选型；未知值返回错误并列出可用角色，不静默回退。`task` 工具 description 在会话装配时动态注入 `Available agent types:` 目录，配置了 `maxConcurrent` 时追加并发提示行。
 - **内置角色**：`explorer`（只读白名单：`read` / `ls` / `grep` / `find` / `lsp` / `web_search` / `webfetch` / `time`）与 `worker`（工具继承父激活集）；保留名 `review` / `explorer` / `worker` 禁止用户角色占用（`review` 归属协作模式 Review Mode，不存在 `review` 子代理角色）。
 - **能力只收缩不提权**：子代理工具集以父激活集（已剔除 `task`）为基础——`role.tools` 非空 → 与白名单求交集，缺省 → 继承父集；权限门控复用父 `permissionManager.gate`（协作模式按 `agent.subagents.mode` 绑定，缺省 `build`，不继承主 Agent 模式），沙箱策略原样继承，角色无法提升。嵌套 `task` 仅在子代理深度 `< maxDepth` 且角色白名单未排除 `task` 时注入，否则维持剔除。
 - **模型优先级**：`role.model → defaultModel → 父会话模型`；任一级解析失败 `console.warn` 并降级到下一级，仅新建时解析，续接沿用创建时模型。
@@ -160,7 +160,7 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 - **长程上下文续接与快照持久化**：向同一子代理多轮追问并保留内部执行状态；内部时间轴、步骤与 Token 统计通过 `SubagentData` 挂载于 `ToolResultMessage.subagent` 随事务落盘，条目携带 `roleName` 供卡片与面板标注角色。
 - **`@` 子代理提及**：输入框 `@` 面板列出内置与用户角色（`@agent:<name>`），选定后以独立 token 高亮插入；token 随用户消息原样进入模型上下文作为委派意图提示，主进程不做强制路由；Backspace 在 token 末尾整块删除。
 
-### 5.2 子代理配置 Schema（`~/.lx/config.json` → `agent.subagents`）
+### 5.2 子代理配置 Schema（`~/.lx/config/agent.json` → `agent.subagents`）
 
 ```jsonc
 {

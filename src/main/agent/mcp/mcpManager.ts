@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import {
@@ -9,11 +8,12 @@ import {
 } from "@modelcontextprotocol/sdk/types.js"
 import { MCP_TOOL_NAMESPACE, type McpServerStatusItem } from "@shared/contracts/agent"
 import { getConfigPath } from "@/paths"
+import { readRawConfig } from "@/services/settingsService/rawConfig"
 import type { AgentTool } from "../core/types"
 import { formatSize, truncateHead } from "../tools/truncate"
 import { jsonSchemaToZod } from "./jsonSchemaToZod"
 
-// MCP server 配置（config.json `agent.mcp` 节点，字段保持外部 MCP 配置兼容）。
+// MCP server 配置（config/agent.json `agent.mcp` 节点，字段保持外部 MCP 配置兼容）。
 export type McpServerConfig = {
   command: string[]
   cwd?: string
@@ -57,11 +57,11 @@ export const mcpToolName = (server: string, name: string): string =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
-// 读取 config.json 的 agent.mcp 节点；disabled / 非法条目跳过。
+// 读取 config/agent.json 的 agent.mcp 节点；disabled / 非法条目跳过。
 const readMcpServerConfig = (): Record<string, McpServerConfig> => {
   try {
-    const raw = JSON.parse(readFileSync(getConfigPath(), "utf8")) as unknown
-    if (!isRecord(raw) || !isRecord(raw.agent)) return {}
+    const raw = readRawConfig(getConfigPath())
+    if (!isRecord(raw.agent)) return {}
     const mcp = raw.agent.mcp
     if (!isRecord(mcp)) return {}
     const servers: Record<string, McpServerConfig> = {}

@@ -1,7 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { type ConfigTree, readConfigTree, writeConfigTree } from "../../helpers/configLayout"
 
 const holder = vi.hoisted(() => ({ configPath: "" }))
 
@@ -17,11 +19,10 @@ let tempDir = ""
 let warnSpy: ReturnType<typeof vi.spyOn>
 
 const writeConfig = (config: unknown): void => {
-  writeFileSync(holder.configPath, JSON.stringify(config, null, 2))
+  writeConfigTree(holder.configPath, config as ConfigTree)
 }
 
-const readConfig = (): Record<string, unknown> =>
-  JSON.parse(readFileSync(holder.configPath, "utf8")) as Record<string, unknown>
+const readConfig = (): Record<string, unknown> => readConfigTree(holder.configPath)
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "hook-settings-service-"))
@@ -138,14 +139,14 @@ describe("saveHookSettings", () => {
     writeConfig({
       agent: { hooks: { Stop: [{ hooks: [{ name: "keep", command: "echo keep" }] }] } },
     })
-    const before = readFileSync(holder.configPath, "utf8")
+    const before = readConfigTree(holder.configPath)
 
     expect(() =>
       saveHookSettings({
         Stop: [{ hooks: [{ name: "broken", command: "   " }] }],
       }),
     ).toThrow()
-    expect(readFileSync(holder.configPath, "utf8")).toBe(before)
+    expect(readConfigTree(holder.configPath)).toEqual(before)
   })
 
   it("规范 matcher 并拒绝含空段的 matcher", () => {

@@ -1,8 +1,10 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { writeConfigTree } from "../../helpers/configLayout"
 
 interface FakeClientOptions {
   onHelloOk?: () => void
@@ -70,23 +72,20 @@ const gatewayUrl = "ws://127.0.0.1:18789"
 const sessionKey = "agent:lily:main"
 
 const writeConfig = (): void => {
-  writeFileSync(
-    join(holder.appDataRoot, "config.json"),
-    JSON.stringify({
-      openclaw: {
-        instances: {
-          [instanceId]: {
-            name: "Local",
-            gatewayUrl,
-            authMode: "token",
-            token: "test-token",
-            enabled: true,
-            agents: [{ id: "lily", name: "Lily", sessionKey }],
-          },
+  writeConfigTree(join(holder.appDataRoot, "config.json"), {
+    openclaw: {
+      instances: {
+        [instanceId]: {
+          name: "Local",
+          gatewayUrl,
+          authMode: "token",
+          token: "test-token",
+          enabled: true,
+          agents: [{ id: "lily", name: "Lily", sessionKey }],
         },
       },
-    }),
-  )
+    },
+  })
 }
 
 const emitEvent = (event: unknown): void => {
