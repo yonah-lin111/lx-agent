@@ -72,6 +72,40 @@ describe("UnifiedExecManager", () => {
     })
   })
 
+  describe("waitForExit", () => {
+    it("等待超出首次 yield 的命令直至真实退出", async () => {
+      const started = await unifiedExecManager.execCommand({
+        command: "sleep 1; echo finished",
+        cwd: process.cwd(),
+        yieldTimeMs: 250,
+      })
+      expect(started.isRunning).toBe(true)
+
+      const finished = await unifiedExecManager.waitForExit(started.processId, 5000)
+
+      expect(finished?.isRunning).toBe(false)
+      expect(finished?.status).toBe("completed")
+      expect(finished?.output).toContain("finished")
+    })
+
+    it("预算用尽时返回运行中状态（由调用方决定终止）", async () => {
+      const started = await unifiedExecManager.execCommand({
+        command: "sleep 5",
+        cwd: process.cwd(),
+        yieldTimeMs: 250,
+      })
+
+      const stillRunning = await unifiedExecManager.waitForExit(started.processId, 200)
+
+      expect(stillRunning?.isRunning).toBe(true)
+      unifiedExecManager.killProcess(started.processId)
+    })
+
+    it("条目已被回收时返回 undefined", async () => {
+      expect(await unifiedExecManager.waitForExit(99999, 100)).toBeUndefined()
+    })
+  })
+
   describe("writeStdin and interactive flow", () => {
     it("writes input to stdin of running process", async () => {
       const execResult = await unifiedExecManager.execCommand({
