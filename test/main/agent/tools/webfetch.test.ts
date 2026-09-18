@@ -172,6 +172,42 @@ describe("webfetch 工具", () => {
     await expect(tool.execute("t1", { url: "https://example.com" })).rejects.toThrow(/5MB/)
   })
 
+  it("流式响应超限时提前中断读取并取消 body（不整体缓冲）", async () => {
+    let pulls = 0
+    let cancelled = false
+    const megabyte = new Uint8Array(1024 * 1024)
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls += 1
+        if (pulls > 20) {
+          controller.close()
+          return
+        }
+        controller.enqueue(megabyte)
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+    const response = {
+      ok: true,
+      status: 200,
+      headers: { get: (name: string) => (name === "content-type" ? "text/plain" : null) },
+      body: stream,
+    } as unknown as Response
+
+    const tool = createWebFetchTool(
+      (async () => response) as typeof fetch,
+      undefined,
+      publicResolver,
+    )
+    await expect(tool.execute("t1", { url: "https://example.com" })).rejects.toThrow(/5MB/)
+
+    expect(cancelled).toBe(true)
+    // 5MB 上限附近即中断（含 stream 预取）：不得把 20MB 全拉完。
+    expect(pulls).toBeLessThan(10)
+  })
+
   it("非 2xx 状态抛错", async () => {
     const tool = createWebFetchTool(
       (async () => fakeResponse("not found", { status: 404, ok: false })) as typeof fetch,
@@ -313,6 +349,35 @@ describe("webfetch 重定向校验", () => {
 })
 
 describe("webfetch DNS 校验", () => {
+  it("请求连接使用已校验 DNS 结果（pinned lookup），杜绝校验与连接之间的 rebinding", async () => {
+    let pinned: { address: string; family: number } | null = null
+    const capturingFetch = (async (
+      _input: string | URL | Request,
+      init?: RequestInit & {
+        lookup?: (
+          hostname: string,
+          options: unknown,
+          callback: (error: Error | null, address?: string, family?: number) => void,
+        ) => void
+      },
+    ) => {
+      const lookup = init?.lookup
+      if (!lookup) throw new Error("missing pinned lookup")
+      pinned = await new Promise((resolve, reject) => {
+        lookup("example.com", {}, (error, address, family) => {
+          if (error) reject(error)
+          else resolve({ address: address ?? "", family: family ?? 0 })
+        })
+      })
+      return fakeResponse("ok")
+    }) as typeof fetch
+
+    const tool = createWebFetchTool(capturingFetch, undefined, publicResolver)
+    await tool.execute("t1", { url: "https://example.com/" })
+
+    expect(pinned).toEqual({ address: "93.184.216.34", family: 4 })
+  })
+
   it("初始 host DNS 解析到私网（rebinding）被拦，不发起请求", async () => {
     let fetchCalls = 0
     const tool = createWebFetchTool(

@@ -1,4 +1,7 @@
 import { lookup } from "node:dns/promises"
+import { request as httpRequest } from "node:http"
+import { request as httpsRequest } from "node:https"
+import { Readable } from "node:stream"
 import { DomUtils, parseDocument } from "htmlparser2"
 import TurndownService from "turndown"
 import { z } from "zod"
@@ -34,8 +37,15 @@ const webfetchInputSchema = z.object({
 })
 
 type WebFetchFormat = "text" | "markdown" | "html"
-// 可注入的 Fetch 实现（便于测试）。
-type Fetcher = typeof fetch
+// 钉定连接使用的 DNS 解析回调（node:http(s).request 的 lookup 选项）。
+type PinnedLookup = (
+  hostname: string,
+  options: unknown,
+  callback: (error: Error | null, address?: string, family?: number) => void,
+) => void
+// 可注入的 Fetch 实现（便于测试）；lookup 用于把连接钉定到已校验的地址。
+type FetchInit = RequestInit & { lookup?: PinnedLookup }
+type Fetcher = (input: string, init?: FetchInit) => Promise<Response>
 // DNS 解析结果（仅需地址与协议族）。
 interface ResolvedAddress {
   address: string
@@ -43,6 +53,42 @@ interface ResolvedAddress {
 }
 // 可注入的 DNS 解析器（默认 dns.lookup；测试注入以避免真实 DNS）。
 export type HostResolver = (hostname: string) => Promise<ResolvedAddress[]>
+// 将已校验地址钉定为连接目标：后续不再二次解析，避免校验与连接之间的 DNS rebinding。
+const buildPinnedLookup = (addresses: ResolvedAddress[] | undefined): PinnedLookup | undefined => {
+  const pinned = addresses?.[0]
+  if (!pinned) return undefined
+  return (_hostname, _options, callback) => callback(null, pinned.address, pinned.family)
+}
+
+// 默认 Fetch 实现：node:http(s).request + 钉定 lookup。相比全局 fetch 可以阻止
+// 校验后再解析一次（rebinding），同时天然支持流式限流。
+const nodeHttpFetcher: Fetcher = async (input, init) => {
+  const url = new URL(input)
+  const transport = url.protocol === "https:" ? httpsRequest : httpRequest
+  return await new Promise<Response>((resolve, reject) => {
+    const request = transport(
+      url,
+      {
+        method: init?.method ?? "GET",
+        headers: init?.headers as Record<string, string> | undefined,
+        signal: init?.signal ?? undefined,
+        lookup: init?.lookup as never,
+      },
+      (response) => {
+        const body = Readable.toWeb(response) as unknown as ReadableStream<Uint8Array>
+        resolve(
+          new Response(body, {
+            status: response.statusCode ?? 502,
+            statusText: response.statusMessage ?? "",
+            headers: response.headers as Record<string, string>,
+          }),
+        )
+      },
+    )
+    request.on("error", reject)
+    request.end()
+  })
+}
 
 // webfetch 工具结果 details（UI/审计，不进模型上下文）。
 interface WebFetchDetails {
@@ -163,17 +209,56 @@ const isPrivateHost = (hostname: string): boolean => {
   return false
 }
 
-// 由 ArrayBuffer 按 content-type charset 解码为文本（失败回退 utf-8）。
-const decodeBody = (buffer: ArrayBuffer, contentType: string | null): string => {
+// 由字节流按 content-type charset 解码为文本（失败回退 utf-8）。
+const decodeBody = (bytes: Uint8Array, contentType: string | null): string => {
   const charset = /charset=([^;]+)/i
     .exec(contentType ?? "")?.[1]
     ?.trim()
     .replace(/^["']|["']$/g, "")
   try {
-    return new TextDecoder(charset || "utf-8").decode(buffer)
+    return new TextDecoder(charset || "utf-8").decode(bytes)
   } catch {
-    return new TextDecoder("utf-8").decode(buffer)
+    return new TextDecoder("utf-8").decode(bytes)
   }
+}
+
+// 读取响应体，超过上限立即中断读取（不整体缓冲）；无流式 body 的桩实现回退 arrayBuffer。
+const readBodyWithLimit = async (response: Response, maxBytes: number): Promise<Uint8Array> => {
+  const limitError = (): Error =>
+    new Error(`WebFetch response exceeds ${maxBytes / (1024 * 1024)}MB limit.`)
+  const body = response.body
+  if (!body) {
+    const buffer = await response.arrayBuffer()
+    if (buffer.byteLength > maxBytes) throw limitError()
+    return new Uint8Array(buffer)
+  }
+
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      total += value.byteLength
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {})
+        throw limitError()
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  const merged = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return merged
 }
 
 // HTML → markdown（turndown）。
@@ -213,21 +298,25 @@ const createRequestController = (
 // 默认 DNS 解析器：返回 host 的全部 A/AAAA 记录。
 const defaultHostResolver: HostResolver = (hostname) => lookup(hostname, { all: true })
 
-// DNS 解析 host 并校验所有地址均为公网（防 DNS rebinding 到私网/元数据地址）。
-const assertPublicResolvedHost = async (url: URL, resolveHost: HostResolver): Promise<void> => {
+// DNS 解析 host 并校验所有地址均为公网；返回已校验地址用于连接钉定（防 DNS rebinding）。
+const resolvePublicHost = async (
+  url: URL,
+  resolveHost: HostResolver,
+): Promise<ResolvedAddress[] | undefined> => {
   const hostname = url.hostname.replace(/^\[|\]$/g, "")
   let addresses: ResolvedAddress[]
   try {
     addresses = await resolveHost(hostname)
   } catch {
-    return // 解析失败交由 fetch 抛真实网络错误，保持错误语义。
+    return undefined // 解析失败交由底层请求抛真实网络错误，保持错误语义。
   }
   if (addresses.some((entry) => isPrivateHost(entry.address))) {
     throw new Error("WebFetch blocked: Private/internal network addresses are not allowed.")
   }
+  return addresses
 }
 
-// 手动跟随重定向：逐跳校验 Location（scheme/私网/DNS），限制跳数，所有跳复用同一 signal。
+// 手动跟随重定向：逐跳校验 Location（scheme/私网/DNS）并把连接钉定到已校验地址，限制跳数。
 const fetchFollowingRedirects = async (
   fetcher: Fetcher,
   initial: URL,
@@ -236,8 +325,12 @@ const fetchFollowingRedirects = async (
 ): Promise<Response> => {
   let current = initial
   for (let followCount = 0; ; followCount += 1) {
-    await assertPublicResolvedHost(current, resolveHost)
-    const response = await fetcher(current.toString(), { signal, redirect: "manual" })
+    const addresses = await resolvePublicHost(current, resolveHost)
+    const response = await fetcher(current.toString(), {
+      signal,
+      redirect: "manual",
+      lookup: buildPinnedLookup(addresses),
+    })
     const location = REDIRECT_STATUS_CODES.has(response.status)
       ? response.headers.get("location")
       : null
@@ -256,7 +349,7 @@ const fetchFollowingRedirects = async (
  * 重定向手动逐跳校验（scheme/私网/DNS），避免 302 绕过 SSRF 防护。
  */
 export const createWebFetchTool = (
-  fetcher: Fetcher = fetch,
+  fetcher: Fetcher = nodeHttpFetcher,
   sessionDeps?: SessionDeps,
   resolveHost: HostResolver = defaultHostResolver,
 ): AgentTool<typeof webfetchInputSchema, WebFetchDetails> => ({
@@ -282,10 +375,7 @@ export const createWebFetchTool = (
       if (!response.ok) {
         throw new Error(`WebFetch request failed (${response.status}).`)
       }
-      const buffer = await response.arrayBuffer()
-      if (buffer.byteLength > WEBFETCH_MAX_BYTES) {
-        throw new Error(`WebFetch response exceeds ${WEBFETCH_MAX_BYTES / (1024 * 1024)}MB limit.`)
-      }
+      const buffer = await readBodyWithLimit(response, WEBFETCH_MAX_BYTES)
       const body = decodeBody(buffer, contentType)
       const converted = convertBody(body, contentType, format)
       const truncated = truncateHead(converted, {

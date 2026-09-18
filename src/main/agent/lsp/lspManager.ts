@@ -149,6 +149,8 @@ export class LspManager {
   private readonly sessions = new Map<string, Map<string, LspClient>>()
   // 会话内 in-flight 初始化 client（会话初始化窗口被关闭时须一并回收）。
   private readonly pendingInits = new Map<string, Set<LspClient>>()
+  // 并发首次 getClient 去重：`${sessionId}:${language}` → 进行中的初始化 Promise。
+  private readonly initsInFlight = new Map<string, Promise<LspClientResult>>()
   private readonly clientFactory: LspClientFactory
   private readonly installer: PackageInstaller
   // 并发安装去重：package → 进行中的安装 Promise。
@@ -211,8 +213,20 @@ export class LspManager {
       client = undefined
     }
     if (!client) {
-      const root = findWorkspaceRoot(filePath, spec.rootMarkers, cwd)
-      const result = await this.initClient(spec, root, sessionId)
+      // 并发首次初始化去重：同一会话同一语言共享同一个 in-flight Promise，
+      // 否则两个调用各自 spawn 一个 server，落败的 client 不在任何 map 中、永不回收。
+      const flightKey = `${sessionId}:${language}`
+      let flight = this.initsInFlight.get(flightKey)
+      if (!flight) {
+        const root = findWorkspaceRoot(filePath, spec.rootMarkers, cwd)
+        flight = this.initClient(spec, root, sessionId).finally(() => {
+          if (this.initsInFlight.get(flightKey) === flight) {
+            this.initsInFlight.delete(flightKey)
+          }
+        })
+        this.initsInFlight.set(flightKey, flight)
+      }
+      const result = await flight
       if ("error" in result) return result
       // 初始化窗口内会话被清除/替换：关闭新 client，避免写入已脱离 sessions 的 Map。
       if (this.sessions.get(sessionId) !== languageClients) {
@@ -347,6 +361,11 @@ export class LspManager {
       for (const client of pending) {
         void client.shutdown()
       }
+    }
+    // 丢弃该会话的 in-flight 记录：后续调用重新初始化，不复用已被关闭的 client。
+    const prefix = `${sessionId}:`
+    for (const key of [...this.initsInFlight.keys()]) {
+      if (key.startsWith(prefix)) this.initsInFlight.delete(key)
     }
   }
 
