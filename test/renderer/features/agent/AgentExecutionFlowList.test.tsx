@@ -647,7 +647,7 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getAllByText("正在思考解决方案...").length).toBeGreaterThanOrEqual(1)
   })
 
-  it("流式输出期间中间步骤默认折叠且支持中途手动点击展开，输出完成后自动展开最后一个步骤", () => {
+  it("流式输出期间 AI 回复默认展开、思考中间步骤默认折叠，输出完成后均保持展开", () => {
     const streamingMessages: ChatMessage[] = [
       {
         id: "u1",
@@ -670,9 +670,10 @@ describe("AgentExecutionFlowList", () => {
       <AgentExecutionFlowList messages={streamingMessages} isStreaming={true} />,
     )
 
-    // 流式状态下默认折叠
+    // AI 回复 item 默认展开：流式标题仍为省略号，正文已可见
+    expect(screen.getByText("回复中详细内容...")).not.toBeNull()
+    // 思考作为中间步骤默认折叠：正文不可见
     expect(screen.queryByText("思考中详细过程...")).toBeNull()
-    expect(screen.queryByText("回复中详细内容...")).toBeNull()
 
     // 中途手动点击思考步骤展开
     const thinkingHeader = screen.getAllByText("...")[0]
@@ -692,7 +693,7 @@ describe("AgentExecutionFlowList", () => {
 
     rerender(<AgentExecutionFlowList messages={completedMessages} isStreaming={false} />)
 
-    // 完成后自动展开最后一个步骤（assistant 回复详情出现在标题和展开体中）
+    // 完成后 AI 回复保持展开（标题和展开体均包含）
     expect(screen.getAllByText("回复中详细内容...").length).toBeGreaterThanOrEqual(2)
     // 手动展开的思考步骤依然保持展开（标题和展开体均包含）
     expect(screen.getAllByText("思考中详细过程...").length).toBeGreaterThanOrEqual(2)
@@ -891,13 +892,62 @@ describe("AgentExecutionFlowList", () => {
     // 用户步骤默认展开
     expect(screen.getByText("执行终端命令")).not.toBeNull()
 
-    // 助手文本作为中间步骤默认折叠（仅标题出现 1 次）
-    expect(screen.getAllByText("好的，即将修改代码：").length).toBe(1)
+    // 助手文本作为 AI item 默认展开（标题与正文均出现）
+    expect(screen.getAllByText("好的，即将修改代码：").length).toBeGreaterThanOrEqual(2)
 
     // 最后一个步骤为写操作 write 步骤，turn 结束后应默认展开其执行结果详情
     expect(screen.getByText("main.ts")).not.toBeNull()
     expect(screen.getByText("Execution Result")).not.toBeNull()
     expect(screen.getByText("saved successfully")).not.toBeNull()
+  })
+
+  it("AI item（assistant 回复）即使不是 turn 收尾步骤也默认展开，且可手动折叠", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "修改文件" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          { kind: "text", text: "中间助手回复内容" },
+          {
+            kind: "toolCall",
+            toolCallId: "c-write",
+            toolName: "write",
+            args: { filePath: "src/main.ts" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "c-write",
+            toolName: "write",
+            text: "saved",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} />)
+
+    // 助手文本非 turn 收尾步骤（后面还有 write 工具步骤），但作为 AI item 默认展开
+    expect(screen.getAllByText("中间助手回复内容").length).toBeGreaterThanOrEqual(2)
+
+    // 点击标题可手动折叠，仅剩标题一处
+    fireEvent.click(screen.getAllByText("中间助手回复内容")[0]!)
+    expect(screen.getAllByText("中间助手回复内容").length).toBe(1)
   })
 
   it("用户和 AI item 展开后具有符合对应 item tag 颜色的背景样式与 class 标识", () => {
