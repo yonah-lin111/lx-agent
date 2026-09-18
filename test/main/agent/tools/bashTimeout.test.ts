@@ -23,14 +23,14 @@ const runningResult = (processId: number, output: string) => ({
   omittedBytes: 0,
 })
 
-const completedResult = (processId: number, output: string) => ({
+const completedResult = (processId: number, output: string, omittedBytes = 0) => ({
   processId,
   output,
   exitCode: 0,
   isRunning: false,
   status: "completed" as const,
-  totalBytes: output.length,
-  omittedBytes: 0,
+  totalBytes: output.length + omittedBytes,
+  omittedBytes,
 })
 
 const textOf = (result: AgentToolResult): string => {
@@ -82,5 +82,20 @@ describe("bash 超时等待预算", () => {
 
     expect(mocks.killProcess).not.toHaveBeenCalled()
     expect(textOf(result)).toContain("partial")
+  })
+
+  it("上游丢弃中段时 spill 提示不得宣称完整保存", async () => {
+    mocks.execCommand.mockReset()
+    mocks.waitForExit.mockReset()
+    mocks.killProcess.mockReset()
+    const lossyOutput = `${"head line\n".repeat(8000)}... 12345 bytes omitted ...\n${"tail line\n".repeat(8000)}`
+    mocks.execCommand.mockResolvedValue(completedResult(10, lossyOutput, 12345))
+    const spillTool = createBashTool(process.cwd(), { getSessionId: () => "sess-h8" })
+
+    const result = await spillTool.execute("call-4", { command: "noisy", timeout: 120 })
+    const text = textOf(result)
+
+    expect(text).not.toContain("Full output saved")
+    expect(text).toContain("not recoverable")
   })
 })

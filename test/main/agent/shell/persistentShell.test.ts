@@ -120,7 +120,51 @@ describe("PersistentShellManager", () => {
     abort()
     await expect(second).rejects.toThrow("命令已中止")
     expect(remove).toHaveBeenCalledTimes(2)
-    expect(writes).toHaveLength(2)
+    // cmd1 命令 + 超时中断、cmd2 命令 + 中止中断，共 4 次写入。
+    expect(writes).toHaveLength(4)
+    manager.disposeAll()
+  })
+
+  it("超时时中断前台命令（写 Ctrl+C），避免会话被旧命令占用", async () => {
+    const manager = new PersistentShellManager()
+    const { session, writes } = makeFakeSession()
+
+    await expect(manager.executeCommand(session, "cat", 20)).rejects.toThrow("超时")
+
+    expect(writes).toContain("\x03")
+    expect(session.busy).toBe(false)
+    manager.disposeAll()
+  })
+
+  it("abort 时中断前台命令（写 Ctrl+C）", async () => {
+    const manager = new PersistentShellManager()
+    const { session, writes } = makeFakeSession()
+    const { signal, abort } = makeFakeSignal()
+
+    const pending = manager.executeCommand(session, "cat", 5000, signal)
+    abort()
+
+    await expect(pending).rejects.toThrow("命令已中止")
+    expect(writes).toContain("\x03")
+    manager.disposeAll()
+  })
+
+  it("超长输出有上限：截断头部并明确提示，不无限占用内存", async () => {
+    const manager = new PersistentShellManager()
+    const { session, writes, emit } = makeFakeSession()
+
+    const pending = manager.executeCommand(session, "yes", 5000)
+    const marker = /__LX_AGENT_END_(.+?)__:/.exec(writes[0] ?? "")?.[1]
+    expect(marker).toBeDefined()
+
+    const chunk = "a".repeat(1024 * 1024)
+    for (let index = 0; index < 8; index++) emit(chunk)
+    emit(`\n__LX_AGENT_END_${marker}__:0\n`)
+
+    const result = await pending
+    expect(result.exitCode).toBe(0)
+    expect(result.output.length).toBeLessThan(6 * 1024 * 1024)
+    expect(result.output).toContain("omitted")
     manager.disposeAll()
   })
 

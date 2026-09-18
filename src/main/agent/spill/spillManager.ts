@@ -77,10 +77,15 @@ export class SpillManager {
     spillFilePath: string,
     truncation: TruncationResult,
     customActionHint?: string,
+    omittedBytes = 0,
   ): string {
     const actionHint =
       customActionHint ?? "Use 'read' tool with offset/limit to inspect specific sections."
-    return `\n\n[Output truncated: Showing ${truncation.outputLines} of ${truncation.totalLines} lines (${formatSize(truncation.outputBytes)} / ${formatSize(truncation.totalBytes)}). Full output saved to: ${spillFilePath}. ${actionHint}]`
+    const savedNotice =
+      omittedBytes > 0
+        ? `Truncated preview saved to: ${spillFilePath}. ${omittedBytes} bytes were dropped upstream (middle omitted) and are not recoverable.`
+        : `Full output saved to: ${spillFilePath}.`
+    return `\n\n[Output truncated: Showing ${truncation.outputLines} of ${truncation.totalLines} lines (${formatSize(truncation.outputBytes)} / ${formatSize(truncation.totalBytes)}). ${savedNotice} ${actionHint}]`
   }
 
   handleTruncation(
@@ -90,16 +95,25 @@ export class SpillManager {
       sessionId?: string
       toolCallId?: string
       customActionHint?: string
+      // 上游（如统一执行器的 HeadTailBuffer）已丢弃的中间字节数：用于避免"完整保存"的虚假提示。
+      omittedBytes?: number
     },
   ): SpillHandleResult {
     if (!truncation.truncated) {
       return { text: rawContent }
     }
 
+    const omittedBytes = options?.omittedBytes ?? 0
+
     if (options?.sessionId && options?.toolCallId) {
       try {
         const filePath = this.saveSpillFile(options.sessionId, options.toolCallId, rawContent)
-        const notice = this.formatSpillNotice(filePath, truncation, options.customActionHint)
+        const notice = this.formatSpillNotice(
+          filePath,
+          truncation,
+          options.customActionHint,
+          omittedBytes,
+        )
         return {
           text: `${truncation.content}${notice}`,
           spillFilePath: filePath,
@@ -109,7 +123,11 @@ export class SpillManager {
       }
     }
 
-    const fallbackNotice = `\n\n[Output truncated: Showing ${truncation.outputLines} of ${truncation.totalLines} lines (${formatSize(truncation.outputBytes)} / ${formatSize(truncation.totalBytes)}).]`
+    const omissionNote =
+      omittedBytes > 0
+        ? ` ${omittedBytes} bytes were dropped upstream (middle omitted) and are not recoverable.`
+        : ""
+    const fallbackNotice = `\n\n[Output truncated: Showing ${truncation.outputLines} of ${truncation.totalLines} lines (${formatSize(truncation.outputBytes)} / ${formatSize(truncation.totalBytes)}).${omissionNote}]`
     return {
       text: `${truncation.content}${fallbackNotice}`,
     }

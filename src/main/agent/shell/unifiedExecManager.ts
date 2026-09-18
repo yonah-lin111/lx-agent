@@ -5,6 +5,8 @@ import { DEFAULT_UNIFIED_EXEC_OUTPUT_MAX_BYTES, HeadTailBuffer } from "./headTai
 export const MIN_YIELD_TIME_MS = 250
 export const MAX_YIELD_TIME_MS = 30_000
 export const DEFAULT_YIELD_TIME_MS = 10_000
+// 已结束条目的保留时长：留出调用方读取最终输出的窗口，之后回收 ChildProcess 与缓冲。
+export const COMPLETED_ENTRY_TTL_MS = 5 * 60 * 1000
 
 export function clampYieldTime(ms?: number): number {
   if (ms === undefined || !Number.isFinite(ms)) {
@@ -74,6 +76,8 @@ export class UnifiedExecManager {
    * Execute a command with unified buffering, yield timeout, and process tracking.
    */
   public async execCommand(options: UnifiedExecCommandOptions): Promise<UnifiedExecResult> {
+    // 每次执行前顺带回收过期条目，避免正常完成的 ChildProcess/缓冲随会话无限累积。
+    this.pruneCompleted()
     const processId = this.allocateProcessId()
     const yieldTimeMs = clampYieldTime(options.yieldTimeMs)
     const shellConfig = getShellConfig()
@@ -230,6 +234,22 @@ export class UnifiedExecManager {
       omittedBytes: entry.buffer.omittedBytes(),
       aborted: options.signal?.aborted,
     }
+  }
+
+  /**
+   * 回收超过保留期的已完成/失败条目；运行中条目不动。返回回收数量。
+   */
+  public pruneCompleted(maxAgeMs: number = COMPLETED_ENTRY_TTL_MS): number {
+    const now = Date.now()
+    let pruned = 0
+    for (const [processId, entry] of this.processes) {
+      if (entry.status === "running") continue
+      const finishedAt = entry.finishedAt ?? entry.startedAt
+      if (now - finishedAt < maxAgeMs) continue
+      this.processes.delete(processId)
+      pruned += 1
+    }
+    return pruned
   }
 
   /**

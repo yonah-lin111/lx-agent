@@ -17,6 +17,12 @@ export interface PersistentSession {
 /** 默认空闲回收时长：10 分钟 */
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000
 
+// 单条命令保留的输出上限（字符）：超出时丢弃头部并提示，避免无界累积撑爆主进程内存。
+export const PERSISTENT_SHELL_MAX_OUTPUT_CHARS = 4 * 1024 * 1024
+
+// 中断前台命令的终端控制字符（Ctrl+C）。
+const INTERRUPT_SEQUENCE = "\x03"
+
 // 退出码 marker 指令：Unix 用 `$?`；Windows cmd.exe 用 `%errorlevel%`（无引号避免回显引号破坏解析）。
 // PowerShell 不支持该 marker 协议（$? 为布尔、$LASTEXITCODE 不稳定），在会话创建时明确拒绝。
 export const buildEndMarkerCommand = (
@@ -127,15 +133,27 @@ export class PersistentShellManager {
     const marker = `MK_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
     let rawBuffer = ""
+    let truncatedChars = 0
     let resolved = false
 
     return new Promise((resolve, reject) => {
       let timer: NodeJS.Timeout | null = null
 
+      // 终止前台命令：超时/中止后不发送 Ctrl+C 会让旧命令持续占用前台，
+      // 下一条命令被 shell 排队，其输出还会污染后续命令的解析。
+      const interruptForeground = (): void => {
+        try {
+          session.ptyProcess.write(INTERRUPT_SEQUENCE)
+        } catch {
+          // pty 已退出等场景：忽略。
+        }
+      }
+
       // 中止回调：一次性监听，cleanup 中显式移除避免同一 signal 复用时累积。
       const onAbort = () => {
         if (resolved) return
         resolved = true
+        interruptForeground()
         cleanup()
         reject(new Error("命令已中止。"))
       }
@@ -150,6 +168,12 @@ export class PersistentShellManager {
 
       const listener = session.ptyProcess.onData((data) => {
         rawBuffer += data
+        // 上限保护：保留尾部（end marker 在命令末尾），丢弃头部并记录提示。
+        if (rawBuffer.length > PERSISTENT_SHELL_MAX_OUTPUT_CHARS) {
+          const excess = rawBuffer.length - PERSISTENT_SHELL_MAX_OUTPUT_CHARS
+          rawBuffer = rawBuffer.slice(excess)
+          truncatedChars += excess
+        }
         const endLinePattern = new RegExp(`(?:\\r?\\n|^)__LX_AGENT_END_${marker}__:(-?\\d+)\\r?\\n`)
         const match = endLinePattern.exec(rawBuffer)
         if (match) {
@@ -173,11 +197,15 @@ export class PersistentShellManager {
           const cleanOutput = filtered
             .map((l) => l.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "").trim())
             .join("\n")
+          const outputWithNotice =
+            truncatedChars > 0
+              ? `[output truncated: earlier ${truncatedChars} characters omitted]\n${cleanOutput}`
+              : cleanOutput
 
           resolved = true
           cleanup()
           resolve({
-            output: cleanOutput.trim(),
+            output: outputWithNotice.trim(),
             exitCode,
           })
         }
@@ -187,6 +215,7 @@ export class PersistentShellManager {
         timer = setTimeout(() => {
           if (!resolved) {
             resolved = true
+            interruptForeground()
             cleanup()
             reject(new Error(`命令执行超时（${Math.round(timeoutMs / 1000)}s）`))
           }
