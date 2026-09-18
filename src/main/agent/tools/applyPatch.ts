@@ -1,4 +1,4 @@
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import type { AgentDiff } from "@shared/contracts/agent"
 import type { Diagnostic } from "vscode-languageserver-types"
@@ -26,6 +26,35 @@ export interface ApplyPatchToolDetails {
   diffs?: AgentDiff[]
   diagnostics?: Diagnostic[]
   error?: string
+}
+
+// 单个文件的落盘计划（预检阶段生成，旧内容用于回滚）。
+type PlannedWrite =
+  | {
+      type: "write"
+      absolutePath: string
+      relativePath: string
+      content: string
+      oldContent: string
+    }
+  | { type: "delete"; absolutePath: string; relativePath: string; oldContent: string }
+
+// 回滚已应用的文件变更（best-effort；逆序恢复旧内容，新增文件删除）。
+const rollbackAppliedPlans = async (applied: PlannedWrite[]): Promise<void> => {
+  for (const plan of [...applied].reverse()) {
+    try {
+      await withFileMutationQueue(plan.absolutePath, async () => {
+        if (plan.type === "write" && plan.oldContent === "") {
+          await rm(plan.absolutePath, { force: true })
+          return
+        }
+        await mkdir(dirname(plan.absolutePath), { recursive: true })
+        await writeFile(plan.absolutePath, plan.oldContent, "utf-8")
+      })
+    } catch (rollbackError) {
+      console.warn(`[apply_patch] rollback failed for ${plan.absolutePath}:`, rollbackError)
+    }
+  }
 }
 
 /**
@@ -79,16 +108,6 @@ export const createApplyPatchTool = (
     }
 
     // 2. 预检与内存计算阶段（原子校验：任一失败则中断返回）
-    type PlannedWrite =
-      | {
-          type: "write"
-          absolutePath: string
-          relativePath: string
-          content: string
-          oldContent: string
-        }
-      | { type: "delete"; absolutePath: string; relativePath: string; oldContent: string }
-
     const plans: PlannedWrite[] = []
 
     try {
@@ -162,32 +181,46 @@ export const createApplyPatchTool = (
       }
     }
 
-    // 3. 落盘执行阶段（全部文件锁定与串行写）
+    // 3. 落盘执行阶段：全部文件锁定与串行写；任一失败则回滚已应用变更后返回错误。
     const diffs: AgentDiff[] = []
     const allDiagnostics: Diagnostic[] = []
+    const applied: PlannedWrite[] = []
 
-    for (const plan of plans) {
-      await withFileMutationQueue(plan.absolutePath, async () => {
-        if (plan.type === "delete") {
-          await unlink(plan.absolutePath).catch(() => {})
-          diffs.push(generateStructuredDiff(plan.oldContent, "", plan.relativePath))
-        } else {
-          await mkdir(dirname(plan.absolutePath), { recursive: true })
-          await writeFile(plan.absolutePath, plan.content, "utf-8")
-          diffs.push(generateStructuredDiff(plan.oldContent, plan.content, plan.relativePath))
-
-          // LSP 诊断
-          const { errors } = await checkLspDiagnosticsFeedback(
-            plan.relativePath,
-            plan.absolutePath,
-            cwd,
-            lspDeps,
-          )
-          if (errors.length > 0) {
-            allDiagnostics.push(...errors)
-          }
+    try {
+      for (const plan of plans) {
+        if (signal?.aborted) {
+          throw new Error("Operation aborted.")
         }
-      })
+        await withFileMutationQueue(plan.absolutePath, async () => {
+          if (plan.type === "delete") {
+            await unlink(plan.absolutePath)
+            diffs.push(generateStructuredDiff(plan.oldContent, "", plan.relativePath))
+          } else {
+            await mkdir(dirname(plan.absolutePath), { recursive: true })
+            await writeFile(plan.absolutePath, plan.content, "utf-8")
+            diffs.push(generateStructuredDiff(plan.oldContent, plan.content, plan.relativePath))
+
+            // LSP 诊断
+            const { errors } = await checkLspDiagnosticsFeedback(
+              plan.relativePath,
+              plan.absolutePath,
+              cwd,
+              lspDeps,
+            )
+            if (errors.length > 0) {
+              allDiagnostics.push(...errors)
+            }
+          }
+        })
+        applied.push(plan)
+      }
+    } catch (err) {
+      await rollbackAppliedPlans(applied)
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      return {
+        content: [{ type: "text", text: `Patch apply failed, changes rolled back: ${errorMsg}` }],
+        details: { error: errorMsg },
+      }
     }
 
     const summary = `Successfully applied patch to ${plans.length} files:\n${plans

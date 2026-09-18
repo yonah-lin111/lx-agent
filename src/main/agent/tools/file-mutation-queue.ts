@@ -1,5 +1,5 @@
 import { realpath } from "node:fs/promises"
-import { resolve } from "node:path"
+import { basename, dirname, resolve } from "node:path"
 
 // 按文件分桶的写操作串行队列：同 key 的写操作链式排队，不同文件仍并行。
 const fileMutationQueues = new Map<string, Promise<void>>()
@@ -14,16 +14,23 @@ const isMissingPathError = (error: unknown): boolean => {
   )
 }
 
-// 计算写队列 key：优先 realpath 规范化，路径不存在时回退为 resolve 结果。
+// 计算写队列 key：优先 realpath 规范化，路径不存在时沿祖先向上找到最近的真实目录再拼回尾部。
+// 若仅对不存在路径回退 resolve，软链目录（如 /tmp → /private/tmp）下的新文件会与真实路径
+// 得到不同 key，导致同一文件的并发写不被串行化。
 const getMutationQueueKey = async (filePath: string): Promise<string> => {
-  const resolvedPath = resolve(filePath)
-  try {
-    return await realpath(resolvedPath)
-  } catch (error) {
-    if (isMissingPathError(error)) {
-      return resolvedPath
+  let current = resolve(filePath)
+  const missingTail: string[] = []
+  while (true) {
+    try {
+      const real = await realpath(current)
+      return missingTail.length > 0 ? resolve(real, ...missingTail.reverse()) : real
+    } catch (error) {
+      if (!isMissingPathError(error)) throw error
+      const parent = dirname(current)
+      if (parent === current) return resolve(filePath)
+      missingTail.push(basename(current))
+      current = parent
     }
-    throw error
   }
 }
 

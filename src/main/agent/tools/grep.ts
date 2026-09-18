@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 import { readFile, stat } from "node:fs/promises"
 import { basename, join, relative, sep } from "node:path"
 import { createInterface } from "node:readline"
+import { Worker } from "node:worker_threads"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
 import { spillManager } from "../spill/spillManager"
@@ -157,6 +158,17 @@ const grepWithRg = async (
   })
   signal?.removeEventListener("abort", onAbort)
 
+  // 中止必须作为中止语义返回：否则会落入 Node 重扫并因 signal.aborted 得到"No matches found"。
+  if (signal?.aborted) {
+    return {
+      content: [{ type: "text", text: "Search aborted." }],
+      details: { error: "aborted" },
+    }
+  }
+  // 达到匹配上限主动 kill（exitCode null）：直接返回已收集结果，不再全量 Node 重扫。
+  if (matchLimitReached) {
+    return formatGrepOutput(matches, args, searchPath, isDirectory, effectiveLimit, true, options)
+  }
   if (spawnFailed || exitCode === null) {
     return undefined
   }
@@ -237,7 +249,72 @@ const formatGrepOutput = async (
   }
 }
 
-// 纯 Node 降级：递归扫描 + 逐行正则匹配。
+// 纯 Node 降级扫描在 worker 线程执行：灾难性回溯正则不会锁死主进程，超时可 terminate。
+const DEFAULT_NODE_SCAN_TIMEOUT_MS = 15_000
+const NODE_SCAN_WORKER_SOURCE = `
+const { parentPort, workerData } = require("node:worker_threads")
+const { readFileSync } = require("node:fs")
+const { filePaths, pattern, flags, effectiveLimit } = workerData
+try {
+  const regex = new RegExp(pattern, flags)
+  const matches = []
+  let matchLimitReached = false
+  for (const filePath of filePaths) {
+    const lines = readFileSync(filePath, "utf-8").replace(/\\r\\n/g, "\\n").replace(/\\r/g, "\\n").split("\\n")
+    for (let index = 0; index < lines.length; index++) {
+      if (!regex.test(lines[index])) continue
+      matches.push({ filePath, lineNumber: index + 1, lineText: lines[index] })
+      if (matches.length >= effectiveLimit) {
+        matchLimitReached = true
+        break
+      }
+    }
+    if (matchLimitReached) break
+  }
+  parentPort.postMessage({ matches, matchLimitReached })
+} catch (error) {
+  parentPort.postMessage({ error: error && error.message ? error.message : String(error) })
+}
+`
+
+interface NodeScanResult {
+  matches?: MatchEntry[]
+  matchLimitReached?: boolean
+  timedOut?: boolean
+  aborted?: boolean
+  error?: string
+}
+
+// 在 worker 线程执行 Node 降级扫描；超时/中止直接 terminate，返回明确的终止语义。
+const runNodeScanInWorker = (
+  payload: { filePaths: string[]; pattern: string; flags: string; effectiveLimit: number },
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<NodeScanResult> => {
+  return new Promise<NodeScanResult>((resolve) => {
+    const worker = new Worker(NODE_SCAN_WORKER_SOURCE, { eval: true, workerData: payload })
+    let settled = false
+    let timer: NodeJS.Timeout | undefined
+    const finish = (result: NodeScanResult): void => {
+      if (settled) return
+      settled = true
+      if (timer) clearTimeout(timer)
+      signal?.removeEventListener("abort", onAbort)
+      void worker.terminate()
+      resolve(result)
+    }
+    const onAbort = (): void => finish({ aborted: true })
+    timer = setTimeout(() => finish({ timedOut: true }), timeoutMs)
+    signal?.addEventListener("abort", onAbort, { once: true })
+    worker.once("message", (message: NodeScanResult) => finish(message))
+    worker.once("error", (error: Error) => finish({ error: error.message }))
+    worker.once("exit", (code) => {
+      if (!settled && code !== 0) finish({ error: `scan worker exited with code ${code}` })
+    })
+  })
+}
+
+// 纯 Node 降级：递归扫描 + 逐行正则匹配（worker 隔离执行）。
 const grepWithNode = async (
   args: GrepArgs,
   searchPath: string,
@@ -245,6 +322,7 @@ const grepWithNode = async (
   effectiveLimit: number,
   signal?: AbortSignal,
   options?: { sessionId?: string; toolCallId?: string },
+  scanTimeoutMs: number = DEFAULT_NODE_SCAN_TIMEOUT_MS,
 ): Promise<ReturnType<AgentTool<typeof grepSchema>["execute"]>> => {
   let filePaths: string[]
   if (isDirectory) {
@@ -261,9 +339,8 @@ const grepWithNode = async (
   let flags = ""
   if (args.ignoreCase) flags += "i"
   const pattern = args.literal ? args.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : args.pattern
-  let regex: RegExp
   try {
-    regex = new RegExp(pattern, flags)
+    new RegExp(pattern, flags)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return {
@@ -272,41 +349,56 @@ const grepWithNode = async (
     }
   }
 
-  const matches: MatchEntry[] = []
-  let matchLimitReached = false
-  for (const filePath of filePaths) {
-    if (signal?.aborted) break
-    const lines = (await readFile(filePath, "utf-8"))
-      .replace(/\r\n/g, "\n")
-      .replace(/\r/g, "\n")
-      .split("\n")
-    for (let index = 0; index < lines.length; index++) {
-      if (regex.test(lines[index])) {
-        matches.push({ filePath, lineNumber: index + 1, lineText: lines[index] })
-        if (matches.length >= effectiveLimit) {
-          matchLimitReached = true
-          break
-        }
-      }
+  const scan = await runNodeScanInWorker(
+    { filePaths, pattern, flags, effectiveLimit },
+    scanTimeoutMs,
+    signal,
+  )
+  if (scan.aborted) {
+    return {
+      content: [{ type: "text", text: "Search aborted." }],
+      details: { error: "aborted" },
     }
-    if (matchLimitReached) break
+  }
+  if (scan.timedOut) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Search timed out after ${scanTimeoutMs}ms (possible catastrophic regex backtracking). Simplify the pattern and retry.`,
+        },
+      ],
+      details: { error: "regex_timeout" },
+    }
+  }
+  if (scan.error) {
+    return {
+      content: [{ type: "text", text: `Search failed: ${scan.error}` }],
+      details: { error: scan.error },
+    }
   }
 
   return formatGrepOutput(
-    matches,
+    scan.matches ?? [],
     args,
     searchPath,
     isDirectory,
     effectiveLimit,
-    matchLimitReached,
+    scan.matchLimitReached ?? false,
     options,
   )
+}
+
+// grep 工具可调参数（测试注入更短/更长的降级扫描超时）。
+export interface GrepToolOptions {
+  nodeScanTimeoutMs?: number
 }
 
 // 创建 grep 工具：优先 rg 降级纯 Node 扫描。
 export const createGrepTool = (
   cwd: string,
   sessionDeps?: SessionDeps,
+  toolOptions: GrepToolOptions = {},
 ): AgentTool<typeof grepSchema> => ({
   name: "grep",
   label: "Search contents",
@@ -339,6 +431,14 @@ export const createGrepTool = (
     if (rgResult !== undefined) {
       return rgResult
     }
-    return grepWithNode(params, searchPath, isDirectory, effectiveLimit, signal, options)
+    return grepWithNode(
+      params,
+      searchPath,
+      isDirectory,
+      effectiveLimit,
+      signal,
+      options,
+      toolOptions.nodeScanTimeoutMs,
+    )
   },
 })
