@@ -18,6 +18,7 @@ export const usage = {
   summary: {
     requests: "请求数",
     totalTokens: "总 Tokens",
+    realTotalTokens: "真实消耗 Tokens",
     totalCost: "总成本",
     totalInput: "总输入（含缓存）",
     outputTokens: "输出 Tokens",

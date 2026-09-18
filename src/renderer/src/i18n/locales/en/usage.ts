@@ -18,6 +18,7 @@ export const usage = {
   summary: {
     requests: "Requests",
     totalTokens: "Total Tokens",
+    realTotalTokens: "Tokens Processed",
     totalCost: "Total Cost",
     totalInput: "Total Input (incl. cache)",
     outputTokens: "Output Tokens",

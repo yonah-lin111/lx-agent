@@ -35,13 +35,17 @@ const getCacheHitCard = (): HTMLElement | null =>
 describe("UsageSummaryCards", () => {
   afterEach(cleanup)
 
-  it("按统一统计口径渲染五张卡：新增输入为扣除缓存后的新鲜输入", () => {
+  it("按统一统计口径渲染六张卡：真实消耗为 totalTokens，新增输入扣除缓存且不再展示总输入明细", () => {
     render(<UsageSummaryCards summary={summary} />)
 
-    // 新增输入 = 1000 - 100 - 50 = 850，明细展示含缓存的总输入。
+    // 真实消耗 = totalTokens（1200 -> 1.2k）。
+    const realTotalCard = findStatCard(/真实消耗 Tokens|Tokens Processed/)
+    expect(realTotalCard?.textContent).toContain("1.2k")
+
+    // 新增输入 = 1000 - 100 - 50 = 850，仅保留主值，不再展示含缓存的总输入明细。
     const freshInputCard = findStatCard(/Fresh Input|新增输入/)
     expect(freshInputCard?.textContent).toContain("850")
-    expect(freshInputCard?.textContent).toContain("1.0k")
+    expect(freshInputCard?.textContent).not.toContain("1.0k")
 
     expect(findStatCard(/^Output Tokens$|^输出 Tokens$/)).toBeDefined()
     expect(findStatCard(/^Cache Write$|^缓存写入$/)).toBeDefined()
@@ -77,6 +81,9 @@ describe("UsageSummaryCards", () => {
 
   it("summary 为空时全部卡片回退零值", () => {
     render(<UsageSummaryCards summary={null} />)
+
+    const realTotalCard = findStatCard(/真实消耗 Tokens|Tokens Processed/)
+    expect(realTotalCard?.textContent).toContain("0")
 
     const freshInputCard = findStatCard(/Fresh Input|新增输入/)
     expect(freshInputCard?.textContent).toContain("0")

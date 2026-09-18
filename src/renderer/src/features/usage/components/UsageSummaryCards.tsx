@@ -7,7 +7,7 @@ export interface UsageSummaryCardsProps {
 }
 
 /**
- * 用量汇总卡：新增输入、输出、缓存写入、缓存命中与缓存命中率。
+ * 用量汇总卡：真实消耗、新增输入、输出、缓存写入、缓存命中与缓存命中率。
  */
 export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -26,9 +26,12 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
     progress?: number | null
   }[] = [
     {
+      title: t("usage.summary.realTotalTokens"),
+      value: formatCompact(summary?.totalTokens ?? 0),
+    },
+    {
       title: t("usage.tokens.freshInput"),
       value: formatCompact(freshInputTokens),
-      detail: `${t("usage.summary.totalInput")} ${formatCompact(inputTokens)}`,
     },
     {
       title: t("usage.summary.outputTokens"),
@@ -51,7 +54,7 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
   ]
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
       {cards.map((card) => (
         <div
           key={card.title}
