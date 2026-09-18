@@ -29,8 +29,10 @@ import {
   type SubagentMentionCandidate,
 } from "../../AgentInputCommandPanels"
 import {
+  filterSkillsByQuery,
   getMatchedCommands,
   getMentionQuery,
+  getMentionSkillCandidates,
   getSkillMentionQuery,
   HISTORY_PROMPT_COMMAND,
   isFuzzyMatch,
@@ -390,15 +392,7 @@ export const useAgentInputPanels = ({
     const cursor = view?.state.selection.main.head ?? value.length
     const mention = getSkillMentionQuery(value, cursor)
     if (!mention) return []
-    const q = mention.query.toLowerCase()
-    if (!q) return skills
-    return skills.filter(
-      (s) =>
-        isFuzzyMatch(q, s.name.toLowerCase()) ||
-        (s.displayName && isFuzzyMatch(q, s.displayName.toLowerCase())) ||
-        (s.shortDescription && isFuzzyMatch(q, s.shortDescription.toLowerCase())) ||
-        isFuzzyMatch(q, s.description.toLowerCase()),
-    )
+    return filterSkillsByQuery(skills, mention.query.toLowerCase())
   }, [activeMode, value, skills, editorViewRef])
   const matchedSkillsRef = useRef(matchedSkills)
   matchedSkillsRef.current = matchedSkills
@@ -526,15 +520,7 @@ export const useAgentInputPanels = ({
     const cursor = view?.state.selection.main.head ?? value.length
     const mention = getMentionQuery(value, cursor)
     if (!mention) return []
-    const q = mention.query.toLowerCase()
-    if (!q) return skills
-    return skills.filter(
-      (s) =>
-        isFuzzyMatch(q, s.name.toLowerCase()) ||
-        (s.displayName && isFuzzyMatch(q, s.displayName.toLowerCase())) ||
-        (s.shortDescription && isFuzzyMatch(q, s.shortDescription.toLowerCase())) ||
-        isFuzzyMatch(q, s.description.toLowerCase()),
-    )
+    return getMentionSkillCandidates(skills, mention.query.toLowerCase())
   }, [activeMode, value, skills, editorViewRef])
 
   const matchedMentionDesigns = useMemo<FrontDesignItem[]>(() => {

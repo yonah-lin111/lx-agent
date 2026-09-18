@@ -1,4 +1,4 @@
-import type { PromptTemplateItem } from "@shared/contracts/agent"
+import type { PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
 import type { TranslationKey } from "@/i18n"
 import type { AgentInputCommand } from "../AgentInputCommandPanels"
 
@@ -79,6 +79,25 @@ export const isFuzzyMatch = (query: string, keyword: string): boolean => {
     if (queryIndex === query.length) return true
   }
   return false
+}
+
+// 按名称、显示名、短描述与描述模糊过滤 Skill。
+export const filterSkillsByQuery = (skills: SkillItem[], query: string): SkillItem[] => {
+  if (!query) return skills
+  return skills.filter(
+    (s) =>
+      isFuzzyMatch(query, s.name.toLowerCase()) ||
+      (s.displayName && isFuzzyMatch(query, s.displayName.toLowerCase())) ||
+      (s.shortDescription && isFuzzyMatch(query, s.shortDescription.toLowerCase())) ||
+      isFuzzyMatch(query, s.description.toLowerCase()),
+  )
+}
+
+// @ 提及面板的 Skill 候选：空查询展示全部，仅 `skill` / `skill:` 前缀参与过滤。
+export const getMentionSkillCandidates = (skills: SkillItem[], query: string): SkillItem[] => {
+  if (!query) return skills
+  if (!query.startsWith("skill")) return []
+  return filterSkillsByQuery(skills, query.replace(/^skill:?/, ""))
 }
 
 export const getMatchedCommands = (

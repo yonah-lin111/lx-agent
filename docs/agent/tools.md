@@ -144,7 +144,7 @@ Skill 作为领域级指令包，遵循标准 Markdown 组织格式并具备扩�
 ### 5.2 双轨调用机制 (Dual-Track Paradigm)
 
 - **显式提及 / 零轮注入 (Zero-Round Injection)**：
-  - 用户在输入框中通过 `$` 快捷唤出面板插入 `$skill-name`（或兼容历史 `/skill:name`）。
+  - 用户在输入框中通过 `$` 快捷唤出面板插入 `$skill-name`（或兼容历史 `/skill:name`）；`@` 提及面板输入 `@skill` / `@skill:` 可检索并插入同一语法。
   - 会话调度器预解析显式 Skill 提及，在首轮交互前直接将对应 Skill 的指令正文及基准路径注入 Prompt（0-round 免工具调用往返）。
 - **自主按需读取 (Autonomous Loading)**：
   - 未被显式调用的可用 Skill 会轻量注入 `<available_skills>` 块（含 `name`、`short_description` 与说明）。

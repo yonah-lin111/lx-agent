@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { EditorView } from "@codemirror/view"
+import type { SkillItem } from "@shared/contracts/agent"
 import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import { useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -10,9 +11,11 @@ import {
   type AgentMarkdownInputRef,
 } from "@/features/agent/components/AgentInput/AgentMarkdownInput"
 import {
+  filterSkillsByQuery,
   getArgumentSelectionRange,
   getMatchedCommands,
   getMentionQuery,
+  getMentionSkillCandidates,
   getSkillMentionQuery,
   isFuzzyMatch,
 } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
@@ -91,6 +94,33 @@ describe("AgentMarkdownInput 工具函数单元测试", () => {
     expect(getSkillMentionQuery("$test", 5)).toEqual({ start: 0, query: "test" })
     expect(getSkillMentionQuery("prefix $skill", 13)).toEqual({ start: 7, query: "skill" })
     expect(getSkillMentionQuery("abc$def", 7)).toBeNull()
+  })
+
+  const mentionSkills: SkillItem[] = [
+    {
+      name: "demo-skill",
+      description: "Demo skill description",
+      shortDescription: "Short desc",
+      displayName: "Demo Skill",
+      filePath: "/skills/demo-skill/SKILL.md",
+      baseDir: "/skills/demo-skill",
+      disableModelInvocation: false,
+    },
+  ]
+
+  it("filterSkillsByQuery 按名称与描述字段模糊过滤", () => {
+    expect(filterSkillsByQuery(mentionSkills, "")).toHaveLength(1)
+    expect(filterSkillsByQuery(mentionSkills, "short")).toHaveLength(1)
+    expect(filterSkillsByQuery(mentionSkills, "xyz")).toHaveLength(0)
+  })
+
+  it("getMentionSkillCandidates 仅响应 skill / skill: 前缀", () => {
+    expect(getMentionSkillCandidates(mentionSkills, "")).toHaveLength(1)
+    expect(getMentionSkillCandidates(mentionSkills, "src/renderer")).toHaveLength(0)
+    expect(getMentionSkillCandidates(mentionSkills, "agent:explorer")).toHaveLength(0)
+    expect(getMentionSkillCandidates(mentionSkills, "skill")).toHaveLength(1)
+    expect(getMentionSkillCandidates(mentionSkills, "skill:demo")).toHaveLength(1)
+    expect(getMentionSkillCandidates(mentionSkills, "skill:xyz")).toHaveLength(0)
   })
 
   it("getArgumentSelectionRange 正确计算参数括号内部区间（排除括号本身）", () => {
