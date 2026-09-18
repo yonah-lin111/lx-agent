@@ -13,6 +13,8 @@ import type {
 import { streamText } from "ai"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { writeConfigTree } from "../../helpers/configLayout"
+
 // 共享状态：临时 config/appData 路径、内存 DB 句柄与脚本化 stream 响应。
 const holder = vi.hoisted(() => ({
   configPath: "",
@@ -1112,7 +1114,7 @@ describe("agentRunner 持久化", () => {
 
   describe("hooks 工具事件", () => {
     const writeHookConfig = (hooks: Record<string, unknown>): void => {
-      writeFileSync(holder.configPath, JSON.stringify({ agent: { hooks } }, null, 2))
+      writeConfigTree(holder.configPath, { agent: { hooks } })
     }
     const hookJson = (output: unknown): string => `printf '%s' '${JSON.stringify(output)}'`
     const readMessagePayloads = (sessionId: string): AgentMessage[] =>

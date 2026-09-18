@@ -5,6 +5,8 @@ import type { AssistantMessage, StopReason, Usage } from "@shared/contracts/agen
 import { streamText } from "ai"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { writeConfigTree } from "../../../helpers/configLayout"
+
 // 共享状态：临时 config/appData、内存 DB、脚本化助手响应。
 const holder = vi.hoisted(() => ({
   configPath: "",
@@ -116,9 +118,9 @@ const assistant = (
   timestamp: 0,
 })
 
-// 将 agent.hooks 配置写入临时 config.json。
+// 将 agent.hooks 配置写入临时 config/agent.json。
 const writeHooks = (hooks: Record<string, unknown>): void => {
-  writeFileSync(holder.configPath, JSON.stringify({ agent: { hooks } }, null, 2))
+  writeConfigTree(holder.configPath, { agent: { hooks } })
 }
 
 const jsonHook = (output: unknown): string => `printf '%s' '${JSON.stringify(output)}'`

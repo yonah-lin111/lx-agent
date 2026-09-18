@@ -1,7 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { writeConfigTree } from "../../../helpers/configLayout"
 
 const holder = vi.hoisted(() => ({ configPath: "" }))
 
@@ -28,7 +30,7 @@ afterEach(() => {
 })
 
 const writeHooks = (hooks: Record<string, unknown>): void => {
-  writeFileSync(holder.configPath, JSON.stringify({ agent: { hooks } }, null, 2))
+  writeConfigTree(holder.configPath, { agent: { hooks } })
 }
 
 describe("hooksManager", () => {

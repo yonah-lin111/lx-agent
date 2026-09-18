@@ -76,7 +76,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 **子代理角色目录**（运行时治理详见 [runtime.md](./runtime.md) §5）：
 
 - 内置角色：`explorer`（只读白名单：`read` / `ls` / `grep` / `find` / `lsp` / `web_search` / `webfetch` / `time`）、`worker`（工具继承）；保留名不可被用户角色占用（`review` 归属协作模式 Review Mode，禁止子代理角色使用）。
-- 用户角色：`~/.lx/config.json` → `agent.subagents.roles`，可声明 `description` / `instructions` / `model` / `tools`；`task` 工具描述在会话装配时动态注入角色目录。
+- 用户角色：`~/.lx/config/agent.json` → `agent.subagents.roles`，可声明 `description` / `instructions` / `model` / `tools`；`task` 工具描述在会话装配时动态注入角色目录。
 - 能力只收缩不提权：子代理工具集 = 父激活集 ∩ 角色白名单，权限与沙箱继承父级；协作模式取 `agent.subagents.mode`（缺省 `build`）；并发上限与嵌套深度由会话级 `SubagentRuntime` 治理。
 
 ---
@@ -180,7 +180,7 @@ Skill 作为领域级指令包，遵循标准 Markdown 组织格式并具备扩�
 ### 7.1 架构与语义
 
 ```text
-~/.lx/config.json → agent.hooks
+~/.lx/config/agent.json → agent.hooks
         │
         ▼
 hookConfig（zod 校验 + matcher 解析 + 会话级缓存）
@@ -197,7 +197,7 @@ hooksManager.dispatch（串行派发，配置顺序即执行顺序）
                  └─ 调用点效果合并：阻断工具 / 单次审批 / 拒绝提交
 ```
 
-- V1 仅支持 `command` handler；配置来源仅用户级 `~/.lx/config.json` 的 `agent.hooks`，无项目级、无热重载；亦可在 设置 → 钩子 中可视化增删改（保存后仅对新会话生效，运行中会话沿用旧配置）。
+- V1 仅支持 `command` handler；配置来源仅用户级 `~/.lx/config/agent.json` 的 `agent.hooks`，无项目级、无热重载；亦可在 设置 → 钩子 中可视化增删改（保存后仅对新会话生效，运行中会话沿用旧配置）。
 - 所有执行失败（spawn 失败 / 超时 / 非零退出 / 伪 JSON）一律 **fail-open**；阻断只能来自成功执行且显式声明的信号。
 - hook 运行产物为 `HookContextMessage`（role `hookContext`）：非空 `text` 注入模型上下文，同时驱动执行流展示；不进入消息列表（MsgList）分组。
 
@@ -217,7 +217,7 @@ hooksManager.dispatch（串行派发，配置顺序即执行顺序）
 | `Stop` | agent 正常停止前（`agent-loop`） | 通知与审计；不引入阻止停止语义 |
 | `SessionEnd` | `agentRunner.deleteSession` / `app.will-quit` | best-effort（3s 超时），不等待异步工作 |
 
-### 7.3 配置 schema（`~/.lx/config.json` → `agent.hooks`）
+### 7.3 配置 schema（`~/.lx/config/agent.json` → `agent.hooks`）
 
 ```jsonc
 {

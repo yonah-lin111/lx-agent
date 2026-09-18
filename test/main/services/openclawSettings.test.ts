@@ -1,8 +1,10 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { OpenClawSettings } from "@shared/settings"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { readConfigTree, writeConfigTree } from "../../helpers/configLayout"
 
 const holder = vi.hoisted(() => ({
   configPath: "",
@@ -22,7 +24,6 @@ describe("OpenClaw settings normalization", () => {
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), "openclaw-settings-test-"))
     holder.configPath = join(tmpDir, "config.json")
-    writeFileSync(holder.configPath, JSON.stringify({}))
   })
 
   afterEach(() => {
@@ -137,12 +138,11 @@ describe("OpenClaw settings normalization", () => {
 
   it("保存 OpenClaw 配置不清空其他配置节点", async () => {
     const { saveOpenClawSettings } = await import("@/services/settingsService")
-    const { readFileSync } = await import("node:fs")
 
-    writeFileSync(holder.configPath, JSON.stringify({ ui: { locale: "zh" } }))
+    writeConfigTree(holder.configPath, { ui: { locale: "zh" } })
     saveOpenClawSettings({ instances: {} })
 
-    const raw = JSON.parse(readFileSync(holder.configPath, "utf8")) as Record<string, unknown>
+    const raw = readConfigTree(holder.configPath)
     expect(raw.ui).toEqual({ locale: "zh" })
     expect(raw.openclaw).toEqual({ instances: {} })
   })

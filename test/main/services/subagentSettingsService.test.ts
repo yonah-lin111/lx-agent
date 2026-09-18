@@ -1,7 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { type ConfigTree, readConfigTree, writeConfigTree } from "../../helpers/configLayout"
 
 const holder = vi.hoisted(() => ({ configPath: "" }))
 
@@ -16,11 +18,10 @@ let tempDir = ""
 let warnSpy: ReturnType<typeof vi.spyOn>
 
 const writeConfig = (config: unknown): void => {
-  writeFileSync(holder.configPath, JSON.stringify(config, null, 2))
+  writeConfigTree(holder.configPath, config as ConfigTree)
 }
 
-const readConfig = (): Record<string, unknown> =>
-  JSON.parse(readFileSync(holder.configPath, "utf8")) as Record<string, unknown>
+const readConfig = (): Record<string, unknown> => readConfigTree(holder.configPath)
 
 const warnMessages = (): string[] => warnSpy.mock.calls.map((call) => String(call[0]))
 
@@ -222,7 +223,7 @@ describe("saveSubagentSettings", () => {
 
   it("保留名/空 description/非法 mode/越界深度或并发均拒绝写入且文件不变", () => {
     writeConfig({ agent: { permissions: { defaultMode: "default" } } })
-    const before = readFileSync(holder.configPath, "utf8")
+    const before = readConfigTree(holder.configPath)
 
     expect(() => saveSubagentSettings({ roles: { review: { description: "x" } } })).toThrow(
       "保留角色名不可使用: review",
@@ -247,6 +248,6 @@ describe("saveSubagentSettings", () => {
       }),
     ).toThrow()
 
-    expect(readFileSync(holder.configPath, "utf8")).toBe(before)
+    expect(readConfigTree(holder.configPath)).toEqual(before)
   })
 })

@@ -30,7 +30,7 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
 └───────────────────────────────┬──────────────────────────────┘
 ┌───────────────────────────────▼──────────────────────────────┐
 │ Main: OpenClawClientManager (WS 连接池 & RPC & 流式事件)      │
-│       settingsService (~/.lx/config.json 的 openclaw 节点)    │
+│       settingsService (~/.lx/config/openclaw.json 的 openclaw 节点)    │
 └───────────────────────────────┬──────────────────────────────┘
                                 │ ws://<gateway>:18789
                                 ▼

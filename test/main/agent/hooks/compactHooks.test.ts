@@ -1,8 +1,10 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { AgentEvent, AgentMessage, HookEventName } from "@shared/contracts/agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { writeConfigTree } from "../../../helpers/configLayout"
 
 const holder = vi.hoisted(() => ({
   configPath: "",
@@ -15,7 +17,7 @@ vi.mock("ai", async (importOriginal) => {
   return { ...actual, streamText: holder.streamText }
 })
 
-// 真实 hooksManager 读取临时 config.json（不 mock hooks 模块，覆盖配置→子进程→解析全链路）。
+// 真实 hooksManager 读取临时 config/agent.json（不 mock hooks 模块，覆盖配置→子进程→解析全链路）。
 vi.mock("@/paths", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/paths")>()
   return { ...actual, getConfigPath: () => holder.configPath }
@@ -82,7 +84,7 @@ let messages: AgentMessage[] = []
 let tmpDir = ""
 
 const writeHooks = (hooks: Partial<Record<HookEventName, unknown>>): void => {
-  writeFileSync(holder.configPath, JSON.stringify({ agent: { hooks } }, null, 2))
+  writeConfigTree(holder.configPath, { agent: { hooks } })
 }
 
 const createCompactor = (): ContextCompactor =>

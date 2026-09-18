@@ -1,4 +1,4 @@
-// Token Saver 设置读写（~/.lx/config.json 的 tokenSaver 节点）。
+// Token Saver 设置读写（~/.lx/config/app.json 的 tokenSaver 节点）。
 import {
   CAVEMAN_LEVELS,
   type CavemanLevel,

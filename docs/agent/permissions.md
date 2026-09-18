@@ -141,7 +141,7 @@ Esc 仅收起面板，请求保持挂起；决策经 IPC `permissionResponse` �
 
 ---
 
-## 6. 规则配置 Schema (`~/.lx/config.json`)
+## 6. 规则配置 Schema (`~/.lx/config/agent.json`)
 
 ```jsonc
 {
@@ -171,4 +171,4 @@ Esc 仅收起面板，请求保持挂起；决策经 IPC `permissionResponse` �
 
 - **规则形态**：`Tool(arg)`，支持 `Bash(git status*)` 前缀匹配（带命令词边界）、`Edit(src/**)` 路径 glob、`webfetch(https://example.com)` 按 URL scheme/host/port 与路径段边界匹配、`apply_patch(src/a.ts)` 按补丁目标路径匹配、MCP 全名（`mcp__server__tool`）与无参工具 `Tool()`；`rule.ts` 负责解析与匹配，非法规则忽略并告警。
 - **优先级铁律**（与 §5.1 一致）：`模式硬门禁 > read-only 沙箱 > dangerous 命令 > Deny 规则 > Guardian > 会话白名单 > 全局放行 > sensitive 命令 > Ask 规则 > Allow 规则 > acceptEdits > 默认审批`。
-- **原子持久化**：永久允许/拒绝经 `settingsService.savePermissionSettings` 安全写入 `~/.lx/config.json` 并热重载。
+- **原子持久化**：永久允许/拒绝经 `settingsService.savePermissionSettings` 安全写入 `~/.lx/config/agent.json` 并热重载。

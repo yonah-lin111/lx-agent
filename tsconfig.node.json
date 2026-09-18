@@ -5,6 +5,7 @@
     "src/main/**/*.ts",
     "src/preload/**/*.ts",
     "src/shared/**/*.ts",
+    "test/helpers/**/*.ts",
     "test/main/**/*.ts"
   ],
   "compilerOptions": {

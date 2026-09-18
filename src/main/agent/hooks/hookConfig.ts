@@ -1,8 +1,8 @@
-import { existsSync, readFileSync } from "node:fs"
 import { HOOK_EVENT_NAMES, HOOK_MATCHER_EVENTS, type HookEventName } from "@shared/contracts/agent"
 import type { HookCommandEntry, HookMatcherGroup, HookSettings } from "@shared/settings"
 import { z } from "zod"
 import { getConfigPath } from "@/paths"
+import { readRawConfig } from "@/services/settingsService/rawConfig"
 import type { LoadedHook } from "./types"
 
 export { HOOK_EVENT_NAMES }
@@ -191,22 +191,15 @@ export const parseHookConfig = (
 }
 
 /**
- * 读取 `~/.lx/config.json` 的 `agent.hooks` 并解析；缺失/损坏一律告警并降级为空。
+ * 读取 `~/.lx/config/agent.json` 的 `agent.hooks` 并解析；缺失/损坏一律告警并降级为空。
  */
 export const loadHooks = (
   configPath: string = getConfigPath(),
   warn: (message: string) => void = console.warn,
 ): LoadedHook[] => {
   try {
-    if (!existsSync(configPath)) return []
-    const text = readFileSync(configPath, "utf8").trim()
-    if (!text) return []
-    const parsed = JSON.parse(text) as unknown
-    if (!isRecord(parsed)) {
-      warn("[hooks] 配置文件根节点必须是对象，已忽略 agent.hooks")
-      return []
-    }
-    const agent = isRecord(parsed.agent) ? parsed.agent : undefined
+    const raw = readRawConfig(configPath)
+    const agent = isRecord(raw.agent) ? raw.agent : undefined
     return parseHookConfig(agent?.hooks, warn)
   } catch (error) {
     warn(

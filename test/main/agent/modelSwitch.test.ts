@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { AgentEvent } from "@shared/contracts/agent"
@@ -109,7 +109,6 @@ describe("Model Switch and Initial Model Entries", () => {
     holder.appDataRoot = join(tmpWorkspace, "appData")
     holder.db = null
     holder.streamResponses = []
-    writeFileSync(holder.configPath, JSON.stringify({}))
   })
 
   afterEach(() => {

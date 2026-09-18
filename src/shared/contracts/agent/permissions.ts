@@ -17,7 +17,7 @@ export const normalizeCollaborationMode = (mode?: string | null): CollaborationM
 // 沙箱策略（read-only / workspace-write / danger-full-access 三态）。
 export type SandboxPolicy = "read-only" | "workspace-write" | "danger-full-access"
 
-// 权限配置（~/.lx/config.json 的 agent.permissions 节点）。
+// 权限配置（~/.lx/config/agent.json 的 agent.permissions 节点）。
 export interface PermissionSettings {
   defaultMode: PermissionMode
   sandboxPolicy?: SandboxPolicy

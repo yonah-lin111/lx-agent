@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs"
 import { z } from "zod"
 import { getConfigPath } from "@/paths"
+import { readRawConfig } from "@/services/settingsService/rawConfig"
 import type { AgentTool, AgentToolResult } from "../core/types"
 
 // Exa 联网搜索 MCP 服务地址（无 Key 直连；带 Key 时附加查询参数）。
@@ -24,7 +24,7 @@ type WebSearchProvider = "exa" | "tavily"
 // 归一化搜索输入（默认值已落定）。
 type NormalizedInput = { query: string; numResults: number; type: "auto" | "fast" | "deep" }
 
-// 联网搜索配置（config.json `ai.webSearch` 节点）。
+// 联网搜索配置（config/ai.json `ai.webSearch` 节点）。
 type WebSearchConfig = {
   exaApiKey: string
   tavilyApiKey: string
@@ -66,11 +66,11 @@ type TavilySearchResponse = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
-// 读取 config.json 的 ai.webSearch 节点；缺失或非法时返回空 Key。
+// 读取 config/ai.json 的 ai.webSearch 节点；缺失或非法时返回空 Key。
 const readWebSearchConfig = (): WebSearchConfig => {
   try {
-    const raw = JSON.parse(readFileSync(getConfigPath(), "utf8")) as unknown
-    if (!isRecord(raw) || !isRecord(raw.ai)) return { exaApiKey: "", tavilyApiKey: "" }
+    const raw = readRawConfig(getConfigPath())
+    if (!isRecord(raw.ai)) return { exaApiKey: "", tavilyApiKey: "" }
     const webSearch = raw.ai.webSearch
     if (!isRecord(webSearch)) return { exaApiKey: "", tavilyApiKey: "" }
     return {
@@ -260,7 +260,7 @@ const searchWithTavily = async (
 
 // 全部 provider 失败时的英文失败提示（回灌模型，展示侧也读此语义）。
 const WEB_SEARCH_FAILED_MESSAGE =
-  "Web search failed. Please try again later or configure an Exa/Tavily API key in ~/.lx/config.json."
+  "Web search failed. Please try again later or configure an Exa/Tavily API key in ~/.lx/config/ai.json."
 
 /**
  * 创建只读联网搜索工具：优先 Exa，失败回退 Tavily；无 Key 时保留匿名直连。

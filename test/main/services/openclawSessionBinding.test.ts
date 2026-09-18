@@ -1,8 +1,10 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { readConfigTree, writeConfigTree } from "../../helpers/configLayout"
 
 interface FakeClientOptions {
   onHelloOk?: () => void
@@ -65,27 +67,24 @@ const instanceId = "local"
 const gatewayUrl = "ws://127.0.0.1:18789"
 
 const writeConfig = (agents: Array<{ id: string; name: string; sessionKey?: string }>): void => {
-  writeFileSync(
-    join(holder.appDataRoot, "config.json"),
-    JSON.stringify({
-      openclaw: {
-        instances: {
-          [instanceId]: {
-            name: "Local",
-            gatewayUrl,
-            authMode: "token",
-            token: "test-token",
-            enabled: true,
-            agents,
-          },
+  writeConfigTree(join(holder.appDataRoot, "config.json"), {
+    openclaw: {
+      instances: {
+        [instanceId]: {
+          name: "Local",
+          gatewayUrl,
+          authMode: "token",
+          token: "test-token",
+          enabled: true,
+          agents,
         },
       },
-    }),
-  )
+    },
+  })
 }
 
 const readBoundSessionKey = (agentId: string): string | undefined => {
-  const raw = JSON.parse(readFileSync(join(holder.appDataRoot, "config.json"), "utf8")) as {
+  const raw = readConfigTree(join(holder.appDataRoot, "config.json")) as {
     openclaw: { instances: Record<string, { agents: Array<{ id: string; sessionKey?: string }> }> }
   }
   return raw.openclaw.instances[instanceId]?.agents.find((agent) => agent.id === agentId)

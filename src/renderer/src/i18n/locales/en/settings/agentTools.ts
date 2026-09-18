@@ -14,7 +14,7 @@ Run user commands at key agent lifecycle points — sessions, prompt submission,
 
 #### ⚙️ Execution Semantics
 - Commands receive a JSON payload on stdin and return strict JSON on stdout (\`additionalContext\` / \`systemMessage\` / \`decision\`); failures, timeouts, or invalid output always fail open.
-- Configuration is stored under \`agent.hooks\` in \`~/.lx/config.json\`; hooks within the same event run in list order and can be reordered with Move up / Move down.
+- Configuration is stored under \`agent.hooks\` in \`~/.lx/config/agent.json\`; hooks within the same event run in list order and can be reordered with Move up / Move down.
 - Changes apply to **new sessions only**; running sessions keep the previous configuration.`,
   hooksAdd: "Add Hook",
   hooksAddTitle: "Add Hook",

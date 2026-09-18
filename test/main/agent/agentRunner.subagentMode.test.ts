@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -11,6 +11,7 @@ import type {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { repeatToolGuard } from "@/agent/guard/repeatToolGuard"
 import { hooksManager } from "@/agent/hooks"
+import { writeConfigTree } from "../../helpers/configLayout"
 
 // 共享状态：临时 config/appData、内存 DB、脚本化 stream 响应、捕获子代理提示词与门禁模式。
 const holder = vi.hoisted(() => ({
@@ -208,7 +209,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
   }
 
   it("主 agent 处于 plan 时子代理按配置的 review 模式装配（提示词与门禁均不继承）", async () => {
-    writeFileSync(holder.configPath, JSON.stringify({ agent: { subagents: { mode: "review" } } }))
+    writeConfigTree(holder.configPath, { agent: { subagents: { mode: "review" } } })
     const { taskTool } = await primeRunner("sess-subagent-mode-review")
 
     // 主 agent 提示词确为 Plan Mode，作为对照基线。
@@ -248,7 +249,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
   })
 
   it("未配置 mode 时子代理回退 build，不继承主 agent 的 plan", async () => {
-    writeFileSync(holder.configPath, JSON.stringify({ agent: {} }))
+    writeConfigTree(holder.configPath, { agent: {} })
     const { taskTool } = await primeRunner("sess-subagent-mode-default")
 
     holder.capturedSystemPrompts = []
@@ -278,7 +279,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
   })
 
   it("子代理工具调用共用会话守卫与 Pre/PostToolUse hooks：第 3/5 次提醒、第 7 次硬阻断", async () => {
-    writeFileSync(holder.configPath, JSON.stringify({ agent: {} }))
+    writeConfigTree(holder.configPath, { agent: {} })
     const { runner, taskTool } = await primeRunner("sess-subagent-guard")
     const sessionId = runner.getCurrentSessionId()
     expect(sessionId).toBe("sess-subagent-guard")

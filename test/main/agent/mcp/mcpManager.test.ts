@@ -1,7 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { writeConfigTree } from "../../../helpers/configLayout"
 
 // SDK mock 状态（hoisted：vi.mock 工厂先于模块导入执行）。
 const sdk = vi.hoisted(() => ({
@@ -64,7 +66,7 @@ import { McpManager, mcpToolName, wrapMcpTool } from "@/agent/mcp/mcpManager"
 
 // 写入测试用 agent.mcp 配置。
 const writeConfig = (mcp: Record<string, unknown>): void => {
-  writeFileSync(holder.configPath, JSON.stringify({ agent: { mcp } }), "utf8")
+  writeConfigTree(holder.configPath, { agent: { mcp } })
 }
 
 describe("mcpToolName", () => {

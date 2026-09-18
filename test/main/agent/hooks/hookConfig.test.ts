@@ -1,7 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import { getTestConfigDir, writeConfigTree } from "../../../helpers/configLayout"
 
 const holder = vi.hoisted(() => ({ configPath: "" }))
 
@@ -129,12 +131,9 @@ describe("parseHookConfig", () => {
 
 describe("loadHooks", () => {
   it("读取 agent.hooks 节点", () => {
-    writeFileSync(
-      holder.configPath,
-      JSON.stringify({
-        agent: { hooks: { Stop: [{ hooks: [{ name: "audit", command: "echo stop" }] }] } },
-      }),
-    )
+    writeConfigTree(holder.configPath, {
+      agent: { hooks: { Stop: [{ hooks: [{ name: "audit", command: "echo stop" }] }] } },
+    })
     const { messages, warn } = collector()
     const hooks = loadHooks(holder.configPath, warn)
     expect(messages).toEqual([])
@@ -142,32 +141,39 @@ describe("loadHooks", () => {
     expect(hooks[0]).toMatchObject({ name: "audit", event: "Stop", command: "echo stop" })
   })
 
-  it("文件缺失 / 损坏 JSON / 根节点非对象 → 告警 + 空列表", () => {
-    const { messages, warn } = collector()
-    expect(loadHooks(join(tmpDir, "missing.json"), warn)).toEqual([])
+  it("文件缺失 / 旧文件损坏 / 布局文件损坏 → 降级为空且不抛出", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      // 旧文件缺失：空列表，无迁移。
+      expect(loadHooks(join(tmpDir, "missing.json"), warnSpy)).toEqual([])
 
-    writeFileSync(holder.configPath, "{ broken")
-    expect(loadHooks(holder.configPath, warn)).toEqual([])
+      // 旧单文件损坏：保持原样、不迁移，按空配置运行。
+      writeFileSync(holder.configPath, "{ broken")
+      expect(loadHooks(holder.configPath, warnSpy)).toEqual([])
+      expect(existsSync(holder.configPath)).toBe(true)
 
-    writeFileSync(holder.configPath, JSON.stringify(["array"]))
-    expect(loadHooks(holder.configPath, warn)).toEqual([])
-
-    expect(messages).toHaveLength(2)
+      // 新布局单文件损坏：隔离为 .corrupt 并按空配置运行。
+      const configDir = getTestConfigDir(holder.configPath)
+      mkdirSync(configDir, { recursive: true })
+      writeFileSync(join(configDir, "agent.json"), "{ broken")
+      expect(loadHooks(holder.configPath, warnSpy)).toEqual([])
+      expect(existsSync(join(configDir, "agent.json.corrupt"))).toBe(true)
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })
 
 describe("hookConfig 会话级缓存", () => {
   it("同一作用域只加载一次；新作用域可见新配置；reset 后重载", () => {
-    writeFileSync(
-      holder.configPath,
-      JSON.stringify({ agent: { hooks: { Stop: [{ hooks: [{ command: "echo v1" }] }] } } }),
-    )
+    writeConfigTree(holder.configPath, {
+      agent: { hooks: { Stop: [{ hooks: [{ command: "echo v1" }] }] } },
+    })
     expect(hookConfig.get("s1")[0]?.command).toBe("echo v1")
 
-    writeFileSync(
-      holder.configPath,
-      JSON.stringify({ agent: { hooks: { Stop: [{ hooks: [{ command: "echo v2" }] }] } } }),
-    )
+    writeConfigTree(holder.configPath, {
+      agent: { hooks: { Stop: [{ hooks: [{ command: "echo v2" }] }] } },
+    })
     // 已有作用域缓存不变，新作用域读取新配置。
     expect(hookConfig.get("s1")[0]?.command).toBe("echo v1")
     expect(hookConfig.get("s2")[0]?.command).toBe("echo v2")

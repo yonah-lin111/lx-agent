@@ -21,7 +21,7 @@ Provides **syntax analysis, error diagnostics, and code intelligence** for Agent
 ---
 
 #### 📝 Custom Configuration Example
-In \`~/.lx/config.json\` under \`agent.lsp\`:
+In \`~/.lx/config/agent.json\` under \`agent.lsp\`:
 \`\`\`json
 {
   "agent": {
