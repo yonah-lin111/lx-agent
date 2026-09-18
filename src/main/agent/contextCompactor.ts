@@ -339,8 +339,17 @@ export class ContextCompactor {
     const config = getCompactionSettings()
     const keepRecentTokens = Math.min(config.keepRecentTokens, Math.floor(contextWindow * 0.4))
     const cutIndex = findCutPoint(messages, keepRecentTokens)
-    const effectiveCut =
+    let effectiveCut =
       cutIndex >= messages.length || cutIndex <= 1 ? Math.max(1, messages.length - 1) : cutIndex
+    // fallback 仅保留末尾消息时必须回溯到完整 turn 边界：保留起点若是 toolResult/hookContext，
+    // 其 assistant toolCall 已进入压缩区，会产出孤儿工具结果并写坏 firstKeptSeq。
+    while (
+      effectiveCut > 1 &&
+      (messages[effectiveCut]?.role === "toolResult" ||
+        messages[effectiveCut]?.role === "hookContext")
+    ) {
+      effectiveCut -= 1
+    }
 
     if (effectiveCut <= 0 || effectiveCut >= messages.length) {
       return { ok: false, error: "暂无可压缩的历史消息。" }

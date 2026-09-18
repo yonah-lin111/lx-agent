@@ -491,6 +491,32 @@ describe("toModelMessages 悬空 toolCall 兜底", () => {
   })
 })
 
+describe("toModelMessages 空 assistant 消息过滤", () => {
+  it("首 token 前失败产生的空 content assistant 不进入请求载荷", () => {
+    const result = toModelMessages([
+      { role: "user", content: "第一轮" },
+      { role: "assistant", content: [] },
+      { role: "user", content: "第二轮" },
+    ])
+
+    expect(result.map((message) => message.role)).toEqual(["user", "user"])
+  })
+
+  it("空 content 后仍有 toolCall 的历史消息时，空 assistant 被丢弃且后续消息保持顺序", () => {
+    const result = toModelMessages([
+      { role: "user", content: "第一轮" },
+      { role: "assistant", content: [] },
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "回答" }],
+      },
+    ])
+
+    expect(result.map((message) => message.role)).toEqual(["user", "assistant"])
+    expect(result[1]).toMatchObject({ content: [{ type: "text", text: "回答" }] })
+  })
+})
+
 describe("toAiTools", () => {
   it("空工具集返回 undefined", () => {
     expect(toAiTools(undefined)).toBeUndefined()
