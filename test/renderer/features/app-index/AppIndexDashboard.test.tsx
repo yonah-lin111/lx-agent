@@ -116,19 +116,16 @@ describe("AppIndexDashboard", () => {
     expect(window.api.activity.getDaily).toHaveBeenCalledTimes(1)
   })
 
-  it("快速入口卡片精简为图标与标题，无序号与内联描述", async () => {
+  it("快速入口卡片为紧凑两行结构：图标 + 标题 + 单行描述，无序号角标", async () => {
     const { container } = render(<AppIndexDashboard />)
 
     await waitFor(() => {
       expect(screen.getByText("Activity")).toBeDefined()
     })
 
-    // 紧凑卡片：单行图标 + 标题
     const entryButton = screen.getByRole("button", { name: "Projects" })
-    expect(entryButton.textContent).toBe("Projects")
-
-    // 描述不再内联展示，且无序号角标
-    expect(screen.queryByText("Manage prompts and project assets")).toBeNull()
+    expect(entryButton.querySelector("svg")).not.toBeNull()
+    expect(entryButton.textContent).toBe("ProjectsManage prompts and project assets")
     expect(container.querySelector(".app-index-entry")?.textContent).not.toMatch(/^\d{2}/)
   })
 
@@ -142,11 +139,11 @@ describe("AppIndexDashboard", () => {
     const entryButton = screen.getByRole("button", { name: "Projects" })
     fireEvent.mouseEnter(entryButton)
 
-    // 加粗标题 + 描述文案均来自现有词条的 Markdown 组合
+    // 加粗标题 + 描述段落均来自现有词条的 Markdown 组合
     await waitFor(() => {
       expect(screen.getByText("Projects", { selector: "strong" })).toBeDefined()
     })
-    expect(screen.getByText("Manage prompts and project assets")).toBeDefined()
+    expect(screen.getByText("Manage prompts and project assets", { selector: "p" })).toBeDefined()
   })
 
   it("点击带路由的入口跳转到对应页面", async () => {
