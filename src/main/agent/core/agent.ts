@@ -122,9 +122,10 @@ function createMutableAgentState(
     set tools(nextTools: AgentTool<any>[]) {
       tools = nextTools.slice()
     },
-    // 读取用途；变更请走 appendMessage / removeLastMessage。
+    // 读取用途；返回快照副本，消费方无法通过引用旁路修改内部数组。
+    // 变更请走 appendMessage / removeLastMessage。
     get messages() {
-      return messages
+      return messages.slice()
     },
     set messages(nextMessages: AgentMessage[]) {
       messages = nextMessages.slice()

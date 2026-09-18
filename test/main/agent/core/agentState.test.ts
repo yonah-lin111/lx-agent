@@ -61,15 +61,21 @@ describe("Agent 状态变更契约（review F14）", () => {
     expect(agent.state.messages).toHaveLength(1)
   })
 
-  it("getter 返回内部数组（文档化只读契约）：append/remove 后同一引用反映最新状态", () => {
+  it("getter 返回快照副本：外部 push/pop 不污染内部状态，历史快照不随后续变更更新", () => {
     const agent = createAgent()
-    const reference = agent.state.messages
+    agent.state.appendMessage(assistantMessage("internal"))
 
-    agent.state.appendMessage(assistantMessage("x"))
-    expect(reference).toBe(agent.state.messages)
-    expect(reference).toHaveLength(1)
+    const snapshot = agent.state.messages
+    snapshot.push(assistantMessage("external"))
+    expect(snapshot).toHaveLength(2)
+    expect(agent.state.messages).toHaveLength(1)
 
-    agent.state.removeLastMessage()
-    expect(reference).toHaveLength(0)
+    snapshot.pop()
+    expect(snapshot).toHaveLength(1)
+    expect(agent.state.messages).toHaveLength(1)
+
+    agent.state.appendMessage(assistantMessage("late"))
+    expect(snapshot).toHaveLength(1)
+    expect(agent.state.messages).toHaveLength(2)
   })
 })

@@ -992,9 +992,13 @@ describe("agentRunner 持久化", () => {
       )
     expect(taskResult).toBeDefined()
     const text = toolResultText(taskResult!)
-    // 有界预览 + 路径标记（完整内容写入 spill 文件）。
+    // 有界预览 + 路径标记（完整内容写入 appDataRoot 下 spill 文件）。
     expect(text).toContain("Output truncated")
-    expect(text).toContain(".lx/spill")
+    const spillPath = text.match(/Full output saved to: (.+?)\. Use /)?.[1]
+    expect(spillPath).toBeDefined()
+    expect(spillPath!.startsWith(join(holder.appDataRoot, "spill"))).toBe(true)
+    expect(existsSync(spillPath!)).toBe(true)
+    expect(readFileSync(spillPath!, "utf-8")).toBe(bigText)
   })
 
   it("删除最后轮回滚该轮文件改动（git 快照）", async () => {
