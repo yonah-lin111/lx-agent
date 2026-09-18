@@ -1,6 +1,12 @@
 import { useTranslation } from "@/i18n"
 import type { UsageSummary } from "../types"
-import { calcCacheHitRate, formatCompact, formatPercent, getFreshInputTokens } from "../utils"
+import {
+  calcCacheHitRate,
+  formatCompact,
+  formatNumber,
+  formatPercent,
+  getFreshInputTokens,
+} from "../utils"
 
 export interface UsageSummaryCardsProps {
   summary: UsageSummary | null
@@ -13,11 +19,15 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
   const { t } = useTranslation()
 
   const inputTokens = summary?.inputTokens ?? 0
+  const outputTokens = summary?.outputTokens ?? 0
   const cacheReadTokens = summary?.cacheReadTokens ?? 0
   const cacheWriteTokens = summary?.cacheWriteTokens ?? 0
+  const requestCount = summary?.requestCount ?? 0
   // input 含缓存读写：新增输入为扣除缓存后的新鲜输入。
   const freshInputTokens = summary ? getFreshInputTokens(summary) : 0
   const cacheHitRate = calcCacheHitRate(inputTokens, cacheReadTokens)
+  const avgOutputPerRequest =
+    requestCount > 0 ? formatNumber(Math.round(outputTokens / requestCount)) : "--"
 
   const cards: {
     title: string
@@ -28,22 +38,33 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
     {
       title: t("usage.summary.realTotalTokens"),
       value: formatCompact(summary?.totalTokens ?? 0),
+      detail: `${t("usage.columns.input")} ${formatCompact(inputTokens)} · ${t("usage.columns.output")} ${formatCompact(outputTokens)}`,
     },
     {
       title: t("usage.tokens.freshInput"),
       value: formatCompact(freshInputTokens),
+      detail: t("usage.summary.shareOfInput", {
+        percent: formatPercent((freshInputTokens / inputTokens) * 100),
+      }),
     },
     {
       title: t("usage.summary.outputTokens"),
-      value: formatCompact(summary?.outputTokens ?? 0),
+      value: formatCompact(outputTokens),
+      detail: t("usage.summary.avgPerRequest", { value: avgOutputPerRequest }),
     },
     {
       title: t("usage.summary.cacheWriteTokens"),
       value: formatCompact(cacheWriteTokens),
+      detail: t("usage.summary.shareOfInput", {
+        percent: formatPercent((cacheWriteTokens / inputTokens) * 100),
+      }),
     },
     {
       title: t("usage.summary.cacheReadTokens"),
       value: formatCompact(cacheReadTokens),
+      detail: t("usage.summary.shareOfInput", {
+        percent: formatPercent((cacheReadTokens / inputTokens) * 100),
+      }),
     },
     {
       title: t("usage.summary.cacheHitRate"),
@@ -54,7 +75,7 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
   ]
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
+    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => (
         <div
           key={card.title}

@@ -25,6 +25,8 @@ export const usage = {
     cacheReadTokens: "Cache Read",
     cacheWriteTokens: "Cache Write",
     cacheHitRate: "Cache Hit Rate",
+    shareOfInput: "{{percent}} of total input",
+    avgPerRequest: "{{value}} avg per request",
   },
   tokens: {
     freshInput: "Fresh Input",

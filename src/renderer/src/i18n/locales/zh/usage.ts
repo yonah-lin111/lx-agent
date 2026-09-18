@@ -25,6 +25,8 @@ export const usage = {
     cacheReadTokens: "缓存读取",
     cacheWriteTokens: "缓存写入",
     cacheHitRate: "缓存命中率",
+    shareOfInput: "占总输入 {{percent}}",
+    avgPerRequest: "平均每请求 {{value}}",
   },
   tokens: {
     freshInput: "新增输入",
