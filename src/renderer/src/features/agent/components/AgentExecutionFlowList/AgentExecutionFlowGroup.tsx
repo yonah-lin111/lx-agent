@@ -203,7 +203,7 @@ export const AgentExecutionFlowGroup = ({
       data-expanded={isExpanded}
       className="agent-execution-flow-group rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-white/[0.06] transition-colors hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.12))] hover:bg-white/[0.09]"
     >
-      {/* 头部摘要栏（单行：折叠箭头、Group 标题、数量、右侧状态图标与完成后的总耗时） */}
+      {/* 头部摘要栏（标题区两行：第一行折叠箭头/标题/数量，第二行调用统计；右侧状态图标与完成后的总耗时） */}
       <div
         role="button"
         tabIndex={0}
@@ -216,29 +216,55 @@ export const AgentExecutionFlowGroup = ({
         }}
         className="agent-execution-flow-group-header flex cursor-pointer items-center justify-between gap-2 py-1.5 px-2.5 select-none transition-colors hover:bg-white/[0.02]"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 leading-none overflow-hidden">
-          {/* 折叠箭头 */}
-          <div className="flex shrink-0 items-center text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]">
-            {isExpanded ? (
-              <ChevronDown className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
+        <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-hidden">
+          {/* 第一行：折叠箭头、Group 标识小圆点、标题与数量 */}
+          <div className="flex min-w-0 items-center gap-1.5 leading-none">
+            {/* 折叠箭头 */}
+            <div className="flex shrink-0 items-center text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]">
+              {isExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+            </div>
+
+            {/* Group 标识小圆点与标题 */}
+            <span
+              aria-hidden
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                isRunning ? "bg-sky-400 animate-pulse" : isError ? "bg-rose-400" : "bg-white/80"
+              }`}
+            />
+            <span className="shrink-0 font-mono text-xs font-semibold text-[var(--color-theme-text,#ffffff)]/90">
+              Execute Group
+            </span>
+            <span className="shrink-0 font-mono text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
+              ({steps.length})
+            </span>
           </div>
 
-          {/* Group 标识小圆点与标题 */}
-          <span
-            aria-hidden
-            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-              isRunning ? "bg-sky-400 animate-pulse" : isError ? "bg-rose-400" : "bg-white/80"
-            }`}
-          />
-          <span className="shrink-0 font-mono text-xs font-semibold text-[var(--color-theme-text,#ffffff)]/90">
-            Execute Group
-          </span>
-          <span className="shrink-0 font-mono text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
-            ({steps.length})
-          </span>
+          {/* 第二行：直角 icon 与调用类型统计（与消息列表执行组一致；运行中实时更新，0 计数不渲染） */}
+          {statsSegments.length > 0 && (
+            <div
+              data-testid="flow-group-stats"
+              className="agent-execution-flow-group-stats-row flex min-w-0 items-start gap-1.5 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]"
+            >
+              {/* 与折叠箭头同宽占位，使直角 icon 落在第一行小圆点正下方 */}
+              <span aria-hidden className="w-3.5 shrink-0" />
+              <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]" />
+              <span className="agent-execution-flow-group-stats flex min-w-0 flex-1 flex-wrap items-center leading-relaxed">
+                {statsSegments.map((segment, index) => (
+                  <Fragment key={segment.plural}>
+                    {index > 0 && <span className="px-1 opacity-40">·</span>}
+                    <span>{segment.count}</span>
+                    <span className="ml-0.5">
+                      {segment.count === 1 ? t(segment.singular) : t(segment.plural)}
+                    </span>
+                  </Fragment>
+                ))}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 右侧指标与状态：总耗时仅在 group 执行完成后展示 */}
@@ -304,27 +330,6 @@ export const AgentExecutionFlowGroup = ({
           )}
         </div>
       </div>
-
-      {/* 第二行：直角 icon 与调用类型统计（与消息列表执行组一致；运行中实时更新，0 计数不渲染） */}
-      {statsSegments.length > 0 && (
-        <div
-          data-testid="flow-group-stats"
-          className="agent-execution-flow-group-stats-row flex min-w-0 items-start gap-1 px-2.5 pb-1 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]"
-        >
-          <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]" />
-          <span className="agent-execution-flow-group-stats flex min-w-0 flex-1 flex-wrap items-center leading-relaxed">
-            {statsSegments.map((segment, index) => (
-              <Fragment key={segment.plural}>
-                {index > 0 && <span className="px-1 opacity-40">·</span>}
-                <span>{segment.count}</span>
-                <span className="ml-0.5">
-                  {segment.count === 1 ? t(segment.singular) : t(segment.plural)}
-                </span>
-              </Fragment>
-            ))}
-          </span>
-        </div>
-      )}
 
       {/* 展开子步骤列表 */}
       {isExpanded && (

@@ -121,17 +121,24 @@ describe("AgentExecutionFlowGroup 调用统计行", () => {
     expect(normalizeText(statsRow.textContent)).toBe("1Thought·1MCPCall")
   })
 
-  it("统计行位于头部摘要与展开体之间且默认折叠时可见", () => {
+  it("统计行嵌入头部标题容器作为第二行，默认折叠时可见", () => {
     const steps = [toolStep("s1", "grep"), toolStep("s2", "glob")]
 
     const container = renderGroup(steps)
 
     const statsRow = screen.getByTestId("flow-group-stats")
-    const header = container.querySelector(".agent-execution-flow-group-header")
-    expect(header).not.toBeNull()
-    const position = header ? header.compareDocumentPosition(statsRow) : 0
-    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(container.querySelector(".agent-execution-flow-group-body")).toBeNull()
+
+    // 与折叠标题同一容器：统计行与标题行是同一父节点下的兄弟节点
+    const titleRow = screen.getByText("Execute Group").parentElement
+    expect(titleRow).not.toBeNull()
+    expect(statsRow.parentElement).toBe(titleRow?.parentElement)
+
+    // 直角 icon 前有与折叠箭头同宽的占位，保证与第一行小圆点同轴
     expect(statsRow.className).toContain("agent-execution-flow-group-stats-row")
+    expect(statsRow.firstElementChild?.className).toContain("w-3.5")
+    expect(statsRow.querySelector(".lucide-corner-down-right")).not.toBeNull()
+
+    // 默认折叠：展开体不渲染
+    expect(container.querySelector(".agent-execution-flow-group-body")).toBeNull()
   })
 })
