@@ -1013,9 +1013,12 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("Execute Group")).not.toBeNull()
     expect(screen.getByText("(2)")).not.toBeNull()
 
-    // 头部已移除"正在执行的 step"第二行：grep 参数不出现，也不存在 CornerDownRight 指示行
+    // 头部第二行为调用统计行：不展示 step 参数，但渲染直角 icon 与类型统计
     expect(screen.queryByText('"calculate"')).toBeNull()
-    expect(group?.querySelector(".lucide-corner-down-right")).toBeNull()
+    const statsRow = group?.querySelector(".agent-execution-flow-group-stats-row")
+    expect(statsRow).not.toBeNull()
+    expect(statsRow?.querySelector(".lucide-corner-down-right")).not.toBeNull()
+    expect(statsRow?.textContent?.replace(/\s+/g, "")).toBe("2ToolCalls")
     // 运行态仍由状态图标反馈
     expect(group?.querySelector(".animate-spin")).not.toBeNull()
 

@@ -5,16 +5,27 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
+  CornerDownRight,
   Loader2,
 } from "lucide-react"
 import type React from "react"
-import { useCallback, useMemo, useState } from "react"
+import { Fragment, useCallback, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import {
+  isMcpToolCall,
+  isSkillToolCall,
+} from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import type { ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
-import { useTranslation } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 import { AgentExecutionFlowItemMemo } from "./AgentExecutionFlowItemMemo"
-import { copyToClipboard, formatDurationMs, formatJsonString, formatTokensShort } from "./types"
+import {
+  copyToClipboard,
+  formatDurationMs,
+  formatJsonString,
+  formatTokensShort,
+  isWebSearchTool,
+} from "./types"
 
 export interface AgentExecutionFlowGroupProps {
   groupId: string
@@ -53,6 +64,42 @@ export const AgentExecutionFlowGroup = ({
   const isRunning = Boolean(runningStep || isStreamingActive)
   const isError = Boolean(!isRunning && errorStep)
   const isDone = !isRunning && !isError
+
+  // 组内调用类型统计（分类优先级与消息列表执行组一致：skill → webSearch → mcp → tool）
+  const statsSegments = useMemo(() => {
+    let thoughts = 0
+    let toolCalls = 0
+    let skillCalls = 0
+    let mcpCalls = 0
+    let webSearches = 0
+
+    for (const step of steps) {
+      if (step.kind === "thinking") {
+        thoughts++
+        continue
+      }
+      if (step.kind !== "tool") continue
+      const toolName = step.toolContent?.toolName || step.title
+      if (isSkillToolCall(toolName)) {
+        skillCalls++
+      } else if (isWebSearchTool(toolName)) {
+        webSearches++
+      } else if (isMcpToolCall(toolName)) {
+        mcpCalls++
+      } else {
+        toolCalls++
+      }
+    }
+
+    const segments: { count: number; singular: TranslationKey; plural: TranslationKey }[] = [
+      { count: thoughts, singular: "agent.statsThought", plural: "agent.statsThoughts" },
+      { count: toolCalls, singular: "agent.statsToolCall", plural: "agent.statsToolCalls" },
+      { count: skillCalls, singular: "agent.statsSkillCall", plural: "agent.statsSkillCalls" },
+      { count: mcpCalls, singular: "agent.statsMcpCall", plural: "agent.statsMcpCalls" },
+      { count: webSearches, singular: "agent.statsWebSearch", plural: "agent.statsWebSearches" },
+    ]
+    return segments.filter((segment) => segment.count > 0)
+  }, [steps])
 
   // 聚合静态总耗时与总 Token（优先按首尾时间戳跨度计算，兼顾单步累加保底）
   const { staticDurationMs, totalTokens, inputTokens, outputTokens, cacheReadTokens } =
@@ -257,6 +304,27 @@ export const AgentExecutionFlowGroup = ({
           )}
         </div>
       </div>
+
+      {/* 第二行：直角 icon 与调用类型统计（与消息列表执行组一致；运行中实时更新，0 计数不渲染） */}
+      {statsSegments.length > 0 && (
+        <div
+          data-testid="flow-group-stats"
+          className="agent-execution-flow-group-stats-row flex min-w-0 items-start gap-1 px-2.5 pb-1 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]"
+        >
+          <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]" />
+          <span className="agent-execution-flow-group-stats flex min-w-0 flex-1 flex-wrap items-center leading-relaxed">
+            {statsSegments.map((segment, index) => (
+              <Fragment key={segment.plural}>
+                {index > 0 && <span className="px-1 opacity-40">·</span>}
+                <span>{segment.count}</span>
+                <span className="ml-0.5">
+                  {segment.count === 1 ? t(segment.singular) : t(segment.plural)}
+                </span>
+              </Fragment>
+            ))}
+          </span>
+        </div>
+      )}
 
       {/* 展开子步骤列表 */}
       {isExpanded && (
