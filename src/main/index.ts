@@ -15,7 +15,6 @@ import { registerClipboardHandlers } from "@/ipc/clipboardHandlers"
 import { registerCustomCommandHandlers } from "@/ipc/customCommandHandlers"
 import { registerGameHandlers } from "@/ipc/gameHandlers"
 import { registerGitHandlers } from "@/ipc/gitHandlers"
-import { registerGitHubHandlers } from "@/ipc/githubHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
 import { registerOpenClawHandlers } from "@/ipc/openclawHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
@@ -106,7 +105,6 @@ app.whenReady().then(() => {
   registerOpenClawHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerUsageHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerGameHandlers()
-  registerGitHubHandlers()
   registerUpdateHandlers()
 
   // 系统通知点击出口：聚焦窗口后把跳转目标推给渲染进程。

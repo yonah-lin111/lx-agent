@@ -24,9 +24,8 @@ import { HOME_VIEW_QUERY_KEY } from "@/lib/homeView"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import logoImg from "../../../../../../resources/icons/lx-op-logo.png"
 import { useDailyActivity } from "../hooks/useDailyActivity"
-import { useGitHubStars } from "../hooks/useGitHubStars"
 import { ActivityHeatmap } from "./ActivityHeatmap"
-import { GitHubStarTag } from "./GitHubStarTag"
+import { GitHubRepoTag } from "./GitHubRepoTag"
 import { UpdateNoticeBanner } from "./UpdateNoticeBanner"
 
 // 快速入口定义。
@@ -122,7 +121,6 @@ export const AppIndexDashboard = (): React.JSX.Element => {
   const navigate = useNavigate()
   const { warning } = useLxToast()
   const { entries, isLoading, error, refresh } = useDailyActivity()
-  const { stars } = useGitHubStars()
   const updateNotice = useUpdateNotice()
 
   const handleEntryClick = useCallback(
@@ -164,7 +162,7 @@ export const AppIndexDashboard = (): React.JSX.Element => {
                 {`v${updateNotice.currentVersion}`}
               </LxTag>
             ) : null}
-            <GitHubStarTag stars={stars} />
+            <GitHubRepoTag />
           </div>
           <p className="mt-1.5 truncate text-sm text-[var(--color-theme-text)]">
             {t("home.index.tagline")}

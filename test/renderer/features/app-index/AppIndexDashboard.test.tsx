@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
-import type { GitHubStarsState } from "@shared/contracts/github"
 import type { UpdateState } from "@shared/contracts/update"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { AppIndexDashboard } from "@/features/app-index/components/AppIndexDashboard"
-import { formatStarCount } from "@/features/app-index/utils"
 
 const { mockNavigate } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -45,11 +43,6 @@ const updateHolder: { state: UpdateState } = {
   },
 }
 
-// 星标状态替身：用例中按需改写后渲染。
-const githubHolder: { state: GitHubStarsState } = {
-  state: { stars: 1234, failed: false, fetchedAt: 1 },
-}
-
 describe("AppIndexDashboard", () => {
   beforeEach(() => {
     updateHolder.state = {
@@ -60,7 +53,6 @@ describe("AppIndexDashboard", () => {
       checkedAt: null,
       failed: false,
     }
-    githubHolder.state = { stars: 1234, failed: false, fetchedAt: 1 }
     // @ts-expect-error Mock window.api
     window.api = {
       activity: {
@@ -70,9 +62,6 @@ describe("AppIndexDashboard", () => {
         getState: vi.fn(() => Promise.resolve(updateHolder.state)),
         check: vi.fn(() => Promise.resolve(updateHolder.state)),
         onStateChanged: vi.fn(() => () => {}),
-      },
-      github: {
-        getStars: vi.fn(() => Promise.resolve(githubHolder.state)),
       },
     }
   })
@@ -260,34 +249,13 @@ describe("AppIndexDashboard", () => {
     expect(link.getAttribute("href")).toBe(RELEASE_URL)
   })
 
-  it("Hero GitHub tag 指向仓库并展示紧凑星数", async () => {
-    render(<AppIndexDashboard />)
-
-    const link = await screen.findByRole("link", { name: /GitHub/ })
-    expect(link.getAttribute("href")).toBe(REPO_URL)
-    expect(link.getAttribute("target")).toBe("_blank")
-    expect(link.getAttribute("rel")).toBe("noreferrer")
-
-    await waitFor(() => {
-      expect(link.textContent).toContain("1.2K")
-    })
-  })
-
-  it("星数未取得时保留 GitHub 链接但不展示数字", async () => {
-    githubHolder.state = { stars: null, failed: true, fetchedAt: null }
-
+  it("Hero GitHub 入口指向仓库且不再展示星数", async () => {
     render(<AppIndexDashboard />)
 
     const link = await screen.findByRole("link", { name: "GitHub" })
     expect(link.getAttribute("href")).toBe(REPO_URL)
+    expect(link.getAttribute("target")).toBe("_blank")
+    expect(link.getAttribute("rel")).toBe("noreferrer")
     expect(link.textContent).toBe("GitHub")
-  })
-})
-
-describe("formatStarCount", () => {
-  it("按当前语言紧凑格式化星数", () => {
-    expect(formatStarCount(1234, "en")).toBe("1.2K")
-    expect(formatStarCount(1234, "zh")).toBe("1234")
-    expect(formatStarCount(12345, "zh")).toBe("1.2万")
   })
 })
