@@ -94,6 +94,7 @@ export const agent = {
   selectSessions: "多选",
   selectedSessionsCount: "已选 {{count}} 项",
   deleteSelectedSessions: "删除选中",
+  deleteSessionsConfirm: "确定删除选中的 {{count}} 个会话吗？",
   sessionsDeleted: "已删除 {{count}} 个会话",
   deleteSessionConfirm: "确定要删除此会话吗？",
   sessionDeleted: "会话已删除",

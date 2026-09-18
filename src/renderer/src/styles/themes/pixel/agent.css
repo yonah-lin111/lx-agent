@@ -2107,28 +2107,24 @@
   font-weight: 700 !important;
 }
 
-/* 置顶会话：亮绿像素竖条 + 深绿凹槽底，与普通行区分 */
-[data-theme="pixel"] .agent-history-panel-dialog .agent-history-session-row--pinned {
-  background-color: #1e331e !important;
-  border-left: 4px solid #55ff55 !important;
-  box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.55),
-    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
-    2px 2px 0px 0px #000000 !important;
-}
-
-[data-theme="pixel"] .agent-history-panel-dialog .agent-history-session-row--pinned:hover,
+/* 置顶会话：主题表层色提亮一档（surface-hover），与普通行区分（当前会话高亮优先，不覆盖） */
 [data-theme="pixel"]
   .agent-history-panel-dialog
-  .agent-history-session-row--pinned[data-menu-open="true"] {
-  background-color: #274327 !important;
+  .agent-history-session-row--pinned[data-pinned="true"]:not(.agent-history-session-row--current) {
+  background-color: var(--color-theme-surface-hover) !important;
 }
 
 [data-theme="pixel"]
   .agent-history-panel-dialog
-  .agent-history-session-row--pinned
-  .agent-history-session-title {
-  color: #d8ffd8 !important;
+  .agent-history-session-row--pinned[data-pinned="true"]:not(
+    .agent-history-session-row--current
+  ):hover,
+[data-theme="pixel"]
+  .agent-history-panel-dialog
+  .agent-history-session-row--pinned[data-pinned="true"]:not(
+    .agent-history-session-row--current
+  )[data-menu-open="true"] {
+  background-color: #3f3f57 !important;
 }
 
 [data-theme="pixel"] .agent-execution-flow-step,

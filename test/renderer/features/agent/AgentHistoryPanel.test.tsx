@@ -279,6 +279,8 @@ describe("AgentHistoryPanel", () => {
     const row = screen.getByText("Alpha session").closest(".agent-history-session-row")
     expect(row?.getAttribute("data-pinned")).toBe("true")
     expect(row?.className).toContain("agent-history-session-row--pinned")
+    expect(row?.className).toContain("bg-[var(--color-theme-surface-hover)]")
+    expect(row?.className).not.toContain("border-l")
     expect(row?.querySelector("svg")).not.toBeNull()
 
     fireEvent.contextMenu(row!)
@@ -310,9 +312,10 @@ describe("AgentHistoryPanel", () => {
     fireEvent.click(screen.getByText("Alpha session"))
     expect(screen.getByText("1 selected")).not.toBeNull()
 
-    fireEvent.click(screen.getByText("Delete Selected"))
+    // 删除为 icon + Tooltip 二次确认：首次点击仅展开确认气泡。
+    fireEvent.click(screen.getByRole("button", { name: "Delete Selected" }))
     expect(onDeleteMany).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByText("Confirm Delete"))
+    fireEvent.click(screen.getByLabelText("Confirm"))
     expect(onDeleteMany).toHaveBeenCalledWith(["s1"])
 
     await waitFor(() => {
@@ -336,14 +339,23 @@ describe("AgentHistoryPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Select Sessions" }))
     fireEvent.click(screen.getByText("Alpha session"))
-    fireEvent.click(screen.getByText("Delete Selected"))
-    fireEvent.click(screen.getByText("Confirm Delete"))
+    fireEvent.click(screen.getByRole("button", { name: "Delete Selected" }))
+    fireEvent.click(screen.getByLabelText("Confirm"))
 
     await waitFor(() => {
       expect(onDeleteMany).toHaveBeenCalledWith(["s1"])
     })
     expect(screen.getAllByRole("checkbox")).toHaveLength(2)
     expect(screen.getByText("1 selected")).not.toBeNull()
+  })
+
+  it("多选模式下可取消并退出多选", () => {
+    renderPanel()
+    fireEvent.click(screen.getByRole("button", { name: "Select Sessions" }))
+    fireEvent.click(screen.getByText("Alpha session"))
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
+    expect(screen.queryByRole("checkbox")).toBeNull()
+    expect(screen.getByRole("button", { name: "Select Sessions" })).not.toBeNull()
   })
 
   it("标题生成中的会话在多选模式下不可勾选", () => {

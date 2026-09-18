@@ -97,6 +97,7 @@ export const agent = {
   selectSessions: "Select Sessions",
   selectedSessionsCount: "{{count}} selected",
   deleteSelectedSessions: "Delete Selected",
+  deleteSessionsConfirm: "Delete {{count}} selected sessions?",
   sessionsDeleted: "{{count}} sessions deleted",
   deleteSessionConfirm: "Are you sure you want to delete this session?",
   sessionDeleted: "Session deleted",

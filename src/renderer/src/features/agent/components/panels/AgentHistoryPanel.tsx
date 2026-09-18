@@ -107,8 +107,6 @@ export const AgentHistoryPanel = ({
   const [isSelectMode, setIsSelectMode] = useState(false)
   // 多选勾选的会话 id 集合。
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set())
-  // 批量删除二次确认态。
-  const [isBatchDeleteConfirm, setIsBatchDeleteConfirm] = useState(false)
   // 触底分页：当前渲染的普通会话条数（置顶项不占名额）。
   const [visibleCount, setVisibleCount] = useState(HISTORY_PAGE_SIZE)
   // 会话列表滚动容器（打开面板时用于将当前会话居中）。
@@ -187,7 +185,6 @@ export const AgentHistoryPanel = ({
     setVisibleCount(HISTORY_PAGE_SIZE)
     setIsSelectMode(false)
     setSelectedSessionIds(new Set())
-    setIsBatchDeleteConfirm(false)
   }, [isOpen])
 
   // 筛选变化时分页重置回第一页。
@@ -270,18 +267,16 @@ export const AgentHistoryPanel = ({
     setEditingSessionId(null)
     setIsSelectMode(true)
     setSelectedSessionIds(new Set())
-    setIsBatchDeleteConfirm(false)
   }
 
   // 退出多选模式：清空选择并重置分页。
   const exitSelectMode = (): void => {
     setIsSelectMode(false)
     setSelectedSessionIds(new Set())
-    setIsBatchDeleteConfirm(false)
     setVisibleCount(HISTORY_PAGE_SIZE)
   }
 
-  // 切换单条勾选（改变选择后重置删除确认态，避免误删）。
+  // 切换单条勾选。
   const toggleSessionSelected = (sessionId: string, checked: boolean): void => {
     setSelectedSessionIds((previous) => {
       const next = new Set(previous)
@@ -289,23 +284,15 @@ export const AgentHistoryPanel = ({
       else next.delete(sessionId)
       return next
     })
-    setIsBatchDeleteConfirm(false)
   }
 
-  // 批量删除：首次点击进入确认态，确认后回调；失败保留多选态。
+  // 批量删除（二次确认由删除按钮的 Tooltip 承担）；失败保留多选态。
   const handleDeleteSelected = (): void => {
-    if (!isBatchDeleteConfirm) {
-      setIsBatchDeleteConfirm(true)
-      return
-    }
     const sessionIds = Array.from(selectedSessionIds)
     if (sessionIds.length === 0) return
     void onDeleteMany(sessionIds).then((ok) => {
       if (!ok) return
-      setIsSelectMode(false)
-      setSelectedSessionIds(new Set())
-      setIsBatchDeleteConfirm(false)
-      setVisibleCount(HISTORY_PAGE_SIZE)
+      exitSelectMode()
     })
   }
 
@@ -340,16 +327,24 @@ export const AgentHistoryPanel = ({
               <LxIconButton
                 size="small"
                 preset="delete"
-                icon={<Trash2 />}
                 disabled={selectedSessionIds.size === 0}
-                onClick={handleDeleteSelected}
+                aria-label={t("agent.deleteSelectedSessions")}
+                title={{
+                  content: t("agent.deleteSessionsConfirm", {
+                    count: selectedSessionIds.size,
+                  }),
+                  placement: "bottom",
+                  onConfirm: handleDeleteSelected,
+                }}
+              />
+              <LxIconButton
+                size="small"
+                variant="ghost"
+                aria-label={t("common.cancel")}
+                title={{ content: t("common.cancel"), placement: "bottom" }}
+                onClick={exitSelectMode}
               >
-                {isBatchDeleteConfirm
-                  ? t("common.confirmDelete")
-                  : t("agent.deleteSelectedSessions")}
-              </LxIconButton>
-              <LxIconButton size="small" variant="ghost" onClick={exitSelectMode}>
-                {t("common.cancel")}
+                <X />
               </LxIconButton>
             </div>
           </>
@@ -421,7 +416,7 @@ export const AgentHistoryPanel = ({
               const isSelected = selectedSessionIds.has(session.id)
               const isSelectable = !pendingSessionIds.has(session.id)
               const pinnedRowClass = session.pinned
-                ? `agent-history-session-row--pinned border-l-2 border-[var(--color-theme-accent)] ${
+                ? `agent-history-session-row--pinned ${
                     isCurrent ? "" : "bg-[var(--color-theme-surface-hover)]"
                   }`
                 : ""
@@ -450,7 +445,7 @@ export const AgentHistoryPanel = ({
                   suffix={
                     session.pinned ? (
                       <Pin
-                        className="h-3.5 w-3.5 shrink-0 text-[var(--color-theme-accent)]"
+                        className="h-3.5 w-3.5 shrink-0 text-[var(--color-theme-text-muted)]"
                         fill="currentColor"
                         aria-hidden="true"
                       />
@@ -461,7 +456,9 @@ export const AgentHistoryPanel = ({
                       ? `agent-history-session-row--current bg-white/5 text-white ${
                           isSelectMode ? "" : "cursor-default"
                         }`
-                      : "text-white/70"
+                      : session.pinned
+                        ? "text-[var(--color-theme-text)]"
+                        : "text-white/70"
                   }`}
                   onClick={() => {
                     if (isSelectMode) {
@@ -530,7 +527,7 @@ export const AgentHistoryPanel = ({
             <LxMenuItem
               leading={
                 menuSession.pinned ? (
-                  <PinOff className="h-3.5 w-3.5 text-[var(--color-theme-accent)]" />
+                  <PinOff className="h-3.5 w-3.5 text-[var(--color-theme-text-muted)]" />
                 ) : (
                   <Pin className="h-3.5 w-3.5 text-white/45" />
                 )
