@@ -217,6 +217,9 @@ export const toModelMessages = (messages: LlmMessage[]): ModelMessage[] => {
       continue
     }
     if (message.role === "assistant") {
+      // 空 content 的 assistant（首 token 前失败/中止）对 provider 非法（Anthropic 要求非末尾消息内容非空），
+      // 且不携带任何语义：仅从请求载荷中剔除，会话历史与 UI 展示保持不变。
+      if (message.content.length === 0) continue
       result.push(convertAssistantMessage(message))
       continue
     }

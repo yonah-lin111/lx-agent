@@ -8,6 +8,8 @@
  * 4. Destructive Actions
  */
 
+import { resolve } from "node:path"
+
 export type GuardianRiskLevel = "low" | "medium" | "high" | "critical"
 export type GuardianCategory =
   | "data_exfiltration"
@@ -84,7 +86,10 @@ export class GuardianEvaluator {
   public evaluateAction(action: GuardianAction): GuardianAssessment {
     const { toolName, args } = action
     const command = typeof args.command === "string" ? args.command : ""
-    const targetPath = typeof args.path === "string" ? args.path : ""
+    const rawPath = typeof args.path === "string" ? args.path : ""
+    // 工具落盘前会用 path.resolve 规范化（`//`、`..` 会被折叠）：风险判定必须针对同一目标路径，
+    // 否则 `//etc/hosts` 这类变形会绕过系统目录/凭据目录检查。
+    const targetPath = rawPath ? resolve(rawPath) : ""
 
     // Check Bash tool commands
     if (toolName === "bash" && command) {

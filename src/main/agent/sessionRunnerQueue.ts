@@ -58,7 +58,13 @@ export const kickDrain = async (
     while (host.messageQueue.length > 0) {
       const item = host.messageQueue.shift()!
       emitQueueChanged(host)
-      await host.runOne(item.text, item.context?.files, item.context?.cwd)
+      // 单条消息失败（hook/DB 等前置阶段抛错）不得中断 drain：先出队再执行，
+      // 异常穿出会让剩余消息滞留且无人再触发 drain（isBusy 恒真 → 活锁）。
+      try {
+        await host.runOne(item.text, item.context?.files, item.context?.cwd)
+      } catch (error) {
+        console.error(`Queued message failed and was dropped: ${item.text}`, error)
+      }
     }
   } finally {
     host.draining = false

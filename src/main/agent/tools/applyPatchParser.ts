@@ -162,12 +162,19 @@ export const parsePatch = (patchText: string): ParsedPatch => {
           i++
           continue
         }
-        if (hunkLine.startsWith("@@") || hunkLine.startsWith("---") || hunkLine.startsWith("+++")) {
-          // 忽略 diff 标头
-          if (hunkLine.startsWith("@@")) {
-            flushHunk()
-          }
+        if (hunkLine.startsWith("@@")) {
+          flushHunk()
           i++
+          continue
+        }
+        // diff 标头对（`--- a/x` + `+++ b/x`，随后紧跟 @@ hunk）才忽略。
+        // hunk 内删除以 -- 开头、新增以 ++ 开头的行与标头同形（`---x`/`+++x`），必须按内容处理。
+        const isDiffHeaderPair =
+          hunkLine.startsWith("---") &&
+          lines[i + 1]?.startsWith("+++") &&
+          lines[i + 2]?.startsWith("@@") === true
+        if (isDiffHeaderPair) {
+          i += 2
           continue
         }
 

@@ -538,11 +538,17 @@ export class Agent {
       await this.handleRunFailure(error, abortController.signal.aborted)
     } finally {
       this.finishRun()
+      // run 结束（正常/中止/失败）后清空未消费的 steer/followUp：残留会在下一次
+      // prompt（甚至新会话）开头被注入，造成旧指令污染。
+      this.clearAllQueues()
     }
   }
 
   // 运行失败时合成错误助手消息并发出收尾事件。
   private async handleRunFailure(error: unknown, aborted: boolean): Promise<void> {
+    // 监听器异常等失败路径会绕过 agent-loop 的补发逻辑：先在失败消息落位前补齐悬空 toolCall，
+    // 否则残缺 assistant 消息会永久留在会话历史与持久化记录中。
+    await this.repairDanglingToolCalls(aborted ? "aborted" : "error")
     const failureMessage: AssistantMessage = {
       role: "assistant",
       content: [{ type: "text", text: "" }],
@@ -557,6 +563,41 @@ export class Agent {
     await this.processEvents({ type: "message_end", message: failureMessage })
     await this.processEvents({ type: "turn_end", message: failureMessage, toolResults: [] })
     await this.processEvents({ type: "agent_end", messages: [failureMessage] })
+  }
+
+  // 为 state 中已产生但无对应 toolResult 的 toolCall 补合成错误结果（失败路径兜底）。
+  private async repairDanglingToolCalls(reason: "aborted" | "error"): Promise<void> {
+    const resultIds = new Set<string>()
+    for (const message of this._state.messages) {
+      if (message.role === "toolResult") resultIds.add(message.toolCallId)
+    }
+    const repairs: AgentMessage[] = []
+    for (const message of this._state.messages) {
+      if (message.role !== "assistant") continue
+      for (const block of message.content) {
+        if (block.type !== "toolCall" || resultIds.has(block.id)) continue
+        resultIds.add(block.id)
+        repairs.push({
+          role: "toolResult",
+          toolCallId: block.id,
+          toolName: block.name,
+          content: [
+            {
+              type: "text",
+              text: `Tool call "${block.name}" was not executed: the run ${
+                reason === "aborted" ? "was aborted" : "failed"
+              } before the tool call completed. Re-issue the tool call if it is still needed.`,
+            },
+          ],
+          isError: true,
+          timestamp: Date.now(),
+        })
+      }
+    }
+    for (const message of repairs) {
+      await this.processEvents({ type: "message_start", message })
+      await this.processEvents({ type: "message_end", message })
+    }
   }
 
   private finishRun(): void {

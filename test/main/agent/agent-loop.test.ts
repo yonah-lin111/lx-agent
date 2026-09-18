@@ -9,6 +9,7 @@ import type {
   AgentTool,
   AgentToolResult,
   Context,
+  LlmMessage,
   Model,
   StreamFn,
 } from "@/agent/core/types"
@@ -482,6 +483,68 @@ describe("Agent 工具循环", () => {
         c.type === "toolCall" && c.name === "question",
     )
     expect(callBlock?.answers).toEqual([{ question: "q1", answer: ["TypeScript"] }])
+  })
+})
+
+describe("Agent 失败路径不变量", () => {
+  it("listener 抛错时失败路径仍为悬空 toolCall 补结果", async () => {
+    const agent = new Agent({
+      streamFn: createMockStreamFn([
+        assistant([toolCallBlock("call-1", "echo", { text: "hi" })], "toolUse"),
+      ]),
+      initialState: { model: TEST_MODEL, tools: [createEchoTool()] },
+    })
+    // 模拟外部监听器（投影/持久化）在 assistant 消息落位后抛错。
+    agent.subscribe((event) => {
+      if (
+        event.type === "message_end" &&
+        event.message.role === "assistant" &&
+        event.message.content.some((block) => block.type === "toolCall")
+      ) {
+        throw new Error("listener boom")
+      }
+    })
+
+    await agent.prompt("hi")
+
+    assertNoDanglingToolCalls(agent.state.messages)
+  })
+
+  it("abort 后残留 steer 不注入下一次 prompt", async () => {
+    const seenContexts: LlmMessage[][] = []
+    const streamFn: StreamFn = async (_model, context, options) => {
+      const stream = createAssistantMessageEventStream()
+      seenContexts.push(context.messages)
+      if (seenContexts.length === 1) {
+        stream.push({ type: "start", partial: assistant([], "pending") })
+        options?.signal?.addEventListener("abort", () => {
+          stream.push({ type: "error", reason: "aborted", error: assistant([], "aborted") })
+          stream.end()
+        })
+        return stream
+      }
+      const final = assistant([{ type: "text", text: "第二轮回答" }], "stop")
+      stream.push({ type: "start", partial: final })
+      stream.push({ type: "done", reason: "stop", message: final })
+      stream.end()
+      return stream
+    }
+
+    const agent = new Agent({ streamFn, initialState: { model: TEST_MODEL, tools: [] } })
+    const first = agent.prompt("第一轮")
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    agent.steer({ role: "user", content: "stale steer", timestamp: Date.now() })
+    agent.abort()
+    await first
+
+    expect(agent.hasQueuedMessages()).toBe(false)
+
+    await agent.prompt("第二轮")
+    const secondContext = seenContexts[1] ?? []
+    const staleInjected = secondContext.some(
+      (message) => message.role === "user" && message.content === "stale steer",
+    )
+    expect(staleInjected).toBe(false)
   })
 })
 

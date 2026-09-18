@@ -157,13 +157,28 @@ export const createBashTool = (
       }
     }
 
-    const execRes = await unifiedExecManager.execCommand({
+    const startedAt = Date.now()
+    let execRes = await unifiedExecManager.execCommand({
       command: params.command,
       cwd,
       sessionId,
       yieldTimeMs: timeoutMs,
       signal,
     })
+
+    // 统一执行器的 yield 有 30s 上限：在超时预算内持续等待真实退出，预算耗尽才终止。
+    let processGone = false
+    while (execRes.isRunning && !execRes.aborted && !signal?.aborted) {
+      const remainingMs = timeoutMs - (Date.now() - startedAt)
+      if (remainingMs <= 0) break
+      const next = await unifiedExecManager.waitForExit(execRes.processId, remainingMs)
+      if (!next) {
+        // 条目已被回收（abort/切会话等）：按最后快照返回，不再报超时或补 kill。
+        processGone = true
+        break
+      }
+      execRes = next
+    }
 
     if (execRes.aborted || signal?.aborted) {
       return {
@@ -172,7 +187,7 @@ export const createBashTool = (
       }
     }
 
-    if (execRes.isRunning) {
+    if (execRes.isRunning && !processGone) {
       unifiedExecManager.killProcess(execRes.processId)
       return {
         content: [

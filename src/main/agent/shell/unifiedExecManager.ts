@@ -232,6 +232,31 @@ export class UnifiedExecManager {
     }
   }
 
+  /**
+   * Wait up to timeoutMs for a running process to exit, then snapshot its result.
+   * Returns undefined when the process entry has already been reclaimed.
+   * Unlike execCommand's yield budget, timeoutMs is the caller's real wait budget.
+   */
+  public async waitForExit(
+    processId: number,
+    timeoutMs: number,
+  ): Promise<UnifiedExecResult | undefined> {
+    const entry = this.processes.get(processId)
+    if (!entry) return undefined
+    if (entry.status === "running") {
+      await this.waitForYieldOrExit(entry, Math.max(0, timeoutMs))
+    }
+    return {
+      processId: entry.processId,
+      output: entry.buffer.toStringWithOmissionMarker(),
+      exitCode: entry.exitCode,
+      isRunning: entry.status === "running",
+      status: entry.status,
+      totalBytes: entry.buffer.totalBytes(),
+      omittedBytes: entry.buffer.omittedBytes(),
+    }
+  }
+
   private waitForYieldOrExit(entry: ProcessEntry, timeoutMs: number): Promise<void> {
     if (entry.status !== "running") {
       return Promise.resolve()
