@@ -89,6 +89,9 @@ export class AgentSessionRunner {
   // 内部协作面：排队状态由 sessionRunnerQueue 模块读写（禁止外部调用）。
   public messageQueue: QueuedMessage[] = []
   public draining = false
+  // 启动窗口标记：runOne 从入口（hook/建会话等 await）到 run 结束始终保持 true。
+  // 并发 send 在 isBusy 尚未感知流式前会命中该标记并转入队列，避免互相清空 turn。
+  public runOneActive = false
   // 内部协作面：重复调用提醒（toolCallId → reminder，afterToolCall 附加后清除）。
   public readonly guardReminders = new Map<string, string>()
   private onSessionCreatedCallback?: (
@@ -372,7 +375,9 @@ export class AgentSessionRunner {
       }
     }
 
-    if (this.isBusy()) {
+    // runOneActive 覆盖 isBusy 尚未感知流式的启动窗口：并发 send 一律入队，
+    // 否则第二个 runOne 会覆盖第一个的 turn 状态（消息与持久化双丢）。
+    if (this.isBusy() || this.runOneActive) {
       return enqueueMessage(this, processedText, context)
     }
     const ready = this.ensureReady()
@@ -390,7 +395,12 @@ export class AgentSessionRunner {
     files?: AttachedFile[],
     overrideCwd?: string,
   ): Promise<AgentSendResult> {
-    return runSessionTurn(this, text, files, overrideCwd)
+    this.runOneActive = true
+    try {
+      return await runSessionTurn(this, text, files, overrideCwd)
+    } finally {
+      this.runOneActive = false
+    }
   }
 
   public async continue(prompt?: string): Promise<AgentSendResult> {

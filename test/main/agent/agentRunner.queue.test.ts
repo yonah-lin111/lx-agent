@@ -4,6 +4,19 @@ import { join } from "node:path"
 import type { AgentEvent, AssistantMessage, StopReason, Usage } from "@shared/contracts/agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+// mcpManager.ensureConnected 可门控：默认调用真实实现，测试按需卡住启动窗口。
+vi.mock("@/agent/mcp/mcpManager", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/agent/mcp/mcpManager")>()
+  const proxy = Object.create(actual.mcpManager) as typeof actual.mcpManager
+  proxy.ensureConnected = () => {
+    if (holder.mcpEnsureGate) {
+      return new Promise<void>((resolve) => holder.mcpEnsureGate!.push(resolve))
+    }
+    return actual.mcpManager.ensureConnected()
+  }
+  return { ...actual, mcpManager: proxy }
+})
+
 // 共享状态：临时 config/appData 路径、内存 DB 句柄、脚本化流式响应与每轮 gate。
 const holder = vi.hoisted(() => ({
   configPath: "",
@@ -12,6 +25,8 @@ const holder = vi.hoisted(() => ({
   streamResponses: [] as AssistantMessage[],
   // 每个 streamFn 调用把"释放 gate"函数压入此数组（测试按序释放控制 run 结束时机）。
   releases: [] as (() => void)[],
+  // 置位时卡住 mcpManager.ensureConnected（模拟启动窗口），null 时走真实实现。
+  mcpEnsureGate: null as Array<() => void> | null,
 }))
 
 // mock ai.streamText：压缩摘要生成的可控返回（避免真实 LLM 调用）。
@@ -380,5 +395,65 @@ describe("agentRunner 消息队列（deferred queue）", () => {
     expect(errorAssistant?.errorMessage).toBe("provider 调用失败")
     const roles = agentRunner.getMessages().map((message) => message.role)
     expect(roles.filter((role) => role === "assistant")).toHaveLength(3)
+  })
+
+  it("空闲启动窗口内的并发 send：第二条入队而非与第一条互相踩踏", async () => {
+    const { agentRunner, events } = await importRunner()
+    holder.streamResponses = [
+      assistant([{ type: "text", text: "A 回答" }]),
+      assistant([{ type: "text", text: "B 回答" }]),
+    ]
+
+    // 用 gate 卡住 ensureConnected，把两个 send 都停在 run 启动之前。
+    holder.mcpEnsureGate = []
+    try {
+      const sendA = agentRunner.send("A", undefined, { page: "/", cwd: "/tmp" })
+      const sendB = agentRunner.send("B", undefined, { page: "/", cwd: "/tmp" })
+
+      await vi.waitFor(() => expect(holder.mcpEnsureGate!.length).toBeGreaterThan(0))
+      for (const release of [...holder.mcpEnsureGate!]) release()
+
+      // 第二条必须走队列，而不是进入 runOne 破坏第一条的 turn。
+      const bResult = await sendB
+      expect(bResult).toMatchObject({ ok: true, queued: true, queueLength: 1 })
+
+      await waitForAgentStart(events)
+      await releaseNext()
+      await sendA
+      await releaseNext()
+      await vi.waitFor(() => expect(userTexts(agentRunner.getMessages())).toEqual(["A", "B"]))
+    } finally {
+      holder.mcpEnsureGate = null
+    }
+  })
+
+  it("同一 tab 切换会话后清理旧 sess key，删除旧会话不误伤新会话 runner", async () => {
+    const { agentRunner } = await importRunner()
+    const runner = agentRunner.getOrCreateRunner("Y", "tab-1")
+    const sameRunner = agentRunner.getOrCreateRunner("X", "tab-1")
+    expect(sameRunner).toBe(runner)
+    expect(runner.currentSessionId).toBe("X")
+
+    // 旧会话 Y 的别名必须已清理：删除 Y 不得 dispose 正在服务 X 的 runner。
+    const disposeSpy = vi.spyOn(runner, "dispose")
+    agentRunner.deleteSession("Y")
+    expect(disposeSpy).not.toHaveBeenCalled()
+    expect(agentRunner.getRunner("X", "tab-1")).toBe(runner)
+  })
+
+  it("正忙 runner 不被旧会话别名劫持，另开实例服务目标会话", async () => {
+    const { agentRunner } = await importRunner()
+    const runner = agentRunner.getOrCreateRunner("Y", "tab-1")
+    const switched = agentRunner.getOrCreateRunner("X", "tab-1")
+    expect(switched).toBe(runner)
+    expect(runner.currentSessionId).toBe("X")
+
+    vi.spyOn(runner, "isBusy").mockReturnValue(true)
+    const restored = agentRunner.getOrCreateRunner("Y", "tab-2")
+
+    // 不得把正在服务 X 的 runner 切回 Y，另开实例承载目标会话。
+    expect(restored).not.toBe(runner)
+    expect(restored.currentSessionId).toBe("Y")
+    expect(runner.currentSessionId).toBe("X")
   })
 })

@@ -83,6 +83,11 @@ export class SessionRunnerManager {
     const key = this.resolveKey(sessionId, tabId)
     this.lastActiveKey = key
     let runner = this.runners.get(key)
+    // 别名命中但 runner 正忙且服务其他会话：不劫持其运行态，另开实例服务目标会话
+    // （否则会把正在流式输出的另一个会话切走）。
+    if (runner && sessionId && runner.currentSessionId !== sessionId && runner.isBusy()) {
+      runner = undefined
+    }
     if (!runner && sessionId) {
       // 检查是否有关联该 sessionId 的 tab 实例
       for (const r of this.runners.values()) {
@@ -105,12 +110,8 @@ export class SessionRunnerManager {
         sessionId: sessionId ?? null,
         tabId,
         eventSink: this.eventSink,
-        onSessionCreated: (_r, oldKey, newSessionId) => {
-          const newKey = `sess:${newSessionId}`
-          this.runners.set(newKey, runner!)
-          if (oldKey && oldKey !== newKey && !oldKey.startsWith("tab:")) {
-            this.runners.delete(oldKey)
-          }
+        onSessionCreated: (_r, _oldKey, newSessionId) => {
+          this.runners.set(`sess:${newSessionId}`, runner!)
         },
       })
       this.runners.set(key, runner)
@@ -533,13 +534,16 @@ export class SessionRunnerManager {
   public deleteSession(sessionId: string): void {
     const key = `sess:${sessionId}`
     const runner = this.runners.get(key)
-    if (runner) {
+    if (runner && runner.currentSessionId === sessionId) {
       // 会话销毁路径：best-effort 派发 SessionEnd（dispose）后清理运行态。
       runner.dispose("dispose")
       this.runners.delete(key)
       if (runner.tabId) {
         this.runners.delete(`tab:${runner.tabId}`)
       }
+    } else if (runner) {
+      // 残留别名指向其他会话的 runner：仅删除别名，不得 dispose 正在服务其他会话的实例。
+      this.runners.delete(key)
     }
 
     agentSessionService.deleteSession(sessionId)
