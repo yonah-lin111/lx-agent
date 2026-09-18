@@ -71,7 +71,7 @@ describe("AppIndexDashboard", () => {
     mockNavigate.mockClear()
   })
 
-  it("渲染品牌 Hero、9 个快速入口与年度会话活跃度绿墙", async () => {
+  it("渲染品牌 Hero、9 个紧凑快速入口与年度会话活跃度绿墙，且绿墙位于快速入口之前", async () => {
     const { container } = render(<AppIndexDashboard />)
 
     // Hero 品牌与文案
@@ -82,6 +82,15 @@ describe("AppIndexDashboard", () => {
     // 标题行裸图标（快速入口 / 活跃度）
     expect(container.querySelector(".app-index-section-icon--entries")).not.toBeNull()
     expect(container.querySelector(".app-index-section-icon--activity")).not.toBeNull()
+
+    // 交换位置：绿墙卡片先于快速入口卡片出现在文档中
+    const heatmapCard = container.querySelector(".activity-heatmap-card")
+    const firstEntry = container.querySelector(".app-index-entry")
+    expect(heatmapCard).not.toBeNull()
+    expect(firstEntry).not.toBeNull()
+    expect(heatmapCard?.compareDocumentPosition(firstEntry as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
 
     // 9 个快速入口
     const entries = [
@@ -105,6 +114,39 @@ describe("AppIndexDashboard", () => {
     })
     expect(screen.getByText("Activity")).toBeDefined()
     expect(window.api.activity.getDaily).toHaveBeenCalledTimes(1)
+  })
+
+  it("快速入口卡片精简为图标与标题，无序号与内联描述", async () => {
+    const { container } = render(<AppIndexDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Activity")).toBeDefined()
+    })
+
+    // 紧凑卡片：单行图标 + 标题
+    const entryButton = screen.getByRole("button", { name: "Projects" })
+    expect(entryButton.textContent).toBe("Projects")
+
+    // 描述不再内联展示，且无序号角标
+    expect(screen.queryByText("Manage prompts and project assets")).toBeNull()
+    expect(container.querySelector(".app-index-entry")?.textContent).not.toMatch(/^\d{2}/)
+  })
+
+  it("悬停快速入口卡片时通过 LxInfoTooltip 展示 Markdown 说明", async () => {
+    render(<AppIndexDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Activity")).toBeDefined()
+    })
+
+    const entryButton = screen.getByRole("button", { name: "Projects" })
+    fireEvent.mouseEnter(entryButton)
+
+    // 加粗标题 + 描述文案均来自现有词条的 Markdown 组合
+    await waitFor(() => {
+      expect(screen.getByText("Projects", { selector: "strong" })).toBeDefined()
+    })
+    expect(screen.getByText("Manage prompts and project assets")).toBeDefined()
   })
 
   it("点击带路由的入口跳转到对应页面", async () => {

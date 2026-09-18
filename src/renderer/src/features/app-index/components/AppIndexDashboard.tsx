@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { useCallback } from "react"
 import { useNavigate } from "react-router-dom"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -35,8 +36,6 @@ interface QuickEntry {
   iconClassName: string
   // 目标路由（新建对话入口无路由）。
   path?: string
-  // 主入口：新建对话使用强调色边框与图标。
-  isPrimary?: boolean
 }
 
 const QUICK_ENTRIES: QuickEntry[] = [
@@ -46,7 +45,6 @@ const QUICK_ENTRIES: QuickEntry[] = [
     descriptionKey: "home.index.newChatDesc",
     icon: MessageSquarePlus,
     iconClassName: "text-sky-400",
-    isPrimary: true,
   },
   {
     id: "projects",
@@ -115,7 +113,7 @@ const QUICK_ENTRIES: QuickEntry[] = [
 ]
 
 /**
- * 渲染应用索引页：品牌 Hero、全量页面快速入口与年度会话活跃度绿墙。
+ * 渲染应用索引页：品牌 Hero、年度会话活跃度绿墙与紧凑快速入口网格。
  */
 export const AppIndexDashboard = (): React.JSX.Element => {
   const { t } = useTranslation()
@@ -196,7 +194,12 @@ export const AppIndexDashboard = (): React.JSX.Element => {
         </div>
       ) : null}
 
-      {/* 2. 全量页面快速入口（4 × 2 网格，窄屏自动降列） */}
+      {/* 2. 年度会话活跃度绿墙 */}
+      <section className="mt-5">
+        <ActivityHeatmap entries={entries} />
+      </section>
+
+      {/* 3. 全量页面快速入口（紧凑网格，悬停经 LxInfoTooltip 展示说明） */}
       <section className="mt-5 flex min-w-0 flex-col gap-2">
         <div className="app-index-section-title flex min-w-0 items-center gap-2">
           <Compass className="app-index-section-icon app-index-section-icon--entries h-4 w-4 shrink-0 text-amber-400" />
@@ -204,42 +207,33 @@ export const AppIndexDashboard = (): React.JSX.Element => {
             {t("home.index.quickEntries")}
           </h2>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {QUICK_ENTRIES.map((entry, index) => {
+        <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+          {QUICK_ENTRIES.map((entry) => {
             const Icon = entry.icon
+            const label = t(entry.labelKey)
             return (
-              <button
+              <LxInfoTooltip
                 key={entry.id}
-                type="button"
-                aria-label={t(entry.labelKey)}
-                onClick={() => handleEntryClick(entry)}
-                className={`app-index-entry group flex min-w-0 items-start gap-2.5 rounded-[6px] border p-3 text-left transition-[border-color,background-color] duration-150 ${
-                  entry.isPrimary
-                    ? "border-[var(--color-theme-accent)]/45 bg-[var(--color-theme-surface-hover)] hover:border-[var(--color-theme-accent)]"
-                    : "border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] hover:border-[var(--color-theme-border-strong)] hover:bg-[var(--color-theme-surface-hover)]"
-                }`}
+                markdown={`**${label}**\n\n${t(entry.descriptionKey)}`}
+                placement="top"
+                showIcon={false}
+                className="w-full"
               >
-                <span className="shrink-0 pt-0.5 font-mono text-[10px] leading-none text-[var(--color-theme-text-subtle)]">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${entry.iconClassName}`} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-[var(--color-theme-text)]">
-                    {t(entry.labelKey)}
+                <button
+                  type="button"
+                  aria-label={label}
+                  onClick={() => handleEntryClick(entry)}
+                  className="app-index-entry group flex w-full min-w-0 items-center gap-2 rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] px-2.5 py-2 text-left transition-[border-color,background-color] duration-150 hover:bg-[var(--color-theme-surface-hover)]"
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${entry.iconClassName}`} />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-theme-text)]">
+                    {label}
                   </span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-[var(--color-theme-text-muted)]">
-                    {t(entry.descriptionKey)}
-                  </span>
-                </span>
-              </button>
+                </button>
+              </LxInfoTooltip>
             )
           })}
         </div>
-      </section>
-
-      {/* 3. 年度会话活跃度绿墙 */}
-      <section className="mt-5">
-        <ActivityHeatmap entries={entries} />
       </section>
     </div>
   )
