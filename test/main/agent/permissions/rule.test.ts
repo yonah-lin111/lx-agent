@@ -99,6 +99,13 @@ describe("matchRule", () => {
     expect(matchRule(rules, "write", { path: "lib/a.ts" })).toBe(false)
   })
 
+  it("write/edit 绝对路径 deny 规则命中规范化后的等价变形（//、..）", () => {
+    const rules = parsed(["Write(/etc/**)"])
+    expect(matchRule(rules, "write", { path: "//etc/hosts" })).toBe(true)
+    expect(matchRule(rules, "write", { path: "/tmp/../etc/hosts" })).toBe(true)
+    expect(matchRule(rules, "write", { path: "/tmp/notes.txt" })).toBe(false)
+  })
+
   it("apply_patch 单路径规则命中同路径补丁", () => {
     const rules = parsed(["apply_patch(src/a.ts)"])
     expect(matchRule(rules, "apply_patch", { patch: patchWithPaths("src/a.ts") })).toBe(true)

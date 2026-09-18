@@ -1,3 +1,4 @@
+import { resolve } from "node:path"
 import { parsePatch } from "@/agent/tools/applyPatchParser"
 import { globToRegExp } from "@/agent/tools/search"
 
@@ -108,8 +109,13 @@ const matchWebfetchArg = (ruleArg: string, url: string): boolean => {
   return targetPath === rulePath || targetPath.startsWith(`${rulePath}/`)
 }
 
-// 路径 glob 匹配（相对会话 cwd）。
-const matchPathArg = (ruleArg: string, path: string): boolean => globToRegExp(ruleArg).test(path)
+// 路径 glob 匹配（相对会话 cwd）。工具落盘用 path.resolve 规范化路径，
+// deny/allow 规则必须对规范化后的等价形式同样生效（`//etc/hosts`、`a/../etc` 不绕过拦截）。
+const matchPathArg = (ruleArg: string, path: string): boolean => {
+  if (!path) return false
+  const matcher = globToRegExp(ruleArg)
+  return matcher.test(path) || matcher.test(resolve(path))
+}
 
 // apply_patch 参数匹配：解析补丁目标路径，ruleArg 作为路径命中任一目标即算命中；解析失败不命中。
 const matchApplyPatchArg = (ruleArg: string, args: unknown): boolean => {

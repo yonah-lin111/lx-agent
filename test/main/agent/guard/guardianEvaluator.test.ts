@@ -119,5 +119,16 @@ describe("GuardianEvaluator", () => {
       expect(assessment.riskLevel).toBe("low")
       expect(assessment.category).toBe("safe")
     })
+
+    it("规范化路径变形后仍识别系统目录写入（//etc、..）", () => {
+      for (const path of ["//etc/hosts", "/tmp/../../etc/hosts"]) {
+        const assessment = guardianEvaluator.evaluateAction({
+          toolName: "write",
+          args: { path, content: "x" },
+        })
+        expect(assessment.riskLevel).toBe("critical")
+        expect(assessment.category).toBe("security_weakening")
+      }
+    })
   })
 })

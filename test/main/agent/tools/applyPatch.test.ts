@@ -79,4 +79,41 @@ function sub(a, b) {
       applyHunksToFile("hello", [{ oldLines: ["world"], newLines: ["bar"] }], "test.txt"),
     ).toThrow("无法在原文件中找到匹配")
   })
+
+  it("hunk 内容中以 -- / ++ 开头的增删行不被当作 diff 标头丢弃", () => {
+    const patch = `
+*** Begin Patch
+*** Update File: sample.txt
+@@
+ keep
+---old
++++new
+*** End Patch
+`
+    const parsed = parsePatch(patch)
+    expect(parsed.actions).toHaveLength(1)
+    const action = parsed.actions[0]
+    if (action.type !== "update") throw new Error("expected update action")
+    expect(action.hunks[0].oldLines).toEqual(["keep", "--old"])
+    expect(action.hunks[0].newLines).toEqual(["keep", "++new"])
+  })
+
+  it("diff 标头对（--- 紧跟 +++ 与 @@）仍被跳过", () => {
+    const patch = `
+*** Begin Patch
+*** Update File: sample.txt
+--- a/sample.txt
++++ b/sample.txt
+@@
+ keep
+-old
++new
+*** End Patch
+`
+    const parsed = parsePatch(patch)
+    const action = parsed.actions[0]
+    if (action.type !== "update") throw new Error("expected update action")
+    expect(action.hunks[0].oldLines).toEqual(["keep", "old"])
+    expect(action.hunks[0].newLines).toEqual(["keep", "new"])
+  })
 })
