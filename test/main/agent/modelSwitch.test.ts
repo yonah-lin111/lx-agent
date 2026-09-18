@@ -227,6 +227,35 @@ describe("Model Switch and Initial Model Entries", () => {
     expect(secondModel.isInitial).toBe(false)
   })
 
+  it("switchModel 落库失败时不留下幽灵 seq（事务回滚后内存 seq 不得增长）", async () => {
+    const { agentRunner, agentSessionService } = await importModules()
+
+    const res = await agentRunner.send(
+      "First message",
+      { provider: "openai", model: "gpt-4o" },
+      { cwd: tmpWorkspace },
+    )
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+
+    const runner = agentRunner.getRunner(res.sessionId)
+    expect(runner).toBeDefined()
+    const before = runner!.getTurnStore().getMessageSeqs().slice()
+
+    const insertSpy = vi.spyOn(agentSessionService, "insertEntry").mockImplementation(() => {
+      throw new Error("db down")
+    })
+    try {
+      expect(() =>
+        runner!.switchModel({ provider: "anthropic", model: "claude-3-5-sonnet-20241022" }),
+      ).toThrow("db down")
+    } finally {
+      insertSpy.mockRestore()
+    }
+
+    expect(runner!.getTurnStore().getMessageSeqs()).toEqual(before)
+  })
+
   it("在 switchModel 之前调用 getContextUsage 不会阻塞后续 switchModel 落库与事件推送", async () => {
     const { agentRunner, agentSessionService } = await importModules()
     const events: AgentEvent[] = []

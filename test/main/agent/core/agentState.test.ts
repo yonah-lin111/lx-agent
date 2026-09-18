@@ -78,4 +78,31 @@ describe("Agent 状态变更契约（review F14）", () => {
     expect(snapshot).toHaveLength(1)
     expect(agent.state.messages).toHaveLength(2)
   })
+
+  it("tools getter 返回快照副本：外部 push 不污染内部工具集", () => {
+    const agent = createAgent()
+    const tool = {
+      name: "echo",
+      label: "echo",
+      description: "echo",
+      inputSchema: { parse: (value: unknown) => value } as never,
+      execute: async () => ({ content: [{ type: "text" as const, text: "ok" }] }),
+    }
+    agent.state.tools = [tool]
+
+    const snapshot = agent.state.tools
+    snapshot.push({ ...tool, name: "injected" })
+
+    expect(snapshot).toHaveLength(2)
+    expect(agent.state.tools.map((item) => item.name)).toEqual(["echo"])
+  })
+
+  it("pendingToolCalls getter 返回副本：外部 add 不污染内部集合", () => {
+    const agent = createAgent()
+
+    const snapshot = agent.state.pendingToolCalls as Set<string>
+    snapshot.add("call-x")
+
+    expect(agent.state.pendingToolCalls.has("call-x")).toBe(false)
+  })
 })
