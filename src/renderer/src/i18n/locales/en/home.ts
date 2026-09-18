@@ -22,6 +22,7 @@ export const home = {
     updateAvailable: "New version v{{version}} is available (current v{{current}})",
     updateDownload: "Download",
     updateDismiss: "Ignore",
+    githubTip: "View source on GitHub",
   },
   schedule: "Schedule",
   heatmap: {

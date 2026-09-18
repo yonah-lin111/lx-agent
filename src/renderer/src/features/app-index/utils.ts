@@ -133,3 +133,9 @@ export const buildHeatmapMonths = (
 
   return { months, maxCount }
 }
+
+/**
+ * 将星标数按当前语言紧凑格式化（en: 1.2K，zh: 1.2万）。
+ */
+export const formatStarCount = (stars: number, locale: string): string =>
+  new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(stars)

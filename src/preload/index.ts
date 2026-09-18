@@ -4,6 +4,7 @@ import type { AgentApi } from "@shared/contracts/agent"
 import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GameApi } from "@shared/contracts/game"
 import type { GitApi } from "@shared/contracts/git"
+import type { GitHubApi } from "@shared/contracts/github"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { NotificationApi } from "@shared/contracts/notification"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
@@ -23,6 +24,7 @@ import { agentApi } from "./api/agent"
 import { customCommandApi } from "./api/customCommand"
 import { gameApi } from "./api/game"
 import { gitApi } from "./api/git"
+import { githubApi } from "./api/github"
 import { markdownApi } from "./api/markdown"
 import { notificationApi } from "./api/notification"
 import { openclawApi } from "./api/openclaw"
@@ -47,7 +49,8 @@ const api: ProjectApi &
   OpenClawApi &
   NotificationApi &
   UpdateApi &
-  GameApi = {
+  GameApi &
+  GitHubApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   saveClipboardImage: (buffer, mimeType) =>
     ipcRenderer.invoke(CLIPBOARD_CHANNELS.saveImage, buffer, mimeType),
@@ -135,6 +138,7 @@ const api: ProjectApi &
   markdown: markdownApi,
   customCommand: customCommandApi,
   git: gitApi,
+  github: githubApi,
   activity: activityApi,
   usage: usageApi,
   schedule: scheduleApi,

@@ -21,6 +21,7 @@ export const home = {
     updateAvailable: "发现新版本 v{{version}}（当前 v{{current}}）",
     updateDownload: "前往下载",
     updateDismiss: "忽略",
+    githubTip: "在 GitHub 上查看源码",
   },
   schedule: "日程",
   heatmap: {

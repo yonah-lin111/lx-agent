@@ -1,14 +1,13 @@
+import { GITHUB_REPO } from "@shared/contracts/github"
 import type { UpdateState } from "@shared/contracts/update"
 import { UPDATE_CHANNELS } from "@shared/ipc/updateChannels"
 import { app, type WebContents } from "electron"
 import { notificationService } from "@/services/notificationService"
 
 // 唯一分发源：GitHub Releases。
-const RELEASE_REPO = "yonah-lin111/lx-agent"
-// 最新 Release 查询接口。
-const RELEASE_API_URL = `https://api.github.com/repos/${RELEASE_REPO}/releases/latest`
+const RELEASE_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`
 // 最新 Release 页面地址（接口未返回 html_url 时的兜底）。
-const RELEASE_PAGE_URL = `https://github.com/${RELEASE_REPO}/releases/latest`
+const RELEASE_PAGE_URL = `https://github.com/${GITHUB_REPO}/releases/latest`
 // 自动检查结果缓存有效期。
 const CHECK_CACHE_TTL_MS = 30 * 60 * 1000
 // 单次请求超时。
