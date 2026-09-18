@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
+  CornerDownRight,
   ExternalLink,
   Loader2,
   Zap,
@@ -28,6 +29,7 @@ import {
 import type {
   ExecutionStep,
   ExecutionSubagentContent,
+  ExecutionToolContent,
   ProposedPlanData,
   ReviewFindingItem,
 } from "@/features/agent/types"
@@ -91,12 +93,24 @@ export const AgentExecutionFlowItem = ({
     (step.tokens?.input ?? 0) > 0 || (step.tokens?.output ?? 0) > 0 || (step.tokens?.total ?? 0) > 0
   const showTokenMetrics = !isRunning && hasTokenMetrics
   const isParallelBatchTotal = Boolean(
-    step.parallel && step.parallel.total > 1 && step.parallel.index === step.parallel.total,
+    step.kind !== "subagent" &&
+      step.parallel &&
+      step.parallel.total > 1 &&
+      step.parallel.index === step.parallel.total,
   )
   const showFooter =
     showTokenMetrics ||
     Boolean(step.parallel) ||
     (step.kind === "subagent" && Boolean(step.subagentContent))
+
+  const subagentToolContent = useMemo((): ExecutionToolContent | undefined => {
+    if (step.kind !== "subagent") return undefined
+    const internalSteps = step.subagentContent?.subagent?.steps
+    if (!internalSteps || internalSteps.length === 0) return undefined
+    const running = [...internalSteps].reverse().find((item) => item.status === "running")
+    const current = running ?? internalSteps[internalSteps.length - 1]
+    return { toolName: current.toolName, args: current.args }
+  }, [step.kind, step.subagentContent?.subagent?.steps])
 
   const effectiveExpanded = isExpanded
 
@@ -226,90 +240,113 @@ export const AgentExecutionFlowItem = ({
             handleToggleExpand()
           }
         }}
-        className="agent-execution-flow-step-header flex h-8 cursor-pointer items-center justify-between gap-2 px-2.5 select-none hover:bg-white/[0.02] transition-colors"
+        className={`agent-execution-flow-step-header flex cursor-pointer justify-between gap-2 px-2.5 select-none hover:bg-white/[0.02] transition-colors ${
+          subagentToolContent ? "items-start py-1.5" : "h-8 items-center"
+        }`}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 leading-none">
-          {/* 折叠箭头 */}
-          <div className="flex shrink-0 items-center text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]">
-            {effectiveExpanded ? (
-              <ChevronDown className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
-          </div>
+        <div
+          className={`flex min-w-0 flex-1 ${
+            subagentToolContent
+              ? "flex-col gap-1 overflow-hidden"
+              : "items-center gap-1.5 leading-none"
+          }`}
+        >
+          <div className="flex w-full min-w-0 items-center gap-1.5 leading-none">
+            {/* 折叠箭头 */}
+            <div className="flex shrink-0 items-center text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]">
+              {effectiveExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+            </div>
 
-          {/* 步骤全局统一顺序索引 */}
-          {!isRunning && (
-            <span className="shrink-0 font-mono text-xs font-medium leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
-              #{step.stepIndex}
-            </span>
-          )}
-
-          {/* 类型标签 */}
-          <LxTag size="small" color={meta.tagColor} className="shrink-0 leading-none">
-            <span className={`leading-none ${meta.textColor}`}>
-              {meta.customLabel || (meta.labelKey ? t(meta.labelKey) : "")}
-            </span>
-          </LxTag>
-
-          {/* 用户步骤中的指令标签（Steer / Skill / 普通命令互斥，仅渲染一个） */}
-          {step.kind === "user" &&
-            (step.userContent?.isSteer || step.userContent?.command) &&
-            (step.userContent?.isSteer || step.userContent?.command?.name === "steer" ? (
-              <LxTag size="small" color="amber" className="shrink-0 leading-none">
-                <span className="font-mono text-amber-300 leading-none">/steer</span>
-              </LxTag>
-            ) : step.userContent?.command?.kind === "skill" && skillName ? (
-              <LxInfoTooltip
-                markdown={activeSkillMarkdown || `### ${skillName}`}
-                showIcon={false}
-                placement="top"
-              >
-                <LxTag size="small" color="amber" className="shrink-0 leading-none cursor-help">
-                  <span className="font-mono text-amber-300 leading-none">${skillName}</span>
-                </LxTag>
-              </LxInfoTooltip>
-            ) : step.userContent?.command ? (
-              <LxTag size="small" color="amber" className="shrink-0 leading-none">
-                <span className="inline-flex items-center gap-1 font-mono text-amber-300 leading-none">
-                  <Zap className="h-3 w-3" />/{step.userContent.command.name}
-                </span>
-              </LxTag>
-            ) : null)}
-
-          {/* 步骤标题与副标题 */}
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-            {step.kind === "tool" && step.toolContent ? (
-              <FlowItemToolTitle toolContent={step.toolContent} />
-            ) : step.kind === "user" ? null : (
-              <span
-                className={`truncate font-mono text-xs font-medium leading-none ${
-                  step.kind === "error"
-                    ? step.errorContent?.isAborted
-                      ? "text-amber-300"
-                      : "text-red-400"
-                    : "text-[var(--color-theme-text,#ffffff)]/90"
-                }`}
-              >
-                {step.status === "running" &&
-                (step.kind === "assistant" || step.kind === "thinking")
-                  ? "..."
-                  : step.title}
+            {/* 步骤全局统一顺序索引 */}
+            {!isRunning && (
+              <span className="shrink-0 font-mono text-xs font-medium leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
+                #{step.stepIndex}
               </span>
             )}
-            {step.kind !== "tool" &&
-              step.kind !== "user" &&
-              step.subtitle &&
-              step.status !== "running" && (
-                <span className="hidden min-w-0 truncate text-xs leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] sm:inline">
-                  {step.subtitle}
+
+            {/* 类型标签 */}
+            <LxTag size="small" color={meta.tagColor} className="shrink-0 leading-none">
+              <span className={`leading-none ${meta.textColor}`}>
+                {meta.customLabel || (meta.labelKey ? t(meta.labelKey) : "")}
+              </span>
+            </LxTag>
+
+            {/* 用户步骤中的指令标签（Steer / Skill / 普通命令互斥，仅渲染一个） */}
+            {step.kind === "user" &&
+              (step.userContent?.isSteer || step.userContent?.command) &&
+              (step.userContent?.isSteer || step.userContent?.command?.name === "steer" ? (
+                <LxTag size="small" color="amber" className="shrink-0 leading-none">
+                  <span className="font-mono text-amber-300 leading-none">/steer</span>
+                </LxTag>
+              ) : step.userContent?.command?.kind === "skill" && skillName ? (
+                <LxInfoTooltip
+                  markdown={activeSkillMarkdown || `### ${skillName}`}
+                  showIcon={false}
+                  placement="top"
+                >
+                  <LxTag size="small" color="amber" className="shrink-0 leading-none cursor-help">
+                    <span className="font-mono text-amber-300 leading-none">${skillName}</span>
+                  </LxTag>
+                </LxInfoTooltip>
+              ) : step.userContent?.command ? (
+                <LxTag size="small" color="amber" className="shrink-0 leading-none">
+                  <span className="inline-flex items-center gap-1 font-mono text-amber-300 leading-none">
+                    <Zap className="h-3 w-3" />/{step.userContent.command.name}
+                  </span>
+                </LxTag>
+              ) : null)}
+
+            {/* 步骤标题与副标题 */}
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
+              {step.kind === "tool" && step.toolContent ? (
+                <FlowItemToolTitle toolContent={step.toolContent} />
+              ) : step.kind === "user" ? null : (
+                <span
+                  className={`truncate font-mono text-xs font-medium leading-none ${
+                    step.kind === "error"
+                      ? step.errorContent?.isAborted
+                        ? "text-amber-300"
+                        : "text-red-400"
+                      : "text-[var(--color-theme-text,#ffffff)]/90"
+                  }`}
+                >
+                  {step.status === "running" &&
+                  (step.kind === "assistant" || step.kind === "thinking")
+                    ? "..."
+                    : step.title}
                 </span>
               )}
+              {step.kind !== "tool" &&
+                step.kind !== "user" &&
+                step.subtitle &&
+                step.status !== "running" && (
+                  <span className="hidden min-w-0 truncate text-xs leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] sm:inline">
+                    {step.subtitle}
+                  </span>
+                )}
+            </div>
           </div>
+
+          {subagentToolContent && (
+            <div
+              data-testid="flow-item-subagent-tool"
+              className="agent-execution-flow-step-subagent-tool-row flex min-w-0 items-start gap-1.5 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]"
+            >
+              <span aria-hidden className="w-3.5 shrink-0" />
+              <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]" />
+              <div className="flex min-w-0 flex-1 items-center overflow-hidden leading-none">
+                <FlowItemToolTitle toolContent={subagentToolContent} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 右侧状态与指标 */}
-        <div className="flex shrink-0 items-center gap-1.5 font-mono text-xs leading-none">
+        <div className="flex h-3.5 shrink-0 items-center gap-1.5 font-mono text-xs leading-none">
           {/* 单步耗时指标：区分自身执行耗时与模型响应/步进跨度 */}
           {step.status !== "running" && (
             <>
