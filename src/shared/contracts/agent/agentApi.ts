@@ -87,7 +87,11 @@ export interface AgentApi {
     listSessions: () => Promise<AgentSessionSummary[]>
     restoreSession: (sessionId: string, tabId?: string) => Promise<AgentRestoredSession>
     renameSession: (sessionId: string, title: string) => Promise<void>
+    // 设置会话置顶状态（幂等；不刷新 updated_at）。
+    setSessionPinned: (sessionId: string, pinned: boolean) => Promise<void>
     deleteSession: (sessionId: string) => Promise<void>
+    // 批量删除会话（逐条复用单删的完整清理链；空数组为空操作）。
+    deleteSessions: (sessionIds: string[]) => Promise<void>
     // 删除一轮对话：以该轮用户消息的 timestamp 定位（问题 + 回答 + 工具调用级联删除）。
     deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) => Promise<void>
     // 会话分支：从指定用户轮（timestamp 定位）切割复制历史到新会话；不传 timestamp = 整会话复制（v1 UI 不暴露）。

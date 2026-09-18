@@ -31,6 +31,8 @@ export interface AgentSessionSummary {
   cwd: string
   // 所属项目（历史面板项目 tag 客户端筛选用；独立页会话为 null）。
   projectId: string | null
+  // 是否置顶（历史面板置顶区展示；置顶项排序优先且不参与分页截断）。
+  pinned: boolean
   createdAt: string
   updatedAt: string
 }

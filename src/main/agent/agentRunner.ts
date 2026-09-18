@@ -450,6 +450,19 @@ export class SessionRunnerManager {
     agentSessionService.renameSession(sessionId, title, new Date().toISOString())
   }
 
+  // 设置会话置顶状态（会话不存在时静默忽略）。
+  public setSessionPinned(sessionId: string, pinned: boolean): void {
+    if (!agentSessionService.getSession(sessionId)) return
+    agentSessionService.setSessionPinned(sessionId, pinned)
+  }
+
+  // 批量删除会话：逐条复用单删完整清理链（runner dispose / spill / jobs / 附件目录）。
+  public deleteSessions(sessionIds: string[]): void {
+    for (const sessionId of sessionIds) {
+      this.deleteSession(sessionId)
+    }
+  }
+
   public forkSession(sessionId: string, userMessageTimestamp?: number): AgentForkResult {
     const activeRunner = this.getRunner(sessionId)
     if (activeRunner?.isBusy()) {
@@ -627,6 +640,7 @@ export class SessionRunnerManager {
         title: sessionSummary.title,
         cwd: sessionSummary.cwd,
         projectId: sessionSummary.project_id ?? null,
+        pinned: sessionSummary.pinned === 1,
         createdAt: sessionSummary.created_at,
         updatedAt: sessionSummary.updated_at,
       }
@@ -642,6 +656,7 @@ export class SessionRunnerManager {
         title: "未命名会话",
         cwd: runner?.getEffectiveCwd() ?? "",
         projectId: null,
+        pinned: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -676,6 +691,7 @@ export class SessionRunnerManager {
           title: sessionSummary.title,
           cwd: sessionSummary.cwd,
           projectId: sessionSummary.project_id ?? null,
+          pinned: sessionSummary.pinned === 1,
           createdAt: sessionSummary.created_at,
           updatedAt: sessionSummary.updated_at,
         }

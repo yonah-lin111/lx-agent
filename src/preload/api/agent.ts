@@ -42,7 +42,11 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.restoreSession, sessionId, tabId),
   renameSession: (sessionId: string, title: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.renameSession, sessionId, title),
+  setSessionPinned: (sessionId: string, pinned: boolean) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.setSessionPinned, sessionId, pinned),
   deleteSession: (sessionId: string) => ipcRenderer.invoke(AGENT_CHANNELS.deleteSession, sessionId),
+  deleteSessions: (sessionIds: string[]) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.deleteSessions, sessionIds),
   deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.deleteMessageTurn, sessionId, userMessageTimestamp),
   forkSession: (sessionId: string, userMessageTimestamp?: number) =>

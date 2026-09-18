@@ -92,6 +92,23 @@ describe("agentSessionService", () => {
     expect(sessions[1].projectId).toBeNull()
   })
 
+  it("setSessionPinned 置顶优先排序且不刷新 updated_at", () => {
+    insertSession("s1", "/", "2026-01-01T00:00:00.000Z")
+    insertSession("s2", "/", "2026-01-02T00:00:00.000Z")
+    insertSession("s3", null, "2026-01-03T00:00:00.000Z")
+
+    service.setSessionPinned("s1", true)
+    const pinnedSessions = service.listSessions()
+    expect(pinnedSessions.map((session) => session.id)).toEqual(["s1", "s3", "s2"])
+    expect(pinnedSessions[0].pinned).toBe(true)
+    // 置顶不刷新最后活跃时间。
+    expect(pinnedSessions[0].updatedAt).toBe("2026-01-01T00:00:00.000Z")
+    expect(pinnedSessions[1].pinned).toBe(false)
+
+    service.setSessionPinned("s1", false)
+    expect(service.listSessions().map((session) => session.id)).toEqual(["s3", "s2", "s1"])
+  })
+
   it("transaction 内多写原子回滚", () => {
     const sessionId = randomUUID()
     const now = new Date().toISOString()

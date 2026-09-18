@@ -63,6 +63,33 @@ describe("agent 表结构与约束", () => {
     expect(indexNames).not.toContain("idx_agent_session_item")
   })
 
+  it("agent_session 支持 pinned 字段且默认未置顶", () => {
+    database = new Database(":memory:")
+    database.pragma("foreign_keys = ON")
+    runMigrations(database)
+
+    const columns = database.prepare("PRAGMA table_info(agent_session)").all() as {
+      name: string
+      notnull: number
+      dflt_value: string | null
+    }[]
+    const pinned = columns.find((column) => column.name === "pinned")
+    expect(pinned).toBeDefined()
+    expect(pinned?.notnull).toBe(1)
+    expect(pinned?.dflt_value).toBe("0")
+
+    const now = new Date().toISOString()
+    database
+      .prepare(
+        "INSERT INTO agent_session (external_id, title, cwd, created_at, updated_at) VALUES ('s1', 't', '/x', ?, ?)",
+      )
+      .run(now, now)
+    const row = database
+      .prepare("SELECT pinned FROM agent_session WHERE external_id = 's1'")
+      .get() as { pinned: number }
+    expect(row.pinned).toBe(0)
+  })
+
   it("会话支持绑定 project_id 与 page", () => {
     database = new Database(":memory:")
     database.pragma("foreign_keys = ON")

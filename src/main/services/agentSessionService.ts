@@ -10,6 +10,7 @@ export type AgentSessionRecord = {
   page: string | null
   title: string
   cwd: string
+  pinned: number
   created_at: string
   updated_at: string
 }
@@ -34,6 +35,7 @@ const toSummary = (row: AgentSessionRecord): AgentSessionSummary => ({
   title: row.title,
   cwd: row.cwd,
   projectId: row.project_id ?? null,
+  pinned: row.pinned === 1,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 })
@@ -135,6 +137,13 @@ export const createAgentSessionService = (getConnection: () => Database.Database
     getConnection()
       .prepare("UPDATE agent_session SET title = ?, updated_at = ? WHERE external_id = ?")
       .run(title, updatedAt, sessionId)
+  },
+
+  // 设置会话置顶（仅改 pinned，不刷新 updated_at）。
+  setSessionPinned(sessionId: string, pinned: boolean): void {
+    getConnection()
+      .prepare("UPDATE agent_session SET pinned = ? WHERE external_id = ?")
+      .run(pinned ? 1 : 0, sessionId)
   },
 
   // 更新会话工具执行目录（/gitWorktree 切换，同步 updated_at）。
@@ -343,10 +352,10 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       )
   },
 
-  // 会话列表：全量拉取，按最后活跃排序（历史面板客户端过滤）。
+  // 会话列表：全量拉取，置顶优先、其余按最后活跃排序（历史面板客户端过滤/分页）。
   listSessions: (): AgentSessionSummary[] => {
     const rows = getConnection()
-      .prepare("SELECT * FROM agent_session ORDER BY updated_at DESC, id DESC")
+      .prepare("SELECT * FROM agent_session ORDER BY pinned DESC, updated_at DESC, id DESC")
       .all() as AgentSessionRecord[]
     return rows.map(toSummary)
   },

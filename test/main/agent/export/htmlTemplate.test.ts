@@ -13,6 +13,7 @@ const summary: AgentSessionSummary = {
   title: "HTML 模板行为",
   cwd: "/tmp/project",
   projectId: "proj-1",
+  pinned: false,
   createdAt: "2026-08-18T10:00:00.000Z",
   updatedAt: "2026-08-18T10:30:00.000Z",
 }

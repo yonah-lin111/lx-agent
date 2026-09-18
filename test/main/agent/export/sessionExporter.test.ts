@@ -51,6 +51,7 @@ describe("Session Export & Share System (v10)", () => {
     title: "重构用户认证模块",
     cwd: "/Users/dev/project",
     projectId: "proj-1",
+    pinned: false,
     createdAt: "2026-08-18T10:00:00.000Z",
     updatedAt: "2026-08-18T10:30:00.000Z",
   }

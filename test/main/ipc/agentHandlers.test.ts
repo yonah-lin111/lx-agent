@@ -14,7 +14,9 @@ vi.mock("@/agent/agentRunner", () => ({
     listSessions: vi.fn(),
     restoreSession: vi.fn(),
     renameSession: vi.fn(),
+    setSessionPinned: vi.fn(),
     deleteSession: vi.fn(),
+    deleteSessions: vi.fn(),
     deleteMessageTurn: vi.fn(),
     getPromptAssembly: vi.fn(),
     setCollaborationMode: vi.fn(),
@@ -130,6 +132,41 @@ describe("agent IPC handlers", () => {
     expect(() => deleteHandler(undefined, "")).toThrow("INVALID_SESSION_ID")
     expect(() => turnHandler(undefined, "", 1)).toThrow("INVALID_SESSION_ID")
     expect(() => turnHandler(undefined, "sess-1", "abc")).toThrow("INVALID_MESSAGE_TIMESTAMP")
+  })
+
+  it("setSessionPinned/deleteSessions handler 校验并转发到 agentRunner", async () => {
+    vi.resetModules()
+    const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
+    const { agentRunner } = await import("@/agent/agentRunner")
+
+    registerAgentHandlers(() => undefined)
+
+    const pinHandler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.setSessionPinned,
+    )?.[1]
+    const batchDeleteHandler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.deleteSessions,
+    )?.[1]
+    expect(pinHandler).toBeTypeOf("function")
+    expect(batchDeleteHandler).toBeTypeOf("function")
+
+    pinHandler(undefined, "sess-1", true)
+    expect(agentRunner.setSessionPinned).toHaveBeenCalledWith("sess-1", true)
+    pinHandler(undefined, "sess-1", false)
+    expect(agentRunner.setSessionPinned).toHaveBeenCalledWith("sess-1", false)
+
+    batchDeleteHandler(undefined, ["s1", "s2"])
+    expect(agentRunner.deleteSessions).toHaveBeenCalledWith(["s1", "s2"])
+    // 空数组为合法空操作。
+    batchDeleteHandler(undefined, [])
+    expect(agentRunner.deleteSessions).toHaveBeenCalledWith([])
+
+    // 非法输入同步抛错。
+    expect(() => pinHandler(undefined, "", true)).toThrow("INVALID_SESSION_ID")
+    expect(() => pinHandler(undefined, "sess-1", "yes")).toThrow("INVALID_SESSION_PINNED")
+    expect(() => batchDeleteHandler(undefined, "sess-1")).toThrow("INVALID_SESSION_IDS")
+    expect(() => batchDeleteHandler(undefined, ["s1", 2])).toThrow("INVALID_SESSION_IDS")
+    expect(() => batchDeleteHandler(undefined, ["s1", " "])).toThrow("INVALID_SESSION_IDS")
   })
 
   it("suggestedQuestions handler 校验输入并调用生成器", async () => {
