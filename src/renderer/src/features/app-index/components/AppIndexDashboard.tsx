@@ -159,14 +159,6 @@ export const AppIndexDashboard = (): React.JSX.Element => {
             <span className="font-mono text-base font-bold tracking-[0.18em] text-[var(--color-theme-text)]">
               LX AGENT
             </span>
-            <LxTag
-              size="small"
-              bgClass="border-white/10 bg-white/5"
-              textClass="text-white/40"
-              className="font-mono"
-            >
-              {t("home.index.badge")}
-            </LxTag>
             {updateNotice.currentVersion ? (
               <LxTag size="small" className="font-mono">
                 {`v${updateNotice.currentVersion}`}
