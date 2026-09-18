@@ -214,7 +214,7 @@ export const AgentExecutionFlowGroup = ({
             onToggleExpand()
           }
         }}
-        className="agent-execution-flow-group-header flex cursor-pointer items-center justify-between gap-2 py-1.5 px-2.5 select-none transition-colors hover:bg-white/[0.02]"
+        className="agent-execution-flow-group-header flex cursor-pointer items-start justify-between gap-2 py-1.5 px-2.5 select-none transition-colors hover:bg-white/[0.02]"
       >
         <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-hidden">
           {/* 第一行：折叠箭头、Group 标识小圆点、标题与数量 */}
@@ -267,8 +267,8 @@ export const AgentExecutionFlowGroup = ({
           )}
         </div>
 
-        {/* 右侧指标与状态：总耗时仅在 group 执行完成后展示 */}
-        <div className="flex shrink-0 items-center gap-1.5 font-mono text-xs leading-none">
+        {/* 右侧指标与状态：与标题首行同高同行（不随统计行垂直居中），总耗时仅在 group 执行完成后展示 */}
+        <div className="flex h-3.5 shrink-0 items-center gap-1.5 font-mono text-xs leading-none">
           {!isRunning && staticDurationMs > 0 && (
             <span
               data-testid="flow-group-duration"

@@ -141,4 +141,18 @@ describe("AgentExecutionFlowGroup 调用统计行", () => {
     // 默认折叠：展开体不渲染
     expect(container.querySelector(".agent-execution-flow-group-body")).toBeNull()
   })
+
+  it("右侧耗时/状态/复制操作区与标题首行同行对齐而非垂直居中", () => {
+    const steps = [toolStep("s1", "grep"), toolStep("s2", "glob")]
+
+    const container = renderGroup(steps)
+
+    const header = container.querySelector(".agent-execution-flow-group-header")
+    expect(header?.className).toContain("items-start")
+
+    const rightControls = header?.lastElementChild
+    expect(rightControls).not.toBeNull()
+    expect(rightControls?.className).toContain("h-3.5")
+    expect(rightControls?.className).toContain("items-center")
+  })
 })
