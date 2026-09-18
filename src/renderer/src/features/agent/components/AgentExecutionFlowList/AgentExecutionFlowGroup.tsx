@@ -16,7 +16,7 @@ import {
   isMcpToolCall,
   isSkillToolCall,
 } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
-import type { ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
+import type { ExecutionStep } from "@/features/agent/types"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { AgentExecutionFlowItemMemo } from "./AgentExecutionFlowItemMemo"
 import {
@@ -34,7 +34,7 @@ export interface AgentExecutionFlowGroupProps {
   onToggleExpand: () => void
   isStepExpanded: (step: ExecutionStep) => boolean
   onToggleStepExpand: (step: ExecutionStep) => void
-  onOpenSubagent?: (content: ExecutionSubagentContent) => void
+  onOpenSubagent?: (stepId: string) => void
   isStreamingActive?: boolean
 }
 

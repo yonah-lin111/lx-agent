@@ -86,7 +86,7 @@ export const AgentExecutionFlowList = forwardRef<
     })
 
     const { activeSubagentToolCall, handleOpenSubagent, handleCloseSubagent, subagentScrollRef } =
-      useFlowSubagentPanel()
+      useFlowSubagentPanel(steps)
 
     return (
       <div

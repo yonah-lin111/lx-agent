@@ -109,6 +109,46 @@ const subagentMessages = (): ChatMessage[] => [
   },
 ]
 
+const liveSubagentMessages = (internalTexts: string[]): ChatMessage[] => [
+  {
+    id: "u1",
+    role: "user",
+    blocks: [{ kind: "text", text: "执行子任务" }],
+    isStreaming: false,
+  },
+  {
+    id: "a1",
+    role: "assistant",
+    blocks: [
+      {
+        kind: "toolCall",
+        toolCallId: "task-call-live",
+        toolName: "task",
+        args: { description: "实时刷新验证", prompt: "持续输出" },
+        status: "running",
+        subagent: {
+          subagentId: "sub-live",
+          name: "task_explorer",
+          description: "实时刷新验证",
+          prompt: "持续输出",
+          usage: { input: 120, output: 45, cacheRead: 0, cacheWrite: 0, totalTokens: 165 },
+          messages: internalTexts.map((text, index) => ({
+            role: "assistant",
+            provider: "anthropic",
+            model: "claude-3-5-sonnet",
+            usage: { input: 120, output: 45, cacheRead: 0, cacheWrite: 0, totalTokens: 165 },
+            stopReason: "stop",
+            timestamp: 1000 + index,
+            content: [{ type: "text", text }],
+          })),
+          steps: [],
+        },
+      },
+    ],
+    isStreaming: true,
+  },
+]
+
 describe("AgentExecutionFlowList 交互动作", () => {
   afterEach(() => {
     cleanup()
@@ -178,5 +218,32 @@ describe("AgentExecutionFlowList 交互动作", () => {
     fireEvent.click(closeButtons[0])
 
     expect(dialog()?.hasAttribute("inert")).toBe(true)
+  })
+
+  it("subagent 面板打开后随内部流式快照实时刷新", () => {
+    const { container, rerender } = render(
+      <AgentExecutionFlowList
+        messages={liveSubagentMessages(["第一段内部输出"])}
+        isStreaming={true}
+      />,
+    )
+
+    const dialog = (): HTMLElement | null =>
+      container.querySelector<HTMLElement>(".agent-subagent-panel-dialog")
+    fireEvent.click(screen.getByTestId("flow-item-subagent-detail-btn"))
+
+    expect(dialog()?.hasAttribute("inert")).toBe(false)
+    expect(dialog()?.textContent).toContain("第一段内部输出")
+    expect(dialog()?.textContent).not.toContain("第二段内部输出")
+
+    rerender(
+      <AgentExecutionFlowList
+        messages={liveSubagentMessages(["第一段内部输出", "第二段内部输出"])}
+        isStreaming={true}
+      />,
+    )
+
+    expect(dialog()?.hasAttribute("inert")).toBe(false)
+    expect(dialog()?.textContent).toContain("第二段内部输出")
   })
 })

@@ -28,7 +28,6 @@ import {
 } from "@/features/agent/components/blocks"
 import type {
   ExecutionStep,
-  ExecutionSubagentContent,
   ExecutionToolContent,
   ProposedPlanData,
   ReviewFindingItem,
@@ -60,7 +59,7 @@ export interface AgentExecutionFlowItemProps {
   step: ExecutionStep
   isExpanded: boolean
   onToggleExpand: () => void
-  onOpenSubagent?: (content: ExecutionSubagentContent) => void
+  onOpenSubagent?: (stepId: string) => void
   onAcceptPlan?: (plan: ProposedPlanData) => void
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   onFillInput?: (text: string) => void
@@ -662,7 +661,7 @@ export const AgentExecutionFlowItem = ({
                   onClick={(e) => {
                     e.stopPropagation()
                     if (step.subagentContent) {
-                      onOpenSubagent?.(step.subagentContent)
+                      onOpenSubagent?.(step.id)
                     }
                   }}
                   className="shrink-0 inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-xs font-medium leading-none text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200 focus:outline-none"
