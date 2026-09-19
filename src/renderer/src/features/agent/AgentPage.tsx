@@ -368,6 +368,12 @@ export const AgentPage = ({
   // 历史会话面板开关（右侧栏历史 icon 触发；与子代理面板互斥）。
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 
+  // 执行流程视图内打开的子代理面板开关（由 AgentExecutionFlowList 回传，用于遮盖输入区与状态栏）。
+  const [isFlowSubagentOpen, setIsFlowSubagentOpen] = useState(false)
+
+  // 任一覆盖面板打开：遮盖并禁用输入区与状态栏，避免键盘焦点落在被盖住的输入框。
+  const isOverlayPanelOpen = isHistoryOpen || activeSubagentId !== null || isFlowSubagentOpen
+
   // 实时从 messages 中解析最新的 subagent toolCall 块，确保子代理流式更新能够被面板响应
   const activeSubagent = useMemo<SubagentToolCall | null>(() => {
     if (!activeSubagentId) return null
@@ -801,8 +807,9 @@ export const AgentPage = ({
       }`}
     >
       <LxAgentTopToast />
-      {/* 视图容器：问答消息列表与执行流程视图互斥显示；子代理面板从容器顶部向下展开、恰好覆盖消息列表。 */}
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      {/* 视图容器：问答消息列表与执行流程视图互斥显示。
+          刻意不设 relative：子代理/历史面板以 agent-page-container 为定位上下文，从顶部向下展开覆盖输入区与状态栏。 */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {viewMode === "flow" ? (
           /* 执行流程视图：消息列表的另一种显示形式，展示当前 Agent 的全部执行日志与步骤。 */
           <AgentExecutionFlowList
@@ -817,6 +824,7 @@ export const AgentPage = ({
             onApplyReviewFixes={acceptAndExecuteReviewFixes}
             onFillInput={echoToInput}
             onDeleteMessage={deleteTurn}
+            onSubagentPanelOpenChange={setIsFlowSubagentOpen}
           />
         ) : (
           <>
@@ -860,58 +868,61 @@ export const AgentPage = ({
           onDeleteMany={(sessionIds) => onDeleteSessions?.(sessionIds) ?? Promise.resolve(true)}
         />
       </div>
-      <AgentInput
-        inputText={inputText}
-        isStreaming={isStreaming}
-        isCompacting={isCompacting}
-        isCompactingManual={isCompactingManual}
-        queuedCount={queuedCount}
-        queuedMessages={queuedMessages}
-        onInputChange={setInputText}
-        onSend={(options) => sendMessage(undefined, selectedSelection, options)}
-        onStop={handleStop}
-        onClear={handleNewChat}
-        onUndo={undoLastTurn}
-        isOnlyOneTurnLeft={isOnlyOneTurnLeft}
-        onCompact={compactChat}
-        selectedModel={selectedModel}
-        selectedVariant={selectedVariant}
-        availableVariants={availableVariants}
-        onModelChange={handleModelSelectChange}
-        onVariantChange={handleVariantSelectChange}
-        modelOptions={selectOptions}
-        hasModelOptions={hasModelOptions}
-        contextUsage={contextUsage}
-        projectId={effectiveProjectId}
-        projectPath={effectiveProjectPath}
-        currentPath={statusBarPath}
-        worktreeName={activeWorktreeName}
-        inputTextareaRef={inputTextareaRef}
-        voiceButtonRef={voiceButtonRef}
-        worktreeOptions={worktreeOptions}
-        onWorktreeSelect={handleWorktreeSelect}
-        onProjectSelect={handleProjectSelect}
-        onCdSelect={handleCdSelect}
-        onSessionSelect={handleRestoreChat}
-        allowProjectChange={!currentSessionId}
-        currentSessionId={currentSessionId}
-        selectedFiles={selectedFiles}
-        onFilesChange={setSelectedFiles}
-        supportsImages={supportsImages}
-      />
-      <AgentStatusBar
-        projectPath={statusBarPath}
-        projectId={effectiveProjectId}
-        allowProjectChange={!currentSessionId}
-        onProjectChange={handleProjectSelect}
-        onWorktreeChange={handleWorktreeSelect}
-        jobs={jobs}
-        onOpenJobs={() => useBottomSideBarStore.getState().openJobsMonitor()}
-        sandboxPolicy={currentSandboxPolicy}
-        collaborationMode={collaborationMode}
-        pendingRequest={pendingRequest}
-        onPermissionRespond={respondPermission}
-      />
+      {/* 输入区与状态栏：被覆盖面板打开时整体 inert（display: contents 保持既有 flex 布局不变）。 */}
+      <div className="contents" inert={isOverlayPanelOpen}>
+        <AgentInput
+          inputText={inputText}
+          isStreaming={isStreaming}
+          isCompacting={isCompacting}
+          isCompactingManual={isCompactingManual}
+          queuedCount={queuedCount}
+          queuedMessages={queuedMessages}
+          onInputChange={setInputText}
+          onSend={(options) => sendMessage(undefined, selectedSelection, options)}
+          onStop={handleStop}
+          onClear={handleNewChat}
+          onUndo={undoLastTurn}
+          isOnlyOneTurnLeft={isOnlyOneTurnLeft}
+          onCompact={compactChat}
+          selectedModel={selectedModel}
+          selectedVariant={selectedVariant}
+          availableVariants={availableVariants}
+          onModelChange={handleModelSelectChange}
+          onVariantChange={handleVariantSelectChange}
+          modelOptions={selectOptions}
+          hasModelOptions={hasModelOptions}
+          contextUsage={contextUsage}
+          projectId={effectiveProjectId}
+          projectPath={effectiveProjectPath}
+          currentPath={statusBarPath}
+          worktreeName={activeWorktreeName}
+          inputTextareaRef={inputTextareaRef}
+          voiceButtonRef={voiceButtonRef}
+          worktreeOptions={worktreeOptions}
+          onWorktreeSelect={handleWorktreeSelect}
+          onProjectSelect={handleProjectSelect}
+          onCdSelect={handleCdSelect}
+          onSessionSelect={handleRestoreChat}
+          allowProjectChange={!currentSessionId}
+          currentSessionId={currentSessionId}
+          selectedFiles={selectedFiles}
+          onFilesChange={setSelectedFiles}
+          supportsImages={supportsImages}
+        />
+        <AgentStatusBar
+          projectPath={statusBarPath}
+          projectId={effectiveProjectId}
+          allowProjectChange={!currentSessionId}
+          onProjectChange={handleProjectSelect}
+          onWorktreeChange={handleWorktreeSelect}
+          jobs={jobs}
+          onOpenJobs={() => useBottomSideBarStore.getState().openJobsMonitor()}
+          sandboxPolicy={currentSandboxPolicy}
+          collaborationMode={collaborationMode}
+          pendingRequest={pendingRequest}
+          onPermissionRespond={respondPermission}
+        />
+      </div>
     </div>
   )
 }

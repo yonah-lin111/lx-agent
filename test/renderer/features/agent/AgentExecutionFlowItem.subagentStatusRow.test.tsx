@@ -33,7 +33,7 @@ const makeSubagentStep = (
 const renderItem = (step: ExecutionStep): ReturnType<typeof render> =>
   render(<AgentExecutionFlowItem step={step} isExpanded={false} onToggleExpand={vi.fn()} />)
 
-describe("AgentExecutionFlowItem - subagent 头部内部工具直角行", () => {
+describe("AgentExecutionFlowItem - subagent 头部状态行（运行中内部工具 / 完成后统计）", () => {
   afterEach(cleanup)
 
   it("运行中优先展示最近一个 running 的内部工具描述", () => {
@@ -55,12 +55,12 @@ describe("AgentExecutionFlowItem - subagent 头部内部工具直角行", () => 
 
     renderItem(step)
 
-    const row = screen.getByTestId("flow-item-subagent-tool")
+    const row = screen.getByTestId("flow-item-subagent-status")
     expect(within(row).getByText("rtk rg -n CornerDownRight src")).toBeDefined()
     expect(within(row).queryByText("one.ts")).toBeNull()
   })
 
-  it("全部内部工具完成后展示最后一个工具描述", () => {
+  it("全部内部工具完成后改为展示调用统计行（不再显示最后一个工具描述）", () => {
     const step = makeSubagentStep({
       id: "step-subagent-2",
       status: "done",
@@ -79,9 +79,30 @@ describe("AgentExecutionFlowItem - subagent 头部内部工具直角行", () => 
 
     renderItem(step)
 
-    const row = screen.getByTestId("flow-item-subagent-tool")
-    expect(within(row).getByText('"AgentExecutionFlow"')).toBeDefined()
-    expect(within(row).getByText("grep")).toBeDefined()
+    const row = screen.getByTestId("flow-item-subagent-status")
+    expect(row.getAttribute("data-subagent-row")).toBe("stats")
+    expect(row.textContent).toContain("2Tool Calls")
+    expect(within(row).queryByText("one.ts")).toBeNull()
+  })
+
+  it("失败状态在统计行前置 Error 标记", () => {
+    const step = makeSubagentStep({
+      id: "step-subagent-error",
+      status: "error",
+      subagentContent: {
+        name: "explore-agent",
+        subagent: makeSubagentData([
+          { toolName: "bash", args: { command: "rtk rg subagent" }, status: "error" },
+        ]),
+      },
+    })
+
+    renderItem(step)
+
+    const row = screen.getByTestId("flow-item-subagent-status")
+    expect(row.getAttribute("data-subagent-row")).toBe("stats")
+    expect(row.textContent).toContain("Error")
+    expect(row.textContent).toContain("1Tool Call")
   })
 
   it("直角行布局与 AgentExecutionFlowGroup 统计行同构（占位 + 直角 icon + 文本）", () => {
@@ -98,7 +119,7 @@ describe("AgentExecutionFlowItem - subagent 头部内部工具直角行", () => 
 
     const { container } = renderItem(step)
 
-    const row = screen.getByTestId("flow-item-subagent-tool")
+    const row = screen.getByTestId("flow-item-subagent-status")
     expect(row.className).toContain("items-start")
     expect(row.className).toContain("gap-1.5")
     expect(row.firstElementChild?.className).toContain("w-3.5")
@@ -113,7 +134,7 @@ describe("AgentExecutionFlowItem - subagent 头部内部工具直角行", () => 
 
     renderItem(step)
 
-    expect(screen.queryByTestId("flow-item-subagent-tool")).toBeNull()
+    expect(screen.queryByTestId("flow-item-subagent-status")).toBeNull()
   })
 
   it("普通工具步骤不渲染 subagent 直角行", () => {
@@ -131,7 +152,7 @@ describe("AgentExecutionFlowItem - subagent 头部内部工具直角行", () => 
 
     renderItem(step)
 
-    expect(screen.queryByTestId("flow-item-subagent-tool")).toBeNull()
+    expect(screen.queryByTestId("flow-item-subagent-status")).toBeNull()
   })
 
   it("快照更新后直角行实时切换到新的内部工具描述", () => {
@@ -148,7 +169,9 @@ describe("AgentExecutionFlowItem - subagent 头部内部工具直角行", () => 
 
     const { rerender } = renderItem(initial)
 
-    expect(within(screen.getByTestId("flow-item-subagent-tool")).getByText("one.ts")).toBeDefined()
+    expect(
+      within(screen.getByTestId("flow-item-subagent-status")).getByText("one.ts"),
+    ).toBeDefined()
 
     const next: ExecutionStep = {
       ...initial,
@@ -163,7 +186,7 @@ describe("AgentExecutionFlowItem - subagent 头部内部工具直角行", () => 
 
     rerender(<AgentExecutionFlowItem step={next} isExpanded={false} onToggleExpand={vi.fn()} />)
 
-    const row = screen.getByTestId("flow-item-subagent-tool")
+    const row = screen.getByTestId("flow-item-subagent-status")
     expect(within(row).getByText("rtk rg subagent")).toBeDefined()
     expect(within(row).queryByText("one.ts")).toBeNull()
   })
@@ -191,7 +214,7 @@ describe("AgentExecutionFlowItem - subagent 头部内部工具直角行", () => 
   })
 })
 
-describe("AgentExecutionFlowList - subagent 内部工具直角行集成", () => {
+describe("AgentExecutionFlowList - subagent 状态行集成", () => {
   afterEach(cleanup)
 
   it("从消息构建的 subagent 步骤实时展示内部工具描述", () => {
@@ -229,7 +252,7 @@ describe("AgentExecutionFlowList - subagent 内部工具直角行集成", () => 
 
     render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
 
-    const row = screen.getByTestId("flow-item-subagent-tool")
+    const row = screen.getByTestId("flow-item-subagent-status")
     expect(within(row).getByText('"AgentExecutionFlowList"')).toBeDefined()
   })
 })

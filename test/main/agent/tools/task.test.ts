@@ -16,12 +16,14 @@ const TEST_TOOL_SCHEMA = z.object({ path: z.string().optional() })
 // 脚本化的 mock streamFn：逐次返回预设助手响应，避免真实 LLM 调用。
 const holder = vi.hoisted(() => ({
   streamResponses: [] as AssistantMessage[],
+  streamCalls: 0,
 }))
 
 vi.mock("@/agent/stream/aiSdkStreamFn", async () => {
   const { createAssistantMessageEventStream } = await import("@/agent/core/event-stream")
   return {
     createAiSdkStreamFn: () => async () => {
+      holder.streamCalls += 1
       const response = holder.streamResponses.shift()
       if (!response) throw new Error("No more mock responses")
       const stream = createAssistantMessageEventStream()
@@ -90,6 +92,7 @@ const resultText = (result: { content: Array<{ type: string; text?: string }> })
 
 beforeEach(() => {
   holder.streamResponses.length = 0
+  holder.streamCalls = 0
 })
 
 afterEach(() => {
@@ -165,6 +168,64 @@ describe("task 子代理工具", () => {
     expect(subagent.communications?.[1]?.content).toBe("子代理任务完成")
     // 最终文本有界回传。
     expect(result.content[0]?.type).toBe("text")
+  })
+
+  it("空补全（正常停止但零输出）丢弃空消息并在同一 dispatch 内续跑重试", async () => {
+    const tool = createTestTool({})
+    holder.streamResponses.push(
+      assistant([]),
+      assistant([{ type: "text", text: "重试后的最终结论" }]),
+    )
+
+    const result = await tool.execute("parent-call-empty", {
+      name: "查询列表",
+      description: "空补全重试",
+      prompt: "请给出结论",
+    })
+
+    expect(resultText(result)).toContain("重试后的最终结论")
+    expect(resultText(result)).not.toContain("(Subagent produced no text output)")
+    expect(holder.streamCalls).toBe(2)
+
+    const subagent = (result.details as { subagent: SubagentData }).subagent
+    // 空 assistant 消息被丢弃：历史里只剩重试产出的结论消息。
+    expect(subagent.messages.filter((message) => message.role === "assistant")).toHaveLength(1)
+    // 仍是一次派发 + 一次结果（不新建 Protocol）。
+    expect(subagent.communications?.length).toBe(2)
+    expect(subagent.communications?.[0]?.triggerTurn).toBe(true)
+    expect(subagent.communications?.[1]?.content).toBe("重试后的最终结论")
+  })
+
+  it("重试次数用尽仍为空输出时保留兜底文案", async () => {
+    const tool = createTestTool({})
+    holder.streamResponses.push(assistant([]), assistant([]), assistant([]))
+
+    const result = await tool.execute("parent-call-empty-2", {
+      name: "查询列表",
+      description: "持续空补全",
+      prompt: "请给出结论",
+    })
+
+    expect(holder.streamCalls).toBe(3)
+    expect(resultText(result)).toContain("(Subagent produced no text output)")
+  })
+
+  it("错误结束不触发空输出重试", async () => {
+    const tool = createTestTool({})
+    holder.streamResponses.push({
+      ...assistant([]),
+      stopReason: "error",
+      errorMessage: "boom",
+    })
+
+    const result = await tool.execute("parent-call-empty-3", {
+      name: "查询列表",
+      description: "错误结束",
+      prompt: "请给出结论",
+    })
+
+    expect(holder.streamCalls).toBe(1)
+    expect(resultText(result)).toContain("Subagent execution failed: boom")
   })
 
   it("未提供 name 时回退 task，工具执行出错记 error 步骤", async () => {

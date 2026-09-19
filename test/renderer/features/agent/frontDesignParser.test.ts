@@ -61,7 +61,7 @@ Hope you like it!`
 <front_design title="Navbar">
 <nav class="flex items-center">`
 
-    const blocks = parseTextWithProposedPlan(raw)
+    const blocks = parseTextWithProposedPlan(raw, undefined, undefined, undefined, undefined, true)
 
     expect(blocks.length).toBe(2)
     expect(blocks[0]).toEqual({ kind: "text", text: "Generating UI:" })
@@ -209,7 +209,7 @@ Done!`
 <front_design_update parent_id="base-1" target="#header">
 <header class="p-4 bg-zinc-900">`
 
-    const blocks = parseTextWithProposedPlan(raw)
+    const blocks = parseTextWithProposedPlan(raw, undefined, undefined, undefined, undefined, true)
     expect(blocks.length).toBe(2)
     expect(blocks[1].kind).toBe("frontDesign")
 

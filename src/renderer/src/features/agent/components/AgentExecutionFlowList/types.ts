@@ -289,6 +289,8 @@ export interface AgentExecutionFlowListProps {
   onFillInput?: (text: string) => void
   // 删除指定 AI 消息所在的一轮对话
   onDeleteMessage?: (messageId: string) => void
+  // 子代理面板开合回传（父级据此遮盖并 inert 输入区与状态栏）
+  onSubagentPanelOpenChange?: (isOpen: boolean) => void
   // 是否只读模式
   readOnly?: boolean
 }

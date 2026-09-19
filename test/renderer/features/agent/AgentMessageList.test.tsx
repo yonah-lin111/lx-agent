@@ -91,6 +91,59 @@ describe("AgentMessageList", () => {
     expect(screen.getByText("read src/main.ts")).not.toBeNull()
   })
 
+  it("恢复会话场景：subagent 卡片以配对工具结果判定完成并展示统计行", () => {
+    const subagent = {
+      name: "explore-agent",
+      description: "调研任务",
+      prompt: "调研任务",
+      messages: [],
+      steps: [
+        { toolName: "grep", args: { pattern: "ipc" }, status: "done" as const },
+        { toolName: "read", args: { filePath: "src/main.ts" }, status: "done" as const },
+      ],
+      usage: { input: 1200, output: 300, cacheRead: 0, cacheWrite: 0, totalTokens: 1500 },
+    }
+    const messages: ChatMessage[] = [
+      {
+        id: "assistant-subagent",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "tool-task",
+            toolName: "task",
+            args: { description: "调研任务" },
+            // 恢复会话时 toChatMessage 对 toolCall 块硬编码 running，完成状态只能由配对结果判定
+            status: "running",
+            subagent,
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "result-subagent",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "tool-task",
+            toolName: "task",
+            text: "调研完成",
+            isError: false,
+            subagent,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+
+    const row = container.querySelector(".agent-subagent-status-row")
+    expect(row?.getAttribute("data-subagent-row")).toBe("stats")
+    expect(row?.textContent).toContain("2Tool Calls")
+  })
+
   it("同一轮 AI 执行只渲染一个底部复制操作", () => {
     const messages: ChatMessage[] = [
       {

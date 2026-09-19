@@ -4,11 +4,15 @@ import { BUILTIN_UNDERSCORE_TOOLS } from "@/features/agent/components/AgentMessa
 import { parseMcpToolName } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import type { ExecutionToolContent } from "@/features/agent/types"
 
-export interface FlowItemToolTitleProps {
+export interface ToolCallTitleProps {
   toolContent: ExecutionToolContent
 }
 
-export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): React.JSX.Element => {
+/**
+ * 工具调用标题：按工具类型渲染名称与参数摘要（bash 命令、文件、grep 模式等）。
+ * 执行流程步骤与子代理当前步骤共用，保证两处展示一致。
+ */
+export const ToolCallTitle = ({ toolContent }: ToolCallTitleProps): React.JSX.Element => {
   const toolName = toolContent.toolName
 
   if (toolName === "bash") {

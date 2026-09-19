@@ -249,6 +249,7 @@ export const AgentAssistantMessage = ({
                 <AgentSubagentBlock
                   key={groupIndex}
                   toolCall={group.block}
+                  toolResult={toolResultByToolCallId.get(group.block.toolCallId)}
                   onOpen={onOpenSubagent}
                 />
               )

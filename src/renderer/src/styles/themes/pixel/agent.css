@@ -707,8 +707,6 @@
   color: #a6a6bc !important;
 }
 
-[data-theme="pixel"] .agent-subagent-desc-row,
-[data-theme="pixel"] .agent-subagent-stats-row,
 [data-theme="pixel"] .agent-subagent-status-row {
   display: flex !important;
   align-items: flex-start !important;
@@ -716,22 +714,10 @@
   margin-top: 4px !important;
 }
 
-[data-theme="pixel"] .agent-subagent-desc-row svg,
-[data-theme="pixel"] .agent-subagent-stats-row svg,
 [data-theme="pixel"] .agent-subagent-status-row svg {
   color: #38bdf8 !important;
   margin-top: 2px !important;
   filter: drop-shadow(1px 1px 0px #000000);
-}
-
-[data-theme="pixel"] .agent-subagent-desc {
-  display: inline !important;
-  border: none !important;
-  background-color: transparent !important;
-  padding: 0 !important;
-  box-shadow: none !important;
-  color: #f0f0f8 !important;
-  text-shadow: 1px 1px 0px #000000;
 }
 
 [data-theme="pixel"] .agent-subagent-stats {
@@ -742,39 +728,6 @@
   box-shadow: none !important;
   color: #d0d0e6 !important;
   text-shadow: 1px 1px 0px #000000;
-}
-
-[data-theme="pixel"] .agent-subagent-status {
-  border: 2px solid #000000 !important;
-  padding: 1px 8px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
-  background-color: #161c28 !important;
-}
-
-[data-theme="pixel"] .agent-subagent-status.text-red-400 {
-  color: #ff5555 !important; /* 红石鲜红 */
-  font-weight: 700;
-  text-shadow: 1px 1px 0px #000000;
-}
-
-[data-theme="pixel"] .agent-subagent-status.text-blue-300 {
-  color: #38bdf8 !important; /* 青金石蓝 */
-  font-weight: 700;
-  text-shadow: 1px 1px 0px #000000;
-}
-
-[data-theme="pixel"] .agent-subagent-status.text-emerald-300 {
-  color: #55ff55 !important; /* 绿宝石翠绿 */
-  font-weight: 700;
-  text-shadow: 1px 1px 0px #000000;
-}
-
-[data-theme="pixel"] .agent-subagent-status.text-white\/40 {
-  color: #727288 !important;
 }
 
 /* 子代理抽屉面板：深板岩马赛克基底 + 3D 浮雕 */
@@ -833,7 +786,7 @@
   text-shadow: 1px 1px 0px #000000;
 }
 
-[data-theme="pixel"] .agent-subagent-comm-trigger {
+[data-theme="pixel"] .agent-interagent-trigger {
   border: 1px solid #000000 !important;
   background-color: #0c4a6e !important;
   color: #7dd3fc !important;
@@ -855,15 +808,6 @@
 [data-theme="pixel"] .agent-subagent-flow-divider div {
   background-color: #000000 !important;
   box-shadow: 0px 1px 0px 0px rgba(255, 255, 255, 0.1) !important;
-}
-
-[data-theme="pixel"] .agent-subagent-id {
-  font-family: var(--theme-font-family) !important;
-  border-radius: 0px !important;
-  border: 1px solid #000000 !important;
-  background-color: #0c4a6e !important;
-  color: #7dd3fc !important;
-  text-shadow: 1px 1px 0px #000000;
 }
 
 [data-theme="pixel"] .agent-subagent-policy {
