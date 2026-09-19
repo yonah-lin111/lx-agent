@@ -478,7 +478,12 @@ describe("task 子代理角色", () => {
       pool,
       tools: [makeTool("test_tool"), makeTool("other_tool")],
       settings: {
-        roles: { limited: { description: "Limited role", tools: ["test_tool", "not_active"] } },
+        roles: {
+          limited: {
+            description: "Limited role",
+            permissions: { tools: ["test_tool", "not_active"] },
+          },
+        },
       },
     })
 
@@ -490,6 +495,205 @@ describe("task 子代理角色", () => {
     })
     const id = (res.details as { subagent: SubagentData }).subagent.subagentId!
     expect(pool.get(id)?.agent.state.tools.map((item) => item.name)).toEqual(["test_tool"])
+  })
+
+  it("MCP 按 server 名过滤：白名单只保留命中 server 的工具，未配置则全继承", async () => {
+    const pool = new SubagentPool()
+    const tool = createTestTool({
+      pool,
+      tools: [
+        makeTool("mcp__codegraph__search"),
+        makeTool("mcp__github__list_prs"),
+        makeTool("read"),
+      ],
+      settings: {
+        roles: {
+          limited: { description: "MCP limited", permissions: { mcp: ["codegraph"] } },
+          all: { description: "MCP all" },
+        },
+      },
+    })
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const limited = await tool.execute("call-mcp-1", {
+      description: "MCP 过滤",
+      prompt: "p",
+      agent_type: "limited",
+    })
+    const limitedId = (limited.details as { subagent: SubagentData }).subagent.subagentId!
+    // tools 组未配置 = 内置工具全继承；mcp 组白名单只保留命中 server 的工具（保持父顺序）。
+    expect(pool.get(limitedId)?.agent.state.tools.map((item) => item.name)).toEqual([
+      "mcp__codegraph__search",
+      "read",
+    ])
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const all = await tool.execute("call-mcp-2", {
+      description: "MCP 全继承",
+      prompt: "p",
+      agent_type: "all",
+    })
+    const allId = (all.details as { subagent: SubagentData }).subagent.subagentId!
+    expect(pool.get(allId)?.agent.state.tools.map((item) => item.name)).toEqual([
+      "mcp__codegraph__search",
+      "mcp__github__list_prs",
+      "read",
+    ])
+  })
+
+  it("websearch 组独立控制：显式空数组剔除联网工具，tools 组不影响联网", async () => {
+    const pool = new SubagentPool()
+    const tool = createTestTool({
+      pool,
+      tools: [makeTool("read"), makeTool("web_search"), makeTool("webfetch"), makeTool("bash")],
+      settings: {
+        roles: {
+          offline: {
+            description: "No network",
+            permissions: { tools: ["read", "web_search", "webfetch", "bash"], websearch: [] },
+          },
+          "search-only": {
+            description: "Search only",
+            permissions: { websearch: ["web_search"] },
+          },
+        },
+      },
+    })
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const offline = await tool.execute("call-web-1", {
+      description: "禁网",
+      prompt: "p",
+      agent_type: "offline",
+    })
+    const offlineId = (offline.details as { subagent: SubagentData }).subagent.subagentId!
+    expect(pool.get(offlineId)?.agent.state.tools.map((item) => item.name)).toEqual([
+      "read",
+      "bash",
+    ])
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const searchOnly = await tool.execute("call-web-2", {
+      description: "仅搜索",
+      prompt: "p",
+      agent_type: "search-only",
+    })
+    const searchOnlyId = (searchOnly.details as { subagent: SubagentData }).subagent.subagentId!
+    expect(pool.get(searchOnlyId)?.agent.state.tools.map((item) => item.name)).toEqual([
+      "read",
+      "web_search",
+      "bash",
+    ])
+  })
+
+  it("skills 组：空数组移除 read_skill，白名单包装 read_skill 拒绝越权技能", async () => {
+    const pool = new SubagentPool()
+    const readSkillTool = makeTool("read_skill")
+    const executeSpy = vi.spyOn(readSkillTool, "execute")
+    const tool = createTestTool({
+      pool,
+      tools: [makeTool("read"), readSkillTool],
+      settings: {
+        roles: {
+          "no-skills": { description: "No skills", permissions: { skills: [] } },
+          "one-skill": { description: "One skill", permissions: { skills: ["code-review"] } },
+        },
+      },
+    })
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const noSkills = await tool.execute("call-skill-1", {
+      description: "禁技能",
+      prompt: "p",
+      agent_type: "no-skills",
+    })
+    const noSkillsId = (noSkills.details as { subagent: SubagentData }).subagent.subagentId!
+    expect(pool.get(noSkillsId)?.agent.state.tools.map((item) => item.name)).toEqual(["read"])
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const oneSkill = await tool.execute("call-skill-2", {
+      description: "白名单技能",
+      prompt: "p",
+      agent_type: "one-skill",
+    })
+    const oneSkillId = (oneSkill.details as { subagent: SubagentData }).subagent.subagentId!
+    const wrapped = pool
+      .get(oneSkillId)
+      ?.agent.state.tools.find((item) => item.name === "read_skill")
+    expect(wrapped).toBeDefined()
+
+    // 越权技能直接拒绝且不落到原工具。
+    const denied = await wrapped!.execute("skill-call-1", { name: "deploy" })
+    expect(resultText(denied as never)).toContain('Skill "deploy" is not allowed')
+    expect(executeSpy).not.toHaveBeenCalled()
+
+    // 白名单内技能放行到原工具。
+    await wrapped!.execute("skill-call-2", { name: "code-review" })
+    expect(executeSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("skills 白名单收窄子代理系统提示词：只注入允许技能，未配置时沿用父提示词", async () => {
+    const pool = new SubagentPool()
+    const renderSubagentSystemPrompt = vi.fn((allowed: string[] | undefined) =>
+      allowed === undefined ? "base-prompt" : `base-prompt:${allowed.join(",")}`,
+    )
+    const tool = createTaskTool({
+      subagentSystemPrompt: "base-prompt",
+      model: { provider: "p", id: "m" },
+      beforeToolCall: async () => undefined,
+      recordChildCall: vi.fn(),
+      renderSubagentSystemPrompt,
+      getTools: () => [],
+      subagentPool: pool,
+      subagentSettings: {
+        roles: {
+          "one-skill": { description: "One skill", permissions: { skills: ["code-review"] } },
+          "no-permissions": { description: "Inherit" },
+        },
+      },
+    })
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const restricted = await tool.execute("call-prompt-1", {
+      description: "技能收窄",
+      prompt: "p",
+      agent_type: "one-skill",
+    })
+    const restrictedId = (restricted.details as { subagent: SubagentData }).subagent.subagentId!
+    expect(renderSubagentSystemPrompt).toHaveBeenCalledWith(["code-review"])
+    expect(pool.get(restrictedId)?.agent.state.systemPrompt).toContain("base-prompt:code-review")
+
+    renderSubagentSystemPrompt.mockClear()
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const inherited = await tool.execute("call-prompt-2", {
+      description: "继承提示词",
+      prompt: "p",
+      agent_type: "no-permissions",
+    })
+    const inheritedId = (inherited.details as { subagent: SubagentData }).subagent.subagentId!
+    expect(renderSubagentSystemPrompt).not.toHaveBeenCalled()
+    expect(pool.get(inheritedId)?.agent.state.systemPrompt).toContain("base-prompt")
+  })
+
+  it("tools 组未配置时 task 仍按 maxDepth 注入；显式空数组同时禁用一切工具", async () => {
+    const pool = new SubagentPool()
+    const tool = createTestTool({
+      pool,
+      tools: [makeTool("echo")],
+      settings: {
+        roles: { none: { description: "No tools", permissions: { tools: [] } } },
+        maxDepth: 3,
+      },
+    })
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const res = await tool.execute("call-empty-tools", {
+      description: "全禁工具",
+      prompt: "p",
+      agent_type: "none",
+    })
+    const id = (res.details as { subagent: SubagentData }).subagent.subagentId!
+    expect(pool.get(id)?.agent.state.tools).toEqual([])
   })
 
   it("未知 agent_type 显式报错、列出可用角色且不消费流响应", async () => {
@@ -696,7 +900,7 @@ describe("task 子代理嵌套深度", () => {
       pool,
       tools: [makeTool("echo"), makeTool("other")],
       settings: {
-        roles: { limited: { description: "Limited role", tools: ["echo"] } },
+        roles: { limited: { description: "Limited role", permissions: { tools: ["echo"] } } },
         maxDepth: 2,
       },
     })

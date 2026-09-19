@@ -1,4 +1,4 @@
-import type { ModelSelection, SubagentSettings } from "@shared/settings"
+import type { ModelSelection, SubagentRolePermissions, SubagentSettings } from "@shared/settings"
 import { RESERVED_SUBAGENT_ROLE_NAMES, SUBAGENT_ROLE_NAME_PATTERN } from "@shared/settings"
 
 // 运行时解析后的子代理角色模型。
@@ -7,12 +7,16 @@ export interface ResolvedAgentRole {
   description: string
   instructions?: string
   model?: ModelSelection
-  tools?: string[]
+  permissions?: SubagentRolePermissions
   builtIn: boolean
 }
 
-// explorer 只读工具白名单（未激活的工具名在装配时静默缺失，不新增能力）。
-const EXPLORER_TOOLS = ["read", "ls", "grep", "find", "lsp", "web_search", "webfetch", "time"]
+// explorer 只读权限：仅只读工具 + 联网检索，禁用全部 skill 与写入/委托（未激活的工具名在装配时静默缺失，不新增能力）。
+const EXPLORER_PERMISSIONS: SubagentRolePermissions = {
+  tools: ["read", "ls", "grep", "find", "lsp", "time"],
+  websearch: ["web_search", "webfetch"],
+  skills: [],
+}
 
 const EXPLORER_INSTRUCTIONS = [
   "You are a codebase explorer sub-agent. Answer the assigned codebase question accurately and concisely.",
@@ -36,7 +40,7 @@ export const BUILT_IN_AGENT_ROLES: Record<string, ResolvedAgentRole> = {
     description:
       "Fast, authoritative answers to specific, well-scoped codebase questions. Use multiple explorers in parallel for independent questions.",
     instructions: EXPLORER_INSTRUCTIONS,
-    tools: [...EXPLORER_TOOLS],
+    permissions: EXPLORER_PERMISSIONS,
     builtIn: true,
   },
   worker: {
@@ -68,10 +72,22 @@ export const resolveAgentRoles = (settings: SubagentSettings): Map<string, Resol
     }
     if (config.instructions !== undefined) role.instructions = config.instructions
     if (config.model !== undefined) role.model = config.model
-    if (config.tools !== undefined) role.tools = [...config.tools]
+    if (config.permissions !== undefined) {
+      role.permissions = clonePermissions(config.permissions)
+    }
     resolved.set(name, role)
   }
   return resolved
+}
+
+// 深拷贝权限配置，避免调用方后续改动污染角色目录。
+const clonePermissions = (permissions: SubagentRolePermissions): SubagentRolePermissions => {
+  const cloned: SubagentRolePermissions = {}
+  if (permissions.tools !== undefined) cloned.tools = [...permissions.tools]
+  if (permissions.mcp !== undefined) cloned.mcp = [...permissions.mcp]
+  if (permissions.skills !== undefined) cloned.skills = [...permissions.skills]
+  if (permissions.websearch !== undefined) cloned.websearch = [...permissions.websearch]
+  return cloned
 }
 
 // 描述单行化：折叠换行与连续空白；空描述回退占位文案。

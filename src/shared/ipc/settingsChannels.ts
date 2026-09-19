@@ -10,6 +10,7 @@ export const SETTINGS_CHANNELS = {
   getSubagentSettings: "settings:subagents:get",
   saveSubagentSettings: "settings:subagents:save",
   getSubagentBuiltins: "settings:subagents:builtins",
+  getSubagentCapabilities: "settings:subagents:get-capabilities",
   getUiSettings: "settings:ui:get",
   saveUiSettings: "settings:ui:save",
   getCliSettings: "settings:cli:get",

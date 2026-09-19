@@ -8,8 +8,12 @@ import type {
   TextContent,
   Usage,
 } from "@shared/contracts/agent"
-import type { ModelSelection, SubagentSettings } from "@shared/settings"
-import { DEFAULT_SUBAGENT_SETTINGS } from "@shared/settings"
+import type { ModelSelection, SubagentRolePermissions, SubagentSettings } from "@shared/settings"
+import {
+  DEFAULT_SUBAGENT_SETTINGS,
+  SUBAGENT_SKILL_TOOL_NAME,
+  SUBAGENT_WEBSEARCH_TOOL_NAMES,
+} from "@shared/settings"
 import { z } from "zod"
 import { Agent } from "../core/agent"
 import type {
@@ -22,6 +26,7 @@ import type {
   ToolHookResult,
 } from "../core/types"
 import { hookResultMessages, hooksManager } from "../hooks"
+import { sanitizeMcpNameSegment } from "../mcp/mcpManager"
 import { spillManager } from "../spill/spillManager"
 import { createAiSdkStreamFn } from "../stream/aiSdkStreamFn"
 import { resolveModelSelection as defaultResolveModelSelection } from "../stream/modelFactory"
@@ -101,6 +106,8 @@ export interface ChildCallInput {
 export interface TaskToolDeps {
   // 子代理基座系统提示词（已按子代理协作模式渲染；子代理在其后追加子代理前缀）。
   subagentSystemPrompt: string
+  // 按角色技能白名单渲染子代理系统提示词（undefined = 不限制，继承父会话技能集）。
+  renderSubagentSystemPrompt?: (allowedSkills: string[] | undefined) => string
   // 父会话模型（子代理沿用）。
   model: Model
   // 父会话沙箱策略（继承至子代理）。
@@ -205,6 +212,77 @@ const aggregateUsage = (messages: AgentMessage[]): Usage => {
     )
 }
 
+// MCP 工具全名前缀（`mcp__server__tool`）。
+const MCP_PREFIX = "mcp__"
+
+// 从 MCP 工具全名解析 server 名（与 mcpToolName 的 `mcp__server__tool` 格式对应）。
+const mcpServerOf = (toolName: string): string | undefined => {
+  if (!toolName.startsWith(MCP_PREFIX)) return undefined
+  const rest = toolName.slice(MCP_PREFIX.length)
+  const separator = rest.indexOf("__")
+  return separator === -1 ? undefined : rest.slice(0, separator)
+}
+
+// 角色配置的 server 名按同一消毒规则归一后比较（与工具全名命名空间保持一致）。
+const matchesMcpServer = (allowed: string[], toolName: string): boolean => {
+  const server = mcpServerOf(toolName)
+  if (server === undefined) return false
+  return allowed.some((name) => sanitizeMcpNameSegment(name) === server)
+}
+
+/**
+ * 包装 read_skill：角色技能白名单未命中直接拒绝（保留原 cwd 与其余行为）。
+ */
+const withSkillAllowlist = (tool: AgentTool<any>, allowedSkills: string[]): AgentTool<any> => ({
+  ...tool,
+  execute: async (toolCallId, params, signal, onUpdate) => {
+    const requested = (params as { name?: unknown }).name
+    if (typeof requested !== "string" || !allowedSkills.includes(requested)) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Skill "${typeof requested === "string" ? requested : ""}" is not allowed for this sub-agent.`,
+          },
+        ],
+        details: { error: "skill_not_allowed" },
+      }
+    }
+    return tool.execute(toolCallId, params, signal, onUpdate)
+  },
+})
+
+/**
+ * 按角色权限过滤子代理工具集：四组独立求交，永不新增能力。
+ * tools 组覆盖其余内置工具（含 task）；mcp 组按 server 名匹配；websearch 组管理联网工具；skills 组管理 read_skill。
+ */
+const filterToolsByPermissions = (
+  tools: AgentTool<any>[],
+  permissions: SubagentRolePermissions | undefined,
+): AgentTool<any>[] => {
+  if (!permissions) return tools
+  const websearchNames = new Set<string>(SUBAGENT_WEBSEARCH_TOOL_NAMES)
+  const allowedSkills = permissions.skills
+  return tools.flatMap((tool): AgentTool<any>[] => {
+    const name = tool.name
+    if (name.startsWith(MCP_PREFIX)) {
+      if (permissions.mcp === undefined) return [tool]
+      return matchesMcpServer(permissions.mcp, name) ? [tool] : []
+    }
+    if (name === SUBAGENT_SKILL_TOOL_NAME) {
+      if (allowedSkills === undefined) return [tool]
+      if (allowedSkills.length === 0) return []
+      return [withSkillAllowlist(tool, allowedSkills)]
+    }
+    if (websearchNames.has(name)) {
+      if (permissions.websearch === undefined) return [tool]
+      return permissions.websearch.includes(name) ? [tool] : []
+    }
+    if (permissions.tools === undefined) return [tool]
+    return permissions.tools.includes(name) ? [tool] : []
+  })
+}
+
 // task 工具基础描述（角色目录与并发治理在装配时追加）。
 const BASE_DESCRIPTION =
   "Delegate an independent sub-task to a sub-agent (e.g., parallel search, independent exploration, long-running command execution). " +
@@ -296,18 +374,21 @@ export const createTaskTool = (
         // 5. 子代理实例：续接复用池内实例（角色/模型/工具与创建时一致），否则按角色新建。
         let subAgent = existingManaged?.agent
         if (!subAgent) {
-          // 系统提示词追加顺序：子代理基座提示词 → 子代理后缀 → 角色指令。
-          const effectivePrompt = role?.instructions
-            ? `${deps.subagentSystemPrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}\n\n${role.instructions}`
-            : `${deps.subagentSystemPrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}`
+          const permissions = role?.permissions
+          const allowedSkills = permissions?.skills
 
-          // 工具集 = 父激活集去 task，再与角色白名单求交集（永不新增能力）。
+          // 系统提示词追加顺序：子代理基座提示词 → 子代理后缀 → 角色指令。
+          // 角色配置技能白名单时，基座提示词的 available_skills 同步收窄（与工具同源）。
+          const basePrompt = allowedSkills
+            ? (deps.renderSubagentSystemPrompt?.(allowedSkills) ?? deps.subagentSystemPrompt)
+            : deps.subagentSystemPrompt
+          const effectivePrompt = role?.instructions
+            ? `${basePrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}\n\n${role.instructions}`
+            : `${basePrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}`
+
+          // 工具集 = 父激活集去 task，再与角色权限求交集（永不新增能力）。
           const parentTools = deps.getTools().filter((tool) => tool.name !== "task")
-          const roleToolNames = role?.tools
-          const childTools: AgentTool<any>[] =
-            roleToolNames === undefined
-              ? parentTools
-              : parentTools.filter((tool) => roleToolNames.includes(tool.name))
+          const childTools: AgentTool<any>[] = filterToolsByPermissions(parentTools, permissions)
 
           // 模型优先级：role.model → defaultModel → 父会话模型；解析失败告警并降级。
           const resolveChildModel = (): Model => {
@@ -334,7 +415,7 @@ export const createTaskTool = (
           // 深度允许且角色未排除 task 时注入嵌套 task；getTools 读取同一活数组，避免循环引用。
           if (
             childDepth < maxDepth &&
-            (roleToolNames === undefined || roleToolNames.includes("task"))
+            (permissions?.tools === undefined || permissions.tools.includes("task"))
           ) {
             childTools.push(
               createTaskTool({

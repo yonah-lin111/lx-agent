@@ -6,7 +6,9 @@ import {
   SUBAGENT_MAX_DEPTH_LIMIT,
   SUBAGENT_ROLE_NAME_PATTERN,
   type SubagentBuiltinRoleInfo,
+  type SubagentCapabilityCatalog,
   type SubagentRoleConfig,
+  type SubagentRolePermissions,
 } from "@shared/settings"
 import { AlertTriangle, Edit2, Loader2, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -17,26 +19,35 @@ import { LxModal } from "@/components/ui/LxModal"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
-import { useTranslation } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 import { settingsApi } from "../api/settingsApi"
 import { useRegisterSettingsSection } from "../hooks/settingsDraftStore"
 import { useSubagentSettings } from "../hooks/useSubagentSettings"
 import { notifySettingsChanged } from "../settingsChangeNotifier"
+import { SubagentPermissionsForm } from "./SubagentPermissionsForm"
 
 // 下拉 portal 默认 zIndex 50，须高于 LxModal（999999）与 LxTooltip（999999）才不被遮挡。
 const MODAL_SELECT_Z_INDEX = 1000000
 
-// 工具输入解析：逐行去空白，去重并丢弃空行。
-const parseToolsInput = (raw: string): string[] => {
-  const tools: string[] = []
-  const seen = new Set<string>()
-  for (const line of raw.split("\n")) {
-    const tool = line.trim()
-    if (!tool || seen.has(tool)) continue
-    seen.add(tool)
-    tools.push(tool)
+// 权限摘要：四组各自统计；无限制分组不展示。
+const describePermissions = (
+  permissions: SubagentRolePermissions | undefined,
+  t: (key: TranslationKey) => string,
+): string => {
+  if (!permissions) return t("settings.subagentsPermissionsUnlimitedAll")
+  const parts: string[] = []
+  const groups: Array<[keyof SubagentRolePermissions, TranslationKey]> = [
+    ["tools", "settings.subagentsPermissions_tools"],
+    ["mcp", "settings.subagentsPermissions_mcp"],
+    ["skills", "settings.subagentsPermissions_skills"],
+    ["websearch", "settings.subagentsPermissions_websearch"],
+  ]
+  for (const [key, labelKey] of groups) {
+    const list = permissions[key]
+    if (list === undefined) continue
+    parts.push(`${t(labelKey)}: ${list.length}`)
   }
-  return tools
+  return parts.length > 0 ? parts.join(" / ") : t("settings.subagentsPermissionsUnlimitedAll")
 }
 
 // 数字输入解析：空返回 null，非法返回 undefined（保持原值），越界收敛到上限。
@@ -59,6 +70,7 @@ export const SubagentSettings = (): React.JSX.Element => {
 
   const [builtins, setBuiltins] = useState<SubagentBuiltinRoleInfo[]>([])
   const [providerSettings, setProviderSettings] = useState<ModelProviderSettings | null>(null)
+  const [catalog, setCatalog] = useState<SubagentCapabilityCatalog | null>(null)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingName, setEditingName] = useState<string | null>(null)
@@ -67,7 +79,9 @@ export const SubagentSettings = (): React.JSX.Element => {
   const [formInstructions, setFormInstructions] = useState("")
   const [formModelProvider, setFormModelProvider] = useState("")
   const [formModelModel, setFormModelModel] = useState("")
-  const [formTools, setFormTools] = useState("")
+  const [formPermissions, setFormPermissions] = useState<SubagentRolePermissions | undefined>(
+    undefined,
+  )
   const [formError, setFormError] = useState("")
 
   useEffect(() => {
@@ -75,6 +89,13 @@ export const SubagentSettings = (): React.JSX.Element => {
       .getSubagentBuiltins()
       .then(setBuiltins)
       .catch((err) => console.error("[SubagentSettings] Failed to load built-in roles:", err))
+  }, [])
+
+  useEffect(() => {
+    void settingsApi
+      .getSubagentCapabilities()
+      .then(setCatalog)
+      .catch((err) => console.error("[SubagentSettings] Failed to load capabilities:", err))
   }, [])
 
   useEffect(() => {
@@ -182,7 +203,7 @@ export const SubagentSettings = (): React.JSX.Element => {
     setFormInstructions("")
     setFormModelProvider("")
     setFormModelModel("")
-    setFormTools("")
+    setFormPermissions(undefined)
     setFormError("")
     setModalOpen(true)
   }
@@ -194,7 +215,7 @@ export const SubagentSettings = (): React.JSX.Element => {
     setFormInstructions(config.instructions ?? "")
     setFormModelProvider(config.model?.provider ?? "")
     setFormModelModel(config.model?.model ?? "")
-    setFormTools((config.tools ?? []).join("\n"))
+    setFormPermissions(config.permissions)
     setFormError("")
     setModalOpen(true)
   }
@@ -232,8 +253,9 @@ export const SubagentSettings = (): React.JSX.Element => {
     if (formModelProvider && formModelModel) {
       config.model = { provider: formModelProvider, model: formModelModel }
     }
-    const tools = parseToolsInput(formTools)
-    if (tools.length > 0) config.tools = tools
+    if (formPermissions && Object.keys(formPermissions).length > 0) {
+      config.permissions = formPermissions
+    }
 
     setSettings((current) => {
       const nextRoles: Record<string, SubagentRoleConfig> = {}
@@ -374,12 +396,8 @@ export const SubagentSettings = (): React.JSX.Element => {
                 {role.description}
               </p>
               <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-                <span>{t("settings.subagentsTools")}:</span>{" "}
-                <span className="font-mono">
-                  {role.tools && role.tools.length > 0
-                    ? role.tools.join(", ")
-                    : t("settings.subagentsInheritTools")}
-                </span>
+                <span>{t("settings.subagentsPermissions")}:</span>{" "}
+                <span className="font-mono">{describePermissions(role.permissions, t)}</span>
               </p>
             </div>
           ))}
@@ -455,12 +473,8 @@ export const SubagentSettings = (): React.JSX.Element => {
                   </span>
                 </p>
                 <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-                  <span>{t("settings.subagentsTools")}:</span>{" "}
-                  <span className="font-mono">
-                    {config.tools?.length
-                      ? config.tools.join(", ")
-                      : t("settings.subagentsInheritTools")}
-                  </span>
+                  <span>{t("settings.subagentsPermissions")}:</span>{" "}
+                  <span className="font-mono">{describePermissions(config.permissions, t)}</span>
                 </p>
               </div>
             ))}
@@ -545,16 +559,17 @@ export const SubagentSettings = (): React.JSX.Element => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <span className="font-medium text-white/70">{t("settings.subagentsTools")}</span>
-            <LxInput
-              multiline
-              placeholder={t("settings.subagentsToolsPlaceholder")}
-              value={formTools}
-              onChange={(e) => setFormTools(e.target.value)}
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-white/70">
+                {t("settings.subagentsPermissions")}
+              </span>
+              <LxInfoTooltip markdown={t("settings.subagentsPermissionsHint")} placement="right" />
+            </div>
+            <SubagentPermissionsForm
+              catalog={catalog}
+              value={formPermissions}
+              onChange={setFormPermissions}
             />
-            <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-              {t("settings.subagentsToolsHint")}
-            </span>
           </div>
 
           <div className="mt-2 flex items-center justify-end gap-2 border-t border-white/10 pt-3">

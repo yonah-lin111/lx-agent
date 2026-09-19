@@ -101,6 +101,21 @@ export const buildSessionAgent = (
     activeSkills.length > 0,
     {
       subagentSystemPrompt,
+      // 角色技能白名单收窄 available_skills 注入（与 read_skill 工具同源）。
+      renderSubagentSystemPrompt: (allowedSkills) =>
+        buildSystemPromptSync({
+          cwd,
+          sessionId: host.currentSessionId ?? undefined,
+          modelId: model.id,
+          sandboxPolicy,
+          collaborationMode: subagentMode,
+          contextUsage,
+          activeSkills:
+            allowedSkills === undefined
+              ? activeSkills
+              : activeSkills.filter((skill) => allowedSkills.includes(skill.name)),
+          personality,
+        }),
       model,
       sandboxPolicy,
       subagentPool: host.subagentPool,

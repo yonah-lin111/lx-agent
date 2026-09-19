@@ -1,6 +1,5 @@
 import { execSync } from "node:child_process"
 import type { AgentContextUsage, CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
-import { projectService } from "@/services/projectService"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import type { PersonalityName } from "./prompts/personalities"
 import { defaultSystemPromptManager, type SystemPromptManager } from "./prompts/systemPromptManager"
@@ -213,14 +212,8 @@ export const ALL_TOOL_NAMES = new Set([
 // skill 注入上限（按 name 排序取前 N；描述注入时截断）。
 export const MAX_INJECTED_SKILLS = 50
 
-// 解析 Agent 会话 cwd：最近更新的文件系统项目目录。
-export const resolveCwd = (): string | undefined => {
-  const projects = projectService.listProjects()
-  const filesystemProjects = projects
-    .filter((project) => project.type === "filesystem" && Boolean(project.path))
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-  return filesystemProjects[0]?.path
-}
+// 解析 Agent 会话 cwd：最近更新的文件系统项目目录（独立模块，避免 settingsService 侧循环依赖）。
+export { resolveCwd } from "./cwdResolver"
 
 export interface SessionToolDeps {
   getSessionId: () => string | null

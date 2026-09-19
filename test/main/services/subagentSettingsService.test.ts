@@ -63,7 +63,8 @@ describe("getSubagentSettings", () => {
           description: "Strict review of a specific change set.",
           instructions: "You are a strict reviewer.",
           model: { provider: "openai", model: "gpt-5.1", variant: "high" },
-          tools: ["read", "grep", "find"],
+          // 旧 tools 字段兼容：拆分入 permissions，未列出的能力组按全禁处理。
+          permissions: { tools: ["read", "grep", "find"], websearch: [], skills: [] },
         },
       },
       maxDepth: 3,
@@ -131,12 +132,90 @@ describe("getSubagentSettings", () => {
     const settings = getSubagentSettings()
     expect(settings.roles["bad-fields"]).toEqual({ description: "d" })
     expect(settings.roles["string-model"]).toEqual({ description: "d" })
-    expect(settings.roles["bad-tool-items"]).toEqual({ description: "d", tools: ["read", "grep"] })
+    expect(settings.roles["bad-tool-items"]).toEqual({
+      description: "d",
+      permissions: { tools: ["read", "grep"], websearch: [], skills: [] },
+    })
     expect(settings.roles["empty-tools"]).toEqual({ description: "d" })
     expect(warnMessages().some((m) => m.includes("instructions 须为字符串"))).toBe(true)
     expect(warnMessages().some((m) => m.includes("tools 须为字符串数组"))).toBe(true)
     expect(warnMessages().some((m) => m.includes("model 非法"))).toBe(true)
     expect(warnMessages().some((m) => m.includes("忽略非法工具名"))).toBe(true)
+  })
+
+  it("permissions 四组独立解析：显式空数组保留（全禁）、去重去空白、非数组告警", () => {
+    writeConfig({
+      agent: {
+        subagents: {
+          roles: {
+            reviewer: {
+              description: "d",
+              permissions: {
+                tools: ["read", " grep ", "read"],
+                mcp: ["codegraph"],
+                skills: [],
+                websearch: [],
+              },
+            },
+            "bad-permissions": { description: "d", permissions: "all" },
+            "bad-group": { description: "d", permissions: { tools: "read", mcp: ["", 7, "x"] } },
+          },
+        },
+      },
+    })
+
+    const settings = getSubagentSettings()
+    expect(settings.roles.reviewer?.permissions).toEqual({
+      tools: ["read", "grep"],
+      mcp: ["codegraph"],
+      skills: [],
+      websearch: [],
+    })
+    expect(settings.roles["bad-permissions"]).toEqual({ description: "d" })
+    expect(settings.roles["bad-group"]?.permissions).toEqual({ mcp: ["x"] })
+    expect(warnMessages().some((m) => m.includes("permissions 须为对象"))).toBe(true)
+    expect(warnMessages().some((m) => m.includes("tools 权限（bad-group） 须为字符串数组"))).toBe(
+      true,
+    )
+    expect(warnMessages().some((m) => m.includes("忽略非法mcp 权限（bad-group）条目"))).toBe(true)
+  })
+
+  it("旧 tools 兼容映射：联网名归 websearch、read_skill 归 skills（列出即允许全部）", () => {
+    writeConfig({
+      agent: {
+        subagents: {
+          roles: {
+            legacy: {
+              description: "d",
+              tools: ["read", "web_search", "webfetch", "read_skill"],
+            },
+          },
+        },
+      },
+    })
+
+    expect(getSubagentSettings().roles.legacy?.permissions).toEqual({
+      tools: ["read"],
+      websearch: ["web_search", "webfetch"],
+    })
+  })
+
+  it("permissions 优先于旧 tools 字段", () => {
+    writeConfig({
+      agent: {
+        subagents: {
+          roles: {
+            both: {
+              description: "d",
+              tools: ["read"],
+              permissions: { mcp: ["codegraph"] },
+            },
+          },
+        },
+      },
+    })
+
+    expect(getSubagentSettings().roles.both?.permissions).toEqual({ mcp: ["codegraph"] })
   })
 
   it("越界 maxDepth 回退 1、越界 maxConcurrent 丢弃，均告警；非对象节点降级默认", () => {
@@ -179,13 +258,23 @@ describe("saveSubagentSettings", () => {
     })
 
     const saved = saveSubagentSettings({
-      roles: { "my-reviewer": { description: "Review", tools: ["read", "read", " grep "] } },
+      roles: {
+        "my-reviewer": {
+          description: "Review",
+          permissions: { tools: ["read", "read", " grep "], mcp: ["codegraph"] },
+        },
+      },
       maxDepth: 2,
       maxConcurrent: 4,
     })
 
     expect(saved).toEqual({
-      roles: { "my-reviewer": { description: "Review", tools: ["read", "grep"] } },
+      roles: {
+        "my-reviewer": {
+          description: "Review",
+          permissions: { tools: ["read", "grep"], mcp: ["codegraph"] },
+        },
+      },
       maxDepth: 2,
       maxConcurrent: 4,
     })
@@ -209,7 +298,7 @@ describe("saveSubagentSettings", () => {
           description: "Review",
           instructions: "Be strict.",
           model: { provider: "openai", model: "gpt-5.1", variant: "high" },
-          tools: ["read", "grep"],
+          permissions: { tools: ["read", "grep"], skills: [] },
         },
       },
       maxDepth: 3,

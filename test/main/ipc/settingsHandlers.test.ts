@@ -9,6 +9,7 @@ vi.mock("@/services/settingsService", () => ({
   saveModelProviderSettings: vi.fn(),
   getPermissionSettings: vi.fn(),
   savePermissionSettings: vi.fn(),
+  getSubagentCapabilityCatalog: vi.fn(() => ({ tools: [], mcp: [], skills: [] })),
   getUiSettings: vi.fn(),
   saveUiSettings: vi.fn(),
   getCliSettings: vi.fn(),

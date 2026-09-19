@@ -19,6 +19,7 @@ import {
   getOpenClawSettings,
   getPermissionSettings,
   getSkillSettings,
+  getSubagentCapabilityCatalog,
   getSubagentSettings,
   getTokenSaverSettings,
   getUiSettings,
@@ -63,9 +64,10 @@ export const registerSettingsHandlers = (): void => {
     Object.values(BUILT_IN_AGENT_ROLES).map((role) => ({
       name: role.name,
       description: role.description,
-      ...(role.tools ? { tools: [...role.tools] } : {}),
+      ...(role.permissions ? { permissions: role.permissions } : {}),
     })),
   )
+  ipcMain.handle(SETTINGS_CHANNELS.getSubagentCapabilities, () => getSubagentCapabilityCatalog())
   ipcMain.handle(SETTINGS_CHANNELS.getUiSettings, () => getUiSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveUiSettings, (_, input) => saveUiSettings(input))
   ipcMain.handle(SETTINGS_CHANNELS.getCliSettings, () => getCliSettings())

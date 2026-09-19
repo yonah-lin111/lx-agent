@@ -42,7 +42,7 @@ const MAX_LIST_TOOL_PAGES = 1000
 
 // 名称段消毒：非法字符替换为 `_`，折叠连续下划线并去除首尾下划线。
 // 保证名称段自身不含 `__` 且不以 `_` 开头/结尾，使 `__` 分隔符可无歧义解析。
-const sanitize = (value: string): string => {
+export const sanitizeMcpNameSegment = (value: string): string => {
   const cleaned = value
     .replace(/[^a-zA-Z0-9_-]/g, "_")
     .replace(/_+/g, "_")
@@ -52,7 +52,7 @@ const sanitize = (value: string): string => {
 
 // MCP 工具全名：`mcp__sanitize(server)__sanitize(name)`，防与内置工具/跨 server 冲突。
 export const mcpToolName = (server: string, name: string): string =>
-  `${MCP_TOOL_NAMESPACE}${sanitize(server)}__${sanitize(name)}`
+  `${MCP_TOOL_NAMESPACE}${sanitizeMcpNameSegment(server)}__${sanitizeMcpNameSegment(name)}`
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)

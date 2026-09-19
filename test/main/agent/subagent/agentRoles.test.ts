@@ -6,7 +6,11 @@ import {
   resolveAgentRoles,
 } from "@/agent/subagent/agentRoles"
 
-const EXPLORER_TOOLS = ["read", "ls", "grep", "find", "lsp", "web_search", "webfetch", "time"]
+const EXPLORER_PERMISSIONS = {
+  tools: ["read", "ls", "grep", "find", "lsp", "time"],
+  websearch: ["web_search", "webfetch"],
+  skills: [],
+}
 
 describe("BUILT_IN_AGENT_ROLES", () => {
   it("defines exactly explorer, worker in fixed order", () => {
@@ -20,22 +24,22 @@ describe("BUILT_IN_AGENT_ROLES", () => {
     }
   })
 
-  it("explorer uses the exact read-only tool whitelist", () => {
+  it("explorer uses the exact read-only permission set", () => {
     const explorer = BUILT_IN_AGENT_ROLES.explorer
     expect(explorer.description).toBe(
       "Fast, authoritative answers to specific, well-scoped codebase questions. Use multiple explorers in parallel for independent questions.",
     )
-    expect(explorer.tools).toEqual(EXPLORER_TOOLS)
+    expect(explorer.permissions).toEqual(EXPLORER_PERMISSIONS)
     expect(explorer.instructions).toContain("You are a codebase explorer sub-agent.")
     expect(explorer.instructions).toContain("Read-only: never modify files")
   })
 
-  it("worker inherits the parent tool set", () => {
+  it("worker inherits the parent capability set", () => {
     const worker = BUILT_IN_AGENT_ROLES.worker
     expect(worker.description).toBe(
       "Execution and production work: implement part of a feature, fix tests or bugs, split large refactors into independent chunks.",
     )
-    expect(worker.tools).toBeUndefined()
+    expect(worker.permissions).toBeUndefined()
     expect(worker.instructions).toContain(
       "You are a worker sub-agent focused on execution and production work.",
     )
@@ -58,14 +62,14 @@ describe("resolveAgentRoles", () => {
     expect(roles.get("alpha")).toEqual({ name: "alpha", description: "Alpha role", builtIn: false })
   })
 
-  it("preserves user role fields 1:1", () => {
+  it("preserves user role fields 1:1 with a cloned permissions object", () => {
     const settings: SubagentSettings = {
       roles: {
         custom: {
           description: "Custom role",
           instructions: "Do the custom thing.",
           model: { provider: "openai", model: "gpt-5", variant: "high" },
-          tools: ["read", "grep"],
+          permissions: { tools: ["read", "grep"], mcp: ["codegraph"], skills: [] },
         },
       },
     }
@@ -77,9 +81,12 @@ describe("resolveAgentRoles", () => {
       description: "Custom role",
       instructions: "Do the custom thing.",
       model: { provider: "openai", model: "gpt-5", variant: "high" },
-      tools: ["read", "grep"],
+      permissions: { tools: ["read", "grep"], mcp: ["codegraph"], skills: [] },
       builtIn: false,
     })
+    // 深拷贝：调用方后续改动不污染角色目录。
+    settings.roles.custom.permissions?.tools?.push("bash")
+    expect(role?.permissions?.tools).toEqual(["read", "grep"])
   })
 
   it("ignores reserved names and names failing the pattern", () => {

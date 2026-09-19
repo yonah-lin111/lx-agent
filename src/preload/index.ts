@@ -98,6 +98,7 @@ const api: ProjectApi &
     saveSubagentSettings: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.saveSubagentSettings, settings),
     getSubagentBuiltins: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getSubagentBuiltins),
+    getSubagentCapabilities: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getSubagentCapabilities),
     getUiSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getUiSettings),
     saveUiSettings: (settings) => ipcRenderer.invoke(SETTINGS_CHANNELS.saveUiSettings, settings),
     getCliSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getCliSettings),
