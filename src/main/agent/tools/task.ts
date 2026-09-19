@@ -46,6 +46,9 @@ import { SubagentRuntime } from "../subagent/subagentRuntime"
 // 子代理最终输出超限阈值（写 spill 文件，父上下文只收有界预览 + 路径标记）。
 const SUBAGENT_MAX_BYTES = DEFAULT_MAX_BYTES
 
+// 空补全（正常结束但零输出）在同一 dispatch 内的最大续跑重试次数。
+const SUBAGENT_EMPTY_OUTPUT_MAX_RETRIES = 2
+
 // task 工具输入 schema。
 const TASK_INPUT_SCHEMA = z.object({
   description: z.string().describe("Brief task description (1-5 words) for progress display"),
@@ -540,6 +543,8 @@ export const createTaskTool = (
           }),
         )
 
+        let text = ""
+        let error: string | undefined
         try {
           // 父 run 在 hook 派发期间中止：不启动新 turn（无活动 run 的 abort 是 no-op）。
           if (signal?.aborted) {
@@ -560,13 +565,39 @@ export const createTaskTool = (
           await subAgent.prompt(
             startHookMessages.length > 0 ? [...startHookMessages, userMessage] : userMessage,
           )
+
+          const initialResult = extractSubagentResult(subAgent.state.messages, startIndex)
+          text = initialResult.text
+          error = initialResult.error
+
+          // 空输出兜底：provider 偶发「正常结束但零输出」的空补全（usage.output = 0）时，
+          // 丢弃空 assistant 消息并按原上下文续跑；重试仍在同一次 dispatch（同一 Protocol）内。
+          for (
+            let attempt = 0;
+            attempt < SUBAGENT_EMPTY_OUTPUT_MAX_RETRIES && !text && !error && !signal?.aborted;
+            attempt++
+          ) {
+            if (subAgent.state.messages.at(-1)?.role !== "assistant") break
+            try {
+              subAgent.state.removeLastMessage()
+              await subAgent.continue()
+            } catch (retryError) {
+              console.warn(
+                `Subagent empty-output retry failed: ${
+                  retryError instanceof Error ? retryError.message : String(retryError)
+                }`,
+              )
+              break
+            }
+            const retriedResult = extractSubagentResult(subAgent.state.messages, startIndex)
+            text = retriedResult.text
+            error = retriedResult.error
+          }
         } finally {
           flushSnapshot()
           unsubscribe()
           signal?.removeEventListener("abort", onAbort)
         }
-
-        const { text, error } = extractSubagentResult(subAgent.state.messages, startIndex)
 
         // SubagentStop hook：成功/失败/中止状态审计；消息仅进入子代理自身历史（面板展示）。
         const subagentStatus = signal?.aborted ? "aborted" : error ? "error" : "done"
