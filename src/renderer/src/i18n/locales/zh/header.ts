@@ -6,4 +6,6 @@ export const header = {
   themePixel: "像素",
   expandHeader: "展开顶部栏",
   collapseHeader: "折叠顶部栏",
+  todoTitle: "今日待办",
+  todoEmpty: "今日暂无待办",
 }

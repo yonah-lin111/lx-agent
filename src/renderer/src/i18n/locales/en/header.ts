@@ -6,4 +6,6 @@ export const header = {
   themePixel: "Pixel",
   expandHeader: "Expand Header",
   collapseHeader: "Collapse Header",
+  todoTitle: "Today's To-Dos",
+  todoEmpty: "No to-dos for today",
 }

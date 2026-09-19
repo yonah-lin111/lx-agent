@@ -12,6 +12,7 @@ import { LxBreadcrumbToast, useLxBreadcrumbToast } from "@/components/ui/LxToast
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { ProjectRecentItemsTags } from "@/features/project/components/ProjectRecentItemsTags"
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
+import { HeaderSchedulePanel } from "@/features/schedule"
 import { SETTINGS_SECTIONS } from "@/features/settings/constants"
 import { UI_SECTIONS } from "@/features/ui-preview"
 import { useTranslation } from "@/i18n"
@@ -299,7 +300,13 @@ export const HeaderSideBar = ({
             isExpanded ? "" : "invisible"
           }`}
         >
-          {children}
+          {/* 展开区左右双容器：左侧今日待办面板，右侧 children 插槽 */}
+          <div className="flex h-full min-h-0 w-full">
+            <aside className="flex h-full w-[380px] min-w-0 shrink-0 flex-col overflow-hidden border-r border-white/5 pr-2">
+              <HeaderSchedulePanel isExpanded={isExpanded} />
+            </aside>
+            <section className="min-w-0 flex-1 overflow-hidden pl-2">{children}</section>
+          </div>
         </div>
       </div>
     </header>

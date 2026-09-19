@@ -1,3 +1,4 @@
+export { HeaderSchedulePanel } from "./components/HeaderSchedulePanel"
 export { ScheduleDashboard } from "./components/ScheduleDashboard"
 export { useScheduleItems } from "./hooks/useScheduleItems"
 export { useScheduleMutations } from "./hooks/useScheduleMutations"
