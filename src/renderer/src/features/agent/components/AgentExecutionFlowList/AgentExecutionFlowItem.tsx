@@ -311,7 +311,7 @@ export const AgentExecutionFlowItem = ({
                     e.stopPropagation()
                     onOpenSubagent?.(step.id)
                   }}
-                  className="-mx-1 truncate rounded-[4px] px-1 font-mono text-xs font-medium leading-none text-[var(--color-theme-text,#ffffff)]/90 transition-colors hover:bg-white/5 hover:text-blue-200 focus:outline-none"
+                  className="truncate font-mono text-xs font-medium leading-none text-blue-300 transition-colors hover:text-blue-200 focus:outline-none"
                 >
                   {step.title}
                 </button>
