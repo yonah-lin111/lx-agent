@@ -53,7 +53,7 @@ export const HeaderUsagePanel = ({ isExpanded }: HeaderUsagePanelProps): React.J
           {t("usage.headerPanel.loadFailed")}
         </p>
       ) : (
-        <div className="grid min-h-0 w-full grid-cols-2 gap-1.5">
+        <div className="grid min-h-0 w-full flex-1 grid-cols-2 grid-rows-3 gap-1.5">
           {stats.map((stat) => (
             <div
               key={stat.label}
