@@ -300,12 +300,13 @@ export const HeaderSideBar = ({
             isExpanded ? "" : "invisible"
           }`}
         >
-          {/* 展开区左右双容器：左侧今日待办面板，右侧 children 插槽 */}
+          {/* 展开区左右等分容器：左侧今日待办面板，右侧 children 插槽。
+              使用 div 而非 aside/section：像素主题会为这类语义标签强制叠加 3D 边框与阴影。 */}
           <div className="flex h-full min-h-0 w-full">
-            <aside className="flex h-full w-[380px] min-w-0 shrink-0 flex-col overflow-hidden border-r border-white/5 pr-2">
+            <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden border-r border-white/10 pr-2">
               <HeaderSchedulePanel isExpanded={isExpanded} />
-            </aside>
-            <section className="min-w-0 flex-1 overflow-hidden pl-2">{children}</section>
+            </div>
+            <div className="min-w-0 flex-1 overflow-hidden pl-2">{children}</div>
           </div>
         </div>
       </div>
