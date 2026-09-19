@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react"
 import type React from "react"
-import { Fragment, useMemo, useRef, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -200,10 +200,23 @@ export const AgentSubagentPanel = ({
     })
   }, [data])
 
-  const [protocolIndex, setProtocolIndex] = useState(0)
+  // 协议选择：未手动切换时跟随打开调用自身的轮次（快照中最后一个 Protocol），
+  // 手动切换后记录选择；切换调用（toolCallId 变化）或收起面板时回到默认轮次。
+  const openedToolCallId = toolCall?.toolCallId ?? ""
+  const [protocolSelection, setProtocolSelection] = useState<{
+    toolCallId: string
+    index: number
+  } | null>(null)
+  const lastProtocolIndex = Math.max(protocols.length - 1, 0)
   const activeProtocolIndex =
-    protocols.length > 0 ? Math.min(protocolIndex, protocols.length - 1) : 0
+    protocolSelection && protocolSelection.toolCallId === openedToolCallId
+      ? Math.min(protocolSelection.index, lastProtocolIndex)
+      : lastProtocolIndex
   const activeProtocol = protocols[activeProtocolIndex]
+
+  useEffect(() => {
+    if (!isOpen) setProtocolSelection(null)
+  }, [isOpen])
 
   // 面板滚动容器：对外复用 scrollRef，对内保留本地引用供切换 Protocol 时重置滚动。
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -212,9 +225,9 @@ export const AgentSubagentPanel = ({
     if (scrollRef) scrollRef.current = node
   }
 
-  // 切换 Protocol：同步重置滚动位置，避免停留在上一轮的滚动偏移。
+  // 切换 Protocol：记录当前调用的选择并同步重置滚动位置，避免停留在上一轮的滚动偏移。
   const handleSelectProtocol = (nextIndex: number): void => {
-    setProtocolIndex(nextIndex)
+    setProtocolSelection({ toolCallId: openedToolCallId, index: nextIndex })
     if (containerRef.current) containerRef.current.scrollTop = 0
   }
 
@@ -350,8 +363,12 @@ export const AgentSubagentPanel = ({
           {/* 结构化通信信元（置于消息列表顶部，随列表一起滚动） */}
           {data.communications && data.communications.length > 0 && (
             <div className="agent-interagent-section flex flex-col gap-1.5 rounded-[6px] border border-white/10 bg-black/20 p-2.5">
-              <div className="agent-interagent-title flex items-center gap-1.5 text-xs font-semibold text-white/50">
-                {/* 协议轮次切换：仅展示当前轮的派发与结果信元。 */}
+              <div className="agent-interagent-title flex items-center justify-between gap-2 text-xs font-semibold text-white/50">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <MessageSquareShare className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+                  <span className="truncate">Inter-Agent Protocol</span>
+                </div>
+                {/* 协议轮次切换（置于标题行最右侧）：仅展示当前轮的派发与结果信元。 */}
                 {protocols.length > 0 && (
                   <div className="agent-interagent-switcher flex shrink-0 items-center gap-1">
                     <LxIconButton
@@ -375,8 +392,6 @@ export const AgentSubagentPanel = ({
                     </LxIconButton>
                   </div>
                 )}
-                <MessageSquareShare className="h-3.5 w-3.5 text-sky-400" />
-                <span>Inter-Agent Protocol</span>
               </div>
               <div className="flex flex-col gap-1.5">
                 {(activeProtocol ? activeProtocol.comms : data.communications).map((comm) => (

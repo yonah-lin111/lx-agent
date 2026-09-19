@@ -26,7 +26,7 @@ export const useFlowSubagentPanel = (
     return {
       kind: "toolCall",
       toolCallId:
-        content.subagent?.subagentId || step.toolContent?.toolCallId || "flow-subagent-detail",
+        step.toolContent?.toolCallId || content.subagent?.subagentId || "flow-subagent-detail",
       toolName: step.toolContent?.toolName || "task",
       args: {
         description: content.subagent?.description || "",
