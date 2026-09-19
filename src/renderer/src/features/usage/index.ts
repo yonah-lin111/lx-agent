@@ -1,5 +1,5 @@
 export { HeaderUsagePanel } from "./components/HeaderUsagePanel"
 export { UsageDashboard } from "./components/UsageDashboard"
-export { useHeaderUsageData } from "./hooks/useHeaderUsageData"
+export { useTodayUsageSummary } from "./hooks/useTodayUsageSummary"
 export { useUsageData } from "./hooks/useUsageData"
 export * from "./types"
