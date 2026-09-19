@@ -5,7 +5,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Copy,
+  Fingerprint,
   MessageSquareShare,
   Shield,
   ShieldCheck,
@@ -313,7 +313,7 @@ export const AgentSubagentPanel = ({
               />
             </LxTooltip>
           )}
-          {/* 子代理 ID：图标按钮（Copy → Check 反馈），hover Tooltip 展示完整 ID，点击复制供续接调用。 */}
+          {/* 子代理 ID：图标按钮（ID 图标 → Check 反馈），hover Tooltip 展示完整 ID，点击复制供续接调用。 */}
           {data?.subagentId && (
             <LxIconButton
               size="small"
@@ -321,7 +321,7 @@ export const AgentSubagentPanel = ({
               title={{ content: data.subagentId, placement: "bottom" }}
               onClick={handleCopySubagentId}
             >
-              {isIdCopied ? <Check className="text-emerald-400" /> : <Copy />}
+              {isIdCopied ? <Check className="text-emerald-400" /> : <Fingerprint />}
             </LxIconButton>
           )}
           {/* 统计：token 用量（3 行，一行一个类型）。 */}
