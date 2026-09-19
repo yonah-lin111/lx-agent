@@ -131,7 +131,7 @@ export const resolveCommandTag = (message: ChatMessage): CommandTag | null => {
   return null
 }
 
-// 计算 QA 聚合 token 用量。
+// 计算 QA 聚合 token 用量（包含主 Agent 各轮输出用量与本轮调用的全部 Subagent 内部用量）。
 export const calculateQaUsage = (
   message: ChatMessage,
   continuationMessages: ChatMessage[] = [],
@@ -141,14 +141,42 @@ export const calculateQaUsage = (
   let cacheRead = 0
   let totalTokens = 0
   let hasUsage = false
-  for (const currentMessage of [message, ...continuationMessages]) {
-    if (currentMessage.role !== "assistant" || !currentMessage.usage) continue
-    hasUsage = true
-    input += currentMessage.usage.input
-    output += currentMessage.usage.output
-    cacheRead += currentMessage.usage.cacheRead ?? 0
-    totalTokens += currentMessage.usage.totalTokens
+
+  const allMessages = [message, ...continuationMessages]
+  const subagentUsageByCallId = new Map<
+    string,
+    { input: number; output: number; cacheRead?: number; totalTokens: number }
+  >()
+
+  for (const currentMessage of allMessages) {
+    if (currentMessage.role === "assistant" && currentMessage.usage) {
+      hasUsage = true
+      input += currentMessage.usage.input
+      output += currentMessage.usage.output
+      cacheRead += currentMessage.usage.cacheRead ?? 0
+      totalTokens += currentMessage.usage.totalTokens
+    }
+
+    if (currentMessage.blocks) {
+      for (const block of currentMessage.blocks) {
+        if ((block.kind === "toolCall" || block.kind === "toolResult") && block.subagent?.usage) {
+          const callId = block.toolCallId || block.subagent.subagentId
+          if (callId) {
+            subagentUsageByCallId.set(callId, block.subagent.usage)
+          }
+        }
+      }
+    }
   }
+
+  for (const subUsage of subagentUsageByCallId.values()) {
+    hasUsage = true
+    input += subUsage.input
+    output += subUsage.output
+    cacheRead += subUsage.cacheRead ?? 0
+    totalTokens += subUsage.totalTokens
+  }
+
   if (!hasUsage) return null
   return { input, output, cacheRead, totalTokens }
 }

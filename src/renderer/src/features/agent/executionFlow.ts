@@ -479,6 +479,7 @@ export const buildExecutionSteps = (
                   total: subagentData.usage.totalTokens,
                 }
               : toolTokens,
+            parentTokens: subagentData?.usage ? toolTokens : undefined,
             tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
             subagentContent: {
               name: subagentName,

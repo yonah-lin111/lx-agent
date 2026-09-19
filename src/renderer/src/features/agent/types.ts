@@ -278,6 +278,13 @@ export interface ExecutionStep {
     cacheRead?: number
     total?: number
   }
+  // 父级调度/生成该步骤的 Token 用量（Subagent 步骤专用：区分子代理内部消耗与主模型派发消耗）。
+  parentTokens?: {
+    input?: number
+    output?: number
+    cacheRead?: number
+    total?: number
+  }
   // 本轮请求实际生效的 Token Saver 记录（请求级，与 tokens 同点位展示）。
   tokenSaver?: TokenSaverRun
   // 本条工具输出的 RTK 压缩命中（按 toolCallId 归因；优先于请求级记录展示）。

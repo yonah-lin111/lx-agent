@@ -85,11 +85,18 @@ export const useFlowStats = ({
         current.lastStepDurationMs = step.durationMs
       }
 
-      if (step.tokens) {
+      if (step.kind !== "compaction" && step.tokens) {
         if (step.tokens.input) current.inputTokens += step.tokens.input
         if (step.tokens.output) current.outputTokens += step.tokens.output
         if (step.tokens.cacheRead) current.cacheReadTokens += step.tokens.cacheRead
         if (step.tokens.total) current.totalTokens += step.tokens.total
+      }
+
+      if (step.parentTokens) {
+        if (step.parentTokens.input) current.inputTokens += step.parentTokens.input
+        if (step.parentTokens.output) current.outputTokens += step.parentTokens.output
+        if (step.parentTokens.cacheRead) current.cacheReadTokens += step.parentTokens.cacheRead
+        if (step.parentTokens.total) current.totalTokens += step.parentTokens.total
       }
     }
 
@@ -170,6 +177,12 @@ export const useFlowStats = ({
         if (step.tokens.output) outputTokens += step.tokens.output
         if (step.tokens.cacheRead) cacheReadTokens += step.tokens.cacheRead
         if (step.tokens.total) totalTokens += step.tokens.total
+      }
+      if (step.parentTokens) {
+        if (step.parentTokens.input) inputTokens += step.parentTokens.input
+        if (step.parentTokens.output) outputTokens += step.parentTokens.output
+        if (step.parentTokens.cacheRead) cacheReadTokens += step.parentTokens.cacheRead
+        if (step.parentTokens.total) totalTokens += step.parentTokens.total
       }
     }
 
