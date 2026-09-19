@@ -303,8 +303,7 @@ export const AgentExecutionFlowItem = ({
               {step.kind === "tool" && step.toolContent ? (
                 <ToolCallTitle toolContent={step.toolContent} />
               ) : step.kind === "user" ? null : step.kind === "subagent" && step.subagentContent ? (
-                <button
-                  type="button"
+                <span
                   data-testid="flow-item-subagent-open-btn"
                   aria-label={t("agent.viewSubagentDetails")}
                   onClick={(e) => {
@@ -314,7 +313,7 @@ export const AgentExecutionFlowItem = ({
                   className="truncate font-mono text-xs font-medium leading-none text-blue-300 transition-colors hover:text-blue-200 focus:outline-none"
                 >
                   {step.title}
-                </button>
+                </span>
               ) : (
                 <span
                   className={`truncate font-mono text-xs font-medium leading-none ${
