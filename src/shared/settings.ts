@@ -444,6 +444,8 @@ export interface SubagentSettings {
   defaultModel?: ModelSelection
   // 子代理协作模式（不继承主 agent；缺省为 build）。
   mode?: CollaborationMode
+  // 内置角色权限覆盖：仅覆盖权限，名称/描述/指令/模型仍由系统定义（缺省 = 内置默认权限）。
+  builtinPermissions?: Record<string, SubagentRolePermissions>
 }
 
 export const DEFAULT_SUBAGENT_SETTINGS: SubagentSettings = { roles: {}, maxDepth: 1 }
@@ -464,7 +466,10 @@ export const SUBAGENT_MAX_CONCURRENCY_LIMIT = 32
 export interface SubagentBuiltinRoleInfo {
   name: string
   description: string
+  // 生效权限（含 builtinPermissions 覆盖）。
   permissions?: SubagentRolePermissions
+  // 内置默认权限（用于判断是否已被覆盖，以及跳过无变化写入）。
+  defaultPermissions?: SubagentRolePermissions
 }
 
 // 渲染进程可调用的设置 IPC 接口。

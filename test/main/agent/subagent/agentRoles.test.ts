@@ -111,6 +111,26 @@ describe("resolveAgentRoles", () => {
     expect(roles.get("explorer")?.builtIn).toBe(true)
     expect(roles.has("review")).toBe(false)
   })
+
+  it("builtinPermissions 仅覆盖内置角色权限，名称/描述/指令保持系统定义且深拷贝", () => {
+    const settings: SubagentSettings = {
+      roles: {},
+      builtinPermissions: { explorer: { tools: ["read"], mcp: ["codegraph"] } },
+    }
+
+    const explorer = resolveAgentRoles(settings).get("explorer")
+    expect(explorer?.name).toBe("explorer")
+    expect(explorer?.description).toBe(BUILT_IN_AGENT_ROLES.explorer.description)
+    expect(explorer?.instructions).toBe(BUILT_IN_AGENT_ROLES.explorer.instructions)
+    expect(explorer?.permissions).toEqual({ tools: ["read"], mcp: ["codegraph"] })
+    // 深拷贝：调用方后续改动不污染角色目录。
+    settings.builtinPermissions?.explorer.tools?.push("bash")
+    expect(explorer?.permissions?.tools).toEqual(["read"])
+    // 内置目录本身不被修改。
+    expect(BUILT_IN_AGENT_ROLES.explorer.permissions?.tools).toContain("ls")
+    // 未覆盖的 worker 仍为不限制。
+    expect(resolveAgentRoles(settings).get("worker")?.permissions).toBeUndefined()
+  })
 })
 
 describe("buildAgentTypesDescription", () => {

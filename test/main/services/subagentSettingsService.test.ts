@@ -200,6 +200,32 @@ describe("getSubagentSettings", () => {
     })
   })
 
+  it("builtinPermissions 仅接受内置角色名；非法键与非对象告警并忽略", () => {
+    writeConfig({
+      agent: {
+        subagents: {
+          roles: {},
+          builtinPermissions: {
+            explorer: { tools: ["read", " grep ", "read"], skills: [] },
+            worker: { websearch: [] },
+            review: { tools: ["read"] },
+            unknown: { tools: ["read"] },
+          },
+        },
+      },
+    })
+
+    expect(getSubagentSettings().builtinPermissions).toEqual({
+      explorer: { tools: ["read", "grep"], skills: [] },
+      worker: { websearch: [] },
+    })
+    expect(warnMessages().some((m) => m.includes("builtinPermissions 仅支持内置角色名"))).toBe(true)
+
+    writeConfig({ agent: { subagents: { roles: {}, builtinPermissions: "all" } } })
+    expect(getSubagentSettings().builtinPermissions).toBeUndefined()
+    expect(warnMessages().some((m) => m.includes("builtinPermissions 须为对象"))).toBe(true)
+  })
+
   it("permissions 优先于旧 tools 字段", () => {
     writeConfig({
       agent: {

@@ -35,6 +35,7 @@ const loadedBuiltins = (): SubagentBuiltinRoleInfo[] => [
     name: "explorer",
     description: "Fast codebase answers",
     permissions: { tools: ["read", "grep"], websearch: ["web_search"], skills: [] },
+    defaultPermissions: { tools: ["read", "grep"], websearch: ["web_search"], skills: [] },
   },
   { name: "worker", description: "Execution and production work" },
 ]
@@ -236,6 +237,90 @@ describe("SubagentSettings", () => {
       skills: [],
       mcp: ["codegraph", "github"],
     })
+  })
+
+  it("内置角色可编辑权限：弹窗仅展示只读身份信息，保存写入 builtinPermissions", async () => {
+    renderComponent()
+    await screen.findByText("explorer")
+
+    // 内置角色有权限编辑入口，且无删除入口。
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit permissions" })[0]!)
+    await screen.findAllByText("Fast codebase answers")
+
+    // 身份字段只读：不出现名称/描述输入框。
+    expect(screen.queryByPlaceholderText("e.g. my-reviewer")).toBeNull()
+    expect(screen.queryByPlaceholderText("Describe when the model should use this role")).toBeNull()
+    // 权限回填：explorer 的 skills 为全禁。
+    expect(screen.getByText("All disabled")).toBeTruthy()
+
+    // 关闭 tools 限制（不限制）后保存。
+    fireEvent.click(screen.getByRole("checkbox", { name: "Tools" }))
+    expect(screen.queryByRole("checkbox", { name: "read" })).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }))
+
+    await useSettingsDraftStore.getState().save()
+    await waitFor(() => expect(saveSubagentSettings).toHaveBeenCalledTimes(1))
+
+    const payload = saveSubagentSettings.mock.calls[0]![0]
+    expect(payload.builtinPermissions?.explorer).toEqual({ websearch: ["web_search"], skills: [] })
+    // 未覆盖的 worker 不写入。
+    expect(payload.builtinPermissions?.worker).toBeUndefined()
+    // 内置角色不进入自定义 roles。
+    expect(payload.roles.explorer).toBeUndefined()
+  })
+
+  it("内置角色权限已覆盖时展示标记", async () => {
+    getSubagentSettings.mockResolvedValue({
+      roles: {},
+      maxDepth: 1,
+      builtinPermissions: { explorer: { skills: [] } },
+    })
+    renderComponent()
+    await screen.findByText("explorer")
+
+    expect(screen.getByText("Overridden")).toBeTruthy()
+  })
+
+  it("内置角色权限改回默认值时清除覆盖，不写入冗余配置", async () => {
+    // 生效权限 = 覆盖后的值（tools 少一项、websearch 全禁）。
+    getSubagentSettings.mockResolvedValue({
+      roles: {},
+      maxDepth: 1,
+      builtinPermissions: { explorer: { tools: ["read"], websearch: [], skills: [] } },
+    })
+    getSubagentBuiltins.mockResolvedValue([
+      {
+        name: "explorer",
+        description: "Fast codebase answers",
+        permissions: { tools: ["read"], websearch: [], skills: [] },
+        defaultPermissions: {
+          tools: ["read", "grep"],
+          websearch: ["web_search", "webfetch"],
+          skills: [],
+        },
+      },
+      { name: "worker", description: "Execution and production work" },
+    ])
+    renderComponent()
+    await screen.findByText("explorer")
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit permissions" })[0]!)
+    await screen.findAllByText("Fast codebase answers")
+
+    // 恢复为内置默认：tools = read + grep、websearch 全选、skills 全禁。
+    fireEvent.click(screen.getByRole("checkbox", { name: "grep" }))
+    const websearchGroup = document.querySelector('[data-permission-group="websearch"]')
+    const selectAll = websearchGroup?.querySelector('button[type="button"]')
+    expect(selectAll).toBeTruthy()
+    fireEvent.click(selectAll!)
+    // 预检：勾选结果与默认一致。
+    expect((screen.getByRole("checkbox", { name: "grep" }) as HTMLInputElement).checked).toBe(true)
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }))
+
+    await useSettingsDraftStore.getState().save()
+    await waitFor(() => expect(saveSubagentSettings).toHaveBeenCalledTimes(1))
+
+    expect(saveSubagentSettings.mock.calls[0]![0].builtinPermissions).toBeUndefined()
   })
 
   it("编辑已有角色回填权限配置，未配置权限时展示为不限制", async () => {

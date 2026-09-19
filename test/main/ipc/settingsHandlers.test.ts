@@ -10,6 +10,7 @@ vi.mock("@/services/settingsService", () => ({
   getPermissionSettings: vi.fn(),
   savePermissionSettings: vi.fn(),
   getSubagentCapabilityCatalog: vi.fn(() => ({ tools: [], mcp: [], skills: [] })),
+  getSubagentSettings: vi.fn(() => ({ roles: {}, maxDepth: 1 })),
   getUiSettings: vi.fn(),
   saveUiSettings: vi.fn(),
   getCliSettings: vi.fn(),
@@ -56,5 +57,28 @@ describe("settings IPC handlers", () => {
     expect(handle.mock.calls.map(([channel]) => channel).sort()).toEqual(
       Object.values(SETTINGS_CHANNELS).sort(),
     )
+  })
+
+  it("内置角色 handler 返回生效权限与默认权限，供设置页判断覆盖", async () => {
+    vi.resetModules()
+    const { registerSettingsHandlers } = await import("@/ipc/settingsHandlers")
+    const { getSubagentSettings } = await import("@/services/settingsService")
+
+    vi.mocked(getSubagentSettings).mockReturnValue({
+      roles: {},
+      maxDepth: 1,
+      builtinPermissions: { explorer: { tools: ["read"], skills: [] } },
+    })
+    registerSettingsHandlers()
+
+    const handler = handle.mock.calls.find(
+      ([channel]) => channel === SETTINGS_CHANNELS.getSubagentBuiltins,
+    )?.[1]
+    const builtins = handler()
+
+    const explorer = builtins.find((role: { name: string }) => role.name === "explorer")
+    expect(explorer.permissions).toEqual({ tools: ["read"], skills: [] })
+    expect(explorer.defaultPermissions?.tools).toContain("ls")
+    expect(builtins.map((role: { name: string }) => role.name)).toEqual(["explorer", "worker"])
   })
 })

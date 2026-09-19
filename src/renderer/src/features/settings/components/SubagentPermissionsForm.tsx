@@ -25,7 +25,7 @@ export interface SubagentPermissionsFormProps {
 const GROUP_KEYS: readonly PermissionGroup[] = ["tools", "mcp", "skills", "websearch"]
 
 /**
- * 渲染子代理角色能力权限编辑器：每组「不限制 / 自定义白名单」两态，白名单为空表示该组全禁。
+ * 渲染子代理角色能力权限编辑器：2×2 网格分组，每组「不限制 / 自定义白名单」两态，白名单为空表示该组全禁。
  */
 export const SubagentPermissionsForm = ({
   catalog,
@@ -86,7 +86,7 @@ export const SubagentPermissionsForm = ({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
       {GROUP_KEYS.map((group) => {
         const items = itemsByGroup[group]
         const restricted = value?.[group] !== undefined
@@ -96,16 +96,18 @@ export const SubagentPermissionsForm = ({
         return (
           <div
             key={group}
-            className="flex flex-col gap-2 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
+            data-permission-group={group}
+            className="settings-item-card flex min-w-0 flex-col gap-2 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
           >
             <div className="flex items-center justify-between gap-2">
-              <label className="flex cursor-pointer items-center gap-2">
+              <label className="flex min-w-0 cursor-pointer items-center gap-2">
                 <LxCheckbox
                   size="small"
                   checked={restricted}
+                  aria-label={groupLabel(group)}
                   onChange={(checked) => handleToggleGroup(group, checked)}
                 />
-                <span className="font-medium text-white/70">{groupLabel(group)}</span>
+                <span className="truncate font-medium text-white/70">{groupLabel(group)}</span>
                 {restricted ? (
                   <LxTag size="small" color={disabledAll ? "rose" : "sky"}>
                     {disabledAll
@@ -144,29 +146,33 @@ export const SubagentPermissionsForm = ({
                   {t("settings.subagentsPermissionsNoItems")}
                 </span>
               ) : (
-                <div className="custom-scrollbar grid max-h-40 grid-cols-2 gap-x-3 gap-y-1.5 overflow-y-auto pr-1">
+                <div className="custom-scrollbar flex max-h-32 flex-col gap-1 overflow-y-auto pr-1">
                   {items.map((item) => (
-                    <label key={item.name} className="flex cursor-pointer items-center gap-1.5">
+                    <label
+                      key={item.name}
+                      className="flex cursor-pointer items-center gap-1.5 rounded-[4px] px-1 py-0.5 hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.05))]"
+                    >
                       <LxCheckbox
                         size="small"
                         checked={selected.includes(item.name)}
+                        aria-label={item.name}
                         onChange={(checked) => handleToggleItem(group, item.name, checked)}
                       />
                       <span className="truncate font-mono text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
                         {item.name}
                       </span>
                       {item.state === "connected" ? (
-                        <span className="shrink-0 text-xs text-emerald-400/80">
+                        <span className="ml-auto shrink-0 text-xs text-emerald-400/80">
                           {t("settings.subagentsPermissionsConnected")}
                         </span>
                       ) : null}
                       {item.state === "disconnected" ? (
-                        <span className="shrink-0 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                        <span className="ml-auto shrink-0 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
                           {t("settings.subagentsPermissionsDisconnected")}
                         </span>
                       ) : null}
                       {item.state === "disabled" ? (
-                        <span className="shrink-0 text-xs text-amber-400/80">
+                        <span className="ml-auto shrink-0 text-xs text-amber-400/80">
                           {t("settings.subagentsPermissionsSkillDisabled")}
                         </span>
                       ) : null}

@@ -29,6 +29,24 @@ import { SubagentPermissionsForm } from "./SubagentPermissionsForm"
 // 下拉 portal 默认 zIndex 50，须高于 LxModal（999999）与 LxTooltip（999999）才不被遮挡。
 const MODAL_SELECT_Z_INDEX = 1000000
 
+// 权限等值判定：按固定分组顺序 + 排序后的白名单比较（键序与勾选顺序不影响语义）。
+const permissionsEqual = (
+  a: SubagentRolePermissions | undefined,
+  b: SubagentRolePermissions | undefined,
+): boolean => {
+  const canonical = (value: SubagentRolePermissions | undefined): string => {
+    if (value === undefined) return "~"
+    const groups: Array<keyof SubagentRolePermissions> = ["tools", "mcp", "skills", "websearch"]
+    return groups
+      .map((group) => {
+        const list = value[group]
+        return list === undefined ? "~" : `${group}:${[...list].sort().join(",")}`
+      })
+      .join("|")
+  }
+  return canonical(a) === canonical(b)
+}
+
 // 权限摘要：四组各自统计；无限制分组不展示。
 const describePermissions = (
   permissions: SubagentRolePermissions | undefined,
@@ -74,6 +92,8 @@ export const SubagentSettings = (): React.JSX.Element => {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingName, setEditingName] = useState<string | null>(null)
+  // 内置角色编辑：仅允许改权限（名称/描述/指令/模型锁定为内置定义）。
+  const [editingBuiltin, setEditingBuiltin] = useState<SubagentBuiltinRoleInfo | null>(null)
   const [formName, setFormName] = useState("")
   const [formDescription, setFormDescription] = useState("")
   const [formInstructions, setFormInstructions] = useState("")
@@ -198,6 +218,7 @@ export const SubagentSettings = (): React.JSX.Element => {
 
   const handleOpenAdd = (): void => {
     setEditingName(null)
+    setEditingBuiltin(null)
     setFormName("")
     setFormDescription("")
     setFormInstructions("")
@@ -210,12 +231,23 @@ export const SubagentSettings = (): React.JSX.Element => {
 
   const handleOpenEdit = (name: string, config: SubagentRoleConfig): void => {
     setEditingName(name)
+    setEditingBuiltin(null)
     setFormName(name)
     setFormDescription(config.description)
     setFormInstructions(config.instructions ?? "")
     setFormModelProvider(config.model?.provider ?? "")
     setFormModelModel(config.model?.model ?? "")
     setFormPermissions(config.permissions)
+    setFormError("")
+    setModalOpen(true)
+  }
+
+  // 内置角色编辑：仅权限可改，其余字段由内置定义决定。
+  const handleOpenBuiltinEdit = (role: SubagentBuiltinRoleInfo): void => {
+    setEditingName(null)
+    setEditingBuiltin(role)
+    setFormName(role.name)
+    setFormPermissions(role.permissions)
     setFormError("")
     setModalOpen(true)
   }
@@ -229,6 +261,25 @@ export const SubagentSettings = (): React.JSX.Element => {
   }
 
   const handleConfirm = (): void => {
+    // 内置角色：仅写入 builtinPermissions 覆盖；与内置默认一致时清除覆盖（无冗余配置）。
+    if (editingBuiltin) {
+      setSettings((current) => {
+        const nextBuiltin = { ...current.builtinPermissions }
+        const isDefault = permissionsEqual(formPermissions, editingBuiltin.defaultPermissions)
+        if (!isDefault && formPermissions) {
+          nextBuiltin[editingBuiltin.name] = formPermissions
+        } else {
+          delete nextBuiltin[editingBuiltin.name]
+        }
+        const next = { ...current }
+        if (Object.keys(nextBuiltin).length > 0) next.builtinPermissions = nextBuiltin
+        else delete next.builtinPermissions
+        return next
+      })
+      setModalOpen(false)
+      return
+    }
+
     const name = formName.trim()
     if (!SUBAGENT_ROLE_NAME_PATTERN.test(name)) {
       setFormError(t("settings.subagentsNameInvalid"))
@@ -379,28 +430,48 @@ export const SubagentSettings = (): React.JSX.Element => {
           {t("settings.subagentsBuiltins")}
         </h3>
         <div className="flex flex-col gap-2">
-          {builtins.map((role) => (
-            <div
-              key={role.name}
-              className="settings-item-card flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
-            >
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.9))]">
-                  {role.name}
-                </span>
-                <LxTag size="small" color="sky">
-                  {t("settings.subagentsBuiltinTag")}
-                </LxTag>
+          {builtins.map((role) => {
+            const overridden = settings.builtinPermissions?.[role.name] !== undefined
+            return (
+              <div
+                key={role.name}
+                className="settings-item-card flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.9))]">
+                      {role.name}
+                    </span>
+                    <LxTag size="small" color="sky">
+                      {t("settings.subagentsBuiltinTag")}
+                    </LxTag>
+                    {overridden ? (
+                      <LxTag size="small" color="amber">
+                        {t("settings.subagentsPermissionsOverridden")}
+                      </LxTag>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <LxIconButton
+                      preset="edit"
+                      onClick={() => handleOpenBuiltinEdit(role)}
+                      title={{ content: t("settings.subagentsEditPermissions"), placement: "top" }}
+                      aria-label={t("settings.subagentsEditPermissions")}
+                    >
+                      <Edit2 className="text-white/70" />
+                    </LxIconButton>
+                  </div>
+                </div>
+                <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
+                  {role.description}
+                </p>
+                <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                  <span>{t("settings.subagentsPermissions")}:</span>{" "}
+                  <span className="font-mono">{describePermissions(role.permissions, t)}</span>
+                </p>
               </div>
-              <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
-                {role.description}
-              </p>
-              <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-                <span>{t("settings.subagentsPermissions")}:</span>{" "}
-                <span className="font-mono">{describePermissions(role.permissions, t)}</span>
-              </p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -485,8 +556,14 @@ export const SubagentSettings = (): React.JSX.Element => {
       <LxModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingName ? t("settings.subagentsEditRole") : t("settings.subagentsAddRole")}
-        width="520px"
+        title={
+          editingBuiltin
+            ? t("settings.subagentsEditPermissions")
+            : editingName
+              ? t("settings.subagentsEditRole")
+              : t("settings.subagentsAddRole")
+        }
+        width="720px"
       >
         <div className="flex flex-col gap-3.5 p-1 text-xs text-white/80">
           {formError ? (
@@ -496,67 +573,96 @@ export const SubagentSettings = (): React.JSX.Element => {
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-1">
-            <span className="font-medium text-white/70">{t("settings.subagentsName")} *</span>
-            <LxInput
-              placeholder={t("settings.subagentsNamePlaceholder")}
-              value={formName}
-              onChange={(e) => {
-                setFormName(e.target.value)
-                setFormError("")
-              }}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="font-medium text-white/70">
-              {t("settings.subagentsDescription")} *
-            </span>
-            <LxInput
-              placeholder={t("settings.subagentsDescriptionPlaceholder")}
-              value={formDescription}
-              onChange={(e) => {
-                setFormDescription(e.target.value)
-                setFormError("")
-              }}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="font-medium text-white/70">{t("settings.subagentsInstructions")}</span>
-            <LxInput
-              multiline
-              placeholder={t("settings.subagentsInstructionsPlaceholder")}
-              value={formInstructions}
-              onChange={(e) => setFormInstructions(e.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="font-medium text-white/70">{t("settings.subagentsModel")}</span>
-            <div className="grid gap-2">
-              <LxSelect
-                zIndex={MODAL_SELECT_Z_INDEX}
-                value={formModelProvider}
-                options={[
-                  { value: "", label: t("settings.subagentsInheritModel") },
-                  ...buildProviderOptions(formModelProvider),
-                ]}
-                onChange={(provider) => {
-                  setFormModelProvider(provider)
-                  const model = Object.values(providers[provider]?.models ?? {})[0]?.id ?? ""
-                  setFormModelModel(model)
-                }}
-              />
-              <LxSelect
-                zIndex={MODAL_SELECT_Z_INDEX}
-                value={formModelModel}
-                options={modelOptions(formModelProvider)}
-                disabled={!formModelProvider || modelOptions(formModelProvider).length === 0}
-                onChange={(model) => setFormModelModel(model)}
-              />
+          {editingBuiltin ? (
+            // 内置角色：展示只读身份信息，仅权限可编辑。
+            <div className="settings-item-card flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.9))]">
+                  {editingBuiltin.name}
+                </span>
+                <LxTag size="small" color="sky">
+                  {t("settings.subagentsBuiltinTag")}
+                </LxTag>
+              </div>
+              <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
+                {editingBuiltin.description}
+              </p>
+              <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                {t("settings.subagentsBuiltinLockedHint")}
+              </p>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-white/70">{t("settings.subagentsName")} *</span>
+                  <LxInput
+                    placeholder={t("settings.subagentsNamePlaceholder")}
+                    value={formName}
+                    onChange={(e) => {
+                      setFormName(e.target.value)
+                      setFormError("")
+                    }}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-white/70">
+                    {t("settings.subagentsDescription")} *
+                  </span>
+                  <LxInput
+                    placeholder={t("settings.subagentsDescriptionPlaceholder")}
+                    value={formDescription}
+                    onChange={(e) => {
+                      setFormDescription(e.target.value)
+                      setFormError("")
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-white/70">
+                    {t("settings.subagentsInstructions")}
+                  </span>
+                  <LxInput
+                    multiline
+                    rows={3}
+                    placeholder={t("settings.subagentsInstructionsPlaceholder")}
+                    value={formInstructions}
+                    onChange={(e) => setFormInstructions(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-white/70">{t("settings.subagentsModel")}</span>
+                  <div className="grid gap-2">
+                    <LxSelect
+                      zIndex={MODAL_SELECT_Z_INDEX}
+                      value={formModelProvider}
+                      options={[
+                        { value: "", label: t("settings.subagentsInheritModel") },
+                        ...buildProviderOptions(formModelProvider),
+                      ]}
+                      onChange={(provider) => {
+                        setFormModelProvider(provider)
+                        const model = Object.values(providers[provider]?.models ?? {})[0]?.id ?? ""
+                        setFormModelModel(model)
+                      }}
+                    />
+                    <LxSelect
+                      zIndex={MODAL_SELECT_Z_INDEX}
+                      value={formModelModel}
+                      options={modelOptions(formModelProvider)}
+                      disabled={!formModelProvider || modelOptions(formModelProvider).length === 0}
+                      onChange={(model) => setFormModelModel(model)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5">
@@ -572,7 +678,7 @@ export const SubagentSettings = (): React.JSX.Element => {
             />
           </div>
 
-          <div className="mt-2 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
+          <div className="mt-1 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
             <LxIconButton
               iconOnly={false}
               onClick={() => setModalOpen(false)}
@@ -583,10 +689,10 @@ export const SubagentSettings = (): React.JSX.Element => {
             </LxIconButton>
             <LxIconButton
               iconOnly={false}
+              preset="confirm"
               onClick={handleConfirm}
               textClass="text-white"
-              hoverBgClass="hover:bg-white/[0.12]"
-              className="border border-white/15 bg-white/[0.08] font-medium cursor-pointer"
+              className="font-medium cursor-pointer"
             >
               {t("settings.confirm")}
             </LxIconButton>

@@ -14,6 +14,8 @@ import {
   SUBAGENT_WEBSEARCH_TOOL_NAMES,
 } from "@shared/settings"
 
+import { BUILTIN_SUBAGENT_ROLE_NAMES } from "./agentRoles"
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
@@ -228,6 +230,28 @@ const parseMode = (raw: unknown, errors: string[]): CollaborationMode | undefine
   return undefined
 }
 
+// 解析内置角色权限覆盖：仅允许内置角色名作键；空对象视为缺省。
+const parseBuiltinPermissions = (
+  raw: unknown,
+  errors: string[],
+): Record<string, SubagentRolePermissions> | undefined => {
+  if (raw === undefined) return undefined
+  if (!isRecord(raw)) {
+    errors.push("builtinPermissions 须为对象，已忽略")
+    return undefined
+  }
+  const builtin: Record<string, SubagentRolePermissions> = {}
+  for (const [name, value] of Object.entries(raw)) {
+    if (!(BUILTIN_SUBAGENT_ROLE_NAMES as readonly string[]).includes(name)) {
+      errors.push(`builtinPermissions 仅支持内置角色名，已忽略: ${name}`)
+      continue
+    }
+    const permissions = parsePermissions(value, `内置角色 ${name}`, errors)
+    if (permissions !== undefined) builtin[name] = permissions
+  }
+  return Object.keys(builtin).length > 0 ? builtin : undefined
+}
+
 /**
  * 解析 `agent.subagents` 原始配置：同时兼容 `{ roles, ... }` 域模型与裸角色映射表。
  * 非法条目记入 errors 且跳过，绝不抛出。
@@ -259,6 +283,9 @@ export const parseSubagentSettings = (raw: unknown): SubagentSettingsParseResult
   const parsedDefaultModel = parseModelSelection(raw.defaultModel, "defaultModel")
   if (parsedDefaultModel.error) errors.push(parsedDefaultModel.error)
   else if (parsedDefaultModel.model) settings.defaultModel = parsedDefaultModel.model
+
+  const builtinPermissions = parseBuiltinPermissions(raw.builtinPermissions, errors)
+  if (builtinPermissions !== undefined) settings.builtinPermissions = builtinPermissions
 
   for (const [name, value] of Object.entries(rolesRaw)) {
     const role = parseRole(name, value, errors)

@@ -203,12 +203,13 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 | `instructions` | 字符串，可缺省 | 非字符串 → 告警 + 忽略 |
 | `permissions` | 对象，四个可选数组字段（`tools` / `mcp` / `skills` / `websearch`）；每组缺省 = 不限制，空数组 = 该组全禁，非空 = 白名单；逐项去空白、去重 | 非对象 → 告警 + 忽略；非数组分组 → 告警 + 忽略该组；非法项忽略并告警 |
 | `tools`（旧字段） | 兼容读取：非空白名单拆入 `permissions`（`web_search`/`webfetch` → `websearch`，`read_skill` → 允许全部 skill，其余 → `tools`，未列组置空 = 全禁）；空数组按历史语义视为缺省 | 保存不再写回该字段 |
+| `builtinPermissions` | 对象，键限内置角色名（`explorer` / `worker`），值为 `permissions`；仅覆盖权限，名称/描述/指令/模型保持系统定义；与内置默认一致时设置页自动清除该键 | 非法键 → 告警 + 忽略；非对象 → 告警 + 忽略 |
 | `maxDepth` | 整数 1–5 | 越界保存拒绝；读时回退 1 并告警 |
 | `maxConcurrent` | 整数 1–32 | 越界保存拒绝；读时回退缺省（不限）并告警 |
 | `defaultModel` | `ModelSelection`（provider/model 需存在，由消费者降级） | 缺省即继承；非法仅运行时告警降级 |
 | `mode` | `build` / `plan` / `review` / `design` | 缺省即 `build`；非法保存拒绝，读时告警 + 忽略（回退 `build`） |
 
-设置与 IPC：`settings:subagents:get/save/builtins/get-capabilities` 四个通道；设置页「子代理」分区（全局治理卡片 + 内置角色只读列表 + 用户角色增删改，`SubagentSettings.tsx`）；角色弹窗内嵌 `SubagentPermissionsForm.tsx` 四组权限编辑器（组开关 + 多选清单 + 全选/清空，能力目录来自 `get-capabilities`）。
+设置与 IPC：`settings:subagents:get/save/builtins/get-capabilities` 四个通道；设置页「子代理」分区（全局治理卡片 + 内置角色列表（权限可编辑、身份只读）+ 用户角色增删改，`SubagentSettings.tsx`）；角色弹窗宽 720px、内嵌 `SubagentPermissionsForm.tsx` 2×2 权限编辑器（组开关 + 多选清单 + 全选/清空，能力目录来自 `get-capabilities`，卡片挂 `settings-item-card` 供主题适配）。
 
 ### 5.3 子代理系统提示词与审查路径
 
