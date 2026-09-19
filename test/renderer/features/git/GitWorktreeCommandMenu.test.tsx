@@ -32,7 +32,7 @@ describe("GitWorktreeCommandMenu 国际化与渲染逻辑", () => {
     cleanup()
   })
 
-  it("默认英文环境下正确渲染 i18n 文本 (aria-label, Default worktree, Current)", () => {
+  it("默认英文环境下正确渲染 i18n 文本 (aria-label, default, Current)", () => {
     render(
       <GitWorktreeCommandMenu
         visible={true}
@@ -46,7 +46,7 @@ describe("GitWorktreeCommandMenu 国际化与渲染逻辑", () => {
     expect(menu).not.toBeNull()
 
     // 默认工作区显示英文
-    expect(screen.getByText("Default worktree")).not.toBeNull()
+    expect(screen.getByText("default")).not.toBeNull()
     // 当前工作区显示英文 Current
     expect(screen.getByText("Current")).not.toBeNull()
     // 普通工作区显示路径

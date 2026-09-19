@@ -21,7 +21,12 @@ const mockGitStatusBar = vi.fn()
 vi.mock("@/features/git", () => ({
   GitStatusBar: (props: Record<string, unknown>) => {
     mockGitStatusBar(props)
-    return <div data-testid="mock-git-status-bar">{(props.projectPath as string) ?? "no-path"}</div>
+    return (
+      <div data-testid="mock-git-status-bar">
+        <span>{(props.projectPath as string) ?? "no-path"}</span>
+        <div data-testid="mock-git-worktree">default</div>
+      </div>
+    )
   },
 }))
 

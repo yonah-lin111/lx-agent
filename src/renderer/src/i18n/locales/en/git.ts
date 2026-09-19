@@ -19,7 +19,7 @@ export const git = {
   branchSwitched: "Switched to branch {{branch}}",
   noBranch: "No available branch",
   noWorktree: "No standalone worktree",
-  defaultWorktree: "Default worktree",
+  defaultWorktree: "default",
   selectWorktree: "Select Git worktree",
   current: "Current",
 }
