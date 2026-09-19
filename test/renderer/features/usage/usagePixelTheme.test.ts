@@ -52,7 +52,8 @@ describe("usage 像素 主题适配", () => {
       '[data-theme="pixel"] .activity-heatmap-card,\n' +
       '[data-theme="pixel"] .usage-stat-card,\n' +
       '[data-theme="pixel"] .lx-chart-card,\n' +
-      '[data-theme="pixel"] .usage-table-card {'
+      '[data-theme="pixel"] .usage-table-card,\n' +
+      '[data-theme="pixel"] .header-usage-stat {'
     const start = pixelCss.indexOf(selector)
     expect(start).toBeGreaterThanOrEqual(0)
 

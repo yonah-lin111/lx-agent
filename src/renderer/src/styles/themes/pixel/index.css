@@ -1453,7 +1453,8 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 [data-theme="pixel"] .activity-heatmap-card,
 [data-theme="pixel"] .usage-stat-card,
 [data-theme="pixel"] .lx-chart-card,
-[data-theme="pixel"] .usage-table-card {
+[data-theme="pixel"] .usage-table-card,
+[data-theme="pixel"] .header-usage-stat {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #1e1e2a !important;

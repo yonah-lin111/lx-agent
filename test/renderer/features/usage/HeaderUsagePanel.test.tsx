@@ -35,11 +35,14 @@ describe("HeaderUsagePanel", () => {
   })
 
   it("展开时渲染标题与六项今日指标", async () => {
-    render(<HeaderUsagePanel isExpanded />)
+    const { container } = render(<HeaderUsagePanel isExpanded />)
 
     expect(screen.getByText("Today's Usage")).toBeDefined()
     expect(await screen.findByText("1.2k")).toBeDefined()
     expect(getSummary).toHaveBeenCalledTimes(1)
+
+    // 六张卡片撑满容器宽度并挂像素主题浮雕样式钩子。
+    expect(container.querySelectorAll(".header-usage-stat")).toHaveLength(6)
 
     expect(screen.getByText("Requests")).toBeDefined()
     expect(screen.getByText("Tokens Processed")).toBeDefined()
