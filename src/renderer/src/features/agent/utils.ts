@@ -220,13 +220,38 @@ export const parseReviewFindingsContent = (
   }
 }
 
+// 定稿消息中的未闭合标签视为正文引用（如报告里提到标签名）：保留原文本并继续解析其后的合法结构化块。
+const parseAfterUnclosedTag = (
+  text: string,
+  openTagEndIndex: number,
+  durationMs?: number,
+  baseId?: string,
+  sessionId?: string | null,
+  timestamp?: number,
+): ChatBlock[] => {
+  const tailBlocks = parseTextWithProposedPlan(
+    text.slice(openTagEndIndex),
+    durationMs,
+    baseId,
+    sessionId,
+    timestamp,
+    false,
+  )
+  if (tailBlocks.length === 1 && tailBlocks[0].kind === "text") {
+    return [{ kind: "text", text, durationMs }]
+  }
+  return [{ kind: "text", text: text.slice(0, openTagEndIndex), durationMs }, ...tailBlocks]
+}
+
 // 解析文本块，若包含 <proposed_plan>、<review_findings> 或 <front_design> 标签则拆分为独立结构化块与文本块。
+// isStreaming 为 true 时允许未闭合标签（流式渐进渲染）；定稿消息必须成对闭合，避免正文引用标签名误触发卡片。
 export const parseTextWithProposedPlan = (
   text: string,
   durationMs?: number,
   baseId?: string,
   sessionId?: string | null,
   timestamp?: number,
+  isStreaming = false,
 ): ChatBlock[] => {
   if (!text) return []
 
@@ -257,16 +282,26 @@ export const parseTextWithProposedPlan = (
   if (earliest === "review" && reviewOpenMatch) {
     const openIndex = reviewOpenMatch.index
     const openTagLength = reviewOpenMatch[0].length
+    const contentStartIndex = openIndex + openTagLength
+    const remainingText = text.slice(contentStartIndex)
+    const closeMatch = REVIEW_FINDINGS_CLOSE_REGEX.exec(remainingText)
+
+    if (!closeMatch && !isStreaming) {
+      return parseAfterUnclosedTag(
+        text,
+        contentStartIndex,
+        durationMs,
+        baseId,
+        sessionId,
+        timestamp,
+      )
+    }
 
     const result: ChatBlock[] = []
     const before = text.slice(0, openIndex).trim()
     if (before.length > 0) {
       result.push({ kind: "text", text: before })
     }
-
-    const contentStartIndex = openIndex + openTagLength
-    const remainingText = text.slice(contentStartIndex)
-    const closeMatch = REVIEW_FINDINGS_CLOSE_REGEX.exec(remainingText)
 
     if (!closeMatch) {
       const findingsContent = remainingText.trim()
@@ -291,7 +326,16 @@ export const parseTextWithProposedPlan = (
       })
 
       if (after.length > 0) {
-        result.push(...parseTextWithProposedPlan(after, durationMs, baseId))
+        result.push(
+          ...parseTextWithProposedPlan(
+            after,
+            durationMs,
+            baseId,
+            sessionId,
+            timestamp,
+            isStreaming,
+          ),
+        )
       }
     }
 
@@ -301,16 +345,26 @@ export const parseTextWithProposedPlan = (
   if (earliest === "plan" && planOpenMatch) {
     const openIndex = planOpenMatch.index
     const openTagLength = planOpenMatch[0].length
+    const contentStartIndex = openIndex + openTagLength
+    const remainingText = text.slice(contentStartIndex)
+    const closeMatch = PROPOSED_PLAN_CLOSE_REGEX.exec(remainingText)
+
+    if (!closeMatch && !isStreaming) {
+      return parseAfterUnclosedTag(
+        text,
+        contentStartIndex,
+        durationMs,
+        baseId,
+        sessionId,
+        timestamp,
+      )
+    }
 
     const result: ChatBlock[] = []
     const before = text.slice(0, openIndex).trim()
     if (before.length > 0) {
       result.push({ kind: "text", text: before })
     }
-
-    const contentStartIndex = openIndex + openTagLength
-    const remainingText = text.slice(contentStartIndex)
-    const closeMatch = PROPOSED_PLAN_CLOSE_REGEX.exec(remainingText)
 
     if (!closeMatch) {
       const planContent = remainingText.trim()
@@ -344,7 +398,16 @@ export const parseTextWithProposedPlan = (
       })
 
       if (after.length > 0) {
-        result.push(...parseTextWithProposedPlan(after, durationMs, baseId))
+        result.push(
+          ...parseTextWithProposedPlan(
+            after,
+            durationMs,
+            baseId,
+            sessionId,
+            timestamp,
+            isStreaming,
+          ),
+        )
       }
     }
 
@@ -365,16 +428,26 @@ export const parseTextWithProposedPlan = (
     const stableDesignId =
       validParsedId || (baseId ? `${baseId}-design-${openIndex}` : `design-${openIndex}`)
     const mode = parsedMode ?? "tailwindcss"
+    const contentStartIndex = openIndex + openTagLength
+    const remainingText = text.slice(contentStartIndex)
+    const closeMatch = FRONT_DESIGN_CLOSE_REGEX.exec(remainingText)
+
+    if (!closeMatch && !isStreaming) {
+      return parseAfterUnclosedTag(
+        text,
+        contentStartIndex,
+        durationMs,
+        baseId,
+        sessionId,
+        timestamp,
+      )
+    }
 
     const result: ChatBlock[] = []
     const before = text.slice(0, openIndex).trim()
     if (before.length > 0) {
       result.push({ kind: "text", text: before })
     }
-
-    const contentStartIndex = openIndex + openTagLength
-    const remainingText = text.slice(contentStartIndex)
-    const closeMatch = FRONT_DESIGN_CLOSE_REGEX.exec(remainingText)
 
     if (!closeMatch) {
       const htmlContent = remainingText.trim()
@@ -416,7 +489,16 @@ export const parseTextWithProposedPlan = (
       })
 
       if (after.length > 0) {
-        result.push(...parseTextWithProposedPlan(after, durationMs, baseId, sessionId, timestamp))
+        result.push(
+          ...parseTextWithProposedPlan(
+            after,
+            durationMs,
+            baseId,
+            sessionId,
+            timestamp,
+            isStreaming,
+          ),
+        )
       }
     }
 
@@ -437,16 +519,26 @@ export const parseTextWithProposedPlan = (
     const designId =
       parsedId || (baseId ? `${baseId}-design-update-${openIndex}` : `design-update-${openIndex}`)
     const mode = parsedMode ?? "tailwindcss"
+    const contentStartIndex = openIndex + openTagLength
+    const remainingText = text.slice(contentStartIndex)
+    const closeMatch = FRONT_DESIGN_UPDATE_CLOSE_REGEX.exec(remainingText)
+
+    if (!closeMatch && !isStreaming) {
+      return parseAfterUnclosedTag(
+        text,
+        contentStartIndex,
+        durationMs,
+        baseId,
+        sessionId,
+        timestamp,
+      )
+    }
 
     const result: ChatBlock[] = []
     const before = text.slice(0, openIndex).trim()
     if (before.length > 0) {
       result.push({ kind: "text", text: before })
     }
-
-    const contentStartIndex = openIndex + openTagLength
-    const remainingText = text.slice(contentStartIndex)
-    const closeMatch = FRONT_DESIGN_UPDATE_CLOSE_REGEX.exec(remainingText)
 
     if (!closeMatch) {
       const htmlContent = remainingText.trim()
@@ -492,7 +584,16 @@ export const parseTextWithProposedPlan = (
       })
 
       if (after.length > 0) {
-        result.push(...parseTextWithProposedPlan(after, durationMs, baseId, sessionId, timestamp))
+        result.push(
+          ...parseTextWithProposedPlan(
+            after,
+            durationMs,
+            baseId,
+            sessionId,
+            timestamp,
+            isStreaming,
+          ),
+        )
       }
     }
 
@@ -625,6 +726,7 @@ export const toChatMessage = (
         id,
         sessionId,
         message.timestamp,
+        isStreaming,
       )
     }
     if (block.type === "thinking") {
