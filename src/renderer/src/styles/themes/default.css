@@ -37,4 +37,6 @@
   --color-schedule-chart-completed: #22c55e;
   --theme-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --theme-radius-base: 6px;
+  /* 顶部栏收起态行垂直偏移：1px 边框 + 4px 内边距 + 3px = 距外沿 8px，与 40px 栏几何中心重合。 */
+  --theme-header-collapsed-row-offset-y: 3px;
 }

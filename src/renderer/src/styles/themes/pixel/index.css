@@ -43,6 +43,8 @@
     "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, "PingFang SC",
     "Microsoft YaHei", monospace;
   --theme-radius-base: 0px;
+  /* 顶部栏收起态行垂直偏移：2px 像素边框比默认主题厚 1px，偏移减 1px 后仍距外沿 8px。 */
+  --theme-header-collapsed-row-offset-y: 2px;
 
   /* 覆盖 Tailwind 气泡全局变量：经典矿物暗色系（整体适度提亮） */
   --color-user-bubble: #24385a; /* 青金石矿石深蓝 */

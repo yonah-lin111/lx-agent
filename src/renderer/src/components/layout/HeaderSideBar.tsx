@@ -182,12 +182,18 @@ export const HeaderSideBar = ({
 
   return (
     <header
-      className={`header-sidebar mb-2 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[height,min-height,max-height] duration-300 ease-in-out ${
-        isExpanded ? "h-[300px] min-h-[300px] max-h-[300px]" : "h-[40px] min-h-[40px] max-h-[40px]"
+      className={`header-sidebar mb-2 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] transition-[height,min-height,max-height] duration-300 ease-in-out ${
+        isExpanded
+          ? "h-[300px] min-h-[300px] max-h-[300px] p-2"
+          : "h-[40px] min-h-[40px] max-h-[40px] px-2 py-1"
       }`}
     >
       <div className="relative h-full w-full">
-        <div className="flex h-6 w-full items-center justify-between">
+        <div
+          className={`flex h-6 w-full items-center justify-between ${
+            isExpanded ? "" : "mt-[var(--theme-header-collapsed-row-offset-y)]"
+          }`}
+        >
           <div className="flex h-6 min-w-0 flex-1 items-center gap-2 mr-2 text-xs font-mono">
             {hasBreadcrumbToast ? (
               <LxBreadcrumbToast />
