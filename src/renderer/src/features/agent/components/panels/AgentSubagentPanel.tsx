@@ -1,4 +1,6 @@
 import {
+  ArrowLeft,
+  ArrowRight,
   BarChart3,
   Check,
   ChevronDown,
@@ -45,6 +47,14 @@ interface AgentSubagentPanelProps {
 
 interface CommItemProps {
   comm: InterAgentCommunication
+}
+
+// 协议轮次：一次 orchestrator→subagent 派发（triggerTurn）及其结果信元为一个 Protocol。
+interface SubagentProtocol {
+  // 本轮信元：派发信元 + 紧随其结果信元。
+  comms: InterAgentCommunication[]
+  // 本轮消息在 SubagentData.messages 中的区间；无法定位时为 null（回退展示全部消息）。
+  messageRange: { start: number; end: number } | null
 }
 
 /**
@@ -160,6 +170,54 @@ export const AgentSubagentPanel = ({
     }
   }
 
+  // 协议轮次派生：以 triggerTurn 信元为界，消息按 subagent messages 中的 user 消息切分。
+  const protocols = useMemo<SubagentProtocol[]>(() => {
+    if (!data) return []
+    const communications = data.communications ?? []
+    const triggerIndexes: number[] = []
+    communications.forEach((comm, index) => {
+      if (comm.triggerTurn) triggerIndexes.push(index)
+    })
+    if (triggerIndexes.length === 0) return []
+    const userMessageIndexes: number[] = []
+    data.messages.forEach((message, index) => {
+      if (message.role === "user") userMessageIndexes.push(index)
+    })
+    return triggerIndexes.map((triggerIndex, protocolIndex) => {
+      const nextTriggerIndex = triggerIndexes[protocolIndex + 1] ?? communications.length
+      const comms = [
+        communications[triggerIndex],
+        ...communications
+          .slice(triggerIndex + 1, nextTriggerIndex)
+          .filter((comm) => !comm.triggerTurn),
+      ]
+      const start = userMessageIndexes[protocolIndex]
+      const end = userMessageIndexes[protocolIndex + 1] ?? data.messages.length
+      return {
+        comms,
+        messageRange: start === undefined ? null : { start: start + 1, end },
+      }
+    })
+  }, [data])
+
+  const [protocolIndex, setProtocolIndex] = useState(0)
+  const activeProtocolIndex =
+    protocols.length > 0 ? Math.min(protocolIndex, protocols.length - 1) : 0
+  const activeProtocol = protocols[activeProtocolIndex]
+
+  // 面板滚动容器：对外复用 scrollRef，对内保留本地引用供切换 Protocol 时重置滚动。
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const attachScrollContainer = (node: HTMLDivElement | null): void => {
+    containerRef.current = node
+    if (scrollRef) scrollRef.current = node
+  }
+
+  // 切换 Protocol：同步重置滚动位置，避免停留在上一轮的滚动偏移。
+  const handleSelectProtocol = (nextIndex: number): void => {
+    setProtocolIndex(nextIndex)
+    if (containerRef.current) containerRef.current.scrollTop = 0
+  }
+
   // 快照跨 IPC 每帧都是全新对象；按消息内容比对，复用未变化消息的转换结果，
   // 既避免每帧对所有历史消息重跑 toChatMessage，也让子项 memo 只命中真正变化的消息。
   const conversionCacheRef = useRef<{ keys: string[]; messages: ChatMessage[] }>({
@@ -173,7 +231,10 @@ export const AgentSubagentPanel = ({
       return []
     }
     const previous = conversionCacheRef.current
-    const rawMessages = data.messages.filter((message) => message.role !== "user")
+    const range = activeProtocol?.messageRange
+    const rawMessages = (
+      range ? data.messages.slice(range.start, range.end) : data.messages
+    ).filter((message) => message.role !== "user")
     const nextKeys: string[] = []
     const nextMessages: ChatMessage[] = []
     for (let index = 0; index < rawMessages.length; index++) {
@@ -194,7 +255,7 @@ export const AgentSubagentPanel = ({
     }
     conversionCacheRef.current = { keys: nextKeys, messages: nextMessages }
     return nextMessages
-  }, [data])
+  }, [data, activeProtocol])
 
   // 与 AgentMessageList 相同的 QA 分组：一次子代理运行的 AI 内容（助手消息 + 工具结果 + 续写）合并到一个 AgentMessageItem 内展示。
   const messageGroups = useMemo(() => buildQaGroups(groupAgentMessages(messages)), [messages])
@@ -283,18 +344,42 @@ export const AgentSubagentPanel = ({
 
       {data ? (
         <div
-          ref={scrollRef}
+          ref={attachScrollContainer}
           className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-2"
         >
           {/* 结构化通信信元（置于消息列表顶部，随列表一起滚动） */}
           {data.communications && data.communications.length > 0 && (
             <div className="agent-interagent-section flex flex-col gap-1.5 rounded-[6px] border border-white/10 bg-black/20 p-2.5">
-              <div className="agent-interagent-title flex items-center gap-1 text-xs font-semibold text-white/50">
+              <div className="agent-interagent-title flex items-center gap-1.5 text-xs font-semibold text-white/50">
+                {/* 协议轮次切换：仅展示当前轮的派发与结果信元。 */}
+                {protocols.length > 0 && (
+                  <div className="agent-interagent-switcher flex shrink-0 items-center gap-1">
+                    <LxIconButton
+                      size="small"
+                      aria-label={t("agent.previousProtocol")}
+                      disabled={activeProtocolIndex === 0}
+                      onClick={() => handleSelectProtocol(activeProtocolIndex - 1)}
+                    >
+                      <ArrowLeft />
+                    </LxIconButton>
+                    <span className="agent-interagent-protocol-index font-mono text-xs leading-none text-white/45">
+                      {activeProtocolIndex + 1}/{protocols.length}
+                    </span>
+                    <LxIconButton
+                      size="small"
+                      aria-label={t("agent.nextProtocol")}
+                      disabled={activeProtocolIndex >= protocols.length - 1}
+                      onClick={() => handleSelectProtocol(activeProtocolIndex + 1)}
+                    >
+                      <ArrowRight />
+                    </LxIconButton>
+                  </div>
+                )}
                 <MessageSquareShare className="h-3.5 w-3.5 text-sky-400" />
                 <span>Inter-Agent Protocol</span>
               </div>
               <div className="flex flex-col gap-1.5">
-                {data.communications.map((comm) => (
+                {(activeProtocol ? activeProtocol.comms : data.communications).map((comm) => (
                   <SubagentCommItem key={comm.id ?? comm.content.slice(0, 16)} comm={comm} />
                 ))}
               </div>

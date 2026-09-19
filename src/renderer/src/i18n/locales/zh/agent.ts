@@ -131,6 +131,8 @@ export const agent = {
   viewSubagentDetails: "查看子代理执行详情",
   subagentPanel: "子代理面板",
   closeSubagentPanel: "关闭子代理面板",
+  previousProtocol: "上一个协议轮次",
+  nextProtocol: "下一个协议轮次",
   copySubagentId: "复制子代理 ID",
   collapsePanel: "收起面板",
   viewStats: "查看统计",

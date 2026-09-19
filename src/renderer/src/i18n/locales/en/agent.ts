@@ -136,6 +136,8 @@ export const agent = {
   viewSubagentDetails: "View subagent execution details",
   subagentPanel: "Subagent Panel",
   closeSubagentPanel: "Close Subagent Panel",
+  previousProtocol: "Previous Protocol",
+  nextProtocol: "Next Protocol",
   copySubagentId: "Copy subagent ID",
   collapsePanel: "Collapse Panel",
   viewStats: "View Statistics",
