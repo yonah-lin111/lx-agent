@@ -132,6 +132,8 @@ export const AgentSubagentPanel = ({
   const data: SubagentData | undefined = toolCall?.subagent
   const displayName = data?.name.trim() || "task"
   const displayLabel = formatSubagentLabel(displayName, data?.roleName)
+  // 子代理运行中：面板内消息的流式展示信号（父级 task 调用未结束即运行中）。
+  const isSubagentRunning = toolCall?.status === "running"
   // ID 尾段（唯一随机部分，用于辨识）；完整 ID 走 Tooltip 与点击复制。
   const shortSubagentId = data?.subagentId?.split("-").at(-1)
   const [isIdCopied, setIsIdCopied] = useState(false)
@@ -314,14 +316,15 @@ export const AgentSubagentPanel = ({
           {messages.length > 0 ? (
             mode === "flow" ? (
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                <AgentExecutionFlowList messages={messages} />
+                <AgentExecutionFlowList messages={messages} isStreaming={isSubagentRunning} />
               </div>
             ) : (
               <div className="flex flex-col gap-1">
-                {messageGroups.map((group) => {
+                {messageGroups.map((group, groupIndex) => {
                   const userMessage = group.userMessage
                   const assistant = group.assistant
                   const groupKey = userMessage?.id ?? assistant?.message.id
+                  const isLastGroup = groupIndex === messageGroups.length - 1
                   return (
                     <Fragment key={groupKey}>
                       {userMessage && (
@@ -333,6 +336,7 @@ export const AgentSubagentPanel = ({
                         <AgentMessageItemMemo
                           message={assistant.message}
                           continuationMessages={assistant.continuationMessages}
+                          isLoading={isSubagentRunning && isLastGroup}
                           readOnly
                         />
                       )}
