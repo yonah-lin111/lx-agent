@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
-  CornerDownRight,
   Loader2,
   Zap,
 } from "lucide-react"
@@ -24,14 +23,11 @@ import {
   FrontDesignCard,
   ProposedPlanCard,
   ReviewFindingsCard,
+  resolveSubagentStatusRow,
+  SubagentStatusRow,
   ToolCallTitle,
 } from "@/features/agent/components/blocks"
-import type {
-  ExecutionStep,
-  ExecutionToolContent,
-  ProposedPlanData,
-  ReviewFindingItem,
-} from "@/features/agent/types"
+import type { ExecutionStep, ProposedPlanData, ReviewFindingItem } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
 import { FlowItemCompactionContent } from "./FlowItemCompactionContent"
@@ -101,14 +97,13 @@ export const AgentExecutionFlowItem = ({
     Boolean(step.parallel) ||
     (step.kind === "subagent" && Boolean(step.subagentContent))
 
-  const subagentToolContent = useMemo((): ExecutionToolContent | undefined => {
-    if (step.kind !== "subagent") return undefined
-    const internalSteps = step.subagentContent?.subagent?.steps
-    if (!internalSteps || internalSteps.length === 0) return undefined
-    const running = [...internalSteps].reverse().find((item) => item.status === "running")
-    const current = running ?? internalSteps[internalSteps.length - 1]
-    return { toolName: current.toolName, args: current.args }
-  }, [step.kind, step.subagentContent?.subagent?.steps])
+  // 子代理状态行：运行中展示当前内部工具，完成后展示调用统计（与消息列表子代理卡片同构）。
+  const hasSubagentStatusRow = useMemo(
+    () =>
+      step.kind === "subagent" &&
+      resolveSubagentStatusRow(step.subagentContent?.subagent, step.status) !== null,
+    [step.kind, step.status, step.subagentContent?.subagent],
+  )
 
   const effectiveExpanded = isExpanded
 
@@ -239,12 +234,12 @@ export const AgentExecutionFlowItem = ({
           }
         }}
         className={`agent-execution-flow-step-header flex cursor-pointer justify-between gap-2 px-2.5 select-none hover:bg-white/[0.02] transition-colors ${
-          subagentToolContent ? "items-start py-1.5" : "h-8 items-center"
+          hasSubagentStatusRow ? "items-start py-1.5" : "h-8 items-center"
         }`}
       >
         <div
           className={`flex min-w-0 flex-1 ${
-            subagentToolContent
+            hasSubagentStatusRow
               ? "flex-col gap-1 overflow-hidden"
               : "items-center gap-1.5 leading-none"
           }`}
@@ -342,17 +337,14 @@ export const AgentExecutionFlowItem = ({
             </div>
           </div>
 
-          {subagentToolContent && (
-            <div
-              data-testid="flow-item-subagent-tool"
-              className="agent-execution-flow-step-subagent-tool-row flex min-w-0 items-start gap-1.5 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]"
-            >
-              <span aria-hidden className="w-3.5 shrink-0" />
-              <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]" />
-              <div className="flex min-w-0 flex-1 items-center overflow-hidden leading-none">
-                <ToolCallTitle toolContent={subagentToolContent} />
-              </div>
-            </div>
+          {/* 子代理状态行：运行中当前内部工具 / 完成后调用统计（与消息列表子代理卡片同一渲染）。 */}
+          {step.kind === "subagent" && (
+            <SubagentStatusRow
+              subagent={step.subagentContent?.subagent}
+              status={step.status}
+              testId="flow-item-subagent-status"
+              className="agent-execution-flow-step-subagent-status-row"
+            />
           )}
         </div>
 

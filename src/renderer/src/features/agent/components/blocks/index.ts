@@ -31,5 +31,11 @@ export {
   ReviewFindingsCard,
   type ReviewFindingsCardProps,
 } from "./ReviewFindingsCard"
+export {
+  resolveSubagentStatusRow,
+  type SubagentDisplayStatus,
+  SubagentStatusRow,
+  type SubagentStatusRowProps,
+} from "./SubagentStatusRow"
 export { isTodoDone, TodoStatusIcon } from "./TodoStatusIcon"
 export { ToolCallTitle, type ToolCallTitleProps } from "./ToolCallTitle"

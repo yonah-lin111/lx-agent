@@ -9,6 +9,9 @@ import type { ChatBlock } from "@/features/agent/types"
 // 子代理调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
 
+// 工具结果块类型。
+type ToolResultBlock = Extract<ChatBlock, { kind: "toolResult" }>
+
 // 子代理快照（含内部步骤与一条思考消息）。
 const buildSubagent = (steps: SubagentStep[]): SubagentData => ({
   subagentId: "subagent-1789745938515-f9b34",
@@ -40,10 +43,19 @@ const buildToolCall = (status: ToolCallBlock["status"], steps: SubagentStep[]): 
   subagent: buildSubagent(steps),
 })
 
-describe("AgentSubagentBlock 行展示", () => {
+// 配对的 task 工具结果块。
+const buildToolResult = (isError = false): ToolResultBlock => ({
+  kind: "toolResult",
+  toolCallId: "task-call-1",
+  toolName: "task",
+  text: "子代理输出",
+  isError,
+})
+
+describe("AgentSubagentBlock 状态行", () => {
   afterEach(cleanup)
 
-  it("运行中显示当前正在执行的内部工具，不显示统计行", () => {
+  it("运行中显示当前正在执行的内部工具，不显示统计", () => {
     const { container } = render(
       <AgentSubagentBlock
         toolCall={buildToolCall("running", [
@@ -53,10 +65,11 @@ describe("AgentSubagentBlock 行展示", () => {
       />,
     )
 
-    const row = container.querySelector(".agent-subagent-running-row")
+    const row = container.querySelector(".agent-subagent-status-row")
+    expect(row?.getAttribute("data-subagent-row")).toBe("tool")
     expect(row?.textContent).toContain("read")
     expect(row?.textContent).toContain("SessionRunner.ts")
-    expect(container.querySelector(".agent-subagent-stats-row")).toBeNull()
+    expect(container.querySelector(".agent-subagent-stats")).toBeNull()
   })
 
   it("完成后显示统计行，描述行与状态行已移除", () => {
@@ -69,19 +82,37 @@ describe("AgentSubagentBlock 行展示", () => {
       />,
     )
 
-    expect(container.querySelector(".agent-subagent-running-row")).toBeNull()
-    const stats = container.querySelector(".agent-subagent-stats")
-    expect(stats?.textContent).toContain("1Tool Call")
-    expect(stats?.textContent).toContain("1Thought")
-    expect(stats?.textContent).toContain("1MCP Call")
+    const row = container.querySelector(".agent-subagent-status-row")
+    expect(row?.getAttribute("data-subagent-row")).toBe("stats")
+    expect(row?.textContent).toContain("1Tool Call")
+    expect(row?.textContent).toContain("1Thought")
+    expect(row?.textContent).toContain("1MCP Call")
     expect(container.querySelector(".agent-subagent-desc-row")).toBeNull()
-    expect(container.querySelector(".agent-subagent-status-row")).toBeNull()
+    expect(container.querySelector(".agent-subagent-error")).toBeNull()
+  })
+
+  it("恢复会话：toolCall 仍为 running 但存在配对 toolResult 时按完成展示统计", () => {
+    const { container } = render(
+      <AgentSubagentBlock
+        toolCall={buildToolCall("running", [
+          { toolName: "grep", args: {}, status: "done" },
+          { toolName: "mcp__lx__search", args: {}, status: "done" },
+        ])}
+        toolResult={buildToolResult()}
+      />,
+    )
+
+    const row = container.querySelector(".agent-subagent-status-row")
+    expect(row?.getAttribute("data-subagent-row")).toBe("stats")
+    expect(row?.textContent).toContain("1Tool Call")
+    expect(row?.textContent).toContain("1MCP Call")
   })
 
   it("错误状态在统计行前置 Error 标记", () => {
     const { container } = render(
       <AgentSubagentBlock
-        toolCall={buildToolCall("error", [{ toolName: "grep", args: {}, status: "error" }])}
+        toolCall={buildToolCall("running", [{ toolName: "grep", args: {}, status: "error" }])}
+        toolResult={buildToolResult(true)}
       />,
     )
 
@@ -94,7 +125,7 @@ describe("AgentSubagentBlock 行展示", () => {
     const onOpen = vi.fn()
     render(<AgentSubagentBlock toolCall={buildToolCall("done", [])} onOpen={onOpen} />)
 
-    fireEvent.click(screen.getByLabelText("View subagent explore-agent details"))
+    fireEvent.click(screen.getByLabelText("View subagent execution details"))
 
     expect(onOpen).toHaveBeenCalledTimes(1)
   })

@@ -220,6 +220,43 @@ describe("AgentExecutionFlowList 交互动作", () => {
     expect(dialog()?.hasAttribute("inert")).toBe(true)
   })
 
+  it("面板作为流程列表根节点兄弟渲染（以页面容器为定位上下文覆盖输入区）", () => {
+    const { container } = render(<AgentExecutionFlowList messages={subagentMessages()} />)
+
+    const root = container.firstElementChild as HTMLElement
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]')
+
+    expect(root.className).toContain("agent-execution-flow-list")
+    expect(root.className).toContain("relative")
+    expect(dialog?.parentElement).toBe(container)
+    expect(root.contains(dialog as HTMLElement)).toBe(false)
+  })
+
+  it("面板开合回传父级（用于遮盖并 inert 输入区与状态栏）", () => {
+    const onSubagentPanelOpenChange = vi.fn()
+    const { container, unmount } = render(
+      <AgentExecutionFlowList
+        messages={subagentMessages()}
+        onSubagentPanelOpenChange={onSubagentPanelOpenChange}
+      />,
+    )
+
+    expect(onSubagentPanelOpenChange).toHaveBeenLastCalledWith(false)
+
+    const subagentStep = container.querySelector('[data-step-kind="subagent"]') as HTMLElement
+    fireEvent.click(within(subagentStep).getByTestId("flow-item-subagent-open-btn"))
+    expect(onSubagentPanelOpenChange).toHaveBeenLastCalledWith(true)
+
+    const closeButtons = within(
+      container.querySelector('[role="dialog"]') as HTMLElement,
+    ).getAllByLabelText("Close Subagent Panel")
+    fireEvent.click(closeButtons[0])
+    expect(onSubagentPanelOpenChange).toHaveBeenLastCalledWith(false)
+
+    unmount()
+    expect(onSubagentPanelOpenChange).toHaveBeenLastCalledWith(false)
+  })
+
   it("subagent 面板打开后随内部流式快照实时刷新", () => {
     const { container, rerender } = render(
       <AgentExecutionFlowList
