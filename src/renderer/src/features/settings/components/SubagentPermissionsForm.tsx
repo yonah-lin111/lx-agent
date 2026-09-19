@@ -124,14 +124,14 @@ export const SubagentPermissionsForm = ({
                 <div className="flex shrink-0 items-center gap-1">
                   <LxIconButton
                     iconOnly={false}
-                    variant="ghost"
+                    textClass="text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]"
                     onClick={() => handleSelectAll(group)}
                   >
                     {t("settings.subagentsPermissionsSelectAll")}
                   </LxIconButton>
                   <LxIconButton
                     iconOnly={false}
-                    variant="ghost"
+                    textClass="text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]"
                     onClick={() => handleClearAll(group)}
                   >
                     {t("settings.subagentsPermissionsClearAll")}
