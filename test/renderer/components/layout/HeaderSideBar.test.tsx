@@ -32,6 +32,7 @@ const createApiMock = () => ({
   },
   usage: {
     getSummary: vi.fn().mockResolvedValue(summary),
+    getDaily: vi.fn().mockResolvedValue([]),
   },
 })
 
@@ -57,6 +58,7 @@ describe("HeaderSideBar", () => {
     await waitFor(() => {
       expect(api.schedule.listByDate).toHaveBeenCalledTimes(1)
       expect(api.usage.getSummary).toHaveBeenCalledTimes(1)
+      expect(api.usage.getDaily).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -114,5 +116,6 @@ describe("HeaderSideBar", () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(api.schedule.listByDate).not.toHaveBeenCalled()
     expect(api.usage.getSummary).not.toHaveBeenCalled()
+    expect(api.usage.getDaily).not.toHaveBeenCalled()
   })
 })
