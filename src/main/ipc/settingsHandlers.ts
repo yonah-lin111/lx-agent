@@ -5,7 +5,7 @@ import { ipcMain } from "electron"
 import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { invalidateModelCache } from "@/agent/stream/modelFactory"
-import { BUILT_IN_AGENT_ROLES } from "@/agent/subagent/agentRoles"
+import { BUILT_IN_AGENT_ROLES, resolveAgentRoles } from "@/agent/subagent/agentRoles"
 import { getCliVersions, runCliLifecycleAction } from "@/services/cliToolService"
 import { getMcpPresetStatus, installMcpPreset } from "@/services/mcpPresetService"
 import { fetchProviderModels } from "@/services/modelFetchService"
@@ -19,6 +19,7 @@ import {
   getOpenClawSettings,
   getPermissionSettings,
   getSkillSettings,
+  getSubagentCapabilityCatalog,
   getSubagentSettings,
   getTokenSaverSettings,
   getUiSettings,
@@ -59,13 +60,22 @@ export const registerSettingsHandlers = (): void => {
   ipcMain.handle(SETTINGS_CHANNELS.saveHookSettings, (_, input) => saveHookSettings(input))
   ipcMain.handle(SETTINGS_CHANNELS.getSubagentSettings, () => getSubagentSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveSubagentSettings, (_, input) => saveSubagentSettings(input))
-  ipcMain.handle(SETTINGS_CHANNELS.getSubagentBuiltins, () =>
-    Object.values(BUILT_IN_AGENT_ROLES).map((role) => ({
-      name: role.name,
-      description: role.description,
-      ...(role.tools ? { tools: [...role.tools] } : {}),
-    })),
-  )
+  ipcMain.handle(SETTINGS_CHANNELS.getSubagentBuiltins, () => {
+    // 权限取生效值（含 builtinPermissions 覆盖），默认值供设置页判断是否已覆盖。
+    const settings = getSubagentSettings()
+    return [...resolveAgentRoles(settings).values()]
+      .filter((role) => role.builtIn)
+      .map((role) => {
+        const defaultPermissions = BUILT_IN_AGENT_ROLES[role.name]?.permissions
+        return {
+          name: role.name,
+          description: role.description,
+          ...(role.permissions ? { permissions: role.permissions } : {}),
+          ...(defaultPermissions ? { defaultPermissions } : {}),
+        }
+      })
+  })
+  ipcMain.handle(SETTINGS_CHANNELS.getSubagentCapabilities, () => getSubagentCapabilityCatalog())
   ipcMain.handle(SETTINGS_CHANNELS.getUiSettings, () => getUiSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveUiSettings, (_, input) => saveUiSettings(input))
   ipcMain.handle(SETTINGS_CHANNELS.getCliSettings, () => getCliSettings())

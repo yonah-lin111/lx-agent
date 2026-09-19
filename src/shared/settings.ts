@@ -371,13 +371,69 @@ export interface HookMatcherGroup {
 // agent.hooks 配置：事件键 → matcher 组列表。
 export type HookSettings = Partial<Record<HookEventName, HookMatcherGroup[]>>
 
-// 用户自定义子代理角色配置。
+// 子代理角色能力权限：字段缺失 = 不限制（继承父激活集）；显式空数组 = 该组全禁；非空 = 白名单。
+export interface SubagentRolePermissions {
+  // 内置工具白名单（不含 MCP / 联网组 / read_skill，各自归组管理）。
+  tools?: string[]
+  // MCP server 名称白名单，配置即拥有该 server 的全部工具。
+  mcp?: string[]
+  // skill 名称白名单（控制 read_skill 与子代理系统提示词注入）。
+  skills?: string[]
+  // 联网工具白名单（web_search / webfetch）。
+  websearch?: string[]
+}
+
+// 用户自定义子代理角色配置（旧 `tools` 字段仅在原始配置解析层兼容，内部模型不再暴露）。
 export interface SubagentRoleConfig {
   description: string
   instructions?: string
   model?: ModelSelection
-  // 非空 = 白名单；空数组或缺失 = 继承父工具集。
-  tools?: string[]
+  permissions?: SubagentRolePermissions
+}
+
+// 可单独勾选的内置工具（联网组与 read_skill 由各自分组管理，不在此列）。
+export const SUBAGENT_PERMISSION_TOOL_NAMES = [
+  "read",
+  "ls",
+  "grep",
+  "find",
+  "write",
+  "edit",
+  "apply_patch",
+  "bash",
+  "time",
+  "todowrite",
+  "task",
+  "question",
+  "memory",
+  "lsp",
+  "view_image",
+  "job_output",
+  "job_list",
+  "job_kill",
+] as const
+
+// 联网（websearch）权限组可配置的工具名。
+export const SUBAGENT_WEBSEARCH_TOOL_NAMES = ["web_search", "webfetch"] as const
+
+// 子代理技能工具名（由 skills 权限组管理）。
+export const SUBAGENT_SKILL_TOOL_NAME = "read_skill"
+
+// 子代理权限编辑器的能力目录（settings:subagents:get-capabilities）。
+export interface SubagentMcpCapability {
+  name: string
+  connected: boolean
+}
+
+export interface SubagentSkillCapability {
+  name: string
+  disabled: boolean
+}
+
+export interface SubagentCapabilityCatalog {
+  tools: string[]
+  mcp: SubagentMcpCapability[]
+  skills: SubagentSkillCapability[]
 }
 
 // 子代理全局设置（~/.lx/config/agent.json 的 agent.subagents 节点）。
@@ -388,6 +444,8 @@ export interface SubagentSettings {
   defaultModel?: ModelSelection
   // 子代理协作模式（不继承主 agent；缺省为 build）。
   mode?: CollaborationMode
+  // 内置角色权限覆盖：仅覆盖权限，名称/描述/指令/模型仍由系统定义（缺省 = 内置默认权限）。
+  builtinPermissions?: Record<string, SubagentRolePermissions>
 }
 
 export const DEFAULT_SUBAGENT_SETTINGS: SubagentSettings = { roles: {}, maxDepth: 1 }
@@ -408,7 +466,10 @@ export const SUBAGENT_MAX_CONCURRENCY_LIMIT = 32
 export interface SubagentBuiltinRoleInfo {
   name: string
   description: string
-  tools?: string[]
+  // 生效权限（含 builtinPermissions 覆盖）。
+  permissions?: SubagentRolePermissions
+  // 内置默认权限（用于判断是否已被覆盖，以及跳过无变化写入）。
+  defaultPermissions?: SubagentRolePermissions
 }
 
 // 渲染进程可调用的设置 IPC 接口。
@@ -424,6 +485,7 @@ export interface SettingsApi {
     getSubagentSettings: () => Promise<SubagentSettings>
     saveSubagentSettings: (settings: SubagentSettings) => Promise<SubagentSettings>
     getSubagentBuiltins: () => Promise<SubagentBuiltinRoleInfo[]>
+    getSubagentCapabilities: () => Promise<SubagentCapabilityCatalog>
     getUiSettings: () => Promise<UiSettings>
     saveUiSettings: (settings: UiSettings) => Promise<UiSettings>
     getCliSettings: () => Promise<CliSettings>

@@ -1,11 +1,20 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
-import type { ModelSelection, SubagentRoleConfig, SubagentSettings } from "@shared/settings"
+import type {
+  ModelSelection,
+  SubagentRoleConfig,
+  SubagentRolePermissions,
+  SubagentSettings,
+} from "@shared/settings"
 import {
   RESERVED_SUBAGENT_ROLE_NAMES,
   SUBAGENT_MAX_CONCURRENCY_LIMIT,
   SUBAGENT_MAX_DEPTH_LIMIT,
   SUBAGENT_ROLE_NAME_PATTERN,
+  SUBAGENT_SKILL_TOOL_NAME,
+  SUBAGENT_WEBSEARCH_TOOL_NAMES,
 } from "@shared/settings"
+
+import { BUILTIN_SUBAGENT_ROLE_NAMES } from "./agentRoles"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
@@ -51,6 +60,73 @@ const parseModelSelection = (
 }
 
 /**
+ * 解析权限列表字段：数组 → 去重去空白的白名单（显式空数组保留 = 该组全禁）；非数组告警并视为未配置。
+ */
+const parsePermissionList = (
+  raw: unknown,
+  label: string,
+  errors: string[],
+): string[] | undefined => {
+  if (raw === undefined) return undefined
+  if (!Array.isArray(raw)) {
+    errors.push(`${label} 须为字符串数组`)
+    return undefined
+  }
+  const items: string[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    if (typeof item !== "string" || !item.trim()) {
+      errors.push(`忽略非法${label}条目: ${describeValue(item)}`)
+      continue
+    }
+    const value = item.trim()
+    if (seen.has(value)) continue
+    seen.add(value)
+    items.push(value)
+  }
+  return items
+}
+
+// 解析 permissions 对象：非对象告警并忽略；各分组独立解析，显式空数组保留。
+const parsePermissions = (
+  raw: unknown,
+  name: string,
+  errors: string[],
+): SubagentRolePermissions | undefined => {
+  if (raw === undefined) return undefined
+  if (!isRecord(raw)) {
+    errors.push(`角色 permissions 须为对象: ${name}`)
+    return undefined
+  }
+  const permissions: SubagentRolePermissions = {}
+  const tools = parsePermissionList(raw.tools, `tools 权限（${name}）`, errors)
+  if (tools !== undefined) permissions.tools = tools
+  const mcp = parsePermissionList(raw.mcp, `mcp 权限（${name}）`, errors)
+  if (mcp !== undefined) permissions.mcp = mcp
+  const skills = parsePermissionList(raw.skills, `skills 权限（${name}）`, errors)
+  if (skills !== undefined) permissions.skills = skills
+  const websearch = parsePermissionList(raw.websearch, `websearch 权限（${name}）`, errors)
+  if (websearch !== undefined) permissions.websearch = websearch
+  return permissions
+}
+
+// 旧 tools 字段映射：联网名归 websearch，read_skill 归 skills（列出 = 允许全部 skill），其余为内置工具白名单。
+const legacyToolsToPermissions = (tools: string[]): SubagentRolePermissions => {
+  const websearchNames = new Set<string>(SUBAGENT_WEBSEARCH_TOOL_NAMES)
+  const builtin: string[] = []
+  const web: string[] = []
+  let allowsReadSkill = false
+  for (const tool of tools) {
+    if (websearchNames.has(tool)) web.push(tool)
+    else if (tool === SUBAGENT_SKILL_TOOL_NAME) allowsReadSkill = true
+    else builtin.push(tool)
+  }
+  const permissions: SubagentRolePermissions = { tools: builtin, websearch: web }
+  if (!allowsReadSkill) permissions.skills = []
+  return permissions
+}
+
+/**
  * 解析单个角色条目：非法名称、保留名、空 description 或非对象条目返回 null（调用方跳过）。
  */
 const parseRole = (name: string, raw: unknown, errors: string[]): SubagentRoleConfig | null => {
@@ -83,7 +159,11 @@ const parseRole = (name: string, raw: unknown, errors: string[]): SubagentRoleCo
     }
   }
 
-  if (raw.tools !== undefined) {
+  const parsedPermissions = parsePermissions(raw.permissions, name, errors)
+  if (parsedPermissions !== undefined && Object.keys(parsedPermissions).length > 0) {
+    role.permissions = parsedPermissions
+  } else if (raw.tools !== undefined) {
+    // 旧 tools 字段兼容：非空白名单按分组拆入 permissions；空数组按历史语义视为缺省。
     if (!Array.isArray(raw.tools)) {
       errors.push(`角色 tools 须为字符串数组: ${name}`)
     } else {
@@ -99,8 +179,7 @@ const parseRole = (name: string, raw: unknown, errors: string[]): SubagentRoleCo
         seen.add(tool)
         tools.push(tool)
       }
-      // 空数组归一为缺省（继承父工具集）。
-      if (tools.length > 0) role.tools = tools
+      if (tools.length > 0) role.permissions = legacyToolsToPermissions(tools)
     }
   }
 
@@ -151,6 +230,28 @@ const parseMode = (raw: unknown, errors: string[]): CollaborationMode | undefine
   return undefined
 }
 
+// 解析内置角色权限覆盖：仅允许内置角色名作键；空对象视为缺省。
+const parseBuiltinPermissions = (
+  raw: unknown,
+  errors: string[],
+): Record<string, SubagentRolePermissions> | undefined => {
+  if (raw === undefined) return undefined
+  if (!isRecord(raw)) {
+    errors.push("builtinPermissions 须为对象，已忽略")
+    return undefined
+  }
+  const builtin: Record<string, SubagentRolePermissions> = {}
+  for (const [name, value] of Object.entries(raw)) {
+    if (!(BUILTIN_SUBAGENT_ROLE_NAMES as readonly string[]).includes(name)) {
+      errors.push(`builtinPermissions 仅支持内置角色名，已忽略: ${name}`)
+      continue
+    }
+    const permissions = parsePermissions(value, `内置角色 ${name}`, errors)
+    if (permissions !== undefined) builtin[name] = permissions
+  }
+  return Object.keys(builtin).length > 0 ? builtin : undefined
+}
+
 /**
  * 解析 `agent.subagents` 原始配置：同时兼容 `{ roles, ... }` 域模型与裸角色映射表。
  * 非法条目记入 errors 且跳过，绝不抛出。
@@ -182,6 +283,9 @@ export const parseSubagentSettings = (raw: unknown): SubagentSettingsParseResult
   const parsedDefaultModel = parseModelSelection(raw.defaultModel, "defaultModel")
   if (parsedDefaultModel.error) errors.push(parsedDefaultModel.error)
   else if (parsedDefaultModel.model) settings.defaultModel = parsedDefaultModel.model
+
+  const builtinPermissions = parseBuiltinPermissions(raw.builtinPermissions, errors)
+  if (builtinPermissions !== undefined) settings.builtinPermissions = builtinPermissions
 
   for (const [name, value] of Object.entries(rolesRaw)) {
     const role = parseRole(name, value, errors)

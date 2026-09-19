@@ -16,7 +16,11 @@ export {
   normalizeSkillSettings,
   saveSkillSettings,
 } from "./skills"
-export { getSubagentSettings, saveSubagentSettings } from "./subagents"
+export {
+  getSubagentCapabilityCatalog,
+  getSubagentSettings,
+  saveSubagentSettings,
+} from "./subagents"
 export {
   getTokenSaverSettings,
   normalizeTokenSaverSettings,

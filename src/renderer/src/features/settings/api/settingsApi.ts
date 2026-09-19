@@ -15,6 +15,7 @@ import type {
   OpenClawSettings,
   SkillSettings,
   SubagentBuiltinRoleInfo,
+  SubagentCapabilityCatalog,
   SubagentSettings,
   TokenSaverSettings,
   TranscribeAudioInput,
@@ -42,6 +43,8 @@ export const settingsApi = {
     window.api.settings.saveSubagentSettings(settings),
   getSubagentBuiltins: (): Promise<SubagentBuiltinRoleInfo[]> =>
     window.api.settings.getSubagentBuiltins(),
+  getSubagentCapabilities: (): Promise<SubagentCapabilityCatalog> =>
+    window.api.settings.getSubagentCapabilities(),
   getUiSettings: (): Promise<UiSettings> => window.api.settings.getUiSettings(),
   saveUiSettings: (settings: UiSettings): Promise<UiSettings> =>
     window.api.settings.saveUiSettings(settings),

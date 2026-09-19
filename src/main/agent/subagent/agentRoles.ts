@@ -1,4 +1,4 @@
-import type { ModelSelection, SubagentSettings } from "@shared/settings"
+import type { ModelSelection, SubagentRolePermissions, SubagentSettings } from "@shared/settings"
 import { RESERVED_SUBAGENT_ROLE_NAMES, SUBAGENT_ROLE_NAME_PATTERN } from "@shared/settings"
 
 // 运行时解析后的子代理角色模型。
@@ -7,12 +7,16 @@ export interface ResolvedAgentRole {
   description: string
   instructions?: string
   model?: ModelSelection
-  tools?: string[]
+  permissions?: SubagentRolePermissions
   builtIn: boolean
 }
 
-// explorer 只读工具白名单（未激活的工具名在装配时静默缺失，不新增能力）。
-const EXPLORER_TOOLS = ["read", "ls", "grep", "find", "lsp", "web_search", "webfetch", "time"]
+// explorer 只读权限：仅只读工具 + 联网检索，禁用全部 skill 与写入/委托（未激活的工具名在装配时静默缺失，不新增能力）。
+const EXPLORER_PERMISSIONS: SubagentRolePermissions = {
+  tools: ["read", "ls", "grep", "find", "lsp", "time"],
+  websearch: ["web_search", "webfetch"],
+  skills: [],
+}
 
 const EXPLORER_INSTRUCTIONS = [
   "You are a codebase explorer sub-agent. Answer the assigned codebase question accurately and concisely.",
@@ -29,6 +33,9 @@ const WORKER_INSTRUCTIONS = [
   "- State intent before side-effecting tool calls; finish with a concise summary of changes and verification performed.",
 ].join("\n")
 
+// 内置角色名（权限覆盖的合法键）。
+export const BUILTIN_SUBAGENT_ROLE_NAMES = ["explorer", "worker"] as const
+
 // 内置角色目录（固定顺序：explorer → worker）。
 export const BUILT_IN_AGENT_ROLES: Record<string, ResolvedAgentRole> = {
   explorer: {
@@ -36,7 +43,7 @@ export const BUILT_IN_AGENT_ROLES: Record<string, ResolvedAgentRole> = {
     description:
       "Fast, authoritative answers to specific, well-scoped codebase questions. Use multiple explorers in parallel for independent questions.",
     instructions: EXPLORER_INSTRUCTIONS,
-    tools: [...EXPLORER_TOOLS],
+    permissions: EXPLORER_PERMISSIONS,
     builtIn: true,
   },
   worker: {
@@ -51,11 +58,16 @@ export const BUILT_IN_AGENT_ROLES: Record<string, ResolvedAgentRole> = {
 /**
  * 合并内置角色与用户角色：内置在前，用户角色按配置插入顺序追加。
  * 保留名或不符合名称规则的角色在此再次丢弃（防御纵深）；内置角色永不被遮蔽。
+ * 内置角色仅允许权限覆盖（builtinPermissions），名称/描述/指令/模型始终取自内置定义。
  */
 export const resolveAgentRoles = (settings: SubagentSettings): Map<string, ResolvedAgentRole> => {
   const resolved = new Map<string, ResolvedAgentRole>()
   for (const [name, role] of Object.entries(BUILT_IN_AGENT_ROLES)) {
-    resolved.set(name, role)
+    const override = settings.builtinPermissions?.[name]
+    resolved.set(
+      name,
+      override === undefined ? role : { ...role, permissions: clonePermissions(override) },
+    )
   }
 
   const reserved = new Set<string>(RESERVED_SUBAGENT_ROLE_NAMES)
@@ -68,10 +80,22 @@ export const resolveAgentRoles = (settings: SubagentSettings): Map<string, Resol
     }
     if (config.instructions !== undefined) role.instructions = config.instructions
     if (config.model !== undefined) role.model = config.model
-    if (config.tools !== undefined) role.tools = [...config.tools]
+    if (config.permissions !== undefined) {
+      role.permissions = clonePermissions(config.permissions)
+    }
     resolved.set(name, role)
   }
   return resolved
+}
+
+// 深拷贝权限配置，避免调用方后续改动污染角色目录。
+const clonePermissions = (permissions: SubagentRolePermissions): SubagentRolePermissions => {
+  const cloned: SubagentRolePermissions = {}
+  if (permissions.tools !== undefined) cloned.tools = [...permissions.tools]
+  if (permissions.mcp !== undefined) cloned.mcp = [...permissions.mcp]
+  if (permissions.skills !== undefined) cloned.skills = [...permissions.skills]
+  if (permissions.websearch !== undefined) cloned.websearch = [...permissions.websearch]
+  return cloned
 }
 
 // 描述单行化：折叠换行与连续空白；空描述回退占位文案。

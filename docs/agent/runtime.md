@@ -151,8 +151,8 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 ### 5.1 角色目录与派发
 
 - **角色派发**：`task` 工具通过 `agent_type` 从内置角色（`explorer` / `worker`）与用户角色（`~/.lx/config/agent.json` → `agent.subagents.roles`）中显式选型；未知值返回错误并列出可用角色，不静默回退。`task` 工具 description 在会话装配时动态注入 `Available agent types:` 目录，配置了 `maxConcurrent` 时追加并发提示行。
-- **内置角色**：`explorer`（只读白名单：`read` / `ls` / `grep` / `find` / `lsp` / `web_search` / `webfetch` / `time`）与 `worker`（工具继承父激活集）；保留名 `review` / `explorer` / `worker` 禁止用户角色占用（`review` 归属协作模式 Review Mode，不存在 `review` 子代理角色）。
-- **能力只收缩不提权**：子代理工具集以父激活集（已剔除 `task`）为基础——`role.tools` 非空 → 与白名单求交集，缺省 → 继承父集；权限门控复用父 `permissionManager.gate`（协作模式按 `agent.subagents.mode` 绑定，缺省 `build`，不继承主 Agent 模式），沙箱策略原样继承，角色无法提升。嵌套 `task` 仅在子代理深度 `< maxDepth` 且角色白名单未排除 `task` 时注入，否则维持剔除。
+- **内置角色**：`explorer`（只读权限：`tools` = `read` / `ls` / `grep` / `find` / `lsp` / `time`，`websearch` 全开，`skills` 全禁）与 `worker`（不限制，继承父激活集）；保留名 `review` / `explorer` / `worker` 禁止用户角色占用（`review` 归属协作模式 Review Mode，不存在 `review` 子代理角色）。
+- **能力只收缩不提权**：子代理工具集以父激活集（已剔除 `task`）为基础，按角色 `permissions` 四组独立求交（缺省 = 不限制继承父集，显式空数组 = 该组全禁）：`tools` 管内置工具（含 `task` 嵌套）、`mcp` 按 server 名匹配 `mcp__server__tool` 全名、`websearch` 管 `web_search` / `webfetch`、`skills` 管 `read_skill` 与子代理提示词的 `available_skills` 注入（同源收窄）。权限门控复用父 `permissionManager.gate`（协作模式按 `agent.subagents.mode` 绑定，缺省 `build`，不继承主 Agent 模式），沙箱策略原样继承，角色无法提升。嵌套 `task` 仅在子代理深度 `< maxDepth` 且 `permissions.tools` 未排除 `task` 时注入，否则维持剔除。
 - **模型优先级**：`role.model → defaultModel → 父会话模型`；任一级解析失败 `console.warn` 并降级到下一级，仅新建时解析，续接沿用创建时模型。
 - **并发与深度治理**：会话级 `SubagentRuntime` 在 `maxConcurrent`（1–32，缺省不限）达到上限时 fail-fast 返回错误文案，不排队；`maxDepth` 取 1–5（默认 1；根会话为 0，子代理 = 父 + 1），越界不再嵌套。
 - **配置快照**：角色目录与治理项在会话 registry 装配时快照，设置保存仅对新会话生效。
@@ -180,7 +180,13 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
           "description": "Strict review of a specific change set.",
           "instructions": "You are a strict reviewer...",
           "model": { "provider": "openai", "model": "gpt-5.1" },
-          "tools": ["read", "grep", "find", "lsp"]
+          // 能力权限：每组缺省 = 不限制（继承父会话），空数组 = 该组全禁，非空 = 白名单。
+          "permissions": {
+            "tools": ["read", "grep", "find", "lsp"],
+            "mcp": ["codegraph"],
+            "skills": ["code-review"],
+            "websearch": []
+          }
         }
       }
     }
@@ -195,13 +201,15 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 | 角色名 | `^[a-z][a-z0-9_-]{0,31}$`；不得命中保留名（`review` / `explorer` / `worker`） | 保存拒绝（设置页报错）；读配置时告警 + 忽略该条 |
 | `description` | 去空白后非空 | 同上 |
 | `instructions` | 字符串，可缺省 | 非字符串 → 告警 + 忽略 |
-| `tools` | 字符串数组，逐项去空白、去重、丢弃空串；空数组归一为缺省（继承） | 非法项忽略并告警 |
+| `permissions` | 对象，四个可选数组字段（`tools` / `mcp` / `skills` / `websearch`）；每组缺省 = 不限制，空数组 = 该组全禁，非空 = 白名单；逐项去空白、去重 | 非对象 → 告警 + 忽略；非数组分组 → 告警 + 忽略该组；非法项忽略并告警 |
+| `tools`（旧字段） | 兼容读取：非空白名单拆入 `permissions`（`web_search`/`webfetch` → `websearch`，`read_skill` → 允许全部 skill，其余 → `tools`，未列组置空 = 全禁）；空数组按历史语义视为缺省 | 保存不再写回该字段 |
+| `builtinPermissions` | 对象，键限内置角色名（`explorer` / `worker`），值为 `permissions`；仅覆盖权限，名称/描述/指令/模型保持系统定义；与内置默认一致时设置页自动清除该键 | 非法键 → 告警 + 忽略；非对象 → 告警 + 忽略 |
 | `maxDepth` | 整数 1–5 | 越界保存拒绝；读时回退 1 并告警 |
 | `maxConcurrent` | 整数 1–32 | 越界保存拒绝；读时回退缺省（不限）并告警 |
 | `defaultModel` | `ModelSelection`（provider/model 需存在，由消费者降级） | 缺省即继承；非法仅运行时告警降级 |
 | `mode` | `build` / `plan` / `review` / `design` | 缺省即 `build`；非法保存拒绝，读时告警 + 忽略（回退 `build`） |
 
-设置与 IPC：`settings:subagents:get/save/builtins` 三个通道；设置页「子代理」分区（全局治理卡片 + 内置角色只读列表 + 用户角色增删改，`SubagentSettings.tsx`）。
+设置与 IPC：`settings:subagents:get/save/builtins/get-capabilities` 四个通道；设置页「子代理」分区（全局治理卡片 + 内置角色列表（权限可编辑、身份只读）+ 用户角色增删改，`SubagentSettings.tsx`）；角色弹窗宽 720px、内嵌 `SubagentPermissionsForm.tsx` 2×2 权限编辑器（组开关 + 多选清单 + 全选/清空，能力目录来自 `get-capabilities`，卡片挂 `settings-item-card` 供主题适配）。
 
 ### 5.3 子代理系统提示词与审查路径
 
