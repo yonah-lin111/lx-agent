@@ -161,4 +161,60 @@ describe("HeaderSchedulePanel", () => {
 
     expect(api.listByDate).not.toHaveBeenCalled()
   })
+
+  it("状态过滤切换：待完成 / 已完成", async () => {
+    const api = createServerMock([
+      createItem({ id: 1, content: "Pending task" }),
+      createItem({ id: 2, content: "Done task", completed: true }),
+    ])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    renderPanel()
+    await screen.findByText("Pending task")
+    expect(screen.getByText("Done task")).toBeDefined()
+
+    fireEvent.click(screen.getByRole("button", { name: "Pending" }))
+    expect(screen.queryByText("Done task")).toBeNull()
+    expect(screen.getByText("Pending task")).toBeDefined()
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    expect(screen.queryByText("Pending task")).toBeNull()
+    expect(screen.getByText("Done task")).toBeDefined()
+
+    fireEvent.click(screen.getByRole("button", { name: "All" }))
+    expect(screen.getByText("Pending task")).toBeDefined()
+    expect(screen.getByText("Done task")).toBeDefined()
+  })
+
+  it("过滤无结果时展示无匹配文案", async () => {
+    const api = createServerMock([createItem({ id: 2, content: "Done task", completed: true })])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    renderPanel()
+    await screen.findByText("Done task")
+
+    fireEvent.click(screen.getByRole("button", { name: "Pending" }))
+
+    expect(screen.getByText("No matching to-dos")).toBeDefined()
+  })
+
+  it("优先级重排按钮持久化排序后的 id 顺序", async () => {
+    const api = createServerMock([
+      createItem({ id: 1, content: "Low", priority: "P2" }),
+      createItem({ id: 2, content: "High", priority: "P0" }),
+    ])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    renderPanel()
+    await screen.findByText("Low")
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort by priority" }))
+
+    await waitFor(() => {
+      expect(api.reorder).toHaveBeenCalledWith({ entryDate: todayKey, ids: [2, 1] })
+    })
+  })
 })
