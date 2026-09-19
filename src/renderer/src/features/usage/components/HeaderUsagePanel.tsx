@@ -53,11 +53,11 @@ export const HeaderUsagePanel = ({ isExpanded }: HeaderUsagePanelProps): React.J
           {t("usage.headerPanel.loadFailed")}
         </p>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+        <div className="grid min-h-0 w-full grid-cols-2 gap-1.5">
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="header-usage-stat flex min-h-0 min-w-0 flex-1 items-center justify-between gap-2 rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface-hover)] px-2.5"
+              className="header-usage-stat flex min-w-0 items-center justify-between gap-2 rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface-hover)] px-2 py-1.5"
             >
               <span className="truncate text-[11px] text-[var(--color-theme-text-muted)]">
                 {stat.label}
