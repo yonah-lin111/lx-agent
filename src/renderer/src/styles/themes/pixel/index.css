@@ -1150,6 +1150,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
  * 核心布局容器与边栏（Layout Sidebars & Content Cards）
  * ======================================================== */
 [data-theme="pixel"] .header-sidebar,
+[data-theme="pixel"] .header-expand-pane,
 [data-theme="pixel"] .left-sidebar,
 [data-theme="pixel"] .right-sidebar,
 [data-theme="pixel"] .bottom-sidebar,
