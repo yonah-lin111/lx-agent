@@ -131,6 +131,7 @@ export const agent = {
   viewSubagentDetails: "查看子代理执行详情",
   subagentPanel: "子代理面板",
   closeSubagentPanel: "关闭子代理面板",
+  copySubagentId: "复制子代理 ID",
   collapsePanel: "收起面板",
   viewStats: "查看统计",
   inputTokens: "输入 {{count}} tokens",

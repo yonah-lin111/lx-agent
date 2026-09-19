@@ -1,4 +1,14 @@
-import { BarChart3, ChevronDown, ChevronRight, MessageSquareShare, Shield, X } from "lucide-react"
+import {
+  BarChart3,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  MessageSquareShare,
+  Shield,
+  ShieldCheck,
+  ShieldOff,
+  X,
+} from "lucide-react"
 import type React from "react"
 import { Fragment, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -122,6 +132,31 @@ export const AgentSubagentPanel = ({
   const data: SubagentData | undefined = toolCall?.subagent
   const displayName = data?.name.trim() || "task"
   const displayLabel = formatSubagentLabel(displayName, data?.roleName)
+  // ID 尾段（唯一随机部分，用于辨识）；完整 ID 走 Tooltip 与点击复制。
+  const shortSubagentId = data?.subagentId?.split("-").at(-1)
+  const [isIdCopied, setIsIdCopied] = useState(false)
+
+  // 沙箱策略文案（复用设置页现有文案）。
+  const sandboxLabel = data?.sandboxPolicy
+    ? data.sandboxPolicy === "read-only"
+      ? t("settings.sandboxReadOnly")
+      : data.sandboxPolicy === "danger-full-access"
+        ? t("settings.sandboxDangerFullAccess")
+        : t("settings.sandboxWorkspaceWrite")
+    : null
+
+  // 复制完整子代理 ID（供按 subagent_id 续接调用），成功后短暂反馈。
+  const handleCopySubagentId = async (): Promise<void> => {
+    const subagentId = data?.subagentId
+    if (!subagentId) return
+    try {
+      await navigator.clipboard.writeText(subagentId)
+      setIsIdCopied(true)
+      window.setTimeout(() => setIsIdCopied(false), 1500)
+    } catch {
+      setIsIdCopied(false)
+    }
+  }
 
   // 快照跨 IPC 每帧都是全新对象；按消息内容比对，复用未变化消息的转换结果，
   // 既避免每帧对所有历史消息重跑 toChatMessage，也让子项 memo 只命中真正变化的消息。
@@ -174,24 +209,47 @@ export const AgentSubagentPanel = ({
         pointerEvents: isOpen ? "auto" : "none",
       }}
     >
-      {/* 面板头部：Subagent 名称 + 关闭。 */}
+      {/* 面板头部：左侧 Subagent 名称；右侧 ID / 沙箱策略等低频信息收敛为紧凑徽章。 */}
       <div className="agent-subagent-panel-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="font-mono text-sm font-bold text-blue-300">Subagent</span>
           <span className="truncate text-sm text-white/70">{displayLabel}</span>
-          {data?.subagentId && (
-            <span className="agent-subagent-id inline-flex items-center rounded bg-sky-500/10 px-1.5 py-0.5 font-mono text-xs text-sky-300">
-              ID: {data.subagentId}
-            </span>
-          )}
-          {data?.sandboxPolicy && (
-            <span className="agent-subagent-policy inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-white/60">
-              <Shield className="h-2.5 w-2.5 text-sky-400" />
-              {data.sandboxPolicy}
-            </span>
-          )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {/* 沙箱策略：图标 + 颜色语义（与 PermissionStatusButton 对齐），完整文案走 Tooltip。 */}
+          {data?.sandboxPolicy && sandboxLabel && (
+            <LxTooltip placement="bottom" content={sandboxLabel}>
+              <span
+                className="agent-subagent-policy inline-flex items-center justify-center rounded bg-white/5 p-1 transition-colors hover:bg-white/10"
+                aria-label={sandboxLabel}
+              >
+                {data.sandboxPolicy === "read-only" ? (
+                  <Shield className="h-3.5 w-3.5 text-sky-400" />
+                ) : data.sandboxPolicy === "danger-full-access" ? (
+                  <ShieldOff className="h-3.5 w-3.5 text-amber-400" />
+                ) : (
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                )}
+              </span>
+            </LxTooltip>
+          )}
+          {/* 子代理 ID：尾段辨识 + 完整值 Tooltip + 点击复制（复制后 Check 覆盖显示，不改变布局）。 */}
+          {data?.subagentId && shortSubagentId && (
+            <LxTooltip placement="bottom" content={data.subagentId}>
+              <button
+                type="button"
+                onClick={handleCopySubagentId}
+                aria-label={`${t("agent.copySubagentId")}: ${data.subagentId}`}
+                className="agent-subagent-id relative inline-flex cursor-pointer items-center rounded bg-sky-500/10 px-1.5 py-0.5 font-mono text-xs text-sky-300 transition-colors hover:bg-sky-500/20"
+              >
+                <span className={isIdCopied ? "opacity-0" : ""}>#{shortSubagentId}</span>
+                <Check
+                  aria-hidden="true"
+                  className={`absolute inset-0 m-auto h-3 w-3 text-emerald-400 transition-opacity ${isIdCopied ? "opacity-100" : "opacity-0"}`}
+                />
+              </button>
+            </LxTooltip>
+          )}
           {/* 统计：token 用量（3 行，一行一个类型）。 */}
           {data && (
             <LxTooltip
