@@ -6,7 +6,7 @@ import { getTodayKey } from "@/lib/date"
 import { useScheduleItems } from "../hooks/useScheduleItems"
 import { useScheduleMutations } from "../hooks/useScheduleMutations"
 import type { ScheduleStatusFilter } from "../types"
-import { filterScheduleItems, sortScheduleItems } from "../utils"
+import { filterScheduleItems } from "../utils"
 import { ScheduleComposer } from "./ScheduleComposer"
 import { ScheduleItemRow } from "./ScheduleItemRow"
 
@@ -37,8 +37,9 @@ export const HeaderSchedulePanel = ({
   const mutations = useScheduleMutations({ entryDate, items, setItems })
   const [statusFilter, setStatusFilter] = useState<ScheduleStatusFilter>("all")
 
+  // 与日程页一致：列表按原始顺序展示，勾选完成不自动重排；优先级重排仅在用户点击排序按钮时执行。
   const visibleItems = useMemo(
-    () => filterScheduleItems(sortScheduleItems(items), statusFilter),
+    () => filterScheduleItems(items, statusFilter),
     [items, statusFilter],
   )
 

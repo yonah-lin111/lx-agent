@@ -200,6 +200,31 @@ describe("HeaderSchedulePanel", () => {
     expect(screen.getByText("No matching to-dos")).toBeDefined()
   })
 
+  it("勾选完成不重排列表：条目保持原位", async () => {
+    const api = createServerMock([
+      createItem({ id: 1, content: "First task" }),
+      createItem({ id: 2, content: "Second task" }),
+    ])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    renderPanel()
+    await screen.findByText("First task")
+
+    const rowTexts = (): string[] =>
+      Array.from(document.querySelectorAll(".lx-schedule-item")).map(
+        (row) => row.querySelector("button[data-variant='ghost']")?.textContent ?? "",
+      )
+    expect(rowTexts()).toEqual(["First task", "Second task"])
+
+    fireEvent.click(screen.getAllByRole("checkbox", { name: "Mark as done" })[0])
+
+    await waitFor(() => {
+      expect(api.update).toHaveBeenCalledWith({ id: 1, completed: true })
+    })
+    expect(rowTexts()).toEqual(["First task", "Second task"])
+  })
+
   it("优先级重排按钮持久化排序后的 id 顺序", async () => {
     const api = createServerMock([
       createItem({ id: 1, content: "Low", priority: "P2" }),
