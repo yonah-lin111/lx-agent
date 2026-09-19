@@ -31,11 +31,14 @@ export const LxTagDemo = (): React.JSX.Element => {
         title={t("uiPreview.demos.tagColors")}
         description={t("uiPreview.demos.tagColorsDesc")}
       >
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2">
           {TAG_COLORS.map((color) => (
-            <LxTag key={color} color={color}>
-              {color}
-            </LxTag>
+            <div key={color} className="flex flex-wrap items-center gap-2">
+              <LxTag color={color}>{color}</LxTag>
+              <LxTag color={color} highlighted>
+                {color}
+              </LxTag>
+            </div>
           ))}
         </div>
       </UiPreviewSection>

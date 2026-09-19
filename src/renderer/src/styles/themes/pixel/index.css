@@ -574,15 +574,23 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     2px 2px 0px 0px #000000 !important;
 }
 
-/* 高亮态：深底 + 白字，保留主题矿石槽外观（无绿条/凹陷/发光） */
+/* 高亮态：不改标签自身底色与文字（对齐 LxIconButton 选中态的非颜色表现），
+   矿石槽由凸起转为凹陷并叠加外发光。 */
 [data-theme="pixel"] .lx-tag[data-highlighted="true"]:not([data-variant="ghost"]) {
-  background-color: #14141c !important;
-  color: #ffffff !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.25),
+    0px 0px 8px rgba(255, 255, 255, 0.2) !important;
 }
 
 /* Preset Colors：矿石色板，暗色矿槽底 + 高饱和矿物色文字，拉开各预设区分度。
    仅作用于使用内置色板的标签（data-chrome="preset"，ghost 与调用点自定义底色不参与）；
    用 :where 保持低优先级，避免覆盖按场景精细调色的规则（如执行流程步骤头）。 */
+[data-theme="pixel"] :where(.lx-tag[data-chrome="preset"][data-color="default"]) {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
 [data-theme="pixel"] :where(.lx-tag[data-chrome="preset"][data-color="pink"]) {
   background-color: #2b1723 !important;
   color: #f472b6 !important;
