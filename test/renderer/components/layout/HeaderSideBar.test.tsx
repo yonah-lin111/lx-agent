@@ -3,14 +3,36 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { HeaderSideBar } from "@/components/layout/HeaderSideBar"
+import type { UsageSummary } from "@/features/usage/types"
+
+const summary: UsageSummary = {
+  requestCount: 1,
+  successCount: 1,
+  errorCount: 0,
+  abortedCount: 0,
+  inputTokens: 10,
+  outputTokens: 5,
+  cacheReadTokens: 0,
+  cacheWriteTokens: 0,
+  totalTokens: 15,
+  pricedRequestCount: 1,
+  totalCostUsd: 0.001,
+  successRate: 100,
+  avgDurationMs: 100,
+}
 
 const createApiMock = () => ({
-  listByDate: vi.fn().mockResolvedValue([]),
-  create: vi.fn(),
-  update: vi.fn(),
-  remove: vi.fn(),
-  reorder: vi.fn(),
-  listRangeStats: vi.fn().mockResolvedValue([]),
+  schedule: {
+    listByDate: vi.fn().mockResolvedValue([]),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    reorder: vi.fn(),
+    listRangeStats: vi.fn().mockResolvedValue([]),
+  },
+  usage: {
+    getSummary: vi.fn().mockResolvedValue(summary),
+  },
 })
 
 describe("HeaderSideBar", () => {
@@ -19,30 +41,29 @@ describe("HeaderSideBar", () => {
     vi.restoreAllMocks()
   })
 
-  it("展开时渲染左侧今日待办面板与右侧 children 容器", async () => {
+  it("展开时渲染左侧今日待办面板与右侧今日用量面板", async () => {
     const api = createApiMock()
     // @ts-expect-error Mock window.api
-    window.api = { schedule: api }
+    window.api = api
 
     render(
       <MemoryRouter>
-        <HeaderSideBar isExpanded onExpandedChange={vi.fn()}>
-          <div data-testid="header-right-slot">right content</div>
-        </HeaderSideBar>
+        <HeaderSideBar isExpanded onExpandedChange={vi.fn()} />
       </MemoryRouter>,
     )
 
     expect(screen.getByText("Today's To-Dos")).toBeDefined()
-    expect(screen.getByTestId("header-right-slot")).toBeDefined()
+    expect(screen.getByText("Today's Usage")).toBeDefined()
     await waitFor(() => {
-      expect(api.listByDate).toHaveBeenCalledTimes(1)
+      expect(api.schedule.listByDate).toHaveBeenCalledTimes(1)
+      expect(api.usage.getSummary).toHaveBeenCalledTimes(1)
     })
   })
 
   it("收起态顶部行以固定行高加主题偏移居中，不随高度动画重排", async () => {
     const api = createApiMock()
     // @ts-expect-error Mock window.api
-    window.api = { schedule: api }
+    window.api = api
 
     const collapsed = render(
       <MemoryRouter>
@@ -79,10 +100,10 @@ describe("HeaderSideBar", () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
 
-  it("收起时不发起待办查询", async () => {
+  it("收起时不发起待办与用量查询", async () => {
     const api = createApiMock()
     // @ts-expect-error Mock window.api
-    window.api = { schedule: api }
+    window.api = api
 
     render(
       <MemoryRouter>
@@ -91,6 +112,7 @@ describe("HeaderSideBar", () => {
     )
 
     await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(api.listByDate).not.toHaveBeenCalled()
+    expect(api.schedule.listByDate).not.toHaveBeenCalled()
+    expect(api.usage.getSummary).not.toHaveBeenCalled()
   })
 })

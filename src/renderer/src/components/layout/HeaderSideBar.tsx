@@ -15,6 +15,7 @@ import { createProjectNavigationTree, projectNavigationApi } from "@/features/pr
 import { HeaderSchedulePanel } from "@/features/schedule"
 import { SETTINGS_SECTIONS } from "@/features/settings/constants"
 import { UI_SECTIONS } from "@/features/ui-preview"
+import { HeaderUsagePanel } from "@/features/usage"
 import { useTranslation } from "@/i18n"
 import { HOME_VIEW_QUERY_KEY, parseHomeView } from "@/lib/homeView"
 import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
@@ -32,13 +33,11 @@ interface ProjectBreadcrumb {
 interface HeaderSideBarProps {
   isExpanded: boolean
   onExpandedChange: (isExpanded: boolean) => void
-  children?: React.ReactNode
 }
 
 export const HeaderSideBar = ({
   isExpanded,
   onExpandedChange,
-  children,
 }: HeaderSideBarProps): React.JSX.Element => {
   const { t } = useTranslation()
   const { pathname } = useLocation()
@@ -306,13 +305,15 @@ export const HeaderSideBar = ({
             isExpanded ? "" : "invisible"
           }`}
         >
-          {/* 展开区左右等分容器：左侧今日待办面板，右侧 children 插槽。
+          {/* 展开区左右等分容器：左侧今日待办面板，右侧今日用量面板。
               像素主题下由 .header-expand-pane 叠加 3D 浮雕；默认主题以右侧边框线分隔。 */}
           <div className="flex h-full min-h-0 w-full">
             <div className="header-expand-pane flex h-full min-w-0 flex-1 flex-col overflow-hidden border-r border-white/10 p-2">
               <HeaderSchedulePanel isExpanded={isExpanded} />
             </div>
-            <div className="header-expand-pane min-w-0 flex-1 overflow-hidden p-2">{children}</div>
+            <div className="header-expand-pane min-w-0 flex-1 overflow-hidden p-2">
+              <HeaderUsagePanel isExpanded={isExpanded} />
+            </div>
           </div>
         </div>
       </div>

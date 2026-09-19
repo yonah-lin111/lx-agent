@@ -5,6 +5,10 @@ export const usage = {
   autoRefresh: {
     off: "Off",
   },
+  headerPanel: {
+    title: "Today's Usage",
+    loadFailed: "Failed to load usage",
+  },
   allProviders: "All Providers",
   allModels: "All Models",
   allProjects: "All Projects",

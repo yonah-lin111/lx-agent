@@ -5,6 +5,10 @@ export const usage = {
   autoRefresh: {
     off: "关闭",
   },
+  headerPanel: {
+    title: "今日用量",
+    loadFailed: "用量加载失败",
+  },
   allProviders: "全部 Provider",
   allModels: "全部模型",
   allProjects: "全部项目",
