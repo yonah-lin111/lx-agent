@@ -95,9 +95,15 @@ describe("AgentSubagentPanel 运行态与头部收敛", () => {
     expect(screen.queryByLabelText("Running")).toBeNull()
   })
 
-  it("头部：展示 ID 尾段与沙箱策略图标，完整策略文案作为可访问名", () => {
-    render(<AgentSubagentPanel toolCall={buildToolCall("running")} onClose={vi.fn()} />)
-    expect(screen.getByText("#f9b34")).not.toBeNull()
+  it("头部：ID 收敛为复制图标按钮，沙箱策略为 LxTag 徽章，完整值走可访问名", () => {
+    const { container } = render(
+      <AgentSubagentPanel toolCall={buildToolCall("running")} onClose={vi.fn()} />,
+    )
+    expect(
+      screen.getByRole("button", { name: "Copy subagent ID: subagent-1789745938515-f9b34" }),
+    ).not.toBeNull()
     expect(screen.getByLabelText("danger-full-access — Full Access (No Sandbox)")).not.toBeNull()
+    // 沙箱策略使用共享 LxTag 组件（图标徽章）。
+    expect(container.querySelector(".agent-subagent-policy.lx-tag")).not.toBeNull()
   })
 })

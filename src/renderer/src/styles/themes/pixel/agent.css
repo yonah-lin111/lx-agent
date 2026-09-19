@@ -833,7 +833,7 @@
   text-shadow: 1px 1px 0px #000000;
 }
 
-[data-theme="pixel"] .agent-subagent-comm-trigger {
+[data-theme="pixel"] .agent-interagent-trigger {
   border: 1px solid #000000 !important;
   background-color: #0c4a6e !important;
   color: #7dd3fc !important;
@@ -855,15 +855,6 @@
 [data-theme="pixel"] .agent-subagent-flow-divider div {
   background-color: #000000 !important;
   box-shadow: 0px 1px 0px 0px rgba(255, 255, 255, 0.1) !important;
-}
-
-[data-theme="pixel"] .agent-subagent-id {
-  font-family: var(--theme-font-family) !important;
-  border-radius: 0px !important;
-  border: 1px solid #000000 !important;
-  background-color: #0c4a6e !important;
-  color: #7dd3fc !important;
-  text-shadow: 1px 1px 0px #000000;
 }
 
 [data-theme="pixel"] .agent-subagent-policy {

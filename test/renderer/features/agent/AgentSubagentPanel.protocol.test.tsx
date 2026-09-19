@@ -94,6 +94,10 @@ describe("AgentSubagentPanel 协议轮次切换", () => {
     expect(screen.queryByText("第一轮执行内容")).toBeNull()
     expect((screen.getByLabelText("Next Protocol") as HTMLButtonElement).disabled).toBe(true)
 
+    // trigger 徽章位于标题行（标识当前展示的是派发轮次），不在折叠信元内。
+    expect(container.querySelector(".agent-interagent-trigger")?.textContent).toBe("trigger")
+    expect(container.querySelector(".agent-subagent-comm-trigger")).toBeNull()
+
     fireEvent.click(screen.getByLabelText("Previous Protocol"))
 
     expect(screen.getByText("1/2")).not.toBeNull()
@@ -190,6 +194,7 @@ describe("AgentSubagentPanel 协议轮次切换", () => {
     const { container } = renderPanel(buildToolCall(subagent))
 
     expect(screen.queryByLabelText("Next Protocol")).toBeNull()
+    expect(container.querySelector(".agent-interagent-trigger")).toBeNull()
     expect(container.querySelectorAll(".agent-subagent-comm-item")).toHaveLength(1)
     expect(screen.getByText("第一轮执行内容")).not.toBeNull()
     expect(screen.getByText("第二轮执行内容")).not.toBeNull()

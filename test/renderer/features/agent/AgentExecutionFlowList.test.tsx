@@ -2007,7 +2007,6 @@ describe("AgentExecutionFlowList", () => {
 
     // 面板展开（inert 为 null 或 false）
     expect(panel?.getAttribute("inert")).toBeNull()
-    expect(screen.getByText("#123")).not.toBeNull()
     expect(screen.getByLabelText("Copy subagent ID: sub-123")).not.toBeNull()
 
     // 点击关闭按钮

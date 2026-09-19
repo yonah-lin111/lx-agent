@@ -5,6 +5,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Copy,
   MessageSquareShare,
   Shield,
   ShieldCheck,
@@ -15,6 +16,7 @@ import type React from "react"
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
+import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList"
 import { AgentMessageItemMemo } from "@/features/agent/components/AgentMessageList"
@@ -95,11 +97,6 @@ const SubagentCommItem = ({ comm }: CommItemProps): React.JSX.Element => {
           <span className="agent-subagent-comm-route font-mono text-xs font-bold leading-none text-sky-300">
             {comm.author} &rarr; {comm.recipient}
           </span>
-          {comm.triggerTurn && (
-            <span className="agent-subagent-comm-trigger shrink-0 rounded bg-sky-500/20 px-1 py-0.5 font-mono text-xs leading-none text-sky-300">
-              trigger
-            </span>
-          )}
         </div>
       </div>
 
@@ -144,8 +141,6 @@ export const AgentSubagentPanel = ({
   const displayLabel = formatSubagentLabel(displayName, data?.roleName)
   // 子代理运行中：面板内消息的流式展示信号（父级 task 调用未结束即运行中）。
   const isSubagentRunning = toolCall?.status === "running"
-  // ID 尾段（唯一随机部分，用于辨识）；完整 ID 走 Tooltip 与点击复制。
-  const shortSubagentId = data?.subagentId?.split("-").at(-1)
   const [isIdCopied, setIsIdCopied] = useState(false)
 
   // 沙箱策略文案（复用设置页现有文案）。
@@ -292,39 +287,42 @@ export const AgentSubagentPanel = ({
           <span className="truncate text-sm text-white/70">{displayLabel}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {/* 沙箱策略：图标 + 颜色语义（与 PermissionStatusButton 对齐），完整文案走 Tooltip。 */}
+          {/* 沙箱策略：LxTag 图标徽章（颜色语义与 PermissionStatusButton 对齐），完整文案走 Tooltip。 */}
           {data?.sandboxPolicy && sandboxLabel && (
             <LxTooltip placement="bottom" content={sandboxLabel}>
-              <span
-                className="agent-subagent-policy inline-flex items-center justify-center rounded bg-white/5 p-1 transition-colors hover:bg-white/10"
+              <LxTag
+                size="small"
+                className="agent-subagent-policy"
                 aria-label={sandboxLabel}
-              >
-                {data.sandboxPolicy === "read-only" ? (
-                  <Shield className="h-3.5 w-3.5 text-sky-400" />
-                ) : data.sandboxPolicy === "danger-full-access" ? (
-                  <ShieldOff className="h-3.5 w-3.5 text-amber-400" />
-                ) : (
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                )}
-              </span>
+                color={
+                  data.sandboxPolicy === "read-only"
+                    ? "sky"
+                    : data.sandboxPolicy === "danger-full-access"
+                      ? "amber"
+                      : "emerald"
+                }
+                prefix={
+                  data.sandboxPolicy === "read-only" ? (
+                    <Shield className="h-3.5 w-3.5 text-sky-400" />
+                  ) : data.sandboxPolicy === "danger-full-access" ? (
+                    <ShieldOff className="h-3.5 w-3.5 text-amber-400" />
+                  ) : (
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                  )
+                }
+              />
             </LxTooltip>
           )}
-          {/* 子代理 ID：尾段辨识 + 完整值 Tooltip + 点击复制（复制后 Check 覆盖显示，不改变布局）。 */}
-          {data?.subagentId && shortSubagentId && (
-            <LxTooltip placement="bottom" content={data.subagentId}>
-              <button
-                type="button"
-                onClick={handleCopySubagentId}
-                aria-label={`${t("agent.copySubagentId")}: ${data.subagentId}`}
-                className="agent-subagent-id relative inline-flex cursor-pointer items-center rounded bg-sky-500/10 px-1.5 py-0.5 font-mono text-xs text-sky-300 transition-colors hover:bg-sky-500/20"
-              >
-                <span className={isIdCopied ? "opacity-0" : ""}>#{shortSubagentId}</span>
-                <Check
-                  aria-hidden="true"
-                  className={`absolute inset-0 m-auto h-3 w-3 text-emerald-400 transition-opacity ${isIdCopied ? "opacity-100" : "opacity-0"}`}
-                />
-              </button>
-            </LxTooltip>
+          {/* 子代理 ID：图标按钮（Copy → Check 反馈），hover Tooltip 展示完整 ID，点击复制供续接调用。 */}
+          {data?.subagentId && (
+            <LxIconButton
+              size="small"
+              aria-label={`${t("agent.copySubagentId")}: ${data.subagentId}`}
+              title={{ content: data.subagentId, placement: "bottom" }}
+              onClick={handleCopySubagentId}
+            >
+              {isIdCopied ? <Check className="text-emerald-400" /> : <Copy />}
+            </LxIconButton>
           )}
           {/* 统计：token 用量（3 行，一行一个类型）。 */}
           {data && (
@@ -358,7 +356,7 @@ export const AgentSubagentPanel = ({
       {data ? (
         <div
           ref={attachScrollContainer}
-          className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-2"
+          className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-2 [scrollbar-gutter:stable]"
         >
           {/* 结构化通信信元（置于消息列表顶部，随列表一起滚动） */}
           {data.communications && data.communications.length > 0 && (
@@ -368,30 +366,37 @@ export const AgentSubagentPanel = ({
                   <MessageSquareShare className="h-3.5 w-3.5 shrink-0 text-sky-400" />
                   <span className="truncate">Inter-Agent Protocol</span>
                 </div>
-                {/* 协议轮次切换（置于标题行最右侧）：仅展示当前轮的派发与结果信元。 */}
-                {protocols.length > 0 && (
-                  <div className="agent-interagent-switcher flex shrink-0 items-center gap-1">
-                    <LxIconButton
-                      size="small"
-                      aria-label={t("agent.previousProtocol")}
-                      disabled={activeProtocolIndex === 0}
-                      onClick={() => handleSelectProtocol(activeProtocolIndex - 1)}
-                    >
-                      <ArrowLeft />
-                    </LxIconButton>
-                    <span className="agent-interagent-protocol-index font-mono text-xs leading-none text-white/45">
-                      {activeProtocolIndex + 1}/{protocols.length}
-                    </span>
-                    <LxIconButton
-                      size="small"
-                      aria-label={t("agent.nextProtocol")}
-                      disabled={activeProtocolIndex >= protocols.length - 1}
-                      onClick={() => handleSelectProtocol(activeProtocolIndex + 1)}
-                    >
-                      <ArrowRight />
-                    </LxIconButton>
-                  </div>
-                )}
+                {/* 右侧：trigger 徽章（标识当前展示的是该调用的派发轮次）+ 协议轮次切换。 */}
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {activeProtocol && (
+                    <LxTag size="small" color="sky" className="agent-interagent-trigger">
+                      trigger
+                    </LxTag>
+                  )}
+                  {protocols.length > 0 && (
+                    <div className="agent-interagent-switcher flex items-center gap-1">
+                      <LxIconButton
+                        size="small"
+                        aria-label={t("agent.previousProtocol")}
+                        disabled={activeProtocolIndex === 0}
+                        onClick={() => handleSelectProtocol(activeProtocolIndex - 1)}
+                      >
+                        <ArrowLeft />
+                      </LxIconButton>
+                      <span className="agent-interagent-protocol-index font-mono text-xs leading-none text-white/45">
+                        {activeProtocolIndex + 1}/{protocols.length}
+                      </span>
+                      <LxIconButton
+                        size="small"
+                        aria-label={t("agent.nextProtocol")}
+                        disabled={activeProtocolIndex >= protocols.length - 1}
+                        onClick={() => handleSelectProtocol(activeProtocolIndex + 1)}
+                      >
+                        <ArrowRight />
+                      </LxIconButton>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex flex-col gap-1.5">
                 {(activeProtocol ? activeProtocol.comms : data.communications).map((comm) => (
