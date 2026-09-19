@@ -34,27 +34,31 @@ describe("HeaderUsagePanel", () => {
     vi.restoreAllMocks()
   })
 
-  it("展开时渲染标题与六项今日指标", async () => {
+  it("展开时渲染主指标、从属指标条与命中率进度", async () => {
     const { container } = render(<HeaderUsagePanel isExpanded />)
 
     expect(screen.getByText("Today's Usage")).toBeDefined()
-    expect(await screen.findByText("1.2k")).toBeDefined()
+    expect(await screen.findByText("2.5M")).toBeDefined()
     expect(getSummary).toHaveBeenCalledTimes(1)
 
-    // 六张卡片铺满容器宽度并挂像素主题浮雕样式钩子。
-    expect(container.querySelectorAll(".header-usage-stat")).toHaveLength(6)
-
-    expect(screen.getByText("Requests")).toBeDefined()
+    // 主指标：真实消耗大数字与总成本次级数字。
     expect(screen.getByText("Tokens Processed")).toBeDefined()
-    expect(screen.getByText("2.5M")).toBeDefined()
+    expect(screen.getByText("Total Cost")).toBeDefined()
+    expect(screen.getByText("$1.2345")).toBeDefined()
+
+    // 从属指标条：请求数 / 新增输入 / 输出。
+    expect(screen.getByText("Requests")).toBeDefined()
+    expect(screen.getByText("1.2k")).toBeDefined()
     expect(screen.getByText("Fresh Input")).toBeDefined()
     expect(screen.getByText("400.0k")).toBeDefined()
     expect(screen.getByText("Output Tokens")).toBeDefined()
     expect(screen.getByText("500.0k")).toBeDefined()
+
+    // 缓存命中率：百分比与进度条宽度。
     expect(screen.getByText("Cache Hit Rate")).toBeDefined()
     expect(screen.getByText("75.0%")).toBeDefined()
-    expect(screen.getByText("Total Cost")).toBeDefined()
-    expect(screen.getByText("$1.2345")).toBeDefined()
+    const fill = container.querySelector(".header-usage-meter-fill")
+    expect(fill?.getAttribute("style")).toContain("width: 75%")
   })
 
   it("收起时不请求且仅渲染占位值", async () => {

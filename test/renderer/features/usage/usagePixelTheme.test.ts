@@ -52,8 +52,7 @@ describe("usage 像素 主题适配", () => {
       '[data-theme="pixel"] .activity-heatmap-card,\n' +
       '[data-theme="pixel"] .usage-stat-card,\n' +
       '[data-theme="pixel"] .lx-chart-card,\n' +
-      '[data-theme="pixel"] .usage-table-card,\n' +
-      '[data-theme="pixel"] .header-usage-stat {'
+      '[data-theme="pixel"] .usage-table-card {'
     const start = pixelCss.indexOf(selector)
     expect(start).toBeGreaterThanOrEqual(0)
 
@@ -62,6 +61,16 @@ describe("usage 像素 主题适配", () => {
     expect(block).toContain("background-color: #1e1e2a !important")
     expect(block).toContain("border: 2px solid #000000 !important")
     expect(block).toContain("box-shadow:")
+  })
+
+  it("顶部栏命中率进度条为像素凹槽与直角填充", () => {
+    const trackBlock = ruleBlock(pixelCss, '[data-theme="pixel"] .header-usage-meter')
+    expect(trackBlock).toContain("border-radius: 0px")
+    expect(trackBlock).toContain("border: 2px solid #000000")
+    expect(trackBlock).toContain("background-color: #14141c")
+
+    const fillBlock = ruleBlock(pixelCss, '[data-theme="pixel"] .header-usage-meter-fill')
+    expect(fillBlock).toContain("border-radius: 0px")
   })
 
   it("表格对比度收敛：表头/正文降亮、hover 压暗、边框去纯黑、投影去亮边", () => {

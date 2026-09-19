@@ -15,7 +15,7 @@ export interface HeaderUsagePanelProps {
 }
 
 /**
- * 渲染顶部栏右侧"今日用量"面板：今日汇总六项指标，展开时加载，不实时刷新。
+ * 渲染顶部栏右侧"今日用量"面板：主指标、从属指标条与缓存命中率进度，不实时刷新。
  */
 export const HeaderUsagePanel = ({ isExpanded }: HeaderUsagePanelProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -26,19 +26,13 @@ export const HeaderUsagePanel = ({ isExpanded }: HeaderUsagePanelProps): React.J
   const cacheHitRate = summary
     ? calcCacheHitRate(summary.inputTokens, summary.cacheReadTokens)
     : null
-  const stats: { label: string; value: string }[] = [
+  const secondaryStats: { label: string; value: string }[] = [
     { label: t("usage.summary.requests"), value: formatTokens(summary?.requestCount ?? 0) },
-    { label: t("usage.summary.realTotalTokens"), value: formatTokens(summary?.totalTokens ?? 0) },
     {
       label: t("usage.tokens.freshInput"),
       value: formatTokens(summary ? getFreshInputTokens(summary) : 0),
     },
     { label: t("usage.summary.outputTokens"), value: formatTokens(summary?.outputTokens ?? 0) },
-    {
-      label: t("usage.summary.cacheHitRate"),
-      value: cacheHitRate === null ? "--" : formatPercent(cacheHitRate),
-    },
-    { label: t("usage.summary.totalCost"), value: formatUsd(summary?.totalCostUsd) },
   ]
 
   return (
@@ -53,20 +47,61 @@ export const HeaderUsagePanel = ({ isExpanded }: HeaderUsagePanelProps): React.J
           {t("usage.headerPanel.loadFailed")}
         </p>
       ) : (
-        <div className="grid min-h-0 w-full flex-1 grid-cols-2 grid-rows-3 gap-1.5">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="header-usage-stat flex min-w-0 items-center justify-between gap-2 rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface-hover)] px-2 py-1.5"
-            >
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* 主指标：真实消耗大号数字与总成本次级数字 */}
+          <div className="flex min-h-0 flex-[3] items-center justify-between gap-3 border-b border-[var(--color-theme-border)] pb-2">
+            <div className="flex min-w-0 flex-col gap-1">
               <span className="truncate text-[11px] text-[var(--color-theme-text-muted)]">
-                {stat.label}
+                {t("usage.summary.realTotalTokens")}
               </span>
-              <span className="shrink-0 text-[13px] font-medium text-[var(--color-theme-text)]">
-                {stat.value}
+              <span className="text-2xl font-semibold leading-none text-[var(--color-theme-text)]">
+                {formatTokens(summary?.totalTokens ?? 0)}
               </span>
             </div>
-          ))}
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <span className="text-[11px] text-[var(--color-theme-text-muted)]">
+                {t("usage.summary.totalCost")}
+              </span>
+              <span className="text-base font-medium leading-none text-[var(--color-theme-text)]">
+                {formatUsd(summary?.totalCostUsd)}
+              </span>
+            </div>
+          </div>
+
+          {/* 从属指标条：请求数、新增输入、输出三列无框，列间竖分隔线 */}
+          <div className="grid min-h-0 flex-[2] grid-cols-3 divide-x divide-[var(--color-theme-border)] border-b border-[var(--color-theme-border)]">
+            {secondaryStats.map((stat) => (
+              <div
+                key={stat.label}
+                className="flex min-w-0 flex-col justify-center gap-1 px-3 first:pl-0"
+              >
+                <span className="truncate text-[11px] text-[var(--color-theme-text-muted)]">
+                  {stat.label}
+                </span>
+                <span className="text-[15px] font-medium text-[var(--color-theme-text)]">
+                  {stat.value}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* 缓存命中率：百分比与进度条 */}
+          <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5">
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <span className="truncate text-[11px] text-[var(--color-theme-text-muted)]">
+                {t("usage.summary.cacheHitRate")}
+              </span>
+              <span className="text-[13px] font-medium text-[var(--color-theme-text)]">
+                {cacheHitRate === null ? "--" : formatPercent(cacheHitRate)}
+              </span>
+            </div>
+            <div className="header-usage-meter h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-theme-surface-hover)]">
+              <div
+                className="header-usage-meter-fill h-full rounded-full bg-[var(--color-usage-chart-cache-hit)] transition-[width] duration-300 ease-out"
+                style={{ width: `${cacheHitRate ?? 0}%` }}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

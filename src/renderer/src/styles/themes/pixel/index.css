@@ -1453,8 +1453,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 [data-theme="pixel"] .activity-heatmap-card,
 [data-theme="pixel"] .usage-stat-card,
 [data-theme="pixel"] .lx-chart-card,
-[data-theme="pixel"] .usage-table-card,
-[data-theme="pixel"] .header-usage-stat {
+[data-theme="pixel"] .usage-table-card {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #1e1e2a !important;
@@ -1472,6 +1471,18 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.65),
     2px 2px 0px 0px #000000 !important;
+}
+
+/* 顶部栏用量面板命中率进度：像素凹槽与直角填充 */
+[data-theme="pixel"] .header-usage-meter {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #14141c !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="pixel"] .header-usage-meter-fill {
+  border-radius: 0px !important;
 }
 
 /* 内置游戏卡片：与统计卡一致的像素浮雕容器（去掉马赛克底纹与圆角） */
