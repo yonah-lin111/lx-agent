@@ -132,7 +132,6 @@ export const agent = {
   unsupportedImageInput: "Current model does not support image input, please switch models.",
   unsupportedImageFormat: "Only PNG/JPG/JPEG images are supported, please convert and re-upload.",
   fillInput: "Fill into input",
-  subagentDetail: "Detail",
   viewSubagentDetails: "View subagent execution details",
   subagentPanel: "Subagent Panel",
   closeSubagentPanel: "Close Subagent Panel",

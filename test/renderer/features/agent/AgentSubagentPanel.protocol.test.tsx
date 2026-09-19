@@ -105,6 +105,8 @@ describe("AgentSubagentPanel 协议轮次切换", () => {
     expect(screen.getByText("第一轮执行内容")).not.toBeNull()
     expect(container.querySelectorAll(".agent-subagent-comm-item")).toHaveLength(2)
     expect((screen.getByLabelText("Previous Protocol") as HTMLButtonElement).disabled).toBe(true)
+    // trigger 徽章只属于打开调用自身的轮次：浏览历史轮次时不显示。
+    expect(container.querySelector(".agent-interagent-trigger")).toBeNull()
   })
 
   it("三轮快照默认落在最后一次派发，可逐轮回退与前进", () => {

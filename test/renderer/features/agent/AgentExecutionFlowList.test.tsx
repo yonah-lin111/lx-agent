@@ -1992,18 +1992,18 @@ describe("AgentExecutionFlowList", () => {
 
     const { container } = render(<AgentExecutionFlowList messages={messages} />)
 
-    // 验证 Detail 按钮存在
-    const detailBtn = screen.getByTestId("flow-item-subagent-detail-btn")
-    expect(detailBtn).not.toBeNull()
-    expect(detailBtn.textContent).toContain("Detail")
+    // 子代理名称即打开面板入口（不再有 Detail 按钮）
+    const openBtn = screen.getByTestId("flow-item-subagent-open-btn")
+    expect(openBtn).not.toBeNull()
+    expect(screen.queryByTestId("flow-item-subagent-detail-btn")).toBeNull()
 
     // 初始状态下面板处于收起（inert/translateY）
     const panel = container.querySelector(".agent-subagent-panel-dialog")
     expect(panel).not.toBeNull()
     expect(panel?.getAttribute("inert")).toBe("")
 
-    // 点击 Detail 按钮
-    fireEvent.click(detailBtn)
+    // 点击子代理名称
+    fireEvent.click(openBtn)
 
     // 面板展开（inert 为 null 或 false）
     expect(panel?.getAttribute("inert")).toBeNull()

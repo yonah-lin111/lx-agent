@@ -127,7 +127,6 @@ export const agent = {
   unsupportedImageInput: "当前所选模型不支持图片多模态输入，请切换模型。",
   unsupportedImageFormat: "仅支持 PNG/JPG/JPEG 图片格式，请转换后重新上传。",
   fillInput: "填入输入框",
-  subagentDetail: "详情",
   viewSubagentDetails: "查看子代理执行详情",
   subagentPanel: "子代理面板",
   closeSubagentPanel: "关闭子代理面板",

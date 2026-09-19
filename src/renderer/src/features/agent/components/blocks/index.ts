@@ -32,3 +32,4 @@ export {
   type ReviewFindingsCardProps,
 } from "./ReviewFindingsCard"
 export { isTodoDone, TodoStatusIcon } from "./TodoStatusIcon"
+export { ToolCallTitle, type ToolCallTitleProps } from "./ToolCallTitle"

@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Copy,
   CornerDownRight,
-  ExternalLink,
   Loader2,
   Zap,
 } from "lucide-react"
@@ -25,6 +24,7 @@ import {
   FrontDesignCard,
   ProposedPlanCard,
   ReviewFindingsCard,
+  ToolCallTitle,
 } from "@/features/agent/components/blocks"
 import type {
   ExecutionStep,
@@ -43,7 +43,6 @@ import { FlowItemSystemContent } from "./FlowItemSystemContent"
 import { FlowItemThinkingContent } from "./FlowItemThinkingContent"
 import { FlowItemTokenSaverBadge } from "./FlowItemTokenSaverBadge"
 import { FlowItemToolContent } from "./FlowItemToolContent"
-import { FlowItemToolTitle } from "./FlowItemToolTitle"
 import { FlowItemUndoContent } from "./FlowItemUndoContent"
 import { FlowItemUserContent } from "./FlowItemUserContent"
 import {
@@ -299,11 +298,24 @@ export const AgentExecutionFlowItem = ({
                 </LxTag>
               ) : null)}
 
-            {/* 步骤标题与副标题 */}
+            {/* 步骤标题与副标题（子代理步骤：点击名称打开子代理面板，名称右侧不再展示描述） */}
             <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
               {step.kind === "tool" && step.toolContent ? (
-                <FlowItemToolTitle toolContent={step.toolContent} />
-              ) : step.kind === "user" ? null : (
+                <ToolCallTitle toolContent={step.toolContent} />
+              ) : step.kind === "user" ? null : step.kind === "subagent" && step.subagentContent ? (
+                <button
+                  type="button"
+                  data-testid="flow-item-subagent-open-btn"
+                  aria-label={t("agent.viewSubagentDetails")}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenSubagent?.(step.id)
+                  }}
+                  className="-mx-1 truncate rounded-[4px] px-1 font-mono text-xs font-medium leading-none text-[var(--color-theme-text,#ffffff)]/90 transition-colors hover:bg-white/5 hover:text-blue-200 focus:outline-none"
+                >
+                  {step.title}
+                </button>
+              ) : (
                 <span
                   className={`truncate font-mono text-xs font-medium leading-none ${
                     step.kind === "error"
@@ -321,6 +333,7 @@ export const AgentExecutionFlowItem = ({
               )}
               {step.kind !== "tool" &&
                 step.kind !== "user" &&
+                step.kind !== "subagent" &&
                 step.subtitle &&
                 step.status !== "running" && (
                   <span className="hidden min-w-0 truncate text-xs leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] sm:inline">
@@ -338,7 +351,7 @@ export const AgentExecutionFlowItem = ({
               <span aria-hidden className="w-3.5 shrink-0" />
               <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]" />
               <div className="flex min-w-0 flex-1 items-center overflow-hidden leading-none">
-                <FlowItemToolTitle toolContent={subagentToolContent} />
+                <ToolCallTitle toolContent={subagentToolContent} />
               </div>
             </div>
           )}
@@ -651,26 +664,6 @@ export const AgentExecutionFlowItem = ({
             {!isRunning && (step.tokenSaverHit || step.tokenSaver) ? (
               <FlowItemTokenSaverBadge hit={step.tokenSaverHit} run={step.tokenSaver} />
             ) : null}
-
-            {/* Subagent 步骤下的 Detail 按钮 */}
-            {step.kind === "subagent" && step.subagentContent && (
-              <LxTooltip placement="top" content={t("agent.viewSubagentDetails")}>
-                <button
-                  type="button"
-                  data-testid="flow-item-subagent-detail-btn"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (step.subagentContent) {
-                      onOpenSubagent?.(step.id)
-                    }
-                  }}
-                  className="shrink-0 inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-xs font-medium leading-none text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200 focus:outline-none"
-                >
-                  <span>{t("agent.subagentDetail")}</span>
-                  <ExternalLink className="h-2.5 w-2.5 opacity-70" />
-                </button>
-              </LxTooltip>
-            )}
           </div>
 
           {/* 右侧纯文字并行标记（同一批次同色，同一 turn 不同批次异色） */}

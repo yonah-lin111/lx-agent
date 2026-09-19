@@ -366,9 +366,9 @@ export const AgentSubagentPanel = ({
                   <MessageSquareShare className="h-3.5 w-3.5 shrink-0 text-sky-400" />
                   <span className="truncate">Inter-Agent Protocol</span>
                 </div>
-                {/* 右侧：trigger 徽章（标识当前展示的是该调用的派发轮次）+ 协议轮次切换。 */}
+                {/* 右侧：trigger 徽章（仅标识打开调用自身的轮次，浏览历史轮次时不显示）+ 协议轮次切换。 */}
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {activeProtocol && (
+                  {activeProtocol && activeProtocolIndex === lastProtocolIndex && (
                     <LxTag size="small" color="sky" className="agent-interagent-trigger">
                       trigger
                     </LxTag>

@@ -203,14 +203,14 @@ describe("AgentExecutionFlowList 交互动作", () => {
     expect(onDeleteMessage).toHaveBeenCalledWith("a1")
   })
 
-  it("subagent Detail 打开面板并可关闭", () => {
+  it("点击 subagent 名称打开面板并可关闭", () => {
     const { container } = render(<AgentExecutionFlowList messages={subagentMessages()} />)
 
     const dialog = (): HTMLElement | null => container.querySelector<HTMLElement>('[role="dialog"]')
     expect(dialog()?.hasAttribute("inert")).toBe(true)
 
     const subagentStep = container.querySelector('[data-step-kind="subagent"]') as HTMLElement
-    fireEvent.click(within(subagentStep).getByText("Detail"))
+    fireEvent.click(within(subagentStep).getByTestId("flow-item-subagent-open-btn"))
 
     expect(dialog()?.hasAttribute("inert")).toBe(false)
 
@@ -230,7 +230,7 @@ describe("AgentExecutionFlowList 交互动作", () => {
 
     const dialog = (): HTMLElement | null =>
       container.querySelector<HTMLElement>(".agent-subagent-panel-dialog")
-    fireEvent.click(screen.getByTestId("flow-item-subagent-detail-btn"))
+    fireEvent.click(screen.getByTestId("flow-item-subagent-open-btn"))
 
     expect(dialog()?.hasAttribute("inert")).toBe(false)
     expect(dialog()?.textContent).toContain("第一段内部输出")

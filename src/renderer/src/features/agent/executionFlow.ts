@@ -465,9 +465,6 @@ export const buildExecutionSteps = (
             stepIndex,
             kind: "subagent",
             title: subagentName,
-            subtitle: subagentData?.description
-              ? formatPreview(subagentData.description, 60)
-              : undefined,
             status,
             timestamp: toolStartedAt ?? message.timestamp,
             startedAt: toolStartedAt,
