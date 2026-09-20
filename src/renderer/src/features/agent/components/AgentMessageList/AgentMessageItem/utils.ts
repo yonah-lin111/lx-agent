@@ -6,6 +6,7 @@ import {
   SUBAGENT_TOOL_NAME,
   TODO_TOOL_NAME,
   WEB_SEARCH_TOOL_NAME,
+  WIREFRAME_TOOL_NAME,
 } from "./constants"
 import type { CommandTag, QaUsage } from "./types"
 
@@ -20,6 +21,9 @@ export const isSubagentToolCall = (toolName: string): boolean => toolName === SU
 
 // 判断是否为任务清单（todowrite 工具）调用。
 export const isTodoToolCall = (toolName: string): boolean => toolName === TODO_TOOL_NAME
+
+// 判断是否为字符线框图（wireframe 工具）调用。
+export const isWireframeToolCall = (toolName: string): boolean => toolName === WIREFRAME_TOOL_NAME
 
 // 判断是否为模型提问（question 工具）调用。
 export const isQuestionToolCall = (toolName: string): boolean => toolName === QUESTION_TOOL_NAME

@@ -1,0 +1,96 @@
+import { Check, Copy, CornerDownRight, Layout } from "lucide-react"
+import type React from "react"
+import { useCallback, useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
+import type { ChatBlock } from "@/features/agent/types"
+import { useTranslation } from "@/i18n"
+
+type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
+
+export interface AgentWireframeCallBlockProps {
+  toolCall: ToolCallBlock
+}
+
+/**
+ * AgentWireframeCallBlock - 渲染 wireframe 工具调用：
+ * Header 展示线框图图标与标题，正文渲染等宽字符画，
+ * 独立成组展示，不参与执行组 (Execute Group) 折叠。
+ */
+export const AgentWireframeCallBlock = ({
+  toolCall,
+}: AgentWireframeCallBlockProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
+  const [isCopied, setIsCopied] = useState(false)
+
+  const title = typeof toolCall.args?.title === "string" ? toolCall.args.title : ""
+  const layout = typeof toolCall.args?.layout === "string" ? toolCall.args.layout : ""
+  const description =
+    typeof toolCall.args?.description === "string" ? toolCall.args.description : ""
+
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (!layout) return
+      try {
+        await navigator.clipboard.writeText(layout)
+        setIsCopied(true)
+        setTimeout(() => setIsCopied(false), 2000)
+      } catch {
+        // clipboard write rejected
+      }
+    },
+    [layout],
+  )
+
+  if (!title && !layout && !description) return null
+
+  return (
+    <div className="agent-wireframe-call-block my-1 min-w-0">
+      {/* 头部标题与复制快捷操作 */}
+      <div className="agent-wireframe-header flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+          <Layout className="h-3.5 w-3.5 shrink-0 text-indigo-300" />
+          <span className="agent-wireframe-title truncate text-xs font-bold text-indigo-300">
+            {title || t("agent.wireframeTitle")}
+          </span>
+        </div>
+        {layout && (
+          <LxIconButton
+            size="small"
+            aria-label={t("agent.wireframeCopy")}
+            title={{
+              content: isCopied ? t("agent.wireframeCopied") : t("agent.wireframeCopy"),
+              placement: "top",
+            }}
+            onClick={handleCopy}
+          >
+            {isCopied ? (
+              <Check className="h-3.5 w-3.5 text-emerald-400" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]" />
+            )}
+          </LxIconButton>
+        )}
+      </div>
+
+      {/* 缩进内容区 */}
+      <div className="mt-1 flex min-w-0 items-start gap-1.5 pl-1">
+        <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          {description && (
+            <div className="text-xs leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
+              <span className="font-medium text-white/50">{t("agent.wireframeDescription")}: </span>
+              <span>{description}</span>
+            </div>
+          )}
+
+          <div className="rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.08))] bg-black/40 p-2.5">
+            <pre className="font-mono text-xs leading-tight text-sky-200/90 whitespace-pre overflow-x-auto selection:bg-sky-500/30">
+              {layout || <span className="text-white/40 italic">{t("agent.wireframeEmpty")}</span>}
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

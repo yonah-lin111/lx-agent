@@ -20,6 +20,10 @@ export {
 } from "./AgentViewImageBlock"
 export { AgentWebSearchBlock } from "./AgentWebSearchBlock"
 export {
+  AgentWireframeCallBlock,
+  type AgentWireframeCallBlockProps,
+} from "./AgentWireframeCallBlock"
+export {
   FrontDesignCard,
   type FrontDesignCardProps,
 } from "./FrontDesignCard"

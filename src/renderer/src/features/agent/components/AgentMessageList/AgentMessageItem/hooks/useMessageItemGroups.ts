@@ -11,6 +11,7 @@ import {
   isSubagentToolCall,
   isTodoToolCall,
   isWebSearchToolCall,
+  isWireframeToolCall,
   isWriteToolCall,
 } from "../utils"
 
@@ -283,6 +284,11 @@ export const useMessageItemGroups = (
       if (isTodoToolCall(toolName)) {
         currentExecution = null
         groups.push({ kind: "todo", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
+      if (isWireframeToolCall(toolName)) {
+        currentExecution = null
+        groups.push({ kind: "wireframe", block: item.block, isStreaming: item.isStreaming })
         continue
       }
       if (isQuestionToolCall(toolName)) {

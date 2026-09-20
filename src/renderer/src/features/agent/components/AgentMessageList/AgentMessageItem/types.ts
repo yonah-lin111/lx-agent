@@ -52,6 +52,8 @@ export type DisplayGroup =
   | { kind: "subagent"; block: ToolCallBlock; isStreaming: boolean }
   // 任务清单调用独立组（不参与执行折叠，逐条展示清单）。
   | { kind: "todo"; block: ToolCallBlock; isStreaming: boolean }
+  // 字符线框图调用独立组（不参与执行折叠，展示字符线框图）。
+  | { kind: "wireframe"; block: ToolCallBlock; isStreaming: boolean }
   // 模型提问调用独立组（不参与执行折叠，内联作答）。
   | { kind: "question"; block: ToolCallBlock; isStreaming: boolean }
 

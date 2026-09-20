@@ -16,6 +16,7 @@ import {
   AgentTodoCallBlock,
   AgentToolCallBlock,
   AgentWebSearchBlock,
+  AgentWireframeCallBlock,
   type ExecutionItemMeta,
   FrontDesignCard,
   ProposedPlanCard,
@@ -257,6 +258,10 @@ export const AgentAssistantMessage = ({
 
             if (group.kind === "todo") {
               return <AgentTodoCallBlock key={groupIndex} toolCall={group.block} />
+            }
+
+            if (group.kind === "wireframe") {
+              return <AgentWireframeCallBlock key={groupIndex} toolCall={group.block} />
             }
 
             if (group.kind === "question") {

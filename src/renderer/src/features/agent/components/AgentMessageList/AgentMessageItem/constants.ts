@@ -4,6 +4,7 @@ export const SKILL_TOOL_NAME = "read_skill"
 export const WEB_SEARCH_TOOL_NAME = "web_search"
 export const SUBAGENT_TOOL_NAME = "task"
 export const TODO_TOOL_NAME = "todowrite"
+export const WIREFRAME_TOOL_NAME = "wireframe"
 export const QUESTION_TOOL_NAME = "question"
 
 // 稳定的空上下文（避免每次渲染新数组导致 hook effect 依赖变化触发无限重渲染）。
