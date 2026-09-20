@@ -1,4 +1,4 @@
-import { Bot, FileCode, Folder, Globe, Layout, ListTodo, Search, Sparkles } from "lucide-react"
+import { Bot, FileCode, Folder, Globe, ListTodo, Search, Sparkles } from "lucide-react"
 import type React from "react"
 import { BUILTIN_UNDERSCORE_TOOLS } from "@/features/agent/components/AgentMessageList/AgentMessageItem/constants"
 import { parseMcpToolName } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
@@ -260,12 +260,11 @@ export const ToolCallTitle = ({ toolContent }: ToolCallTitleProps): React.JSX.El
     const title = typeof toolContent.args?.title === "string" ? toolContent.args.title.trim() : ""
     return (
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <span className="shrink-0 font-mono text-xs font-medium leading-none text-indigo-300">
+        <span className="shrink-0 font-mono text-xs font-medium leading-none text-amber-300">
           wireframe
         </span>
         {title && (
           <span className="flex min-w-0 items-center gap-1 truncate font-mono text-xs leading-none text-white/60">
-            <Layout className="h-3 w-3 shrink-0 text-indigo-300/70" />
             <span className="truncate">{title}</span>
           </span>
         )}

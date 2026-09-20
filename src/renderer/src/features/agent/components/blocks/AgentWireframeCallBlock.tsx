@@ -1,4 +1,4 @@
-import { Check, Copy, CornerDownRight, Layout } from "lucide-react"
+import { Check, Copy, CornerDownRight, Wrench } from "lucide-react"
 import type React from "react"
 import { useCallback, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -13,7 +13,7 @@ export interface AgentWireframeCallBlockProps {
 
 /**
  * AgentWireframeCallBlock - 渲染 wireframe 工具调用：
- * Header 展示线框图图标与标题，正文渲染等宽字符画，
+ * Header 展示工具图标 (Wrench) 与名称 (Wireframe) 及可选标题，正文渲染等宽字符画，
  * 独立成组展示，不参与执行组 (Execute Group) 折叠。
  */
 export const AgentWireframeCallBlock = ({
@@ -49,10 +49,15 @@ export const AgentWireframeCallBlock = ({
       {/* 头部标题与复制快捷操作 */}
       <div className="agent-wireframe-header flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-          <Layout className="h-3.5 w-3.5 shrink-0 text-indigo-300" />
-          <span className="agent-wireframe-title truncate text-xs font-bold text-indigo-300">
-            {title || t("agent.wireframeTitle")}
+          <Wrench className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+          <span className="agent-wireframe-tool-name font-mono text-xs font-bold text-amber-300">
+            Wireframe
           </span>
+          {title && (
+            <span className="agent-wireframe-title truncate font-mono text-xs text-white/60">
+              {title}
+            </span>
+          )}
         </div>
         {layout && (
           <LxIconButton

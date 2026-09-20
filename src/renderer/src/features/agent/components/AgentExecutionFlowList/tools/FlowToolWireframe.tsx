@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronRight, Copy, FileText, Layout, Terminal } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, Copy, FileText, Terminal, Wrench } from "lucide-react"
 import type React from "react"
 import { useCallback, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -41,9 +41,10 @@ export const FlowToolWireframe = ({ content }: FlowToolWireframeProps): React.JS
     <div className="agent-execution-flow-tool-wireframe flex flex-col gap-2.5">
       {/* 头部：线框图标题与操作 */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-0.5 font-mono text-xs">
-        <div className="flex items-center gap-1.5 text-indigo-300">
-          <Layout className="h-3.5 w-3.5 shrink-0" />
-          <span className="font-medium text-indigo-200">{title || t("agent.wireframeTitle")}</span>
+        <div className="flex items-center gap-1.5 text-amber-300">
+          <Wrench className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+          <span className="font-bold text-amber-300">Wireframe</span>
+          {title && <span className="font-medium text-white/70">{title}</span>}
         </div>
         <div className="flex items-center gap-2">
           {content.durationMs !== undefined && (

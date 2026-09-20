@@ -28,6 +28,8 @@ describe("AgentWireframeCallBlock", () => {
 
     render(<AgentWireframeCallBlock toolCall={toolCall} />)
 
+    expect(screen.getByText("Wireframe")).not.toBeNull()
+    expect(screen.getByText("Wireframe").className).toContain("text-amber-300")
     expect(screen.getByText("Main Dashboard")).not.toBeNull()
     expect(screen.getByText("Dashboard layout with sidebar")).not.toBeNull()
     expect(screen.getByText((content) => content.includes("Panel"))).not.toBeNull()
