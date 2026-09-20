@@ -22,6 +22,7 @@ export const home = {
     updateDownload: "前往下载",
     updateDismiss: "忽略",
     githubTip: "在 GitHub 上查看源码",
+    githubStarsTip: "在 GitHub 上查看源码 · 共 {{count}} 个 Star",
   },
   schedule: "日程",
   heatmap: {
