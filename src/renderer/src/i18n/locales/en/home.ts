@@ -23,6 +23,7 @@ export const home = {
     updateDownload: "Download",
     updateDismiss: "Ignore",
     githubTip: "View source on GitHub",
+    githubStarsTip: "View source on GitHub · {{count}} stars",
   },
   schedule: "Schedule",
   heatmap: {

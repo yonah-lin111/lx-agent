@@ -133,3 +133,13 @@ export const buildHeatmapMonths = (
 
   return { months, maxCount }
 }
+
+/**
+ * 将星标数格式化为 GitHub 风格紧凑文本（999 → 999，1234 → 1.2k，123456 → 123k）。
+ */
+export const formatStarCount = (stars: number): string => {
+  if (stars < 1000) return String(stars)
+
+  const truncatedThousands = Math.floor(stars / 100) / 10
+  return truncatedThousands < 100 ? `${truncatedThousands}k` : `${Math.floor(stars / 1000)}k`
+}

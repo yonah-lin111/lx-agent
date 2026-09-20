@@ -63,6 +63,9 @@ describe("AppIndexDashboard", () => {
         check: vi.fn(() => Promise.resolve(updateHolder.state)),
         onStateChanged: vi.fn(() => () => {}),
       },
+      github: {
+        getStars: vi.fn(() => Promise.resolve({ stars: 1234 })),
+      },
     }
   })
 
@@ -249,13 +252,13 @@ describe("AppIndexDashboard", () => {
     expect(link.getAttribute("href")).toBe(RELEASE_URL)
   })
 
-  it("Hero GitHub 入口指向仓库且不再展示星数", async () => {
+  it("Hero GitHub 入口指向仓库并展示星数", async () => {
     render(<AppIndexDashboard />)
 
-    const link = await screen.findByRole("link", { name: "GitHub" })
+    const link = await screen.findByRole("link", { name: "GitHub1.2k" })
     expect(link.getAttribute("href")).toBe(REPO_URL)
     expect(link.getAttribute("target")).toBe("_blank")
     expect(link.getAttribute("rel")).toBe("noreferrer")
-    expect(link.textContent).toBe("GitHub")
+    expect(link.textContent).toBe("GitHub1.2k")
   })
 })

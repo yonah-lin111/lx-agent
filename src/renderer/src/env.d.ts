@@ -6,6 +6,7 @@ import type { AgentApi } from "@shared/contracts/agent"
 import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GameApi } from "@shared/contracts/game"
 import type { GitApi } from "@shared/contracts/git"
+import type { GitHubApi } from "@shared/contracts/github"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { NotificationApi } from "@shared/contracts/notification"
 import type { OpenClawApi } from "@shared/contracts/openclaw"
@@ -41,7 +42,8 @@ declare global {
       OpenClawApi &
       NotificationApi &
       UpdateApi &
-      GameApi
+      GameApi &
+      GitHubApi
   }
 
   namespace JSX {
