@@ -9,6 +9,8 @@ import { scheduleApi } from "../api/scheduleApi"
 interface UseScheduleRolloverOptions {
   entryDate: string
   onRolloverCompleted?: () => void
+  // 是否启用探测：顶部栏收起等场景传 false，展开后再加载。
+  enabled?: boolean
 }
 
 /**
@@ -17,6 +19,7 @@ interface UseScheduleRolloverOptions {
 export const useScheduleRollover = ({
   entryDate,
   onRolloverCompleted,
+  enabled = true,
 }: UseScheduleRolloverOptions) => {
   const { t } = useTranslation()
   const toast = useLxToast()
@@ -29,7 +32,7 @@ export const useScheduleRollover = ({
 
   // 探测昨日未完成待办。
   useEffect(() => {
-    if (!isViewingToday) {
+    if (!enabled || !isViewingToday) {
       setYesterdayIncomplete([])
       return
     }
@@ -52,7 +55,7 @@ export const useScheduleRollover = ({
     return () => {
       isMounted = false
     }
-  }, [isViewingToday, todayKey])
+  }, [enabled, isViewingToday, todayKey])
 
   const dismiss = useCallback((): void => {
     setIsDismissed(true)

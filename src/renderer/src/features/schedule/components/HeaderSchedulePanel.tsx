@@ -1,10 +1,11 @@
-import { ArrowUpDown } from "lucide-react"
+import { ArrowUpDown, CalendarClock } from "lucide-react"
 import { useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useTranslation } from "@/i18n"
 import { getTodayKey } from "@/lib/date"
 import { useScheduleItems } from "../hooks/useScheduleItems"
 import { useScheduleMutations } from "../hooks/useScheduleMutations"
+import { useScheduleRollover } from "../hooks/useScheduleRollover"
 import type { ScheduleStatusFilter } from "../types"
 import { filterScheduleItems } from "../utils"
 import { ScheduleComposer } from "./ScheduleComposer"
@@ -35,6 +36,8 @@ export const HeaderSchedulePanel = ({
   const entryDate = getTodayKey()
   const { items, setItems, isLoading, hasError } = useScheduleItems(entryDate, isExpanded)
   const mutations = useScheduleMutations({ entryDate, items, setItems })
+  // 昨日未完成待办顺延：收起时不探测，展开后由广播刷新今日列表。
+  const rollover = useScheduleRollover({ entryDate, enabled: isExpanded })
   const [statusFilter, setStatusFilter] = useState<ScheduleStatusFilter>("all")
 
   // 与日程页一致：列表按原始顺序展示，勾选完成不自动重排；优先级重排仅在用户点击排序按钮时执行。
@@ -66,6 +69,24 @@ export const HeaderSchedulePanel = ({
               {t(FILTER_LABEL_KEYS[filterKey])}
             </LxIconButton>
           ))}
+          {/* 昨日未完成待办顺延入口：仅有遗留待办时出现，悬停展示数量 */}
+          {rollover.hasRolloverItems && (
+            <LxIconButton
+              size="small"
+              aria-label={t("schedule.rolloverAction")}
+              disabled={rollover.isRollingOver}
+              textClass="text-[var(--color-schedule-priority-p1)]"
+              hoverTextClass="hover:text-[var(--color-schedule-priority-p1)]"
+              title={{
+                title: t("schedule.rolloverPrompt", { count: rollover.count }),
+                content: t("schedule.rolloverAction"),
+                placement: "bottom",
+              }}
+              onClick={() => void rollover.executeRollover()}
+            >
+              <CalendarClock />
+            </LxIconButton>
+          )}
           <LxIconButton
             size="small"
             aria-label={t("schedule.sortByPriority")}

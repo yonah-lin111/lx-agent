@@ -71,4 +71,27 @@ describe("useScheduleRollover", () => {
     expect(result.current.hasRolloverItems).toBe(false)
     expect(onCompleted).toHaveBeenCalledOnce()
   })
+
+  it("enabled=false 时不探测，恢复 enabled 后重新探测", async () => {
+    const today = getTodayKey()
+    const yesterday = shiftDateKey(today, -1)
+    const listSpy = vi.spyOn(scheduleApi, "listByDate").mockResolvedValue([])
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useScheduleRollover({ entryDate: today, enabled }),
+      { initialProps: { enabled: false } },
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(listSpy).not.toHaveBeenCalled()
+    expect(result.current.hasRolloverItems).toBe(false)
+
+    rerender({ enabled: true })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(listSpy).toHaveBeenCalledWith(yesterday)
+  })
 })
