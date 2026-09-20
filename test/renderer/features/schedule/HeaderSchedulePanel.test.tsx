@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
 import type { ScheduleItem } from "@shared/contracts/schedule"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { HeaderSchedulePanel } from "@/features/schedule/components/HeaderSchedulePanel"
+import { shiftDateKey } from "@/lib/date"
 
 vi.stubGlobal(
   "ResizeObserver",
@@ -21,6 +22,7 @@ const toLocalDateKey = (date: Date): string => {
 }
 
 const todayKey = toLocalDateKey(new Date())
+const yesterdayKey = shiftDateKey(todayKey, -1)
 
 const createItem = (patch: Partial<ScheduleItem>): ScheduleItem => ({
   id: 1,
@@ -40,7 +42,9 @@ const createServerMock = (seed: ScheduleItem[] = []) => {
   let items = seed
   let nextId = 100
   return {
-    listByDate: vi.fn(async () => items),
+    listByDate: vi.fn(async ({ entryDate }: { entryDate: string }) =>
+      items.filter((item) => item.entryDate === entryDate),
+    ),
     create: vi.fn(async (input: { content: string; priority?: ScheduleItem["priority"] }) => {
       const created = createItem({ id: nextId++, content: input.content, priority: input.priority })
       items = [created, ...items]
@@ -241,5 +245,105 @@ describe("HeaderSchedulePanel", () => {
     await waitFor(() => {
       expect(api.reorder).toHaveBeenCalledWith({ entryDate: todayKey, ids: [2, 1] })
     })
+  })
+
+  it("昨日有未完成待办时显示顺延按钮，悬停展示数量", async () => {
+    const api = createServerMock([
+      createItem({ id: 1, entryDate: yesterdayKey, content: "Yesterday pending" }),
+      createItem({ id: 2, entryDate: yesterdayKey, content: "Yesterday done", completed: true }),
+    ])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    renderPanel()
+    const rolloverButton = await screen.findByRole("button", { name: "Move to Today" })
+
+    fireEvent.mouseEnter(rolloverButton)
+
+    await waitFor(() => {
+      expect(screen.getByText("1 incomplete task(s) from yesterday")).toBeDefined()
+    })
+    expect(screen.getByText("Move to Today")).toBeDefined()
+  })
+
+  it("昨日无未完成待办时不渲染顺延按钮", async () => {
+    const api = createServerMock([
+      createItem({ id: 1, entryDate: yesterdayKey, content: "Yesterday done", completed: true }),
+    ])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    renderPanel()
+    await screen.findByText("No to-dos for today")
+
+    await waitFor(() => {
+      expect(api.listByDate).toHaveBeenCalledWith({ entryDate: yesterdayKey })
+    })
+    expect(screen.queryByRole("button", { name: "Move to Today" })).toBeNull()
+  })
+
+  it("点击顺延按钮把昨日未完成项移动到今天并刷新列表", async () => {
+    const api = createServerMock([
+      createItem({ id: 11, entryDate: yesterdayKey, content: "昨日未完成" }),
+    ])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    renderPanel()
+    fireEvent.click(await screen.findByRole("button", { name: "Move to Today" }))
+
+    await waitFor(() => {
+      expect(api.update).toHaveBeenCalledWith({ id: 11, entryDate: todayKey })
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Move to Today" })).toBeNull()
+    })
+    expect(await screen.findByText("昨日未完成")).toBeDefined()
+  })
+
+  it("顺延请求进行中按钮禁用", async () => {
+    const api = createServerMock([
+      createItem({ id: 21, entryDate: yesterdayKey, content: "昨日未完成" }),
+    ])
+    let resolveUpdate: (() => void) | null = null
+    api.update.mockImplementation(
+      (input) =>
+        new Promise<ScheduleItem>((resolve) => {
+          resolveUpdate = (): void =>
+            resolve(createItem({ id: input.id, entryDate: todayKey, content: "昨日未完成" }))
+        }),
+    )
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    renderPanel()
+    const rolloverButton = await screen.findByRole("button", { name: "Move to Today" })
+    fireEvent.click(rolloverButton)
+
+    await waitFor(() => {
+      expect((rolloverButton as HTMLButtonElement).disabled).toBe(true)
+    })
+
+    await act(async () => {
+      resolveUpdate?.()
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Move to Today" })).toBeNull()
+    })
+  })
+
+  it("收起状态下不探测昨日未完成待办", async () => {
+    const api = createServerMock([
+      createItem({ id: 1, entryDate: yesterdayKey, content: "Yesterday pending" }),
+    ])
+    // @ts-expect-error Mock window.api
+    window.api = { schedule: api }
+
+    renderPanel(false)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(api.listByDate).not.toHaveBeenCalled()
+    expect(screen.queryByRole("button", { name: "Move to Today" })).toBeNull()
   })
 })

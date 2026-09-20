@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { HeaderSideBar } from "@/components/layout/HeaderSideBar"
 import type { UsageSummary } from "@/features/usage/types"
+import { getTodayKey, shiftDateKey } from "@/lib/date"
 
 const summary: UsageSummary = {
   requestCount: 1,
@@ -55,7 +56,11 @@ describe("HeaderSideBar", () => {
     expect(screen.getByText("Today's To-Dos")).toBeDefined()
     expect(screen.getByText("Today's Usage")).toBeDefined()
     await waitFor(() => {
-      expect(api.schedule.listByDate).toHaveBeenCalledTimes(1)
+      const todayKey = getTodayKey()
+      expect(api.schedule.listByDate).toHaveBeenCalledWith({ entryDate: todayKey })
+      expect(api.schedule.listByDate).toHaveBeenCalledWith({
+        entryDate: shiftDateKey(todayKey, -1),
+      })
       expect(api.usage.getSummary).toHaveBeenCalledTimes(1)
     })
   })
