@@ -589,6 +589,7 @@ export const DEFAULT_BEHAVIOR_PROMPT = [
   "- Avoid generic or bland layouts. Deliver distinct, intentional, responsive UI.",
   "- Honor project CSS tokens and theme variables (e.g. `--color-theme-*`); never hardcode arbitrary hex colors.",
   "- Ensure internationalization (`t` / `useTranslation`) is strictly applied to all UI text.",
+  "- When creating new UI components, pages, or refactoring user-facing visual layouts, proactively invoke the `wireframe` tool to design and review the ASCII layout before editing or creating frontend files. Skip `wireframe` for pure logic, types, store fixes, or non-visual changes.",
 ].join("\n")
 
 /** 创建带有 LX Agent 标准默认分层的提示词管理器 */

@@ -403,6 +403,7 @@ export const SUBAGENT_PERMISSION_TOOL_NAMES = [
   "bash",
   "time",
   "todowrite",
+  "wireframe",
   "task",
   "question",
   "memory",

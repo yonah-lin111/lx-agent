@@ -23,6 +23,7 @@ import { createTodoTool } from "./tools/todowrite"
 import { createViewImageTool } from "./tools/viewImage"
 import { createWebFetchTool } from "./tools/webfetch"
 import { createWebSearchTool } from "./tools/webSearch"
+import { createWireframeTool } from "./tools/wireframe"
 import { createWriteTool } from "./tools/write"
 
 // Agent 默认系统提示词（保持向后兼容常量）。
@@ -34,6 +35,7 @@ export const DEFAULT_SYSTEM_PROMPT = [
   "After starting a background task, use job_output to read logs non-blockingly, job_list to check task status, and job_kill to terminate unneeded tasks. Do not restart the same background command before the task completes.",
   "Think by default in English. Output in the user's language when they specify a language, or when rendering tool content and plan output.",
   "For multi-step tasks (>=2 steps, requiring tool calls), use todowrite to establish a task list and update it as progress is made; skip todowrite for single-step tasks or casual conversation.",
+  "When creating new UI components, pages, or modifying user-facing visual layouts, proactively invoke the wireframe tool to design and review the ASCII layout before editing or creating frontend files; skip wireframe for non-visual code changes.",
 ].join("\n")
 
 export interface BuildSystemPromptOptions {
@@ -197,6 +199,7 @@ export const ALL_TOOL_NAMES = new Set([
   "bash",
   "time",
   "todowrite",
+  "wireframe",
   "web_search",
   "webfetch",
   "task",
@@ -247,6 +250,7 @@ export const createRegistry = (
   registry.register(createBashTool(cwd, effectiveSessionDeps))
   registry.register(createTimeTool())
   registry.register(createTodoTool())
+  registry.register(createWireframeTool())
   registry.register(createWebSearchTool())
   registry.register(createWebFetchTool(undefined, effectiveSessionDeps))
   registry.register(createJobOutputTool(effectiveSessionDeps))

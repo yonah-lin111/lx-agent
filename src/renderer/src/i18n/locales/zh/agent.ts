@@ -369,4 +369,9 @@ export const agent = {
   expandExecution: "展开执行内容",
   collapseExecution: "收起执行内容",
   modalCloseAria: "关闭弹窗",
+  wireframeTitle: "字符线框图",
+  wireframeCopy: "复制字符画",
+  wireframeCopied: "已复制字符画",
+  wireframeDescription: "说明",
+  wireframeEmpty: "暂无线框图内容",
 }

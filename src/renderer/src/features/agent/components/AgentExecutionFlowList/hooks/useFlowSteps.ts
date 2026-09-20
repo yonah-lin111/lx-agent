@@ -100,7 +100,8 @@ export const useFlowSteps = ({
         step.kind === "proposedPlan" ||
         step.kind === "reviewFindings" ||
         step.kind === "frontDesign" ||
-        step.toolContent?.toolName === "todowrite"
+        step.toolContent?.toolName === "todowrite" ||
+        step.toolContent?.toolName === "wireframe"
       ) {
         return true
       }
@@ -173,6 +174,7 @@ export const useFlowSteps = ({
     if (
       toolName === "task" ||
       toolName === "todowrite" ||
+      toolName === "wireframe" ||
       toolName === "question" ||
       toolName === "write" ||
       toolName === "edit" ||

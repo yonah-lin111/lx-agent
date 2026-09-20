@@ -26,6 +26,7 @@ export const EXEMPT_TOOLS = new Set([
   "lsp",
   "view_image",
   "memory",
+  "wireframe",
 ])
 
 // 规则类别。

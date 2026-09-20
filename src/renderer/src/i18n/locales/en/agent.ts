@@ -380,4 +380,9 @@ export const agent = {
   expandExecution: "Expand execution content",
   collapseExecution: "Collapse execution content",
   modalCloseAria: "Close modal",
+  wireframeTitle: "ASCII Wireframe",
+  wireframeCopy: "Copy Wireframe",
+  wireframeCopied: "Wireframe Copied",
+  wireframeDescription: "Description",
+  wireframeEmpty: "No wireframe content",
 }
