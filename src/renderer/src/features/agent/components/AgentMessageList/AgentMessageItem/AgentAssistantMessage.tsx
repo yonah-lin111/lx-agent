@@ -261,7 +261,13 @@ export const AgentAssistantMessage = ({
             }
 
             if (group.kind === "wireframe") {
-              return <AgentWireframeCallBlock key={groupIndex} toolCall={group.block} />
+              return (
+                <AgentWireframeCallBlock
+                  key={groupIndex}
+                  toolCall={group.block}
+                  toolResult={toolResultByToolCallId.get(group.block.toolCallId)}
+                />
+              )
             }
 
             if (group.kind === "question") {

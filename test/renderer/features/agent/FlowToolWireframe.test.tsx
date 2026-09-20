@@ -84,6 +84,28 @@ describe("FlowToolWireframe", () => {
     expect(screen.getByText(/No wireframe content|暂无线框图内容/i)).not.toBeNull()
   })
 
+  it("renders only the error line and hides the layout when the call failed", () => {
+    const layout = "┌──────────┐\n│ Card     │\n└──────────┘"
+    const toolContent: ExecutionToolContent = {
+      toolName: "wireframe",
+      args: {
+        description: "Dashboard layout",
+        layout,
+      },
+      result:
+        'Validation failed for tool "wireframe":\n  - title: Invalid input: expected string, received undefined',
+      isError: true,
+      durationMs: 11,
+    }
+
+    render(<FlowToolWireframe content={toolContent} />)
+
+    expect(screen.getByText(/Validation failed for tool/)).not.toBeNull()
+    // 失败时不得渲染参数中的描述与字符画
+    expect(screen.queryByText("Dashboard layout")).toBeNull()
+    expect(screen.queryByText((content) => content.includes("Card"))).toBeNull()
+  })
+
   it("AgentExecutionFlowItem renders wireframe tool step with body styling and title", () => {
     const layout = "┌──────────┐\n│ Card     │\n└──────────┘"
     const step: ExecutionStep = {
