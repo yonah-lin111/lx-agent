@@ -164,31 +164,23 @@ export const getMarkdownVarContentItems = (docText: string): string[] => {
 }
 
 /**
- * 删除命令行：优先连同换行一起移除，避免留下空行。
+ * 删除命令行内容，保留该行换行（与 /gitWorktree 清空命令行行为一致）。
  */
-const getCommandLineRemoval = (doc: Text, line: Line): MarkdownVarContentChange => {
-  if (line.to < doc.length && doc.sliceString(line.to, line.to + 1) === "\n") {
-    return { from: line.from, to: line.to + 1, insert: "" }
-  }
-  if (line.from > 0 && doc.sliceString(line.from - 1, line.from) === "\n") {
-    return { from: line.from - 1, to: line.to, insert: "" }
-  }
-  return { from: line.from, to: line.to, insert: "" }
-}
+const getCommandLineRemoval = (line: Line): MarkdownVarContentChange => ({
+  from: line.from,
+  to: line.to,
+  insert: "",
+})
 
 /**
- * 组合「追加内容」与「删除命令行」两类变更；插入点落入删除范围时合并为单次变更。
+ * 组合「追加内容」与「清空命令行」两类变更；插入点与清空范围不重叠，可直接并行下发。
  */
 const mergeCommandLineRemoval = (
-  doc: Text,
   line: Line,
   insertPos: number,
   insertText: string,
 ): MarkdownVarContentChange[] => {
-  const removal = getCommandLineRemoval(doc, line)
-  if (insertPos >= removal.from && insertPos <= removal.to) {
-    return [{ from: removal.from, to: removal.to, insert: insertText }]
-  }
+  const removal = getCommandLineRemoval(line)
   if (!insertText) return [removal]
   return [removal, { from: insertPos, to: insertPos, insert: insertText }]
 }
@@ -221,7 +213,7 @@ export const buildMarkdownVarContentAppend = (
     const insertText = `\n${indent}${MARKDOWN_VAR_CONTENT_KEY}:\n${indent}  - ${cleanEntry}`
     return {
       status: "appended",
-      changes: mergeCommandLineRemoval(doc, commandLine, doc.line(block.startLine).to, insertText),
+      changes: mergeCommandLineRemoval(commandLine, doc.line(block.startLine).to, insertText),
     }
   }
 
@@ -241,6 +233,6 @@ export const buildMarkdownVarContentAppend = (
   const insertText = status === "duplicate" ? "" : `\n${content.itemIndent}- ${cleanEntry}`
   return {
     status,
-    changes: mergeCommandLineRemoval(doc, commandLine, doc.line(content.anchorLine).to, insertText),
+    changes: mergeCommandLineRemoval(commandLine, doc.line(content.anchorLine).to, insertText),
   }
 }

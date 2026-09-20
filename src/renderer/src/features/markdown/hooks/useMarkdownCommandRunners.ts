@@ -341,7 +341,7 @@ export const useMarkdownCommandRunners = ({
         .replace(/\]$/, "")
         .trim()
 
-      if (!argument.startsWith("@")) {
+      if (!argument.startsWith("@") || argument.length < 2) {
         warning(t("markdown.addContentInvalidEntry"))
         return
       }

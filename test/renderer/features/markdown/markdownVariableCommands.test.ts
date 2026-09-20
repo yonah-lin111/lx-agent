@@ -817,7 +817,7 @@ describe("变量块固定 @content 内容块", () => {
       expect(buildMarkdownVarContentAppend(doc, 3, "   ")).toEqual({ status: "invalidTarget" })
     })
 
-    it("块内无 @content 时补建保留键并删除命令行", () => {
+    it("块内无 @content 时补建保留键并清空命令行（保留该行换行）", () => {
       const doc = [
         "$$$ varTemplate --start 「title: 」",
         'key: "var"',
@@ -833,6 +833,7 @@ describe("变量块固定 @content 内容块", () => {
           "  - @src/a.ts",
           'key: "var"',
           "$$$ varTemplate --end",
+          "",
         ].join("\n"),
       )
     })
@@ -856,6 +857,7 @@ describe("变量块固定 @content 内容块", () => {
           "    - @src/b.ts",
           '  key: "var"',
           "  $$$ varTemplate --end",
+          "",
         ].join("\n"),
       )
     })
@@ -876,11 +878,12 @@ describe("变量块固定 @content 内容块", () => {
           "  - @src/a.ts",
           'key: "var"',
           "$$$ varTemplate --end",
+          "",
         ].join("\n"),
       )
     })
 
-    it("条目已存在时返回 duplicate 并只删除命令行", () => {
+    it("条目已存在时返回 duplicate 并只清空命令行", () => {
       const doc = [
         "$$$ varTemplate --start",
         "@content:",
@@ -891,13 +894,13 @@ describe("变量块固定 @content 内容块", () => {
       const result = buildMarkdownVarContentAppend(createDoc(doc), 5, "@src/a.ts")
       expect(result.status).toBe("duplicate")
       expect(applyChanges(doc, resolveChanges(result))).toBe(
-        ["$$$ varTemplate --start", "@content:", "  - @src/a.ts", "$$$ varTemplate --end"].join(
+        ["$$$ varTemplate --start", "@content:", "  - @src/a.ts", "$$$ varTemplate --end", ""].join(
           "\n",
         ),
       )
     })
 
-    it("命令行位于变量块内部时先移除命令行再追加条目", () => {
+    it("命令行位于变量块内部时清空命令行再追加条目", () => {
       const doc = [
         "$$$ varTemplate --start",
         "@content:",
@@ -913,6 +916,7 @@ describe("变量块固定 @content 内容块", () => {
           "@content:",
           "  - @src/a.ts",
           "  - @src/b.ts",
+          "",
           'key: "var"',
           "$$$ varTemplate --end",
         ].join("\n"),
@@ -940,6 +944,7 @@ describe("变量块固定 @content 内容块", () => {
           "  @content:",
           '  """',
           "$$$ varTemplate --end",
+          "",
         ].join("\n"),
       )
     })

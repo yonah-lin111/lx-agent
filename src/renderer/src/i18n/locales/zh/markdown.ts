@@ -95,7 +95,7 @@ export const markdown = {
   addContentAdded: "已添加 {{path}} 到 @ 内容块",
   addContentDuplicate: "{{path}} 已存在于 @ 内容块",
   addContentMissingBlock: "请先使用 /varTemplate 定义变量块",
-  addContentInvalidEntry: "@ 内容块仅接受 @ 文件或 @ 引用参数",
+  addContentInvalidEntry: "无法添加，仅支持以 @ 开头的文件或引用内容",
   addContentInvalidLine: "无法在变量块标记行追加内容",
   colonSingleLine: "单行",
   colonMultiLine: "多行",

@@ -173,7 +173,9 @@ describe("Markdown 命令面板鼠标点选交互", () => {
     render(
       <FileMentionCommandMenu
         activeIndex={0}
-        files={mentionFiles}
+        files={[
+          { ...mentionFiles[0], templateKind: "referFile", templateSource: "varContentBlock" },
+        ]}
         position={position}
         variables={[
           { name: "repo", value: "lx-agent" },
@@ -186,16 +188,17 @@ describe("Markdown 命令面板鼠标点选交互", () => {
     )
 
     const options = screen.getAllByRole("option")
-    expect(options).toHaveLength(4)
+    expect(options).toHaveLength(3)
     expect(options[0].getAttribute("data-index")).toBe("0")
-    expect(options[2].getAttribute("data-index")).toBe("2")
-    expect(options[2].textContent).toContain("repo")
-    expect(options[2].textContent).toContain("var")
-    expect(options[3].textContent).toContain("temp.status")
-    expect(options[3].textContent).toContain("temp")
-    expect(options[3].textContent).toContain("var")
+    expect(options[1].getAttribute("data-index")).toBe("1")
+    expect(options[0].textContent).toContain("@content")
+    expect(options[1].textContent).toContain("repo")
+    expect(options[1].textContent?.match(/var/g)).toHaveLength(1)
+    expect(options[2].textContent).toContain("temp.status")
+    expect(options[2].textContent).toContain("temp")
+    expect(options[2].textContent?.match(/var/g)).toHaveLength(1)
 
-    fireEvent.mouseDown(options[2])
+    fireEvent.mouseDown(options[1])
     expect(onSelectVariable).toHaveBeenCalledTimes(1)
     expect(onSelectVariable).toHaveBeenCalledWith({ name: "repo", value: "lx-agent" })
   })

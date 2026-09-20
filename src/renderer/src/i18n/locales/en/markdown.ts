@@ -95,7 +95,7 @@ export const markdown = {
   addContentAdded: "Added {{path}} to the @content block",
   addContentDuplicate: "{{path}} already exists in the @content block",
   addContentMissingBlock: "Define a variable block with /varTemplate first",
-  addContentInvalidEntry: "The @content block only accepts @file or @reference arguments",
+  addContentInvalidEntry: "Cannot add: only @file or @reference arguments are accepted",
   addContentInvalidLine: "Cannot append content on a variable block marker line",
   colonSingleLine: "Single line",
   colonMultiLine: "Multi-line",

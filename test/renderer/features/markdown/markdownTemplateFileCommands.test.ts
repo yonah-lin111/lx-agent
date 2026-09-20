@@ -66,10 +66,38 @@ describe("模板块文件快捷输入命令", () => {
     ].join("\n")
 
     expect(getMarkdownTemplateFileCandidates(content)).toEqual([
-      { path: "/abs/a.ts", isDirectory: false, kind: "referFile" },
-      { path: "/abs/src/components", isDirectory: true, kind: "referFolder" },
-      { path: "/abs/proj", isDirectory: true, kind: "referFolder" },
-      { path: "src/LxMarkdownEditor.tsx", isDirectory: false, kind: "currentMention" },
+      { path: "/abs/a.ts", isDirectory: false, kind: "referFile", source: "templateBlock" },
+      {
+        path: "/abs/src/components",
+        isDirectory: true,
+        kind: "referFolder",
+        source: "templateBlock",
+      },
+      { path: "/abs/proj", isDirectory: true, kind: "referFolder", source: "templateBlock" },
+      {
+        path: "src/LxMarkdownEditor.tsx",
+        isDirectory: false,
+        kind: "currentMention",
+        source: "templateBlock",
+      },
+    ])
+
+    // 指定来源位置时候选携带对应 source，供面板区分 @content 来源。
+    expect(getMarkdownTemplateFileCandidates(content, [], "varContentBlock")).toEqual([
+      { path: "/abs/a.ts", isDirectory: false, kind: "referFile", source: "varContentBlock" },
+      {
+        path: "/abs/src/components",
+        isDirectory: true,
+        kind: "referFolder",
+        source: "varContentBlock",
+      },
+      { path: "/abs/proj", isDirectory: true, kind: "referFolder", source: "varContentBlock" },
+      {
+        path: "src/LxMarkdownEditor.tsx",
+        isDirectory: false,
+        kind: "currentMention",
+        source: "varContentBlock",
+      },
     ])
   })
 
@@ -77,23 +105,38 @@ describe("模板块文件快捷输入命令", () => {
     const content = ["- 当前: @src/a.ts", "- 引用: @/abs/shared/b.ts"].join("\n")
 
     expect(getMarkdownTemplateFileCandidates(content, ["/abs/shared"])).toEqual([
-      { path: "src/a.ts", isDirectory: false, kind: "currentMention" },
-      { path: "/abs/shared/b.ts", isDirectory: false, kind: "referenceMention" },
+      { path: "src/a.ts", isDirectory: false, kind: "currentMention", source: "templateBlock" },
+      {
+        path: "/abs/shared/b.ts",
+        isDirectory: false,
+        kind: "referenceMention",
+        source: "templateBlock",
+      },
     ])
   })
 
   it("候选按名称/路径过滤并排序", () => {
     const candidates: MarkdownTemplateFileCandidate[] = [
-      { path: "src/LxMarkdownEditor.tsx", isDirectory: false, kind: "currentMention" },
-      { path: "src/components", isDirectory: true, kind: "referFolder" },
-      { path: "/abs/other.ts", isDirectory: false, kind: "referFile" },
+      {
+        path: "src/LxMarkdownEditor.tsx",
+        isDirectory: false,
+        kind: "currentMention",
+        source: "templateBlock",
+      },
+      { path: "src/components", isDirectory: true, kind: "referFolder", source: "templateBlock" },
+      { path: "/abs/other.ts", isDirectory: false, kind: "referFile", source: "templateBlock" },
     ]
 
     expect(filterMarkdownTemplateFileCandidates(candidates, "lxmded")).toEqual([
-      { path: "src/LxMarkdownEditor.tsx", isDirectory: false, kind: "currentMention" },
+      {
+        path: "src/LxMarkdownEditor.tsx",
+        isDirectory: false,
+        kind: "currentMention",
+        source: "templateBlock",
+      },
     ])
     expect(filterMarkdownTemplateFileCandidates(candidates, "comp")).toEqual([
-      { path: "src/components", isDirectory: true, kind: "referFolder" },
+      { path: "src/components", isDirectory: true, kind: "referFolder", source: "templateBlock" },
     ])
     expect(filterMarkdownTemplateFileCandidates(candidates, "nope")).toEqual([])
     expect(filterMarkdownTemplateFileCandidates(candidates, "")).toHaveLength(3)

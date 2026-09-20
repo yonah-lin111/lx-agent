@@ -106,6 +106,15 @@ export const FileMentionCommandMenu = ({
                         >
                           {file.isDirectory ? `${name}/` : name}
                         </div>
+                        {file.templateSource === "varContentBlock" && (
+                          <LxTag
+                            bgClass="border-amber-400/20 bg-amber-400/10 text-amber-300"
+                            className="pointer-events-none shrink-0"
+                            size="small"
+                          >
+                            @content
+                          </LxTag>
+                        )}
                         {file.source === "reference" && (
                           <LxTag
                             bgClass="border-violet-400/20 bg-violet-400/10 text-violet-300"
@@ -147,6 +156,8 @@ export const FileMentionCommandMenu = ({
             const index = displayData.files.length + variableIndex
             const isActive = index === displayData.activeIndex
             const preview = variable.value.replaceAll("\n", " ").trim()
+            // 命名空间 tag 仅在存在点号分组时展示，避免与固定 var tag 重复。
+            const namespaceTag = getVariableTag(variable.name)
 
             return (
               <LxCommandPanelItem
@@ -168,13 +179,15 @@ export const FileMentionCommandMenu = ({
                       {preview || t("markdown.variableNoPreview")}
                     </span>
                   </span>
-                  <LxTag
-                    bgClass="border-sky-400/20 bg-sky-400/10 text-sky-300"
-                    className="pointer-events-none shrink-0"
-                    size="small"
-                  >
-                    {getVariableTag(variable.name)}
-                  </LxTag>
+                  {namespaceTag !== "var" && (
+                    <LxTag
+                      bgClass="border-sky-400/20 bg-sky-400/10 text-sky-300"
+                      className="pointer-events-none shrink-0"
+                      size="small"
+                    >
+                      {namespaceTag}
+                    </LxTag>
+                  )}
                   <LxTag
                     bgClass="bg-white/10 text-white/60"
                     className="pointer-events-none shrink-0"

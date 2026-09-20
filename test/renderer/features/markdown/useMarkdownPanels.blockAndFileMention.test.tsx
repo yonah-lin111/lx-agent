@@ -259,6 +259,10 @@ describe("useMarkdownPanels 字母快捷输入面板行为", () => {
       "src/features/foo-extra.ts",
       "src/features/foo.ts",
     ])
+    expect(result.current.templateFilePanel?.files.map((file) => file.templateSource)).toEqual([
+      "templateBlock",
+      "varContentBlock",
+    ])
     expect(result.current.templateFilePanel?.variables.map((item) => item.name)).toEqual([
       "fooName",
     ])
@@ -367,7 +371,7 @@ describe("useMarkdownPanels /addContent 命令插入", () => {
     cleanup()
   })
 
-  it("面板选中 /addContent 后插入 [@path] 占位并默认选中 @path", () => {
+  it("面板选中 /addContent 后插入 [content] 占位并默认选中 content", () => {
     const doc = "/addContent"
     const editorView = createEditorView(doc, doc.length)
     const editorRef = { current: editorView }
@@ -384,13 +388,13 @@ describe("useMarkdownPanels /addContent 命令插入", () => {
     act(() => {
       result.current.selectSlashCommand(command!)
     })
-    expect(editorView.state.doc.toString()).toBe("/addContent [@path]")
+    expect(editorView.state.doc.toString()).toBe("/addContent [content]")
     expect(
       editorView.state.doc.sliceString(
         editorView.state.selection.main.from,
         editorView.state.selection.main.to,
       ),
-    ).toBe("@path")
+    ).toBe("content")
   })
 
   it("变量块内 /addContent 同样出现在面板中", () => {

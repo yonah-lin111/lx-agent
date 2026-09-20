@@ -32,11 +32,15 @@ export type MarkdownTemplateFileKind =
   | "referFile" // @[refer-file] 引用文件
   | "referFolder" // @[refer-folder] / @[refer-project] 引用文件夹
 
+// 字母快捷输入的文件候选来源位置：模板块正文 / 变量模板块 @content 固定内容块。
+export type MarkdownTemplateFileSource = "templateBlock" | "varContentBlock"
+
 // 字母快捷输入的文件候选：来自当前模板块或 @content 固定内容块中已出现的引用。
 export interface MarkdownTemplateFileCandidate {
   path: string
   isDirectory: boolean
   kind: MarkdownTemplateFileKind
+  source: MarkdownTemplateFileSource
 }
 
 /**
@@ -61,13 +65,14 @@ export const isMarkdownTemplateImagePath = (path: string): boolean =>
   MARKDOWN_TEMPLATE_IMAGE_EXTENSION_PATTERN.test(path)
 
 /**
- * 收集模板块正文中已出现的文件引用候选：@ 文件提及、@[refer-file] 引用文件、
- * @[refer-folder]/@[refer-project] 引用文件夹；按路径与来源去重并排除图片。
+ * 收集给定文本（模板块正文或 @content 固定内容块）中已出现的文件引用候选：@ 文件提及、
+ * @[refer-file] 引用文件、@[refer-folder]/@[refer-project] 引用文件夹；按路径与来源去重并排除图片。
  * @ 提及的归属按引用根判断：绝对路径且位于任一引用根下视为引用文件夹的 @ 提及。
  */
 export const getMarkdownTemplateFileCandidates = (
   content: string,
   referencedRoots: readonly string[] = [],
+  source: MarkdownTemplateFileSource = "templateBlock",
 ): MarkdownTemplateFileCandidate[] => {
   const candidates: MarkdownTemplateFileCandidate[] = []
   const seen = new Set<string>()
@@ -79,7 +84,7 @@ export const getMarkdownTemplateFileCandidates = (
     const key = `${kind}:${path}`
     if (seen.has(key)) return
     seen.add(key)
-    candidates.push({ path, isDirectory: kind === "referFolder", kind })
+    candidates.push({ path, isDirectory: kind === "referFolder", kind, source })
   }
 
   for (const match of content.matchAll(MARKDOWN_TEMPLATE_FILE_REFERENCE_RE)) {

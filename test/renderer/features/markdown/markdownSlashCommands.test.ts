@@ -207,18 +207,18 @@ describe("Markdown 斜杠命令", () => {
     )
   })
 
-  it("/addContent 为参数型全 page 命令，插入文本默认选中 [@path]", () => {
+  it("/addContent 为参数型全 page 命令，插入文本默认选中 [content]", () => {
     const commands = getMarkdownSlashCommands("/addContent", false, true, [], "zh")
     expect(commands).toHaveLength(1)
     const command = commands[0]
     expect(command.kind).toBe("argument")
     expect(command.scope).toBe("all")
-    expect(command.argumentHint).toBe("[@path]")
-    expect(command.content).toBe("/addContent [@path]")
+    expect(command.argumentHint).toBe("[content]")
+    expect(command.content).toBe("/addContent [content]")
 
     const range = getTemplatePlaceholderSelectionRange(command.content)
     expect(range).not.toBeNull()
-    expect(command.content.slice(range!.start, range!.end)).toBe("@path")
+    expect(command.content.slice(range!.start, range!.end)).toBe("content")
   })
 })
 

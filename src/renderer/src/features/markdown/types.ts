@@ -1,6 +1,9 @@
 import type { ProjectFileEntry } from "@shared/project"
 import type React from "react"
-import type { MarkdownTemplateFileKind } from "@/features/markdown/commands/markdownTemplateFileCommands"
+import type {
+  MarkdownTemplateFileKind,
+  MarkdownTemplateFileSource,
+} from "@/features/markdown/commands/markdownTemplateFileCommands"
 import type { MarkdownVariableEntry } from "@/features/markdown/commands/markdownVariableCommands"
 
 export type { MarkdownVariableEntry }
@@ -49,6 +52,8 @@ export type MarkdownFileMentionEntry = ProjectFileEntry & {
   worktreeName?: string
   // 模板块文件快捷输入的候选来源类型（@ 提及面板不使用）。
   templateKind?: MarkdownTemplateFileKind
+  // 字母快捷输入候选的来源位置（@ 提及面板不使用）：模板块正文 / 变量块 @content。
+  templateSource?: MarkdownTemplateFileSource
 }
 
 // Markdown 页面数据。

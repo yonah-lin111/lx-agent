@@ -259,10 +259,11 @@ export const useMarkdownFileMentionPanel = ({
     const seenCandidates = new Set<string>()
     const candidates: MarkdownTemplateFileCandidate[] = []
     for (const candidate of [
-      ...getMarkdownTemplateFileCandidates(blockContent ?? "", referencedRoots),
+      ...getMarkdownTemplateFileCandidates(blockContent ?? "", referencedRoots, "templateBlock"),
       ...getMarkdownTemplateFileCandidates(
         getMarkdownVarContentItems(docText).join("\n"),
         referencedRoots,
+        "varContentBlock",
       ),
     ]) {
       const key = `${candidate.kind}:${candidate.path}`
@@ -289,6 +290,7 @@ export const useMarkdownFileMentionPanel = ({
       mentionPath: candidate.path,
       source: "current" as const,
       templateKind: candidate.kind,
+      templateSource: candidate.source,
     }))
     const panel: MarkdownLetterPanelState = {
       files,
