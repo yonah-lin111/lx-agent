@@ -9,8 +9,6 @@ import {
 import { MarkdownSendPromptCommandMenu } from "@/features/markdown/components/MarkdownSendPromptCommandMenu"
 import { MarkdownSendPromptFlagCommandMenu } from "@/features/markdown/components/MarkdownSendPromptFlagCommandMenu"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
-import { MarkdownVariableCommandMenu } from "@/features/markdown/components/MarkdownVariableCommandMenu"
-import { TemplatePresetCommandMenu } from "@/features/markdown/components/TemplatePresetCommandMenu"
 import type { useMarkdownPanels } from "@/features/markdown/hooks/useMarkdownPanels"
 import type { UseMarkdownPasteReferenceResult } from "@/features/markdown/hooks/useMarkdownPasteReference"
 
@@ -67,13 +65,6 @@ export const MarkdownCommandPanels = ({
         visible={Boolean(panels.gitWorktreePanel)}
         onSelect={panels.selectGitWorktree}
       />
-      <TemplatePresetCommandMenu
-        activeIndex={panels.activeTemplatePresetIndex}
-        options={panels.templatePresetPanel?.options}
-        position={panels.templatePresetPanel?.position}
-        visible={Boolean(panels.templatePresetPanel)}
-        onSelect={panels.selectTemplatePreset}
-      />
       <MarkdownSendPromptCommandMenu
         activeIndex={panels.activeSendPromptIndex}
         options={panels.sendPromptPanel?.options}
@@ -98,19 +89,13 @@ export const MarkdownCommandPanels = ({
       <FileMentionCommandMenu
         activeIndex={panels.activeTemplateFileIndex}
         files={panels.templateFilePanel?.files}
-        idPrefix="markdown-template-file"
-        label="模板块文件快捷输入"
+        idPrefix="markdown-letter"
+        label={t("markdown.letterMenuAria")}
         position={panels.templateFilePanel?.position}
+        variables={panels.templateFilePanel?.variables}
         visible={Boolean(panels.templateFilePanel)}
         onSelect={panels.selectTemplateFile}
-      />
-      <MarkdownVariableCommandMenu
-        activeIndex={panels.activeVariableIndex}
-        position={panels.variablePanel?.position}
-        triggerChar={panels.variablePanel?.triggerChar}
-        variables={panels.variablePanel?.variables}
-        visible={Boolean(panels.variablePanel)}
-        onSelect={panels.selectVariable}
+        onSelectVariable={panels.selectTemplateVariable}
       />
       <MarkdownColonCommandMenu
         activeIndex={panels.activeColonOptionIndex}

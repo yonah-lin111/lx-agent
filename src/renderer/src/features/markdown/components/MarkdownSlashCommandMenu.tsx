@@ -45,6 +45,8 @@ const getCommandTags = (command: MarkdownSlashCommand): { label: string; bgClass
       tags.push({ label: "Template", bgClass: "bg-purple-500/20 text-purple-300" })
     } else if (command.scope === "varTemplate") {
       tags.push({ label: "Var", bgClass: "bg-sky-500/20 text-sky-300" })
+    } else if (command.scope === "all") {
+      tags.push({ label: "MD / Template / Var", bgClass: "bg-cyan-500/20 text-cyan-300" })
     }
     tags.push({ label: "Builtin", bgClass: "bg-white/10 text-white/50" })
   }

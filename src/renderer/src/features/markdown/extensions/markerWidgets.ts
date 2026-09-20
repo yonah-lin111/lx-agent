@@ -52,7 +52,6 @@ export class CodeBlockActionWidget extends WidgetType {
     readonly isVarTemplate = false,
     readonly onMergeTemplate: (() => void) | null = null,
     readonly onMoveToTopTemplate: (() => void) | null = null,
-    readonly isPreset = false,
   ) {
     super()
   }
@@ -71,7 +70,6 @@ export class CodeBlockActionWidget extends WidgetType {
       this.isSupple === other.isSupple &&
       this.isLog === other.isLog &&
       this.isVarTemplate === other.isVarTemplate &&
-      this.isPreset === other.isPreset &&
       this.onMoveToTopTemplate === other.onMoveToTopTemplate
     )
   }
@@ -95,25 +93,7 @@ export class CodeBlockActionWidget extends WidgetType {
     const isTemplate = Boolean(this.templateStatus)
     const actionNodes: ReactNode[] = []
 
-    if (this.isPreset) {
-      if (this.onDeleteTemplate) {
-        actionNodes.push(
-          createElement(MarkdownActionDeleteButton, {
-            onDelete: this.onDeleteTemplate,
-            isPreset: true,
-          }),
-        )
-      }
-      if (this.showFoldBtn) {
-        actionNodes.push(
-          createElement(MarkdownActionFoldButton, {
-            isFolded: this.isFolded,
-            isPreset: true,
-            onToggle: this.onToggleFold,
-          }),
-        )
-      }
-    } else if (this.isVarTemplate) {
+    if (this.isVarTemplate) {
       if (this.onMergeTemplate) {
         actionNodes.push(
           createElement(MarkdownActionMergeButton, {

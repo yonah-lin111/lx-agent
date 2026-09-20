@@ -12,8 +12,8 @@ import type {
   MarkdownSendPromptOption,
   MarkdownSlashCommand,
   MarkdownSlashCommandLine,
-  TemplatePresetOption,
 } from "@/features/markdown/commands/markdownSlashCommands"
+import type { MarkdownVariableEntry } from "@/features/markdown/commands/markdownVariableCommands"
 import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
 
 /**
@@ -54,6 +54,16 @@ export interface FileMentionPanelState {
 }
 
 /**
+ * 字母快捷输入面板状态：文件/引用候选 + 页面变量候选合并展示。
+ */
+export interface MarkdownLetterPanelState {
+  files: MarkdownFileMentionEntry[]
+  variables: MarkdownVariableEntry[]
+  position: CSSProperties
+  start: number
+}
+
+/**
  * Markdown 斜杠命令面板状态。
  */
 export interface MarkdownSlashCommandPanelState {
@@ -67,15 +77,6 @@ export interface MarkdownSlashCommandPanelState {
  */
 export interface GitWorktreePanelState {
   options: GitWorktreeOption[]
-  line: MarkdownSlashCommandLine
-  position: CSSProperties
-}
-
-/**
- * 模板预设选择面板状态。
- */
-export interface TemplatePresetPanelState {
-  options: TemplatePresetOption[]
   line: MarkdownSlashCommandLine
   position: CSSProperties
 }

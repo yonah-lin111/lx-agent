@@ -167,4 +167,36 @@ describe("Markdown 命令面板鼠标点选交互", () => {
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith(mentionFiles[1])
   })
+
+  it("字母快捷输入面板：变量候选排在文件之后，点选触发 onSelectVariable 并展示 var tag", () => {
+    const onSelectVariable = vi.fn()
+    render(
+      <FileMentionCommandMenu
+        activeIndex={0}
+        files={mentionFiles}
+        position={position}
+        variables={[
+          { name: "repo", value: "lx-agent" },
+          { name: "temp.status", value: "active" },
+        ]}
+        visible={true}
+        onSelect={() => undefined}
+        onSelectVariable={onSelectVariable}
+      />,
+    )
+
+    const options = screen.getAllByRole("option")
+    expect(options).toHaveLength(4)
+    expect(options[0].getAttribute("data-index")).toBe("0")
+    expect(options[2].getAttribute("data-index")).toBe("2")
+    expect(options[2].textContent).toContain("repo")
+    expect(options[2].textContent).toContain("var")
+    expect(options[3].textContent).toContain("temp.status")
+    expect(options[3].textContent).toContain("temp")
+    expect(options[3].textContent).toContain("var")
+
+    fireEvent.mouseDown(options[2])
+    expect(onSelectVariable).toHaveBeenCalledTimes(1)
+    expect(onSelectVariable).toHaveBeenCalledWith({ name: "repo", value: "lx-agent" })
+  })
 })

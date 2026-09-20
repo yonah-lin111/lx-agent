@@ -318,13 +318,11 @@ export const LxMarkdownEditor = ({
           if (update.docChanged) {
             panelsRef.current.syncFileMentionPanel(update.view)
             panelsRef.current.syncTemplateFilePanel(update.view)
-            panelsRef.current.syncVariablePanel(update.view)
             panelsRef.current.syncColonPanel(update.view)
           }
           if (update.selectionSet && !update.docChanged) {
             panelsRef.current.closeFileMentionPanel()
             panelsRef.current.closeTemplateFilePanel()
-            panelsRef.current.closeVariablePanel()
             panelsRef.current.closeColonPanel()
           }
           if (update.docChanged) {

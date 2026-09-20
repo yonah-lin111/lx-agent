@@ -4,7 +4,7 @@ import {
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/features/markdown/extensions/markdownFileMentions"
 
-// 模板块文件快捷输入片段：必须为非 @ 开头、仅含常见路径字符，且前一个字符是边界。
+// 字母快捷输入片段：必须为非 @ 开头、仅含常见路径字符，且前一个字符是边界。
 // 排除 -- 前缀（如 --start / --end），避免输入 flag 时误触发快捷输入。
 const MARKDOWN_TEMPLATE_FILE_TRIGGER_RE =
   /(^|[^A-Za-z0-9_@.\/\\-])(?!--)([A-Za-z0-9_][A-Za-z0-9_.\/\\-]*)$/
@@ -12,27 +12,27 @@ const MARKDOWN_TEMPLATE_FILE_TRIGGER_RE =
 // 最小片段长度，避免单字符弹出噪音。
 const MARKDOWN_TEMPLATE_FILE_MIN_QUERY_LENGTH = 2
 
-// 图片扩展名：模板块文件快捷输入排除图片。
+// 图片扩展名：字母快捷输入的引用候选排除图片。
 const MARKDOWN_TEMPLATE_IMAGE_EXTENSION_PATTERN = /\.(avif|gif|jpe?g|png|svg|webp)$/i
 
 // 模板块内文件/文件夹引用：@[refer-file/folder/project](path)。
 const MARKDOWN_TEMPLATE_FILE_REFERENCE_RE =
   /@\[(refer-(?:file|folder|project))\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/g
 
-// 模板块文件快捷输入的片段范围。
+// 字母快捷输入的片段范围。
 export interface MarkdownTemplateFileTrigger {
   fragment: string
   start: number
 }
 
-// 模板块文件快捷输入候选的来源类型：@ 提及（当前项目 / 引用文件夹）、引用文件、引用文件夹。
+// 字母快捷输入的文件候选来源类型：@ 提及（当前项目 / 引用文件夹）、引用文件、引用文件夹。
 export type MarkdownTemplateFileKind =
   | "currentMention" // 当前项目的 @ 提及
   | "referenceMention" // 引用文件夹下的 @ 提及
   | "referFile" // @[refer-file] 引用文件
   | "referFolder" // @[refer-folder] / @[refer-project] 引用文件夹
 
-// 模板块文件快捷输入的候选：来自当前模板块内已出现的引用。
+// 字母快捷输入的文件候选：来自当前模板块或 @content 固定内容块中已出现的引用。
 export interface MarkdownTemplateFileCandidate {
   path: string
   isDirectory: boolean
@@ -40,7 +40,7 @@ export interface MarkdownTemplateFileCandidate {
 }
 
 /**
- * 解析光标前文本末尾的裸片段，作为模板块文件快捷输入触发；@ 前缀不触发。
+ * 解析光标前文本末尾的裸字母片段，作为字母快捷输入触发；@ 前缀不触发。
  */
 export const getMarkdownTemplateFileTrigger = (
   prefix: string,

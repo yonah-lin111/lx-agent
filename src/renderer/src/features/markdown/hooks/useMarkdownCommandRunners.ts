@@ -20,6 +20,7 @@ import {
   stripMarkdownSlashCommands,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
+  buildMarkdownVarContentAppend,
   isInsideMarkdownVariableBlock,
   stripMarkdownFrontmatter,
 } from "@/features/markdown/commands/markdownVariableCommands"
@@ -36,6 +37,8 @@ import type { TranslationKey } from "@/i18n"
 const TEMPLATE_TITLE_LOADING_TEXT = "⏳ 正在生成标题…"
 // /summaryTitle 裸命令文本（trim 匹配用）。
 const SUMMARY_COMMAND_TEXT = "/summaryTitle"
+// /addContent 命令标签。
+const ADD_CONTENT_COMMAND_LABEL = "/addContent"
 
 // 在文档中定位包含加载占位的行（即被写入「title: ⏳ 正在生成标题…」的开始行）；占位已消失时返回 null。
 const findTitleLoadingLine = (view: EditorView): Line | null => {
@@ -60,6 +63,7 @@ export interface UseMarkdownCommandRunnersResult {
   runTemplateTitleGeneration: (view: EditorView) => void
   runGitWorktreeSwitch: (view: EditorView) => void
   runSendPromptDispatch: (view: EditorView) => void
+  runAddContentAppend: (view: EditorView) => void
 }
 
 /**
@@ -322,9 +326,54 @@ export const useMarkdownCommandRunners = ({
     [error, projectPath, success, t, worktreePath],
   )
 
+  /**
+   * 执行 /addContent 命令：把 [@path] 参数追加到首个变量模板块的 @content 内容块。
+   */
+  const runAddContentAppend = useCallback(
+    (view: EditorView): void => {
+      const cursor = view.state.selection.main.head
+      const line = view.state.doc.lineAt(cursor)
+      const argument = line.text
+        .trim()
+        .slice(ADD_CONTENT_COMMAND_LABEL.length)
+        .trim()
+        .replace(/^\[/, "")
+        .replace(/\]$/, "")
+        .trim()
+
+      if (!argument.startsWith("@")) {
+        warning(t("markdown.addContentInvalidEntry"))
+        return
+      }
+
+      const result = buildMarkdownVarContentAppend(view.state.doc, line.number, argument)
+      if (result.status === "missingBlock") {
+        warning(t("markdown.addContentMissingBlock"))
+        return
+      }
+      if (result.status === "invalidTarget") {
+        warning(t("markdown.addContentInvalidLine"))
+        return
+      }
+
+      view.dispatch({
+        changes: result.changes,
+        selection: { anchor: line.from },
+      })
+      view.focus()
+      if (result.status === "duplicate") {
+        warning(t("markdown.addContentDuplicate", { path: argument }))
+      } else {
+        success(t("markdown.addContentAdded", { path: argument }))
+      }
+    },
+    [success, t, warning],
+  )
+
   return {
     runTemplateTitleGeneration,
     runGitWorktreeSwitch,
     runSendPromptDispatch,
+    runAddContentAppend,
   }
 }

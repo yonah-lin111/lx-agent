@@ -231,33 +231,27 @@ export const MarkdownActionDeleteButton = ({
   isSupple = false,
   isLog = false,
   isVarTemplate = false,
-  isPreset = false,
 }: {
   onDelete: () => void
   isSupple?: boolean
   isLog?: boolean
   isVarTemplate?: boolean
-  isPreset?: boolean
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const confirmText = isPreset
-    ? t("markdown.confirmDeletePreset")
-    : isVarTemplate
-      ? t("markdown.confirmDeleteVarTemplate")
-      : isLog
-        ? t("markdown.confirmDeleteLog")
-        : isSupple
-          ? t("markdown.confirmDeleteSupple")
-          : t("markdown.confirmDeleteTemplate")
-  const labelText = isPreset
-    ? t("markdown.deletePreset")
-    : isVarTemplate
-      ? t("markdown.deleteVarTemplate")
-      : isLog
-        ? t("markdown.deleteLog")
-        : isSupple
-          ? t("markdown.deleteSupple")
-          : t("markdown.deleteTemplate")
+  const confirmText = isVarTemplate
+    ? t("markdown.confirmDeleteVarTemplate")
+    : isLog
+      ? t("markdown.confirmDeleteLog")
+      : isSupple
+        ? t("markdown.confirmDeleteSupple")
+        : t("markdown.confirmDeleteTemplate")
+  const labelText = isVarTemplate
+    ? t("markdown.deleteVarTemplate")
+    : isLog
+      ? t("markdown.deleteLog")
+      : isSupple
+        ? t("markdown.deleteSupple")
+        : t("markdown.deleteTemplate")
 
   return (
     <LxTooltip content={confirmText} placement="bottom" onConfirm={onDelete}>
@@ -285,7 +279,6 @@ export const MarkdownActionFoldButton = ({
   isSupple = false,
   isLog = false,
   isVarTemplate = false,
-  isPreset = false,
   onToggle,
 }: {
   isFolded: boolean
@@ -295,32 +288,27 @@ export const MarkdownActionFoldButton = ({
   isSupple?: boolean
   isLog?: boolean
   isVarTemplate?: boolean
-  isPreset?: boolean
   onToggle: () => void
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const defaultFold = isPreset
-    ? t("markdown.foldPreset")
-    : isVarTemplate
-      ? t("markdown.foldVarTemplate")
-      : isLog
-        ? t("markdown.foldLog")
-        : isSupple
-          ? t("markdown.foldSupple")
-          : isTemplate
-            ? t("markdown.foldTemplate")
-            : t("markdown.foldCode")
-  const defaultUnfold = isPreset
-    ? t("markdown.unfoldPreset")
-    : isVarTemplate
-      ? t("markdown.unfoldVarTemplate")
-      : isLog
-        ? t("markdown.unfoldLog")
-        : isSupple
-          ? t("markdown.unfoldSupple")
-          : isTemplate
-            ? t("markdown.unfoldTemplate")
-            : t("markdown.unfoldCode")
+  const defaultFold = isVarTemplate
+    ? t("markdown.foldVarTemplate")
+    : isLog
+      ? t("markdown.foldLog")
+      : isSupple
+        ? t("markdown.foldSupple")
+        : isTemplate
+          ? t("markdown.foldTemplate")
+          : t("markdown.foldCode")
+  const defaultUnfold = isVarTemplate
+    ? t("markdown.unfoldVarTemplate")
+    : isLog
+      ? t("markdown.unfoldLog")
+      : isSupple
+        ? t("markdown.unfoldSupple")
+        : isTemplate
+          ? t("markdown.unfoldTemplate")
+          : t("markdown.unfoldCode")
   const foldText = label ?? defaultFold
   const unfoldText = unfoldLabel ?? defaultUnfold
 

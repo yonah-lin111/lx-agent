@@ -1,23 +1,20 @@
 // @vitest-environment jsdom
-import { EditorState } from "@codemirror/state"
+import { EditorState, Text } from "@codemirror/state"
 import { EditorView } from "@codemirror/view"
 import { act, renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
+import { getMarkdownSlashCommands } from "@/features/markdown/commands/markdownSlashCommands"
 import {
-  getMarkdownSlashCommands,
-  MARKDOWN_TEMPLATE_PRESET_OPTIONS,
-} from "@/features/markdown/commands/markdownSlashCommands"
-import {
-  applyMarkdownTemplatePreset,
+  buildMarkdownVarContentAppend,
   cleanVarBlockItems,
   filterMarkdownVariables,
+  findFirstMarkdownVarBlock,
   getMarkdownColonTrigger,
-  getMarkdownVariableTrigger,
+  getMarkdownVarContentItems,
   getVariableTag,
   handleMarkdownVarBlockTab,
-  isInsideMarkdownFrontmatter,
-  isInsideMarkdownVariableBlock,
-  isInsideMarkdownVarMultilineString,
+  isMarkdownVarContentItemLine,
+  isMarkdownVarContentKeyLine,
   MARKDOWN_VAR_TEMPLATE_END_RE,
   MARKDOWN_VAR_TEMPLATE_START_RE,
   mergeMarkdownVarBlock,
@@ -170,77 +167,6 @@ $$$ varTemplate --end
     })
   })
 
-  describe("getMarkdownVariableTrigger", () => {
-    it("支持 $ 符号在行首或空白后触发", () => {
-      expect(getMarkdownVariableTrigger("$")).toMatchObject({
-        fragment: "",
-        start: 0,
-        triggerChar: "$",
-      })
-      expect(getMarkdownVariableTrigger("hello $co")).toMatchObject({
-        fragment: "co",
-        start: 6,
-        triggerChar: "$",
-      })
-      expect(getMarkdownVariableTrigger("\n$api_core")).toMatchObject({
-        fragment: "api_core",
-        start: 1,
-        triggerChar: "$",
-      })
-    })
-
-    it("支持 ¥ 符号在行首或空白后触发（中英文 Shift+4 兼容）", () => {
-      expect(getMarkdownVariableTrigger("¥")).toMatchObject({
-        fragment: "",
-        start: 0,
-        triggerChar: "¥",
-      })
-      expect(getMarkdownVariableTrigger("测试 ¥rule")).toMatchObject({
-        fragment: "rule",
-        start: 3,
-        triggerChar: "¥",
-      })
-    })
-
-    it("单词内部无边界时不误触发", () => {
-      expect(getMarkdownVariableTrigger("foo$bar")).toBeNull()
-      expect(getMarkdownVariableTrigger("100$")).toBeNull()
-    })
-
-    it("标点符号后允许正常触发", () => {
-      expect(getMarkdownVariableTrigger("提示：$core")).toMatchObject({
-        fragment: "core",
-        triggerChar: "$",
-      })
-      expect(getMarkdownVariableTrigger("输入 $temp.status")).toMatchObject({
-        fragment: "temp.status",
-        start: 3,
-        triggerChar: "$",
-      })
-      expect(getMarkdownVariableTrigger("输入 ¥temp.")).toMatchObject({
-        fragment: "temp.",
-        start: 3,
-        triggerChar: "¥",
-      })
-      expect(getMarkdownVariableTrigger("($auth")).toMatchObject({
-        fragment: "auth",
-        triggerChar: "$",
-      })
-    })
-
-    it("处于代码围栏内时不触发", () => {
-      const text = "```bash\necho $HOME"
-      expect(getMarkdownVariableTrigger(text)).toBeNull()
-    })
-
-    it("处于文档顶部的 frontmatter 内时不触发", () => {
-      const doc = "---\nvars:\n  a: $test\n---\n"
-      const prefix = "---\nvars:\n  a: $test"
-      expect(isInsideMarkdownFrontmatter(doc, prefix.length)).toBe(true)
-      expect(getMarkdownVariableTrigger(prefix, doc)).toBeNull()
-    })
-  })
-
   describe("filterMarkdownVariables", () => {
     const vars = [
       { name: "core", value: "@src/core/index.ts" },
@@ -330,6 +256,28 @@ $$$ varTemplate --end`
       expect(cleaned).not.toContain("multiline_var:")
       expect(cleaned).toContain("multiline_valid:")
       expect(cleaned).toContain("自定义内容")
+    })
+
+    it("固定 @content 块与 +++ 子块原样保留", () => {
+      const block = `$$$ varTemplate --start 「title: 变量」
+@content:
+  - @src/foo.ts
+  - @[refer-folder](src/bar)
+unfilled: ""
++++ logTemplate --start
+- Records:
+  - var
++++ logTemplate --end
+$$$ varTemplate --end`
+
+      const cleaned = cleanVarBlockItems(block)
+      expect(cleaned).toContain("@content:")
+      expect(cleaned).toContain("  - @src/foo.ts")
+      expect(cleaned).toContain("  - @[refer-folder](src/bar)")
+      expect(cleaned).not.toContain('unfilled: ""')
+      expect(cleaned).toContain("+++ logTemplate --start")
+      expect(cleaned).toContain("  - var")
+      expect(cleaned).toContain("+++ logTemplate --end")
     })
   })
 
@@ -730,12 +678,17 @@ $$$ varTemplate --end`
   })
 
   describe("斜杠命令 /varTemplate 默认 key: 'var' 并默认选中 key", () => {
-    it("默认生成的模板 title 为空，内容为 key: 'var'，并且 selectionRange 默认高亮选中 key", () => {
+    it("默认生成的模板包含固定 @content 块，并高亮选中 key", () => {
       const commands = getMarkdownSlashCommands("/varTemplate", false, true, [], "zh")
       expect(commands).toHaveLength(1)
       const cmd = commands[0]
       expect(cmd.content).toBe(
-        ["$$$ varTemplate --start 「title: 」", 'key: "var"', "$$$ varTemplate --end"].join("\n"),
+        [
+          "$$$ varTemplate --start 「title: 」",
+          "@content:",
+          'key: "var"',
+          "$$$ varTemplate --end",
+        ].join("\n"),
       )
       expect(cmd.selectionRange).toBeDefined()
       expect(cmd.content.slice(cmd.selectionRange!.start, cmd.selectionRange!.end)).toBe("key")
@@ -761,463 +714,6 @@ $$$ varTemplate --end`
       expect(handleMarkdownVarBlockTab(view, -1)).toBe(false)
     })
   })
-
-  describe("$$$ 变量模板块内支持 ¥ 和 $ 触发变量提示", () => {
-    it("在 $$$ 内部能够正常通过 ¥ 和 $ 唤起变量面板", () => {
-      const doc = [
-        "$$$ varTemplate --start 「title: 」",
-        'key: "var"',
-        "ref: ¥core",
-        "$$$ varTemplate --end",
-      ].join("\n")
-
-      const prefix = ["$$$ varTemplate --start 「title: 」", 'key: "var"', "ref: ¥core"].join("\n")
-
-      const trigger = getMarkdownVariableTrigger(prefix, doc)
-      expect(trigger).not.toBeNull()
-      expect(trigger).toMatchObject({
-        fragment: "core",
-        triggerChar: "¥",
-      })
-
-      const dollarPrefix = ["$$$ varTemplate --start 「title: 」", 'key: "var"', "ref: $val"].join(
-        "\n",
-      )
-      const dollarTrigger = getMarkdownVariableTrigger(dollarPrefix, doc)
-      expect(dollarTrigger).not.toBeNull()
-      expect(dollarTrigger).toMatchObject({
-        fragment: "val",
-        triggerChar: "$",
-      })
-    })
-
-    it("在 $$$ 分隔符行自身不触发变量面板", () => {
-      const startLine = "$$$"
-      expect(getMarkdownVariableTrigger(startLine)).toBeNull()
-
-      const endLine = "$$$ varTemplate --end"
-      expect(getMarkdownVariableTrigger(endLine)).toBeNull()
-    })
-  })
-
-  describe("applyMarkdownTemplatePreset 模板预设复用", () => {
-    it("正确将 $$$ 中定义的 preset 批量应用到 addTemplate 模板块中", () => {
-      const doc = [
-        "$$$ varTemplate --start 「title: 预设」",
-        "preset:",
-        "  add:",
-        '    reference: "src/renderer/Markdown.tsx"',
-        '    location: "src/renderer/features/markdown"',
-        '    description: "Support preset customization"',
-        "    requirements:",
-        '      """',
-        "      - Requirement 1",
-        "      - Requirement 2",
-        '      """',
-        "    notes:",
-        '      """',
-        "      - Note A",
-        '      """',
-        "$$$ varTemplate --end",
-        "",
-        "&&& addTemplate --start 「title: 」",
-        "# Add Requirement",
-        "",
-        "/applyPreset",
-        "- Reference: ",
-        "- Location: ",
-        "- Description: ",
-        "- Requirements: ",
-        "  - ",
-        "- Notes: ",
-        "  - ",
-        "&&& addTemplate --end",
-      ].join("\n")
-
-      const cursor = doc.indexOf("/applyPreset")
-      const result = applyMarkdownTemplatePreset(doc, cursor)
-      expect(result).not.toBeNull()
-      expect(result!.insert).toContain("- Reference: src/renderer/Markdown.tsx")
-      expect(result!.insert).toContain("- Location: src/renderer/features/markdown")
-      expect(result!.insert).toContain("- Description: Support preset customization")
-      expect(result!.insert).toContain("- Requirements: \n  - Requirement 1\n  - Requirement 2")
-      expect(result!.insert).toContain("- Notes: \n  - Note A")
-      expect(result!.insert).not.toContain("/applyPreset")
-      expect(result!.insert).not.toContain("  - var")
-    })
-
-    it("正确支持 bugTemplate 填充，包含 expectations 与 Notes", () => {
-      const doc = [
-        "$$$ varTemplate --start 「title: 」",
-        "preset:",
-        "  bug:",
-        '    reference: "src/bug.ts"',
-        '    location: "src/renderer"',
-        '    description: "Bug in parser"',
-        "    reproduction:",
-        '      """',
-        "      - Step 1",
-        "      - Step 2",
-        '      """',
-        "    requirements:",
-        '      """',
-        "      - Fix bug",
-        '      """',
-        '    expectations: "No crash"',
-        "    notes:",
-        '      """',
-        "      - Note bug",
-        '      """',
-        "$$$ varTemplate --end",
-        "",
-        "&&& bugTemplate --start 「title: 」",
-        "# Fix Bug",
-        "",
-        "- Reference: ",
-        "- Location: ",
-        "- Description: ",
-        "- Reproduction: ",
-        "  - ",
-        "- Requirements: ",
-        "  - ",
-        "- Expectations: ",
-        "- Notes: ",
-        "  - ",
-        "&&& bugTemplate --end",
-      ].join("\n")
-
-      const cursor = doc.indexOf("&&& bugTemplate") + 10
-      const result = applyMarkdownTemplatePreset(doc, cursor)
-      expect(result).not.toBeNull()
-      expect(result!.insert).toContain("- Reference: src/bug.ts")
-      expect(result!.insert).toContain("- Reproduction: \n  - Step 1\n  - Step 2")
-      expect(result!.insert).toContain("- Requirements: \n  - Fix bug")
-      expect(result!.insert).toContain("- Expectations: No crash")
-      expect(result!.insert).toContain("- Notes: \n  - Note bug")
-    })
-
-    it("当特定模板未定义某字段时，能自动回退到 preset.common 或根 preset", () => {
-      const doc = [
-        "$$$ varTemplate --start 「title: 」",
-        "preset:",
-        "  common:",
-        '    reference: "src/common.ts"',
-        "    requirements:",
-        '      """',
-        "      - Common req",
-        '      """',
-        "  add:",
-        '    description: "Specific add"',
-        "$$$ varTemplate --end",
-        "",
-        "&&& addTemplate --start 「title: 」",
-        "# Add Requirement",
-        "",
-        "- Reference: ",
-        "- Location: ",
-        "- Description: ",
-        "- Requirements: ",
-        "  - ",
-        "- Notes: ",
-        "  - ",
-        "&&& addTemplate --end",
-      ].join("\n")
-
-      const cursor = doc.indexOf("&&& addTemplate") + 10
-      const result = applyMarkdownTemplatePreset(doc, cursor)
-      expect(result).not.toBeNull()
-      expect(result!.insert).toContain("- Reference: src/common.ts")
-      expect(result!.insert).toContain("- Description: Specific add")
-      expect(result!.insert).toContain("- Requirements: \n  - Common req")
-      // 未配置的 Location 和 Notes 保持原本的结构
-      expect(result!.insert).toContain("- Location: ")
-      expect(result!.insert).toContain("- Notes: \n  - ")
-    })
-
-    it("光标不在 &&& 模板块内时 applyMarkdownTemplatePreset 返回 null", () => {
-      const doc = "# 普通正文\n一些文字\n"
-      expect(applyMarkdownTemplatePreset(doc, 5)).toBeNull()
-    })
-
-    it("使用 MARKDOWN_TEMPLATE_PRESET_OPTIONS 中的空白预设时，空/默认脚手架不覆盖已有的目标模板字段", () => {
-      const addPresetContent = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "add")!.content
-
-      const docWithBlankPreset = [
-        "$$$ varTemplate --start 「title: 」",
-        addPresetContent,
-        "$$$ varTemplate --end",
-        "",
-        "&&& addTemplate --start 「title: Existing」",
-        "# Add Requirement",
-        "",
-        "- Reference: @existing/spec.md",
-        "- Location: @src/existing",
-        "- Description: Existing description",
-        "- Requirements: ",
-        "  - Existing task",
-        "- Notes: ",
-        "  - Existing note",
-        "&&& addTemplate --end",
-      ].join("\n")
-
-      const addCursor = docWithBlankPreset.indexOf("&&& addTemplate") + 10
-      const addResult = applyMarkdownTemplatePreset(docWithBlankPreset, addCursor)
-      // 因为预设全部为 "" 和默认占位，现有 &&& 字段不应被覆盖
-      expect(addResult).not.toBeNull()
-      expect(addResult!.insert).toContain("- Reference: @existing/spec.md")
-      expect(addResult!.insert).toContain("- Location: @src/existing")
-      expect(addResult!.insert).toContain("- Description: Existing description")
-      expect(addResult!.insert).toContain("- Requirements: \n  - Existing task")
-      expect(addResult!.insert).toContain("- Notes: \n  - Existing note")
-    })
-
-    it("预设中包含具体自定义值时，能够正常赋给 &&& 模板块", () => {
-      const filledAddPreset = [
-        "+++ presetTemplate --start 「title: Add Requirement」",
-        "preset:",
-        "  add:",
-        '    reference: "@docs/features/specs.md"',
-        '    location: "@src/renderer/src/features"',
-        '    description: "Feature development specification"',
-        "    requirements:",
-        '      """',
-        "      - [ ] Data structure definition",
-        '      """',
-        "    notes:",
-        '      """',
-        "      - Use LxTag and standard UI components",
-        '      """',
-        "+++ presetTemplate --end",
-      ].join("\n")
-
-      const docWithFilled = [
-        "$$$ varTemplate --start 「title: 」",
-        filledAddPreset,
-        "$$$ varTemplate --end",
-        "",
-        "&&& addTemplate --start 「title: 」",
-        "# Add Requirement",
-        "",
-        "- Reference: ",
-        "- Location: ",
-        "- Description: ",
-        "- Requirements: ",
-        "  - ",
-        "- Notes: ",
-        "  - ",
-        "&&& addTemplate --end",
-      ].join("\n")
-
-      const addCursor = docWithFilled.indexOf("&&& addTemplate") + 10
-      const addResult = applyMarkdownTemplatePreset(docWithFilled, addCursor)
-      expect(addResult).not.toBeNull()
-      expect(addResult!.insert).toContain("- Reference: @docs/features/specs.md")
-      expect(addResult!.insert).toContain("- Location: @src/renderer/src/features")
-      expect(addResult!.insert).toContain("- Description: Feature development specification")
-      expect(addResult!.insert).toContain("- Requirements: \n  - [ ] Data structure definition")
-      expect(addResult!.insert).toContain("- Notes: \n  - Use LxTag and standard UI components")
-    })
-
-    it("isInsideMarkdownVarMultilineString 正确判断光标是否在 $$$ 块内的三引号中", () => {
-      const doc = [
-        "$$$ varTemplate --start 「title: 」",
-        "multiline:",
-        '  """',
-        "  line 1",
-        "  line 2",
-        '  """',
-        'single: "value"',
-        "$$$ varTemplate --end",
-        "",
-        'outside: """ not in var template """',
-      ].join("\n")
-
-      const line1Pos = doc.indexOf("line 1")
-      expect(isInsideMarkdownVarMultilineString(doc, line1Pos)).toBe(true)
-
-      const singlePos = doc.indexOf('"value"')
-      expect(isInsideMarkdownVarMultilineString(doc, singlePos)).toBe(false)
-
-      const outsidePos = doc.indexOf("outside") + 15
-      expect(isInsideMarkdownVarMultilineString(doc, outsidePos)).toBe(false)
-    })
-
-    it("isInsideMarkdownVariableBlock 仅在 [开始行行首, 结束行行尾] 闭区间内返回 true", () => {
-      const startLine = "$$$ varTemplate --start 「title: 变量」"
-      const endLine = "$$$ varTemplate --end"
-      const doc = ["前置正文 /", "", startLine, 'key: "value"', endLine, "", "后置正文 /"].join(
-        "\n",
-      )
-
-      const startLineStart = doc.indexOf(startLine)
-      const startLineEnd = startLineStart + startLine.length
-      const endLineStart = doc.indexOf(endLine)
-      const endLineEnd = endLineStart + endLine.length
-
-      // 块上方：不得判定为块内
-      expect(isInsideMarkdownVariableBlock(doc, 0)).toBe(false)
-      expect(isInsideMarkdownVariableBlock(doc, doc.indexOf("前置正文"))).toBe(false)
-      expect(isInsideMarkdownVariableBlock(doc, startLineStart - 1)).toBe(false)
-
-      // 边界行与块内
-      expect(isInsideMarkdownVariableBlock(doc, startLineStart)).toBe(true)
-      expect(isInsideMarkdownVariableBlock(doc, startLineEnd)).toBe(true)
-      expect(isInsideMarkdownVariableBlock(doc, doc.indexOf('key: "value"'))).toBe(true)
-      expect(isInsideMarkdownVariableBlock(doc, endLineStart)).toBe(true)
-      expect(isInsideMarkdownVariableBlock(doc, endLineEnd)).toBe(true)
-
-      // 块下方：不得判定为块内
-      expect(isInsideMarkdownVariableBlock(doc, endLineEnd + 1)).toBe(false)
-      expect(isInsideMarkdownVariableBlock(doc, doc.indexOf("后置正文"))).toBe(false)
-      expect(isInsideMarkdownVariableBlock(doc, doc.length)).toBe(false)
-    })
-
-    it("isInsideMarkdownVariableBlock 支持裸 $$$ 开始/结束行且多块之间为块外", () => {
-      const bareDoc = ["上方 /", "$$$", '  key: "value"', "$$$", "下方 /"].join("\n")
-      const firstMarker = bareDoc.indexOf("$$$")
-      const secondMarker = bareDoc.indexOf("$$$", firstMarker + 3)
-      expect(isInsideMarkdownVariableBlock(bareDoc, bareDoc.indexOf("上方"))).toBe(false)
-      expect(isInsideMarkdownVariableBlock(bareDoc, firstMarker)).toBe(true)
-      expect(isInsideMarkdownVariableBlock(bareDoc, bareDoc.indexOf("key"))).toBe(true)
-      expect(isInsideMarkdownVariableBlock(bareDoc, secondMarker)).toBe(true)
-      expect(isInsideMarkdownVariableBlock(bareDoc, bareDoc.indexOf("下方"))).toBe(false)
-
-      const multiDoc = [
-        "$$$ varTemplate --start",
-        'a: "1"',
-        "$$$ varTemplate --end",
-        "中间正文 /",
-        "$$$ varTemplate --start",
-        'b: "2"',
-        "$$$ varTemplate --end",
-      ].join("\n")
-      expect(isInsideMarkdownVariableBlock(multiDoc, multiDoc.indexOf("中间正文"))).toBe(false)
-      expect(isInsideMarkdownVariableBlock(multiDoc, multiDoc.indexOf('a: "1"'))).toBe(true)
-      expect(isInsideMarkdownVariableBlock(multiDoc, multiDoc.indexOf('b: "2"'))).toBe(true)
-    })
-
-    it("isInsideMarkdownVariableBlock 未闭合块从开始行起视为块内，CRLF 行尾同样正确", () => {
-      const unclosed = ["前置 /", "$$$ varTemplate --start", 'key: "value"'].join("\n")
-      expect(isInsideMarkdownVariableBlock(unclosed, 0)).toBe(false)
-      expect(isInsideMarkdownVariableBlock(unclosed, unclosed.indexOf("$$$"))).toBe(true)
-      expect(isInsideMarkdownVariableBlock(unclosed, unclosed.length)).toBe(true)
-
-      const crlf = [
-        "前置 /",
-        "$$$ varTemplate --start",
-        'key: "value"',
-        "$$$ varTemplate --end",
-        "后置 /",
-      ].join("\r\n")
-      expect(isInsideMarkdownVariableBlock(crlf, 0)).toBe(false)
-      expect(isInsideMarkdownVariableBlock(crlf, crlf.indexOf('key: "value"'))).toBe(true)
-      expect(isInsideMarkdownVariableBlock(crlf, crlf.indexOf("后置"))).toBe(false)
-    })
-
-    it("从斜杠菜单选中或输入 / 时，光标处的命令行（如 /、/ap、/apply）被清空为纯换行，保留换行符（参考 /sendPrompt）", () => {
-      const docWithSlash = [
-        "$$$ varTemplate --start 「title: 」",
-        "preset:",
-        "  add:",
-        '    reference: "@docs/specs.md"',
-        "$$$ varTemplate --end",
-        "",
-        "&&& addTemplate --start 「title: 」",
-        "# Add Requirement",
-        "",
-        "/",
-        "- Reference: ",
-        "- Location: ",
-        "&&& addTemplate --end",
-      ].join("\n")
-
-      const slashCursor = docWithSlash.indexOf("\n/\n") + 1
-      const slashResult = applyMarkdownTemplatePreset(docWithSlash, slashCursor)
-      expect(slashResult).not.toBeNull()
-      expect(slashResult!.insert).not.toContain("\n/\n")
-      expect(slashResult!.insert).toContain("- Reference: @docs/specs.md")
-      expect(slashResult!.insert).toBe(
-        [
-          "&&& addTemplate --start 「title: 」",
-          "# Add Requirement",
-          "",
-          "",
-          "- Reference: @docs/specs.md",
-          "- Location: ",
-          "&&& addTemplate --end",
-        ].join("\n"),
-      )
-
-      const docWithAp = [
-        "&&& addTemplate --start 「title: 」",
-        "# Add Requirement",
-        "- Reference: ",
-        "/ap",
-        "&&& addTemplate --end",
-      ].join("\n")
-
-      const apCursor = docWithAp.indexOf("/ap")
-      const apResult = applyMarkdownTemplatePreset(docWithAp, apCursor)
-      expect(apResult).not.toBeNull()
-      expect(apResult!.insert).not.toContain("/ap")
-      expect(apResult!.insert).toBe(
-        [
-          "&&& addTemplate --start 「title: 」",
-          "# Add Requirement",
-          "- Reference: ",
-          "",
-          "&&& addTemplate --end",
-        ].join("\n"),
-      )
-
-      const docWithApply = [
-        "&&& addTemplate --start 「title: 」",
-        "# Add Requirement",
-        "- Reference: ",
-        "/apply",
-        "&&& addTemplate --end",
-      ].join("\n")
-
-      const applyCursor = docWithApply.indexOf("/apply")
-      const applyResult = applyMarkdownTemplatePreset(docWithApply, applyCursor)
-      expect(applyResult).not.toBeNull()
-      expect(applyResult!.insert).not.toContain("/apply")
-      expect(applyResult!.insert).toBe(
-        [
-          "&&& addTemplate --start 「title: 」",
-          "# Add Requirement",
-          "- Reference: ",
-          "",
-          "&&& addTemplate --end",
-        ].join("\n"),
-      )
-    })
-
-    it("即使预设为空或未定义匹配项，应用预设时输入的命令行依然会被清空并保留换行", () => {
-      const docWithoutPreset = [
-        "&&& addTemplate --start 「title: 」",
-        "# Add Requirement",
-        "- Reference: ",
-        "/applyPreset",
-        "&&& addTemplate --end",
-      ].join("\n")
-
-      const cursor = docWithoutPreset.indexOf("/applyPreset")
-      const result = applyMarkdownTemplatePreset(docWithoutPreset, cursor)
-      expect(result).not.toBeNull()
-      expect(result!.insert).not.toContain("/applyPreset")
-      expect(result!.insert).toContain("- Reference: ")
-      expect(result!.insert).toBe(
-        [
-          "&&& addTemplate --start 「title: 」",
-          "# Add Requirement",
-          "- Reference: ",
-          "",
-          "&&& addTemplate --end",
-        ].join("\n"),
-      )
-    })
-  })
 })
 
 describe("变量模板块正则边界", () => {
@@ -1237,5 +733,215 @@ describe("变量模板块正则边界", () => {
     expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("   $$$ --end")).toBe(true)
     expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ varTemplate --start")).toBe(false)
     expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ --end trailing")).toBe(false)
+  })
+})
+
+describe("变量块固定 @content 内容块", () => {
+  const createDoc = (text: string): Text => Text.of(text.split("\n"))
+
+  const applyChanges = (
+    doc: string,
+    changes: { from: number; to: number; insert: string }[],
+  ): string => {
+    const state = EditorState.create({ doc })
+    return state.update({ changes }).state.doc.toString()
+  }
+
+  const resolveChanges = (
+    result: ReturnType<typeof buildMarkdownVarContentAppend>,
+  ): { from: number; to: number; insert: string }[] => {
+    if (result.status !== "appended" && result.status !== "duplicate") {
+      throw new Error(`unexpected append status: ${result.status}`)
+    }
+    return result.changes
+  }
+
+  describe("findFirstMarkdownVarBlock", () => {
+    it("返回首个 $$$ 块范围，未闭合或无块时返回 null", () => {
+      expect(
+        findFirstMarkdownVarBlock(
+          createDoc(["正文", "$$$ varTemplate --start", "k: 1", "$$$ --end"].join("\n")),
+        ),
+      ).toEqual({ startLine: 2, endLine: 4 })
+      expect(findFirstMarkdownVarBlock(createDoc("$$$ varTemplate --start\nk: 1"))).toBeNull()
+      expect(findFirstMarkdownVarBlock(createDoc("正文"))).toBeNull()
+    })
+  })
+
+  describe("getMarkdownVarContentItems", () => {
+    it("收集全部变量块 @content 的条目文本", () => {
+      const doc = [
+        "$$$ varTemplate --start",
+        "@content:",
+        "  - @src/a.ts",
+        "  - @[refer-folder](src/components)",
+        'key: "x"',
+        "$$$ --end",
+        "",
+        "$$$ varTemplate --start",
+        "@content:",
+        "  - @src/b.ts",
+        "$$$ --end",
+      ].join("\n")
+
+      expect(getMarkdownVarContentItems(doc)).toEqual([
+        "@src/a.ts",
+        "@[refer-folder](src/components)",
+        "@src/b.ts",
+      ])
+    })
+  })
+
+  describe("@content 行判定", () => {
+    it("区分保留键行与条目行", () => {
+      expect(isMarkdownVarContentKeyLine("@content:")).toBe(true)
+      expect(isMarkdownVarContentKeyLine("  @content :")).toBe(true)
+      expect(isMarkdownVarContentKeyLine("@content: x")).toBe(false)
+      expect(isMarkdownVarContentItemLine("  - @src/a.ts")).toBe(true)
+      expect(isMarkdownVarContentItemLine("  * @src/a.ts")).toBe(true)
+      expect(isMarkdownVarContentItemLine("  -")).toBe(false)
+      expect(isMarkdownVarContentItemLine("@src/a.ts")).toBe(false)
+    })
+  })
+
+  describe("buildMarkdownVarContentAppend", () => {
+    it("无变量块时返回 missingBlock", () => {
+      const doc = createDoc("# 正文\n/addContent [@src/a.ts]")
+      expect(buildMarkdownVarContentAppend(doc, 2, "@src/a.ts")).toEqual({
+        status: "missingBlock",
+      })
+    })
+
+    it("空参数返回 invalidTarget", () => {
+      const doc = createDoc("$$$ varTemplate --start\n$$$ --end\n/addContent")
+      expect(buildMarkdownVarContentAppend(doc, 3, "   ")).toEqual({ status: "invalidTarget" })
+    })
+
+    it("块内无 @content 时补建保留键并删除命令行", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 」",
+        'key: "var"',
+        "$$$ varTemplate --end",
+        "/addContent [@src/a.ts]",
+      ].join("\n")
+      const result = buildMarkdownVarContentAppend(createDoc(doc), 4, "@src/a.ts")
+      expect(result.status).toBe("appended")
+      expect(applyChanges(doc, resolveChanges(result))).toBe(
+        [
+          "$$$ varTemplate --start 「title: 」",
+          "@content:",
+          "  - @src/a.ts",
+          'key: "var"',
+          "$$$ varTemplate --end",
+        ].join("\n"),
+      )
+    })
+
+    it("追加到已有 @content 列表末尾，并保留块缩进", () => {
+      const doc = [
+        "  $$$ varTemplate --start",
+        "  @content:",
+        "    - @src/a.ts",
+        '  key: "var"',
+        "  $$$ varTemplate --end",
+        "/addContent [@src/b.ts]",
+      ].join("\n")
+      const result = buildMarkdownVarContentAppend(createDoc(doc), 6, "@src/b.ts")
+      expect(result.status).toBe("appended")
+      expect(applyChanges(doc, resolveChanges(result))).toBe(
+        [
+          "  $$$ varTemplate --start",
+          "  @content:",
+          "    - @src/a.ts",
+          "    - @src/b.ts",
+          '  key: "var"',
+          "  $$$ varTemplate --end",
+        ].join("\n"),
+      )
+    })
+
+    it("空 @content 块直接追加首条条目", () => {
+      const doc = [
+        "$$$ varTemplate --start",
+        "@content:",
+        'key: "var"',
+        "$$$ varTemplate --end",
+        "/addContent [@src/a.ts]",
+      ].join("\n")
+      const result = buildMarkdownVarContentAppend(createDoc(doc), 5, "@src/a.ts")
+      expect(applyChanges(doc, resolveChanges(result))).toBe(
+        [
+          "$$$ varTemplate --start",
+          "@content:",
+          "  - @src/a.ts",
+          'key: "var"',
+          "$$$ varTemplate --end",
+        ].join("\n"),
+      )
+    })
+
+    it("条目已存在时返回 duplicate 并只删除命令行", () => {
+      const doc = [
+        "$$$ varTemplate --start",
+        "@content:",
+        "  - @src/a.ts",
+        "$$$ varTemplate --end",
+        "/addContent [@src/a.ts]",
+      ].join("\n")
+      const result = buildMarkdownVarContentAppend(createDoc(doc), 5, "@src/a.ts")
+      expect(result.status).toBe("duplicate")
+      expect(applyChanges(doc, resolveChanges(result))).toBe(
+        ["$$$ varTemplate --start", "@content:", "  - @src/a.ts", "$$$ varTemplate --end"].join(
+          "\n",
+        ),
+      )
+    })
+
+    it("命令行位于变量块内部时先移除命令行再追加条目", () => {
+      const doc = [
+        "$$$ varTemplate --start",
+        "@content:",
+        "  - @src/a.ts",
+        "/addContent [@src/b.ts]",
+        'key: "var"',
+        "$$$ varTemplate --end",
+      ].join("\n")
+      const result = buildMarkdownVarContentAppend(createDoc(doc), 4, "@src/b.ts")
+      expect(applyChanges(doc, resolveChanges(result))).toBe(
+        [
+          "$$$ varTemplate --start",
+          "@content:",
+          "  - @src/a.ts",
+          "  - @src/b.ts",
+          'key: "var"',
+          "$$$ varTemplate --end",
+        ].join("\n"),
+      )
+    })
+
+    it("三引号多行字符串内的 @content 行不视为保留键", () => {
+      const doc = [
+        "$$$ varTemplate --start",
+        "note:",
+        '  """',
+        "  @content:",
+        '  """',
+        "$$$ varTemplate --end",
+        "/addContent [@src/a.ts]",
+      ].join("\n")
+      const result = buildMarkdownVarContentAppend(createDoc(doc), 7, "@src/a.ts")
+      expect(applyChanges(doc, resolveChanges(result))).toBe(
+        [
+          "$$$ varTemplate --start",
+          "@content:",
+          "  - @src/a.ts",
+          "note:",
+          '  """',
+          "  @content:",
+          '  """',
+          "$$$ varTemplate --end",
+        ].join("\n"),
+      )
+    })
   })
 })

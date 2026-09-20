@@ -14,7 +14,6 @@ import {
   type MarkdownSlashCommand,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
-  applyMarkdownTemplatePreset,
   handleMarkdownVarBlockTab,
   isInsideMarkdownVariableBlock,
   isInsideMarkdownVarMultilineString,
@@ -137,6 +136,25 @@ export const createMarkdownEditorKeymaps = ({
     t,
   })
 
+  // 选中字母快捷输入面板当前项：文件候选在前、变量候选在后。
+  const selectActiveTemplateEntry = (): boolean => {
+    const panel = panels.templateFilePanelRef.current
+    if (!panel) return false
+
+    const index = panels.activeTemplateFileIndexRef.current
+    const file = panel.files[index]
+    if (file) {
+      panels.selectTemplateFile(file)
+      return true
+    }
+    const variable = panel.variables[index - panel.files.length]
+    if (variable) {
+      panels.selectTemplateVariable(variable)
+      return true
+    }
+    return false
+  }
+
   return [
     markdownTemplateProtectionFilter,
     markdownVarTemplateColonFilter,
@@ -156,12 +174,7 @@ export const createMarkdownEditorKeymaps = ({
               )
               return true
             }
-            const variablePanel = panels.variablePanelRef.current
-            if (variablePanel) {
-              panels.selectVariable(
-                variablePanel.variables[panels.activeVariableIndexRef.current] ??
-                  variablePanel.variables[0],
-              )
+            if (selectActiveTemplateEntry()) {
               return true
             }
             if (indentMore(view)) return true
@@ -209,10 +222,8 @@ export const createMarkdownEditorKeymaps = ({
           run: () =>
             paste.handlePasteReferenceKey(1) ||
             panels.handleColonKey("ArrowDown") ||
-            panels.handleVariableKey(1) ||
             panels.handleFileMentionKey("ArrowDown") ||
             panels.handleGitWorktreeKey(1) ||
-            panels.handleTemplatePresetKey(1) ||
             panels.handleSendPromptKey(1) ||
             panels.handleSendPromptFlagKey(1) ||
             panels.handleSlashCommandKey(1) ||
@@ -224,10 +235,8 @@ export const createMarkdownEditorKeymaps = ({
           run: () =>
             paste.handlePasteReferenceKey(-1) ||
             panels.handleColonKey("ArrowUp") ||
-            panels.handleVariableKey(-1) ||
             panels.handleFileMentionKey("ArrowUp") ||
             panels.handleGitWorktreeKey(-1) ||
-            panels.handleTemplatePresetKey(-1) ||
             panels.handleSendPromptKey(-1) ||
             panels.handleSendPromptFlagKey(-1) ||
             panels.handleSlashCommandKey(-1) ||
@@ -257,15 +266,6 @@ export const createMarkdownEditorKeymaps = ({
               panels.selectGitWorktree(
                 gitWorktree.options[panels.activeGitWorktreeIndexRef.current] ??
                   gitWorktree.options[0],
-              )
-              return true
-            }
-
-            const templatePreset = panels.templatePresetPanelRef.current
-            if (templatePreset) {
-              panels.selectTemplatePreset(
-                templatePreset.options[panels.activeTemplatePresetIndexRef.current] ??
-                  templatePreset.options[0],
               )
               return true
             }
@@ -307,21 +307,7 @@ export const createMarkdownEditorKeymaps = ({
               return true
             }
 
-            const templateFilePanel = panels.templateFilePanelRef.current
-            if (templateFilePanel) {
-              panels.selectTemplateFile(
-                templateFilePanel.files[panels.activeTemplateFileIndexRef.current] ??
-                  templateFilePanel.files[0],
-              )
-              return true
-            }
-
-            const variablePanel = panels.variablePanelRef.current
-            if (variablePanel) {
-              panels.selectVariable(
-                variablePanel.variables[panels.activeVariableIndexRef.current] ??
-                  variablePanel.variables[0],
-              )
+            if (selectActiveTemplateEntry()) {
               return true
             }
 
@@ -340,31 +326,6 @@ export const createMarkdownEditorKeymaps = ({
             )
             const isInsideAnyBlock = isInsideSupple || isInsideTemplate
 
-            if (/^\s*\/applyPreset\b/i.test(line.text) && isInsideTemplate) {
-              const docText = view.state.doc.toString()
-              const applied = applyMarkdownTemplatePreset(docText, line.from)
-              if (applied) {
-                view.dispatch({
-                  changes: { from: applied.from, to: applied.to, insert: applied.insert },
-                  selection: { anchor: applied.cursor ?? line.from },
-                })
-              } else {
-                view.dispatch({
-                  changes: { from: line.from, to: line.to, insert: "" },
-                  selection: { anchor: line.from },
-                })
-              }
-              return true
-            }
-
-            if (
-              line.text.trim() === "/templatePreset" &&
-              isInsideMarkdownVariableBlock(view.state.doc.toString(), cursor)
-            ) {
-              panels.openTemplatePresetPanel(view)
-              return true
-            }
-
             const armedCommand = getMarkdownArmedSlashCommand(
               line.text,
               isInsideAnyBlock,
@@ -374,6 +335,8 @@ export const createMarkdownEditorKeymaps = ({
             if (armedCommand) {
               if (armedCommand.id === "sendPrompt") {
                 actions.runSendPromptDispatch(view)
+              } else if (armedCommand.id === "addContent") {
+                actions.runAddContentAppend(view)
               } else if (armedCommand.kind === "select") {
                 actions.runGitWorktreeSwitch(view)
               } else {
@@ -503,10 +466,6 @@ export const createMarkdownEditorKeymaps = ({
               panels.closeGitWorktreePanel()
               return true
             }
-            if (panels.templatePresetPanelRef.current) {
-              panels.closeTemplatePresetPanel()
-              return true
-            }
             if (panels.sendPromptPanelRef.current) {
               panels.closeSendPromptPanel()
               return true
@@ -522,10 +481,6 @@ export const createMarkdownEditorKeymaps = ({
             }
             if (panels.templateFilePanelRef.current) {
               panels.closeTemplateFilePanel()
-              return true
-            }
-            if (panels.variablePanelRef.current) {
-              panels.closeVariablePanel()
               return true
             }
             if (panels.colonPanelRef.current?.active) {

@@ -36,6 +36,7 @@ export interface UseMarkdownEditorActionsResult {
   runTemplateTitleGeneration: (view: EditorView) => void
   runGitWorktreeSwitch: (view: EditorView) => void
   runSendPromptDispatch: (view: EditorView) => void
+  runAddContentAppend: (view: EditorView) => void
   scrollToBottom: () => void
   scrollToLine: (line: number) => void
 }
@@ -57,19 +58,23 @@ export const useMarkdownEditorActions = ({
   error,
   t,
 }: UseMarkdownEditorActionsOptions): UseMarkdownEditorActionsResult => {
-  const { runTemplateTitleGeneration, runGitWorktreeSwitch, runSendPromptDispatch } =
-    useMarkdownCommandRunners({
-      editorViewRef,
-      projectPath,
-      worktreePath,
-      onWorktreePathChange,
-      worktrees,
-      projectBranch,
-      success,
-      warning,
-      error,
-      t,
-    })
+  const {
+    runTemplateTitleGeneration,
+    runGitWorktreeSwitch,
+    runSendPromptDispatch,
+    runAddContentAppend,
+  } = useMarkdownCommandRunners({
+    editorViewRef,
+    projectPath,
+    worktreePath,
+    onWorktreePathChange,
+    worktrees,
+    projectBranch,
+    success,
+    warning,
+    error,
+    t,
+  })
 
   const insertText = useCallback(
     (text: string, selectionOffset = text.length): void => {
@@ -249,6 +254,7 @@ export const useMarkdownEditorActions = ({
     runTemplateTitleGeneration,
     runGitWorktreeSwitch,
     runSendPromptDispatch,
+    runAddContentAppend,
     scrollToBottom,
     scrollToLine,
   }

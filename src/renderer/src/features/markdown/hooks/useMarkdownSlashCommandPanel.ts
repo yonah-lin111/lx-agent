@@ -13,7 +13,6 @@ import {
   isMarkdownConfirmCommandArmed,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
-  applyMarkdownTemplatePreset,
   isInsideMarkdownVariableBlock,
   isInsideMarkdownVarMultilineString,
 } from "@/features/markdown/commands/markdownVariableCommands"
@@ -23,7 +22,6 @@ import type {
   MarkdownSendPromptFlagPanelState,
   MarkdownSendPromptPanelState,
   MarkdownSlashCommandPanelState,
-  TemplatePresetPanelState,
 } from "@/features/markdown/hooks/useMarkdownPanels.types"
 import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
 
@@ -34,15 +32,12 @@ export const useMarkdownSlashCommandPanel = ({
   editorViewRef,
   context,
   gitWorktreePanelRef,
-  templatePresetPanelRef,
   sendPromptPanelRef,
   sendPromptFlagPanelRef,
   closeGitWorktreePanel,
-  closeTemplatePresetPanel,
   closeSendPromptPanel,
   closeSendPromptFlagPanel,
   openGitWorktreePanel,
-  openTemplatePresetPanel,
   openSendPromptPanel,
   openSendPromptFlagPanel,
 }: {
@@ -53,15 +48,12 @@ export const useMarkdownSlashCommandPanel = ({
   >
   // 二级面板引用：命令行内容变化时收起已打开的面板。
   gitWorktreePanelRef: RefObject<GitWorktreePanelState | null>
-  templatePresetPanelRef: RefObject<TemplatePresetPanelState | null>
   sendPromptPanelRef: RefObject<MarkdownSendPromptPanelState | null>
   sendPromptFlagPanelRef: RefObject<MarkdownSendPromptFlagPanelState | null>
   closeGitWorktreePanel: () => void
-  closeTemplatePresetPanel: () => void
   closeSendPromptPanel: () => void
   closeSendPromptFlagPanel: () => void
   openGitWorktreePanel: (view: EditorView) => void
-  openTemplatePresetPanel: (view: EditorView) => void
   openSendPromptPanel: (view: EditorView) => void
   openSendPromptFlagPanel: (view: EditorView, target: string, flagQuery?: string) => void
 }) => {
@@ -98,14 +90,6 @@ export const useMarkdownSlashCommandPanel = ({
         commandLine?.value !== gitWorktreePanel.line.value)
     ) {
       closeGitWorktreePanel()
-    }
-    const templatePresetPanel = templatePresetPanelRef.current
-    if (
-      templatePresetPanel &&
-      (commandLine?.from !== templatePresetPanel.line.from ||
-        commandLine?.value !== templatePresetPanel.line.value)
-    ) {
-      closeTemplatePresetPanel()
     }
     const sendPromptPanel = sendPromptPanelRef.current
     if (
@@ -192,20 +176,20 @@ export const useMarkdownSlashCommandPanel = ({
     const panel = slashCommandPanelRef.current
     if (!view || !panel) return
 
-    if (command.id === "applyPreset") {
-      const docText = view.state.doc.toString()
-      const applied = applyMarkdownTemplatePreset(docText, panel.line.from)
-      if (applied) {
-        view.dispatch({
-          changes: { from: applied.from, to: applied.to, insert: applied.insert },
-          selection: { anchor: applied.cursor ?? panel.line.from },
-        })
-      } else {
-        view.dispatch({
-          changes: { from: panel.line.from, to: panel.line.to, insert: "" },
-          selection: { anchor: panel.line.from },
-        })
-      }
+    // 参数型命令（/addContent）：回显命令文本并选中 [] 占位参数，等待回车执行。
+    if (command.kind === "argument") {
+      const placeholderRange = getTemplatePlaceholderSelectionRange(command.content)
+      const selection = placeholderRange
+        ? {
+            anchor: panel.line.from + placeholderRange.start,
+            head: panel.line.from + placeholderRange.end,
+          }
+        : { anchor: panel.line.from + command.cursorOffset }
+
+      view.dispatch({
+        changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
+        selection,
+      })
       view.focus()
       closeSlashCommandPanel()
       return
@@ -222,7 +206,7 @@ export const useMarkdownSlashCommandPanel = ({
       return
     }
 
-    // 选择型命令（/gitWorktree、/sendPrompt、/templatePreset）：回显命令文本后打开二级工作区/目标/预设面板，选中后回车触发。
+    // 选择型命令（/gitWorktree、/sendPrompt）：回显命令文本后打开二级工作区/目标面板，选中后回车触发。
     if (command.kind === "select") {
       view.dispatch({
         changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
@@ -232,8 +216,6 @@ export const useMarkdownSlashCommandPanel = ({
       closeSlashCommandPanel()
       if (command.id === "sendPrompt") {
         openSendPromptPanel(view)
-      } else if (command.id === "templatePreset") {
-        openTemplatePresetPanel(view)
       } else {
         openGitWorktreePanel(view)
       }

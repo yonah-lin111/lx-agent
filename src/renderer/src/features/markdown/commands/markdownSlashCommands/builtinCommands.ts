@@ -164,16 +164,17 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     cursorOffset: getTemplateCursorOffset(MARKDOWN_TEMPLATE_LOG_CONTENT),
   }
 
-  // 模板预设复用命令：仅在 &&& 模板块内可用，自动将 $$$ 块预设填入当前模板。
-  const applyPreset: MarkdownSlashCommand = {
-    id: "applyPreset",
-    label: "/applyPreset",
-    description: "Apply $$$ preset variables to current template",
-    scope: "template",
-    kind: "direct",
+  // 固定 @ 内容块追加命令：全 page 可用，回显 /addContent [@path] 并选中参数，回车写入首个变量块的 @content。
+  const addContent: MarkdownSlashCommand = {
+    id: "addContent",
+    label: "/addContent",
+    description: "Add a file or reference into the @content block of the first variable block",
+    scope: "all",
+    kind: "argument",
     source: "builtin",
-    content: "",
-    cursorOffset: 0,
+    content: "/addContent [@path]",
+    cursorOffset: "/addContent [@path]".length,
+    argumentHint: "[@path]",
   }
 
   const sendPrompt: MarkdownSlashCommand = {
@@ -233,28 +234,16 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     selectionRange: { start: 0, end: 3 },
   }
 
-  const templatePreset: MarkdownSlashCommand = {
-    id: "templatePreset",
-    label: "/templatePreset",
-    description: "Insert template preset configuration subblock (wrap with +++)",
-    scope: "varTemplate",
-    kind: "select",
-    source: "builtin",
-    content: "/templatePreset",
-    cursorOffset: "/templatePreset".length,
-  }
-
   return [
     ...templates,
     suppleTemplate,
     logTemplate,
-    applyPreset,
+    addContent,
     sendPrompt,
     summaryTitle,
     gitWorktree,
     singleLine,
     multiLine,
-    templatePreset,
   ]
 }
 

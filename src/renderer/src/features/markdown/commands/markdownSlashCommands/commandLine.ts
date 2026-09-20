@@ -25,7 +25,7 @@ const isFuzzyMatch = (query: string, keyword: string): boolean => {
 /**
  * 判定光标行为已武装的斜杠命令行，返回对应命令：
  * - 确认型：行内容与某个确认命令标签完全一致且位于模板块内；
- * - 选择型：行以「/命令 值」形态存在（标签后带非空值），等待回车触发；varTemplate 作用域命令仅在变量块内可武装；
+ * - 选择型 / 参数型：行以「/命令 值」形态存在（标签后带非空值），等待回车触发；varTemplate 作用域命令仅在变量块内可武装；
  * 已武装状态下命令面板不弹出，Enter 直接触发该命令。
  */
 export const getMarkdownArmedSlashCommand = (
@@ -41,7 +41,7 @@ export const getMarkdownArmedSlashCommand = (
       if (command.kind === "confirm") {
         return isInsideTemplateBlock && command.label === value
       }
-      if (command.kind === "select") {
+      if (command.kind === "select" || command.kind === "argument") {
         if (command.scope === "varTemplate" && !isInsideVarBlock) return false
         return value.startsWith(`${command.label} `) && value.length > command.label.length + 1
       }
@@ -120,7 +120,7 @@ export const getMarkdownSlashCommands = (
   if (isInsideVarBlock) {
     return allCommands.filter(
       (command) =>
-        command.scope === "varTemplate" &&
+        (command.scope === "varTemplate" || command.scope === "all") &&
         (isFuzzyMatch(query, command.id) || isFuzzyMatch(query, command.label.replace(/^\//, ""))),
     )
   }
@@ -129,7 +129,7 @@ export const getMarkdownSlashCommands = (
   return allCommands.filter(
     (command) =>
       command.scope !== "varTemplate" &&
-      (command.scope === expectedScope || command.scope === "both") &&
+      (command.scope === expectedScope || command.scope === "both" || command.scope === "all") &&
       (isFuzzyMatch(query, command.id) || isFuzzyMatch(query, command.label.replace(/^\//, ""))) &&
       (command.id !== "gitWorktree" || isGitWorktreeAvailable),
   )

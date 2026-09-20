@@ -1,7 +1,4 @@
-import {
-  MARKDOWN_PRESET_END_RE,
-  MARKDOWN_PRESET_START_RE,
-} from "@/features/markdown/commands/markdownBlockCommands"
+import { isMarkdownVarContentKeyLine } from "./contentBlock"
 import type { MarkdownVariableEntry } from "./types"
 import { MARKDOWN_VAR_TEMPLATE_END_RE, MARKDOWN_VAR_TEMPLATE_START_RE } from "./variableSyntax"
 
@@ -232,27 +229,35 @@ export const getVariableTag = (name: string): string => {
 /**
  * 清理 $$$ 模板块内部未修改的条目（橡皮擦功能）：
  * 移除值为空（""、空 """）或仍保留默认占位符 "var" 的条目。
+ * @content 固定内容块与 +++ 子块（补充/日志等）原样保留。
  */
 export const cleanVarBlockItems = (blockContent: string): string => {
   const lines = blockContent.split(/\r?\n/)
   const preservedLines: string[] = []
   let idx = 0
-  let inPresetSubblock = false
+  let inSubblock = false
 
   while (idx < lines.length) {
     const line = lines[idx]
 
-    if (MARKDOWN_PRESET_START_RE.test(line)) {
-      inPresetSubblock = true
+    if (!inSubblock && /^\s*\+\+\+.*--start\s*$/.test(line)) {
+      inSubblock = true
       preservedLines.push(line)
       idx++
       continue
     }
 
-    if (inPresetSubblock) {
-      if (MARKDOWN_PRESET_END_RE.test(line)) {
-        inPresetSubblock = false
+    if (inSubblock) {
+      if (/^\s*\+\+\+.*--end\s*$/.test(line)) {
+        inSubblock = false
       }
+      preservedLines.push(line)
+      idx++
+      continue
+    }
+
+    // 固定 @ 内容块保留键：原样保留，条目行走通用兜底逻辑。
+    if (isMarkdownVarContentKeyLine(line)) {
       preservedLines.push(line)
       idx++
       continue

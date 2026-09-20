@@ -2,13 +2,11 @@ import { isValidElement } from "react"
 import { describe, expect, it } from "vitest"
 import {
   getBuiltinMarkdownSlashCommands,
-  MARKDOWN_TEMPLATE_PRESET_OPTIONS,
   type MarkdownSlashCommand,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
   DEFAULT_SLASH_COMMAND_ICON,
   getSlashCommandIcon,
-  getTemplatePresetIcon,
 } from "@/features/markdown/components/markdownCommandIcons"
 
 // 判断命令是否落到了兜底图标。
@@ -51,11 +49,5 @@ describe("Markdown 命令图标映射", () => {
       source: "builtin",
     }
     expect(usesFallbackIcon(unknownCommand)).toBe(true)
-  })
-
-  it("模板预设选项均能渲染图标", () => {
-    for (const option of MARKDOWN_TEMPLATE_PRESET_OPTIONS) {
-      expect(getTemplatePresetIcon(option.id)).toBeDefined()
-    }
   })
 })

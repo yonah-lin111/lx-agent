@@ -1,4 +1,4 @@
-export * from "./templatePresetApply"
+export * from "./contentBlock"
 export * from "./types"
 export * from "./varBlockEditing"
 export * from "./varBlockMoves"

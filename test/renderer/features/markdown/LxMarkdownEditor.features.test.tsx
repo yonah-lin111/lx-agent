@@ -388,30 +388,25 @@ describe("LxMarkdownEditor 剪贴板与弹层交互 (useMarkdownPasteReference)"
   })
 })
 
-describe("LxMarkdownEditor /applyPreset 命令执行", () => {
-  it("在 &&& 模板块内输入 /applyPreset 并回车后，输入的命令行被完全移除", async () => {
+describe("LxMarkdownEditor /addContent 命令执行", () => {
+  it("输入 /addContent [@path] 并回车后，条目写入 @content 块且命令行被移除", async () => {
     const initialText = [
       "$$$ varTemplate --start 「title: 」",
-      "preset:",
-      "  add:",
-      '    reference: "@docs/specs.md"',
+      "@content:",
+      "  - @src/keep.ts",
+      'key: "var"',
       "$$$ varTemplate --end",
       "",
-      "&&& addTemplate --start 「title: 」",
-      "# Add Requirement",
-      "- Reference: ",
-      "/applyPreset",
-      "&&& addTemplate --end",
+      "# 正文",
+      "/addContent [@src/foo.ts ]",
     ].join("\n")
 
     render(<LxMarkdownEditor initialContent={initialText} projectPath="/repo" />)
     await waitFor(() => expect(getCm()).not.toBeNull())
 
     const view = EditorView.findFromDOM(getCm()!)!
-    const commandOffset = initialText.indexOf("/applyPreset") + "/applyPreset".length
-    view.dispatch({
-      selection: { anchor: commandOffset },
-    })
+    const commandOffset = initialText.indexOf("/addContent") + "/addContent".length
+    view.dispatch({ selection: { anchor: commandOffset } })
 
     getCm()!.dispatchEvent(
       new KeyboardEvent("keydown", {
@@ -424,22 +419,41 @@ describe("LxMarkdownEditor /applyPreset 命令执行", () => {
 
     await new Promise((r) => setTimeout(r, 100))
 
-    expect(view.state.doc.toString()).not.toContain("/applyPreset")
-    expect(view.state.doc.toString()).toContain("- Reference: @docs/specs.md")
     expect(view.state.doc.toString()).toBe(
       [
         "$$$ varTemplate --start 「title: 」",
-        "preset:",
-        "  add:",
-        '    reference: "@docs/specs.md"',
+        "@content:",
+        "  - @src/keep.ts",
+        "  - @src/foo.ts",
+        'key: "var"',
         "$$$ varTemplate --end",
         "",
-        "&&& addTemplate --start 「title: 」",
-        "# Add Requirement",
-        "- Reference: @docs/specs.md",
-        "",
-        "&&& addTemplate --end",
+        "# 正文",
       ].join("\n"),
     )
+  })
+
+  it("无变量块时回车给出警告且不改动文档", async () => {
+    const initialText = "# 正文\n/addContent [@src/foo.ts ]"
+
+    render(<LxMarkdownEditor initialContent={initialText} projectPath="/repo" />)
+    await waitFor(() => expect(getCm()).not.toBeNull())
+
+    const view = EditorView.findFromDOM(getCm()!)!
+    const commandOffset = initialText.indexOf("/addContent") + "/addContent".length
+    view.dispatch({ selection: { anchor: commandOffset } })
+
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    await new Promise((r) => setTimeout(r, 100))
+
+    expect(view.state.doc.toString()).toBe(initialText)
   })
 })

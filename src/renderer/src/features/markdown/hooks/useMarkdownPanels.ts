@@ -15,22 +15,17 @@ import { useMarkdownGitWorktreePanel } from "@/features/markdown/hooks/useMarkdo
 import type { MarkdownPanelsContextRefs } from "@/features/markdown/hooks/useMarkdownPanels.types"
 import { useMarkdownSendPromptPanel } from "@/features/markdown/hooks/useMarkdownSendPromptPanel"
 import { useMarkdownSlashCommandPanel } from "@/features/markdown/hooks/useMarkdownSlashCommandPanel"
-import { useMarkdownTemplatePresetPanel } from "@/features/markdown/hooks/useMarkdownTemplatePresetPanel"
-import {
-  type MarkdownVariablePanelState,
-  useMarkdownVariablePanel,
-} from "@/features/markdown/hooks/useMarkdownVariablePanel"
 
 export type {
   FileMentionPanelState,
   GitWorktreePanelState,
   MarkdownBlockCommandPanelState,
+  MarkdownLetterPanelState,
   MarkdownSendPromptFlagPanelState,
   MarkdownSendPromptPanelState,
   MarkdownSlashCommandPanelState,
-  TemplatePresetPanelState,
 } from "@/features/markdown/hooks/useMarkdownPanels.types"
-export type { MarkdownColonPanelState, MarkdownVariablePanelState }
+export type { MarkdownColonPanelState }
 
 /**
  * 管理编辑器弹出面板（斜杠命令、块命令、文件提及、页面变量）的状态同步与交互。
@@ -117,7 +112,6 @@ export const useMarkdownPanels = ({
     onSearchDirectoryFilesRef,
   }
 
-  const variablePanelState = useMarkdownVariablePanel({ editorViewRef })
   const colonPanelState = useMarkdownColonPanel(editorViewRef)
 
   const {
@@ -141,17 +135,6 @@ export const useMarkdownPanels = ({
     selectGitWorktree,
     handleGitWorktreeKey,
   } = useMarkdownGitWorktreePanel({ editorViewRef, context })
-
-  const {
-    templatePresetPanel,
-    activeTemplatePresetIndex,
-    templatePresetPanelRef,
-    activeTemplatePresetIndexRef,
-    closeTemplatePresetPanel,
-    openTemplatePresetPanel,
-    selectTemplatePreset,
-    handleTemplatePresetKey,
-  } = useMarkdownTemplatePresetPanel({ editorViewRef })
 
   const {
     sendPromptPanel,
@@ -185,15 +168,12 @@ export const useMarkdownPanels = ({
     editorViewRef,
     context,
     gitWorktreePanelRef,
-    templatePresetPanelRef,
     sendPromptPanelRef,
     sendPromptFlagPanelRef,
     closeGitWorktreePanel,
-    closeTemplatePresetPanel,
     closeSendPromptPanel,
     closeSendPromptFlagPanel,
     openGitWorktreePanel,
-    openTemplatePresetPanel,
     openSendPromptPanel,
     openSendPromptFlagPanel,
   })
@@ -214,6 +194,7 @@ export const useMarkdownPanels = ({
     closeTemplateFilePanel,
     syncTemplateFilePanel,
     selectTemplateFile,
+    selectTemplateVariable,
     handleTemplateFileKey,
   } = useMarkdownFileMentionPanel({ editorViewRef, context })
 
@@ -224,8 +205,6 @@ export const useMarkdownPanels = ({
     activeSlashCommandIndex,
     gitWorktreePanel,
     activeGitWorktreeIndex,
-    templatePresetPanel,
-    activeTemplatePresetIndex,
     sendPromptPanel,
     activeSendPromptIndex,
     sendPromptFlagPanel,
@@ -238,8 +217,6 @@ export const useMarkdownPanels = ({
     activeSlashCommandIndexRef,
     gitWorktreePanelRef,
     activeGitWorktreeIndexRef,
-    templatePresetPanelRef,
-    activeTemplatePresetIndexRef,
     sendPromptPanelRef,
     activeSendPromptIndexRef,
     sendPromptFlagPanelRef,
@@ -249,7 +226,6 @@ export const useMarkdownPanels = ({
     closeFileMentionPanel,
     closeSlashCommandPanel,
     closeGitWorktreePanel,
-    closeTemplatePresetPanel,
     closeSendPromptPanel,
     closeSendPromptFlagPanel,
     syncSlashCommandPanel,
@@ -257,9 +233,6 @@ export const useMarkdownPanels = ({
     handleSlashCommandKey,
     selectGitWorktree,
     handleGitWorktreeKey,
-    openTemplatePresetPanel,
-    selectTemplatePreset,
-    handleTemplatePresetKey,
     openSendPromptPanel,
     selectSendPrompt,
     handleSendPromptKey,
@@ -276,19 +249,12 @@ export const useMarkdownPanels = ({
     closeTemplateFilePanel,
     syncTemplateFilePanel,
     selectTemplateFile,
+    selectTemplateVariable,
     handleTemplateFileKey,
     syncBlockCommandPanel,
     selectBlockCommand,
     handleBlockCommandKey,
     setBlockCommandPanel,
-    variablePanel: variablePanelState.variablePanel,
-    activeVariableIndex: variablePanelState.activeVariableIndex,
-    variablePanelRef: variablePanelState.variablePanelRef,
-    activeVariableIndexRef: variablePanelState.activeVariableIndexRef,
-    closeVariablePanel: variablePanelState.closeVariablePanel,
-    syncVariablePanel: variablePanelState.syncVariablePanel,
-    selectVariable: variablePanelState.selectVariable,
-    handleVariableKey: variablePanelState.handleVariableKey,
     colonPanel: colonPanelState.colonPanelState,
     colonPanelRef: colonPanelState.colonPanelRef,
     activeColonOptionIndex: colonPanelState.activeColonOptionIndex,

@@ -8,8 +8,7 @@ export type MarkdownTemplateCommandId =
   | "suppleTemplate"
   | "logTemplate"
   | "varTemplate"
-  | "templatePreset"
-  | "applyPreset"
+  | "addContent"
   | "singleLine"
   | "multiLine"
 
@@ -56,15 +55,21 @@ export interface MarkdownSendPromptFlagOption {
   tag: string
 }
 
-// Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内，varTemplate = 变量模板块内，both = 两者皆可。
-export type MarkdownSlashCommandScope = "normal" | "template" | "varTemplate" | "both"
+// Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内，varTemplate = 变量模板块内，both = 正文与模板块皆可，all = 全 page（含变量块）。
+export type MarkdownSlashCommandScope = "normal" | "template" | "varTemplate" | "both" | "all"
 
 // Markdown 斜杠命令触发类型：
 // - direct = 面板选中即插入内容；
 // - confirm = 回显命令文本、二次回车触发；
 // - select = 回显命令文本后打开二级选择面板，选中回显值、再回车触发；
-// - customTemplate = 自定义命令：直接在光标处插入内容。
-export type MarkdownSlashCommandKind = "direct" | "confirm" | "select" | "customTemplate"
+// - customTemplate = 自定义命令：直接在光标处插入内容；
+// - argument = 回显命令文本并选中 [] 占位参数，回车触发命令执行。
+export type MarkdownSlashCommandKind =
+  | "direct"
+  | "confirm"
+  | "select"
+  | "customTemplate"
+  | "argument"
 
 // Markdown 斜杠命令来源类型。
 export type MarkdownSlashCommandSource = "builtin" | "project" | "user"
@@ -89,14 +94,6 @@ export interface MarkdownSlashCommandLine {
   from: number
   to: number
   value: string
-}
-
-export interface TemplatePresetOption {
-  id: string
-  name: string
-  label: string
-  description: string
-  content: string
 }
 
 export interface MarkdownSendPromptCommandParsed {

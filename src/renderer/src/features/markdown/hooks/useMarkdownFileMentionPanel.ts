@@ -11,10 +11,20 @@ import {
   filterMarkdownTemplateFileCandidates,
   getMarkdownTemplateFileCandidates,
   getMarkdownTemplateFileTrigger,
+  type MarkdownTemplateFileCandidate,
 } from "@/features/markdown/commands/markdownTemplateFileCommands"
+import {
+  filterMarkdownVariables,
+  getMarkdownVarContentItems,
+  isInsideMarkdownFrontmatter,
+  isMarkdownVarContentKeyLine,
+  type MarkdownVariableEntry,
+  parseMarkdownVariables,
+} from "@/features/markdown/commands/markdownVariableCommands"
 import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
 import type {
   FileMentionPanelState,
+  MarkdownLetterPanelState,
   MarkdownPanelsContextRefs,
 } from "@/features/markdown/hooks/useMarkdownPanels.types"
 import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
@@ -22,7 +32,8 @@ import { resolveMarkdownContextDirectory } from "@/features/markdown/utils/markd
 import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
 
 /**
- * 文件提及面板与模板块文件快捷输入面板：@ 查询、候选过滤、插入与键盘导航。
+ * 文件提及面板与字母快捷输入面板：@ 查询、字母候选过滤、插入与键盘导航。
+ * 字母快捷输入面板合并展示文件/引用候选与页面变量候选。
  */
 export const useMarkdownFileMentionPanel = ({
   editorViewRef,
@@ -56,11 +67,11 @@ export const useMarkdownFileMentionPanel = ({
   const fileMentionPanelRef = useRef<FileMentionPanelState | null>(null)
   const activeFileMentionIndexRef = useRef(0)
   const fileSearchRequestRef = useRef(0)
-  const templateFilePanelRef = useRef<FileMentionPanelState | null>(null)
+  const templateFilePanelRef = useRef<MarkdownLetterPanelState | null>(null)
   const activeTemplateFileIndexRef = useRef(0)
   const [fileMentionPanel, setFileMentionPanel] = useState<FileMentionPanelState | null>(null)
   const [activeFileMentionIndex, setActiveFileMentionIndex] = useState(0)
-  const [templateFilePanel, setTemplateFilePanel] = useState<FileMentionPanelState | null>(null)
+  const [templateFilePanel, setTemplateFilePanel] = useState<MarkdownLetterPanelState | null>(null)
   const [activeTemplateFileIndex, setActiveTemplateFileIndex] = useState(0)
 
   /**
@@ -96,7 +107,7 @@ export const useMarkdownFileMentionPanel = ({
     const docText = view.state.doc.toString()
     const prefix = view.state.doc.sliceString(0, cursor)
     const match = new RegExp(
-      String.raw`(^|\s)@((?:${MARKDOWN_FILE_MENTION_PATH_PATTERN})?)$`,
+      String.raw`(^|[\s\[])@((?:${MARKDOWN_FILE_MENTION_PATH_PATTERN})?)$`,
       "u",
     ).exec(prefix)
     const templateBlockContent = getMarkdownTemplateBlockContent(docText, cursor)
@@ -212,9 +223,9 @@ export const useMarkdownFileMentionPanel = ({
   }
 
   /**
-   * 根据模板块内的裸片段同步文件快捷输入面板。
-   * 候选仅取当前模板块正文中已出现的引用（@ 提及 / 引用文件 / 引用文件夹）；
-   * 仅在光标处于模板块内且不在代码围栏或模板块标记行时触发，@ 前缀由文件提及面板处理。
+   * 根据光标的裸字母片段同步字母快捷输入面板。
+   * 候选 = 当前模板块内已出现的引用 + 变量模板块 @content 固定内容块中的引用 + 页面变量；
+   * 文件候选在前、变量候选在后；代码围栏、块标记行与旧版 frontmatter 内不触发，@ 前缀由文件提及面板处理。
    */
   const syncTemplateFilePanel = (view: EditorView): void => {
     const cursor = view.state.selection.main.head
@@ -222,13 +233,12 @@ export const useMarkdownFileMentionPanel = ({
     const prefix = view.state.doc.sliceString(0, cursor)
     const lineText = view.state.doc.lineAt(cursor).text
 
-    if (isInsideMarkdownCodeFence(prefix) || /^\s*(?:&&&|\+\+\+)/.test(lineText)) {
-      closeTemplateFilePanel()
-      return
-    }
-
-    const blockContent = getMarkdownTemplateBlockContent(docText, cursor)
-    if (!blockContent) {
+    if (
+      isInsideMarkdownCodeFence(prefix) ||
+      isInsideMarkdownFrontmatter(docText, cursor) ||
+      /^\s*(?:&&&|\+\+\+|\$\$\$)/.test(lineText) ||
+      isMarkdownVarContentKeyLine(lineText)
+    ) {
       closeTemplateFilePanel()
       return
     }
@@ -239,25 +249,37 @@ export const useMarkdownFileMentionPanel = ({
       return
     }
 
-    const coords = view.coordsAtPos(cursor)
-    if (!coords) {
+    const blockContent = getMarkdownTemplateBlockContent(docText, cursor)
+    const referencedRoots = [
+      ...new Set([
+        ...referencedProjectPathsRef.current,
+        ...getMarkdownReferenceProjectPaths(blockContent ?? docText),
+      ]),
+    ]
+    const seenCandidates = new Set<string>()
+    const candidates: MarkdownTemplateFileCandidate[] = []
+    for (const candidate of [
+      ...getMarkdownTemplateFileCandidates(blockContent ?? "", referencedRoots),
+      ...getMarkdownTemplateFileCandidates(
+        getMarkdownVarContentItems(docText).join("\n"),
+        referencedRoots,
+      ),
+    ]) {
+      const key = `${candidate.kind}:${candidate.path}`
+      if (seenCandidates.has(key)) continue
+      seenCandidates.add(key)
+      candidates.push(candidate)
+    }
+    const matched = filterMarkdownTemplateFileCandidates(candidates, trigger.fragment)
+    const variables = filterMarkdownVariables(parseMarkdownVariables(docText), trigger.fragment)
+    if (matched.length === 0 && variables.length === 0) {
       closeTemplateFilePanel()
       return
     }
 
-    const referencedRoots = [
-      ...new Set([
-        ...referencedProjectPathsRef.current,
-        ...getMarkdownReferenceProjectPaths(blockContent),
-      ]),
-    ]
-    const matched = filterMarkdownTemplateFileCandidates(
-      getMarkdownTemplateFileCandidates(blockContent, referencedRoots),
-      trigger.fragment,
-    )
-    if (matched.length === 0) {
-      templateFilePanelRef.current = null
-      setTemplateFilePanel(null)
+    const coords = view.coordsAtPos(cursor)
+    if (!coords) {
+      closeTemplateFilePanel()
       return
     }
 
@@ -268,8 +290,12 @@ export const useMarkdownFileMentionPanel = ({
       source: "current" as const,
       templateKind: candidate.kind,
     }))
-    const position = getMarkdownPanelPosition("file", coords)
-    const panel = { files, position, start: trigger.start }
+    const panel: MarkdownLetterPanelState = {
+      files,
+      variables,
+      position: getMarkdownPanelPosition("file", coords),
+      start: trigger.start,
+    }
     templateFilePanelRef.current = panel
     activeTemplateFileIndexRef.current = 0
     setTemplateFilePanel(panel)
@@ -295,14 +321,34 @@ export const useMarkdownFileMentionPanel = ({
   }
 
   /**
-   * 处理模板块文件快捷输入面板的键盘导航。
+   * 将选中的页面变量值插入当前裸片段位置。
+   */
+  const selectTemplateVariable = (variable: MarkdownVariableEntry): void => {
+    const view = editorViewRef.current
+    const panel = templateFilePanelRef.current
+    if (!view || !panel) return
+
+    const cursor = view.state.selection.main.head
+    const insertion = variable.value
+    view.dispatch({
+      changes: { from: panel.start, to: cursor, insert: insertion },
+      selection: { anchor: panel.start + insertion.length },
+    })
+    view.focus()
+    closeTemplateFilePanel()
+  }
+
+  /**
+   * 处理字母快捷输入面板的键盘导航（文件候选与变量候选共用一个索引空间）。
    */
   const handleTemplateFileKey = (offset: number): boolean => {
     const panel = templateFilePanelRef.current
     if (!panel) return false
 
-    const nextIndex =
-      (activeTemplateFileIndexRef.current + offset + panel.files.length) % panel.files.length
+    const total = panel.files.length + panel.variables.length
+    if (total === 0) return false
+
+    const nextIndex = (activeTemplateFileIndexRef.current + offset + total) % total
     activeTemplateFileIndexRef.current = nextIndex
     setActiveTemplateFileIndex(nextIndex)
     return true
@@ -324,6 +370,7 @@ export const useMarkdownFileMentionPanel = ({
     closeTemplateFilePanel,
     syncTemplateFilePanel,
     selectTemplateFile,
+    selectTemplateVariable,
     handleTemplateFileKey,
   }
 }

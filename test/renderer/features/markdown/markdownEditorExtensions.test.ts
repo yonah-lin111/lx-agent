@@ -498,46 +498,46 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
       )
     })
 
-    it("$$$ 变量块内部的 +++ presetTemplate 具备独立 ActionWidget 并支持折叠与删除", () => {
+    it("$$$ 变量块的 @content 保留键与条目行使用变量键值样式且不标记为非法", () => {
       const doc = [
-        "$$$ varTemplate --start 「title: Presets」",
-        "+++ presetTemplate --start 「title: All Templates」",
-        "preset:",
-        "  common:",
-        '    reference: "@docs/architecture.md"',
-        "+++ presetTemplate --end",
+        "$$$ varTemplate --start 「title: 」",
+        "@content:",
+        "  - @src/foo.ts",
+        "  - @[refer-folder](src/bar)",
+        'key: "var"',
         "$$$ varTemplate --end",
       ].join("\n")
 
-      const { view, plugin } = createTestView(doc)
-      expect(plugin).toBeDefined()
-
-      let presetWidget: CodeBlockActionWidget | null = null
+      const { plugin } = createTestView(doc)
+      const marks: { from: number; to: number; cls: string }[] = []
       const cursor = plugin!.decorations.iter()
       while (cursor.value) {
-        if (cursor.value.spec?.widget?.isPreset) {
-          presetWidget = cursor.value.spec.widget
-          break
+        const cls = cursor.value.spec?.class
+        if (typeof cls === "string") {
+          marks.push({ from: cursor.from, to: cursor.to, cls })
         }
         cursor.next()
       }
 
-      expect(presetWidget).not.toBeNull()
-      expect(presetWidget!.isPreset).toBe(true)
-      expect(presetWidget!.isFolded).toBe(false)
-      expect(presetWidget!.actionClassName).toBe("cm-preset-block-action-wrap")
+      const contentFrom = doc.indexOf("@content")
+      expect(
+        marks.some(
+          (mark) =>
+            mark.cls === "cm-md-var-key" &&
+            mark.from <= contentFrom &&
+            mark.to >= contentFrom + "@content".length,
+        ),
+      ).toBe(true)
 
-      // 验证折叠交互
-      presetWidget!.onToggleFold()
-      expect(plugin!.presetFoldedIndices.has(0)).toBe(true)
+      const itemFrom = doc.indexOf("- @src/foo.ts")
+      expect(
+        marks.some(
+          (mark) =>
+            mark.cls === "cm-md-var-key" && mark.from === itemFrom && mark.to === itemFrom + 1,
+        ),
+      ).toBe(true)
 
-      // 验证删除交互
-      expect(presetWidget!.onDeleteTemplate).toBeDefined()
-      presetWidget!.onDeleteTemplate!()
-
-      expect(view.state.doc.toString()).toBe(
-        ["$$$ varTemplate --start 「title: Presets」", "$$$ varTemplate --end"].join("\n"),
-      )
+      expect(marks.some((mark) => mark.cls.includes("invalid"))).toBe(false)
     })
   })
 })

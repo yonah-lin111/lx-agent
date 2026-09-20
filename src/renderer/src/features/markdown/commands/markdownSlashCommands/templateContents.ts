@@ -1,5 +1,7 @@
+// 变量模板块：开始行之后固定带 @content 保留键，用于存放 @ 文件与 @ 引用内容。
 export const MARKDOWN_TEMPLATE_VAR_CONTENT = [
   "$$$ varTemplate --start 「title: 」",
+  "@content:",
   'key: "var"',
   "$$$ varTemplate --end",
 ].join("\n")

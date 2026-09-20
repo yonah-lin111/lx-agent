@@ -3,7 +3,11 @@ import {
   type MarkdownTemplateStatus,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import { stripMarkdownSlashCommands } from "@/features/markdown/commands/markdownSlashCommands"
-import { MARKDOWN_VAR_TEMPLATE_END_RE } from "@/features/markdown/commands/markdownVariableCommands"
+import {
+  isMarkdownVarContentItemLine,
+  isMarkdownVarContentKeyLine,
+  MARKDOWN_VAR_TEMPLATE_END_RE,
+} from "@/features/markdown/commands/markdownVariableCommands"
 import {
   CodeBlockActionWidget,
   type MarkerDecoItem,
@@ -13,7 +17,6 @@ import {
   stripEmptyTemplateItems,
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
-import { handlePresetBlockLine } from "./markerSubblockHandlers"
 
 // Markdown 块扫描解析上下文契约。
 export interface MarkerBlockScanContext {
@@ -59,6 +62,7 @@ export interface MarkerBlockScanContext {
 
   isInsideVarBlock: boolean
   isInsideVarTripleQuotes?: boolean
+  isInsideVarContentBlock: boolean
   currentVarFolded: boolean
   varBlockIndex: number
   varFoldedIndices: Set<number>
@@ -67,13 +71,6 @@ export interface MarkerBlockScanContext {
   onCleanVarBlock: (startLine: number, endLine: number) => void
   onMergeVarBlock: (startLine: number, endLine: number) => void
   onMoveVarBlockToTop?: (startLine: number, endLine: number) => void
-
-  isInsidePresetBlock: boolean
-  currentPresetFolded: boolean
-  presetBlockIndex: number
-  presetFoldedIndices: Set<number>
-  onTogglePresetFold: (index: number) => void
-  onDeletePresetBlock: (startLine: number, endLine: number) => void
 
   scanMarkdownTokens?: (
     line: string,
@@ -486,9 +483,8 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
 
     ctx.isInsideVarBlock = false
     ctx.isInsideVarTripleQuotes = false
+    ctx.isInsideVarContentBlock = false
     ctx.currentVarFolded = false
-    ctx.isInsidePresetBlock = false
-    ctx.currentPresetFolded = false
     return true
   }
 
@@ -502,8 +498,48 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
       return true
     }
 
-    if (handlePresetBlockLine(ctx)) {
+    // 固定 @ 内容块：保留键与条目按变量键值样式渲染，不视为非法内容；三引号字符串内部不参与识别。
+    if (!ctx.isInsideVarTripleQuotes && isMarkdownVarContentKeyLine(ctx.line)) {
+      const keyStart = ctx.line.search(/\S/)
+      const colonIndex = ctx.line.indexOf(":", keyStart)
+      if (keyStart !== -1 && colonIndex > keyStart) {
+        ctx.addMarkerAlways(keyStart, colonIndex, "cm-md-var-key")
+        ctx.addMarkerAlways(colonIndex, colonIndex + 1, "cm-md-var-colon")
+      }
+      ctx.isInsideVarContentBlock = true
+      ctx.allDecos.push({
+        type: "line",
+        from: ctx.offset,
+        className: "cm-md-var-template-middle-line",
+      })
       return true
+    }
+
+    if (ctx.isInsideVarContentBlock) {
+      if (ctx.line.trim() === "") {
+        ctx.allDecos.push({
+          type: "line",
+          from: ctx.offset,
+          className: "cm-md-var-template-middle-line",
+        })
+        return true
+      }
+      if (!ctx.isInsideVarTripleQuotes && isMarkdownVarContentItemLine(ctx.line)) {
+        const indent = ctx.line.match(/^\s*/)?.[0].length ?? 0
+        const markerEnd = indent + 1
+        const contentMatch = /\S/.exec(ctx.line.slice(markerEnd))
+        ctx.addMarkerAlways(indent, markerEnd, "cm-md-var-key")
+        if (contentMatch) {
+          ctx.addMarkerAlways(markerEnd + contentMatch.index, ctx.line.length, "cm-md-var-value")
+        }
+        ctx.allDecos.push({
+          type: "line",
+          from: ctx.offset,
+          className: "cm-md-var-template-middle-line",
+        })
+        return true
+      }
+      ctx.isInsideVarContentBlock = false
     }
 
     let isInvalid = false
@@ -663,17 +699,6 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
               }
             }
           }
-        } else if (ctx.isInsidePresetBlock && /^\s*[-*]\s+/.test(ctx.line)) {
-          const listMatch = ctx.line.match(/^(\s*)([-*])(\s+)(.*)$/)
-          if (listMatch) {
-            const markerStart = listMatch[1].length
-            ctx.addMarkerAlways(markerStart, markerStart + 1, "cm-md-var-key")
-            ctx.addMarkerAlways(
-              markerStart + 1 + listMatch[3].length,
-              ctx.line.length,
-              "cm-md-var-value",
-            )
-          }
         } else {
           isInvalid = true
           const firstNonSpace = ctx.line.search(/\S/)
@@ -684,9 +709,7 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
       }
     }
 
-    const middleLineClass = ctx.isInsidePresetBlock
-      ? "cm-md-preset-middle-line"
-      : "cm-md-var-template-middle-line"
+    const middleLineClass = "cm-md-var-template-middle-line"
     ctx.allDecos.push({
       type: "line",
       from: ctx.offset,
