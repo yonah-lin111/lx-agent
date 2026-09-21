@@ -1,7 +1,10 @@
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import type React from "react"
 import { useMemo } from "react"
-import { resolveSubagentDisplayStatus } from "@/features/agent/components/blocks/SubagentStatusRow"
+import {
+  resolveSubagentDisplayStatus,
+  SubagentStatusRow,
+} from "@/features/agent/components/blocks/SubagentStatusRow"
 import type { ExecutionStepStatus, ExecutionSubagentContent } from "@/features/agent/types"
 import { formatSubagentLabel } from "@/features/agent/utils/subagentLabel"
 import { useTranslation } from "@/i18n"
@@ -62,30 +65,43 @@ export const FlowItemSubagentContent = ({
           {batch.map((item, index) => {
             const status = resolveSubagentDisplayStatus(item, fallbackStatus)
             return (
-              <button
+              <div
                 key={item.subagentId ?? `${index}`}
-                type="button"
-                aria-label={t("agent.viewSubagentDetails")}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onOpenSubagentItem?.(index)
-                }}
-                className="flex w-full items-center gap-2 border-white/5 px-2 py-1 text-left transition-colors not-first:border-t hover:bg-white/5 focus:outline-none"
+                className="agent-execution-flow-subagent-item flex flex-col gap-0.5 border-white/5 px-2 py-1.5 not-first:border-t"
               >
-                {status === "running" ? (
-                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-400" />
-                ) : status === "error" ? (
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-400" />
-                ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400/80" />
-                )}
-                <span className="min-w-0 flex-1 truncate text-blue-300">
-                  {formatSubagentLabel(item.name.trim() || "task", item.roleName)}
-                </span>
-                <span className="shrink-0 text-white/35 tabular-nums">
-                  {formatTokensShort(item.usage.totalTokens)}
-                </span>
-              </button>
+                {/* 第一行：名称 + 状态，右侧为该子代理累计消耗 */}
+                <button
+                  type="button"
+                  aria-label={t("agent.viewSubagentDetails")}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onOpenSubagentItem?.(index)
+                  }}
+                  className="flex w-full items-center gap-2 text-left transition-colors hover:opacity-90 focus:outline-none"
+                >
+                  <span className="min-w-0 flex-1 truncate text-blue-300">
+                    {formatSubagentLabel(item.name.trim() || "task", item.roleName)}
+                  </span>
+                  {status === "running" ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-400" />
+                  ) : status === "error" ? (
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-400" />
+                  ) : (
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400/80" />
+                  )}
+                  <span className="shrink-0 text-white/35 tabular-nums">
+                    {formatTokensShort(item.usage.totalTokens)}
+                  </span>
+                </button>
+
+                {/* 第二行：直角图标 + 当前内部工具（运行中）或调用统计（完成后） */}
+                <SubagentStatusRow
+                  subagent={item}
+                  status={status}
+                  testId="flow-subagent-status-row"
+                  className="agent-execution-flow-subagent-status-row"
+                />
+              </div>
             )
           })}
         </div>

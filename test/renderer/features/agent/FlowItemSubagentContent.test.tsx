@@ -9,7 +9,12 @@ import { FlowItemSubagentContent } from "@/features/agent/components/AgentExecut
 const buildItem = (
   id: string,
   name: string,
-  options?: { roleName?: string; status?: SubagentData["status"]; totalTokens?: number },
+  options?: {
+    roleName?: string
+    status?: SubagentData["status"]
+    totalTokens?: number
+    steps?: SubagentData["steps"]
+  },
 ): SubagentData => ({
   subagentId: id,
   name,
@@ -18,7 +23,7 @@ const buildItem = (
   description: `${name} 任务`,
   prompt: `${name} 任务`,
   messages: [],
-  steps: [],
+  steps: options?.steps ?? [],
   usage: {
     input: 1,
     output: 1,
@@ -42,8 +47,13 @@ describe("FlowItemSubagentContent 批量扇出", () => {
               roleName: "explorer",
               status: "done",
               totalTokens: 1200,
+              steps: [{ toolName: "grep", args: {}, status: "done" }],
             }),
-            buildItem("subagent-2", "review-db", { status: "running", totalTokens: 800 }),
+            buildItem("subagent-2", "review-db", {
+              status: "running",
+              totalTokens: 800,
+              steps: [{ toolName: "read", args: { filePath: "/tmp/a/db.ts" }, status: "running" }],
+            }),
           ],
         }}
         onOpenSubagentItem={onOpenSubagentItem}
@@ -60,6 +70,14 @@ describe("FlowItemSubagentContent 批量扇出", () => {
     expect(buttons[1]?.textContent).toContain("800")
     expect(buttons[0]?.querySelector(".animate-spin")).toBeNull()
     expect(buttons[1]?.querySelector(".animate-spin")).not.toBeNull()
+
+    // 第二行：直角图标 + 当前内部工具（运行项）/ 调用统计（完成项）。
+    const rows = container.querySelectorAll("[data-subagent-row]")
+    expect(rows).toHaveLength(2)
+    expect(rows[0]?.getAttribute("data-subagent-row")).toBe("stats")
+    expect(rows[0]?.querySelector(".lucide-corner-down-right")).not.toBeNull()
+    expect(rows[1]?.getAttribute("data-subagent-row")).toBe("tool")
+    expect(rows[1]?.textContent).toContain("read")
 
     // 汇总行：完成数与并行 token 合计（1200 + 800）。
     expect(container.textContent).toContain("1/2 completed")
