@@ -527,10 +527,7 @@ export const AgentExecutionFlowItem = ({
             />
           )}
 
-          {/* 工具调用详情 */}
-          {step.toolContent && <FlowItemToolContent content={step.toolContent} />}
-
-          {/* 子代理详情 */}
+          {/* 子代理详情（批量扇出为逐项列表，其原始参数与结果折叠在列表下方） */}
           {step.subagentContent && (
             <FlowItemSubagentContent
               content={step.subagentContent}
@@ -538,6 +535,9 @@ export const AgentExecutionFlowItem = ({
               onOpenSubagentItem={(subagentIndex) => onOpenSubagent?.(step.id, subagentIndex)}
             />
           )}
+
+          {/* 工具调用详情（子代理步骤在其后渲染，使折叠参数区落在子代理内容下方） */}
+          {step.toolContent && <FlowItemToolContent content={step.toolContent} />}
 
           {/* 上下文压缩详情 */}
           {step.compactionContent && (

@@ -2090,6 +2090,16 @@ describe("AgentExecutionFlowList", () => {
     expect(within(subagentStep).getByText(/review-auth/)).not.toBeNull()
     expect(within(subagentStep).getByText(/review-db/)).not.toBeNull()
 
+    // 折叠的原始参数与结果位于并行子代理列表下方
+    const batchList = subagentStep.querySelector(".agent-execution-flow-subagent-batch")
+    const rawSection = subagentStep.querySelector(".agent-execution-flow-tool-raw-section")
+    expect(batchList).not.toBeNull()
+    expect(rawSection).not.toBeNull()
+    if (!batchList || !rawSection) throw new Error("批量列表或折叠参数区缺失")
+    expect(
+      batchList.compareDocumentPosition(rawSection) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
     // 标题不可点击：没有打开面板入口，点击标题只切换折叠
     expect(screen.queryByTestId("flow-item-subagent-open-btn")).toBeNull()
     fireEvent.click(within(subagentStep).getAllByText("task ×2")[0])
