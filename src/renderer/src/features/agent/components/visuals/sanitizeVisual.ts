@@ -251,6 +251,48 @@ export interface SanitizeOptions {
 }
 
 /**
+ * 净化单个元素自身的属性（白名单 + 安全校验），不递归子节点。
+ */
+const sanitizeElementAttributes = (element: Element, options?: SanitizeOptions): void => {
+  const allowScripts = options?.allowScripts ?? false
+  const attrs = Array.from(element.attributes)
+  for (const attr of attrs) {
+    const attrName = attr.name.toLowerCase()
+    const attrValue = attr.value.trim()
+
+    // 移除未在白名单中的属性；若允许脚本则放行 on* 事件处理器。
+    if (
+      (attrName.startsWith("on") && !allowScripts) ||
+      (!ALLOWED_ATTRS.has(attrName) &&
+        !attrName.startsWith("aria-") &&
+        !attrName.startsWith("data-") &&
+        (!allowScripts || !attrName.startsWith("on")))
+    ) {
+      element.removeAttribute(attr.name)
+      continue
+    }
+
+    // 严格限制 href、xlink:href 与 src 剔除 javascript: 伪协议（纯无脚本模式严格剔除）。
+    if (attrName === "href" || attrName === "xlink:href" || attrName === "src") {
+      if (!allowScripts && /^\s*javascript:/i.test(attrValue)) {
+        element.removeAttribute(attr.name)
+        continue
+      }
+    }
+
+    // 净化内联样式。
+    if (attrName === "style") {
+      const safeStyle = sanitizeStyle(attrValue)
+      if (safeStyle) {
+        element.setAttribute(attr.name, safeStyle)
+      } else {
+        element.removeAttribute(attr.name)
+      }
+    }
+  }
+}
+
+/**
  * 深度递归净化 DOM 节点树。
  */
 export const sanitizeNode = (node: Node, options?: SanitizeOptions): void => {
@@ -289,41 +331,7 @@ export const sanitizeNode = (node: Node, options?: SanitizeOptions): void => {
       }
 
       // 属性白名单与安全校验。
-      const attrs = Array.from(element.attributes)
-      for (const attr of attrs) {
-        const attrName = attr.name.toLowerCase()
-        const attrValue = attr.value.trim()
-
-        // 移除未在白名单中的属性；若允许脚本则放行 on* 事件处理器。
-        if (
-          (attrName.startsWith("on") && !allowScripts) ||
-          (!ALLOWED_ATTRS.has(attrName) &&
-            !attrName.startsWith("aria-") &&
-            !attrName.startsWith("data-") &&
-            (!allowScripts || !attrName.startsWith("on")))
-        ) {
-          element.removeAttribute(attr.name)
-          continue
-        }
-
-        // 严格限制 href、xlink:href 与 src 剔除 javascript: 伪协议（纯无脚本模式严格剔除）。
-        if (attrName === "href" || attrName === "xlink:href" || attrName === "src") {
-          if (!allowScripts && /^\s*javascript:/i.test(attrValue)) {
-            element.removeAttribute(attr.name)
-            continue
-          }
-        }
-
-        // 净化内联样式。
-        if (attrName === "style") {
-          const safeStyle = sanitizeStyle(attrValue)
-          if (safeStyle) {
-            element.setAttribute(attr.name, safeStyle)
-          } else {
-            element.removeAttribute(attr.name)
-          }
-        }
-      }
+      sanitizeElementAttributes(element, options)
 
       // 递归净化合法子节点。
       sanitizeNode(element, options)
@@ -359,7 +367,11 @@ export const sanitizeHtmlDocument = (rawContent: string, options?: SanitizeOptio
     if (doc.head) sanitizeNode(doc.head, options)
     if (doc.body) sanitizeNode(doc.body, options)
 
-    return `<!DOCTYPE html><html><head>${doc.head?.innerHTML || ""}</head><body>${doc.body?.innerHTML || ""}</body></html>`
+    // <html> / <body> 自身属性同样过白名单：body 上的布局类（flex/items-center 等）丢失会直接破坏预览
+    if (doc.documentElement) sanitizeElementAttributes(doc.documentElement, options)
+    if (doc.body) sanitizeElementAttributes(doc.body, options)
+
+    return `<!DOCTYPE html>${doc.documentElement.outerHTML}`
   } catch {
     return rawContent
   }

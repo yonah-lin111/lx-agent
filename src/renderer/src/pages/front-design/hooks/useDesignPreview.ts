@@ -25,6 +25,38 @@ export interface UseDesignPreviewResult {
 }
 
 /**
+ * 仅在 `<html>` 标签上增删 dark 类名；全文档正则替换会误伤组件上的 `dark:` 变体类名。
+ */
+export const applyHtmlThemeClass = (source: string, dark: boolean): string => {
+  const tagMatch = source.match(/<html\b[^>]*>/i)
+  if (!tagMatch) return source
+  const tag = tagMatch[0]
+  const classMatch = tag.match(/class=["']([^"']*)["']/i)
+  const classes = (classMatch?.[1] ?? "").split(/\s+/).filter((name) => name && name !== "dark")
+  if (dark) classes.push("dark")
+  const nextTag = classes.length
+    ? classMatch
+      ? tag.replace(/class=["'][^"']*["']/i, `class="${classes.join(" ")}"`)
+      : tag.replace(/\s*>$/, ` class="${classes.join(" ")}">`)
+    : tag.replace(/\s*class=["'][^"']*["']/i, "")
+  return source.replace(tag, () => nextTag)
+}
+
+/**
+ * 双向同步元素属性（class/lang/style 等），供 iframe 增量更新时保持根节点属性一致。
+ */
+export const syncElementAttributes = (target: Element, source: Element): void => {
+  for (const attr of Array.from(target.attributes)) {
+    if (!source.hasAttribute(attr.name)) target.removeAttribute(attr.name)
+  }
+  for (const attr of Array.from(source.attributes)) {
+    if (target.getAttribute(attr.name) !== attr.value) {
+      target.setAttribute(attr.name, attr.value)
+    }
+  }
+}
+
+/**
  * 设计预览域：Tailwind 编译、沙箱文档构建、iframe 平滑增量更新与落盘同步。
  */
 export const useDesignPreview = ({
@@ -85,13 +117,13 @@ export const useDesignPreview = ({
         ? ":root { color-scheme: dark; } html { color-scheme: dark; background-color: #0b0f19; color: #f3f4f6; }"
         : ":root { color-scheme: light; } html { color-scheme: light; background-color: #ffffff; color: #111827; }"
 
+    // 仅清除浏览器默认外边距：padding/height 强制归零会覆盖设计稿在 body 上的内边距与高度策略，
+    // 导致画布与 PNG 导出（忠实渲染落盘 HTML）表现不一致。
     const resetOverrides = `
       ${colorSchemeCss}
       html, body {
         margin: 0 !important;
-        padding: 0 !important;
         min-height: 100% !important;
-        height: 100% !important;
         box-sizing: border-box !important;
       }
     `
@@ -103,19 +135,7 @@ export const useDesignPreview = ({
     let docWithTheme = baseDoc
 
     // 根据模式为 <html> 标签注入或移除 dark 类名
-    if (effectiveMode === "dark") {
-      if (docWithTheme.includes("<html")) {
-        docWithTheme = docWithTheme.replace(
-          /<html([^>]*)class=["']([^"']*)["']/i,
-          '<html$1class="$2 dark"',
-        )
-        if (!docWithTheme.includes('class="') && !docWithTheme.includes("class='")) {
-          docWithTheme = docWithTheme.replace(/<html/i, '<html class="dark"')
-        }
-      }
-    } else {
-      docWithTheme = docWithTheme.replace(/\bdark\b/g, "")
-    }
+    docWithTheme = applyHtmlThemeClass(docWithTheme, effectiveMode === "dark")
 
     const injectedHead = `${sandboxGuardScript}\n${styleTag}\n${twStyleTag}`
     if (docWithTheme.includes("</head>")) {
@@ -171,11 +191,12 @@ export const useDesignPreview = ({
         const parser = new DOMParser()
         const parsed = parser.parseFromString(docContent, "text/html")
 
-        // 1. 同步 html 根节点 class 与暗色模式
+        // 1. 同步 html 与 body 根节点属性（class/lang/style 等，含布局与主题类）
         if (parsed.documentElement && doc.documentElement) {
-          if (doc.documentElement.className !== parsed.documentElement.className) {
-            doc.documentElement.className = parsed.documentElement.className
-          }
+          syncElementAttributes(doc.documentElement, parsed.documentElement)
+        }
+        if (parsed.body && doc.body) {
+          syncElementAttributes(doc.body, parsed.body)
         }
 
         // 2. 同步 head 关键样式覆盖
