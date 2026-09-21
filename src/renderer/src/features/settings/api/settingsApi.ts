@@ -1,5 +1,6 @@
 import type { PermissionSettings } from "@shared/contracts/agent"
 import type { McpPresetId, McpPresetInstallResult, McpPresetStatusItem } from "@shared/mcpPresets"
+import type { RefreshOpencodeGoResult } from "@shared/opencodeGo"
 import type {
   CliId,
   CliLifecycleResult,
@@ -31,6 +32,8 @@ export const settingsApi = {
     window.api.settings.saveModelProviders(settings),
   fetchModels: (input: FetchModelsInput): Promise<FetchedProviderModel[]> =>
     window.api.settings.fetchModels(input),
+  refreshOpencodeGo: (): Promise<RefreshOpencodeGoResult> =>
+    window.api.settings.refreshOpencodeGo(),
   getPermissionSettings: (): Promise<PermissionSettings> =>
     window.api.settings.getPermissionSettings(),
   savePermissionSettings: (settings: PermissionSettings): Promise<PermissionSettings> =>

@@ -2,7 +2,8 @@ import { createAnthropic } from "@ai-sdk/anthropic"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
-import type { ModelProvider, ModelSelection } from "@shared/settings"
+import { OPENCODE_GO_CLIENT_ID, OPENCODE_GO_PROVIDER_ID } from "@shared/opencodeGo"
+import { type ModelProvider, type ModelSelection, resolveModelTransport } from "@shared/settings"
 import type { LanguageModel } from "ai"
 import { extractReasoningMiddleware, wrapLanguageModel } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
@@ -79,16 +80,35 @@ export const resolveModelSelection = (
   }
 }
 
-// 按 settings provider 类型装配 AI SDK 模型。
+// 是否为 OpenCode Go 预设（按 provider.id 精确匹配；改名后视为普通自定义 Provider）。
+const isOpencodeGoProvider = (provider: ModelProvider): boolean =>
+  provider.id === OPENCODE_GO_PROVIDER_ID
+
+// Go 要求的静态客户端标识（自报身份而非通用 SDK 名；会话级 x-opencode-session 另行透传）。
+const opencodeGoHeaders = { "x-opencode-client": OPENCODE_GO_CLIENT_ID }
+
+// 按模型实际传输协议装配 AI SDK 模型（模型级 transport 覆盖优先，缺省继承 provider.type）。
 const createLanguageModel = (provider: ModelProvider, modelId: string): LanguageModel => {
   const apiKey = provider.options.apiKey || undefined
   const baseURL = provider.options.baseURL || undefined
-  switch (provider.type) {
-    case "openai":
-      return createOpenAI({
+  const isGo = isOpencodeGoProvider(provider)
+  switch (resolveModelTransport(provider, modelId)) {
+    case "openai": {
+      const openai = createOpenAI({
         apiKey,
         baseURL,
-      }).chat(modelId) as unknown as LanguageModel
+        ...(isGo ? { headers: { ...opencodeGoHeaders } } : {}),
+      })
+      return openai.chat(modelId) as unknown as LanguageModel
+    }
+    case "openai-responses": {
+      const openai = createOpenAI({
+        apiKey,
+        baseURL,
+        ...(isGo ? { headers: { ...opencodeGoHeaders } } : {}),
+      })
+      return openai.responses(modelId) as unknown as LanguageModel
+    }
     case "anthropic":
       return createAnthropic({
         apiKey,
@@ -96,6 +116,7 @@ const createLanguageModel = (provider: ModelProvider, modelId: string): Language
         headers: {
           "anthropic-beta":
             "interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
+          ...(isGo ? { ...opencodeGoHeaders } : {}),
         },
       }).chat(modelId) as unknown as LanguageModel
     case "google":
@@ -105,6 +126,7 @@ const createLanguageModel = (provider: ModelProvider, modelId: string): Language
         name: provider.id,
         baseURL: provider.options.baseURL,
         apiKey,
+        ...(isGo ? { headers: { ...opencodeGoHeaders } } : {}),
       }).languageModel(modelId) as unknown as LanguageModel
   }
 }

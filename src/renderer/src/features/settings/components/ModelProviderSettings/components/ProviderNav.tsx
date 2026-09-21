@@ -1,8 +1,10 @@
-import { CheckCircle2, Circle } from "lucide-react"
+import { CheckCircle2, Circle, Plus } from "lucide-react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxNavItem } from "@/components/ui/LxNavItem"
 import { useTranslation } from "@/i18n"
 import type { ProviderNavProps } from "../types"
+import { isOpencodeGoMissing } from "../utils"
 
 /**
  * 渲染左侧 Provider 导航列表与右键菜单入口。
@@ -14,15 +16,18 @@ export const ProviderNav = ({
   onSelect,
   onToggleEnabled,
   onOpenContextMenu,
+  onAddOpencodeGo,
 }: ProviderNavProps): React.JSX.Element => {
   const { t } = useTranslation()
+  // 仅当预设未创建且调用方提供入口时展示一键添加。
+  const showAddOpencodeGo = onAddOpencodeGo !== undefined && isOpencodeGoMissing(providers)
 
   return (
     <nav
-      className="min-h-0 overflow-y-auto border-r border-white/8 pr-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      className="flex min-h-0 flex-col border-r border-white/8 pr-2"
       aria-label={t("settings.providers")}
     >
-      <div className="flex flex-col gap-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {Object.entries(providers).map(([providerKey, provider]) => {
           const isSelected = providerKey === selectedProviderId
           const isEnabled = enabledProviders.includes(providerKey)
@@ -69,6 +74,30 @@ export const ProviderNav = ({
           )
         })}
       </div>
+      {showAddOpencodeGo ? (
+        <div className="shrink-0 pt-1">
+          <LxNavItem
+            level={2}
+            className="w-full text-white/70"
+            aria-label={t("settings.addOpencodeGo")}
+            onClick={onAddOpencodeGo}
+            prefix={<Plus className="h-3.5 w-3.5 shrink-0 text-white/45" />}
+            suffix={
+              <span
+                className="flex shrink-0 items-center"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                <LxInfoTooltip markdown={t("settings.opencodeGoDoc")} placement="right" />
+              </span>
+            }
+          >
+            <span className="min-w-0 flex-1 truncate select-none">
+              {t("settings.addOpencodeGo")}
+            </span>
+          </LxNavItem>
+        </div>
+      ) : null}
     </nav>
   )
 }

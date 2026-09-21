@@ -91,6 +91,7 @@ const api: ProjectApi &
     saveModelProviders: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.saveModelProviders, settings),
     fetchModels: (input) => ipcRenderer.invoke(SETTINGS_CHANNELS.fetchModels, input),
+    refreshOpencodeGo: () => ipcRenderer.invoke(SETTINGS_CHANNELS.refreshOpencodeGo),
     getPermissionSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getPermissionSettings),
     savePermissionSettings: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.savePermissionSettings, settings),

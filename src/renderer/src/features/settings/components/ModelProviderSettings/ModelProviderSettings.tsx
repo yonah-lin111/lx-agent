@@ -1,7 +1,9 @@
-import { Download } from "lucide-react"
+import { OPENCODE_GO_PROVIDER_ID } from "@shared/opencodeGo"
+import { Download, RefreshCw } from "lucide-react"
 import { useEffect, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
+import { useLxToast } from "@/components/ui/LxToast"
 import { useTranslation } from "@/i18n"
 import { ModelProviderMenu } from "./components/ModelProviderMenu"
 import { ProviderBasicFields } from "./components/ProviderBasicFields"
@@ -9,7 +11,9 @@ import { ProviderModelRow } from "./components/ProviderModelRow"
 import { ProviderNav } from "./components/ProviderNav"
 import { useFetchedProviderModels } from "./hooks/useFetchedProviderModels"
 import { useModelProviderMutations } from "./hooks/useModelProviderMutations"
+import { useOpencodeGoRefresh } from "./hooks/useOpencodeGoRefresh"
 import type { ModelProviderSettingsProps, ProviderMenuState } from "./types"
+import { isOpencodeGoMissing } from "./utils"
 
 /**
  * 渲染模型 Provider 的读取、编辑和保存界面。
@@ -25,6 +29,7 @@ export const ModelProviderSettings = ({
   const [expandedModelKeys, setExpandedModelKeys] = useState<Record<string, boolean>>({})
   const [menuState, setMenuState] = useState<ProviderMenuState | null>(null)
   const { t } = useTranslation()
+  const toast = useLxToast()
 
   const {
     updateProvider,
@@ -34,6 +39,7 @@ export const ModelProviderSettings = ({
     duplicateProvider,
     addModel,
     duplicateModel,
+    addOpencodeGoPreset,
   } = useModelProviderMutations({
     setSettings,
     selectedProviderId,
@@ -66,6 +72,18 @@ export const ModelProviderSettings = ({
   }, [selectedProviderId, settings])
 
   const selectedProvider = settings.providers[selectedProviderId]
+  const isOpencodeGoSelected =
+    selectedProviderId === OPENCODE_GO_PROVIDER_ID ||
+    selectedProvider?.id === OPENCODE_GO_PROVIDER_ID
+
+  const { isRefreshing, refreshOpencodeGo } = useOpencodeGoRefresh({ setSettings })
+
+  // 一键添加 OpenCode Go 预设（幂等，已存在时入口隐藏，此处为二次兜底）。
+  const handleAddOpencodeGo = (): void => {
+    if (!isOpencodeGoMissing(settings.providers)) return
+    addOpencodeGoPreset()
+    toast.success(t("settings.addOpencodeGoSuccess"))
+  }
 
   return (
     <div className="@container flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
@@ -87,6 +105,7 @@ export const ModelProviderSettings = ({
           onOpenContextMenu={(providerKey, providerName, isEnabled, x, y, anchor) =>
             setMenuState({ providerKey, providerName, isEnabled, x, y, anchor })
           }
+          onAddOpencodeGo={handleAddOpencodeGo}
         />
 
         {selectedProvider ? (
@@ -102,6 +121,16 @@ export const ModelProviderSettings = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-white">{t("settings.modelsList")}</h3>
                 <div className="flex items-center gap-1">
+                  {isOpencodeGoSelected ? (
+                    <LxIconButton
+                      aria-label={t("settings.refreshOpencodeGo")}
+                      title={{ content: t("settings.refreshOpencodeGo"), placement: "top" }}
+                      disabled={isRefreshing || isFetchingModels}
+                      onClick={() => void refreshOpencodeGo()}
+                    >
+                      <RefreshCw />
+                    </LxIconButton>
+                  ) : null}
                   <LxIconButton
                     aria-label={t("settings.fetchModels")}
                     title={{ content: t("settings.fetchModels"), placement: "top" }}

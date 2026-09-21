@@ -7,6 +7,7 @@ export type ConfigTree = Record<string, unknown>
 const CONFIG_ROUTES: Readonly<Record<string, string>> = {
   ai: "ai.json",
   bailian: "ai.json",
+  builtinProviders: "builtin-providers.json",
   agent: "agent.json",
   openclaw: "openclaw.json",
   ui: "app.json",

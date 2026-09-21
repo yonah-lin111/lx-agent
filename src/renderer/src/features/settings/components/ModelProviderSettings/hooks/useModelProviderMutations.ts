@@ -2,8 +2,9 @@ import type { ModelPricing } from "@shared/contracts/usage"
 import type React from "react"
 import { useCallback, useEffect } from "react"
 import type { ModelProvider, ModelProviderSettingsData } from "@/features/settings/types"
+import { OPENCODE_GO_PRESET } from "../constants"
 import type { UpdateProviderFn } from "../types"
-import { createProviderId } from "../utils"
+import { applyOpencodeGoPreset, createProviderId } from "../utils"
 
 type UseModelProviderMutationsOptions = {
   setSettings: React.Dispatch<React.SetStateAction<ModelProviderSettingsData | null>>
@@ -22,6 +23,7 @@ type UseModelProviderMutationsResult = {
   duplicateProvider: (providerId: string) => void
   addModel: (providerId: string) => void
   duplicateModel: (providerId: string, modelKey: string) => void
+  addOpencodeGoPreset: () => void
 }
 
 /**
@@ -118,6 +120,17 @@ export const useModelProviderMutations = ({
     onRegisterAddProvider?.(addProvider)
   }, [onRegisterAddProvider, addProvider])
 
+  // 一键创建 OpenCode Go 预设（幂等，已存在时跳过；专属成功提示由调用方展示，不触发通用 onAddProvider）。
+  const addOpencodeGoPreset = useCallback((): void => {
+    setSettings((current) => {
+      if (!current) return current
+      const next = applyOpencodeGoPreset(current.providers, current.enabledProviders)
+      if (!next.added) return current
+      setSelectedProviderId(OPENCODE_GO_PRESET.id)
+      return { ...current, providers: next.providers, enabledProviders: next.enabledProviders }
+    })
+  }, [setSettings, setSelectedProviderId])
+
   const deleteProvider = (providerId: string): void => {
     setSettings((current) => {
       if (!current) return current
@@ -210,5 +223,6 @@ export const useModelProviderMutations = ({
     duplicateProvider,
     addModel,
     duplicateModel,
+    addOpencodeGoPreset,
   }
 }

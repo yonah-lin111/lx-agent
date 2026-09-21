@@ -95,4 +95,18 @@ export const models = {
   presetVariantAnthropic: "Anthropic 思考预算 (budgetTokens)",
   presetVariantReasoningEffort: "通用推理等级 (reasoning_effort)",
   invalidVariantJson: "参数 JSON 格式不合法",
+
+  addOpencodeGo: "添加 OpenCode Go",
+  addOpencodeGoSuccess: "已添加 OpenCode Go 预设，粘贴 API Key 即可使用全部模型",
+  refreshOpencodeGo: "从云端更新模型",
+  refreshOpencodeGoSuccess: "云端更新完成：新增 {{added}} 个，更新 {{updated}} 个",
+  refreshOpencodeGoFailed: "云端更新失败，请稍后重试",
+  opencodeGoAutoType: "自动（按模型适配）",
+  opencodeGoDoc: `### OpenCode Go
+
+在 [OpenCode Zen 控制台](https://opencode.ai)订阅 Go 并复制 API Key，粘贴到该 Provider 即可使用全部模型。
+
+传输协议按模型自动适配，不可修改。
+
+[完整模型列表](https://opencode.ai/docs/go)`,
 }

@@ -7,6 +7,8 @@ import type {
   Usage,
 } from "@shared/contracts/agent"
 import type { UsagePurpose } from "@shared/contracts/usage"
+import { OPENCODE_GO_PROVIDER_ID } from "@shared/opencodeGo"
+import { resolveModelTransport } from "@shared/settings"
 import { stepCountIs, streamText } from "ai"
 import { createAssistantMessageEventStream } from "@/agent/core/event-stream"
 import type { Model, StreamFn } from "@/agent/core/types"
@@ -195,26 +197,44 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
 
         const providerOptions: Record<string, any> = {}
         if (variantConfig) {
-          if (providerConfig?.type === "anthropic") {
-            providerOptions["anthropic"] = {
-              ...(typeof variantConfig.thinkingBudget === "number"
+          // 按模型实际传输协议选参（模型级 transport 覆盖优先，缺省继承 provider.type）。
+          const effectiveTransport = providerConfig
+            ? resolveModelTransport(providerConfig, model.id)
+            : "openai-compatible"
+          if (effectiveTransport === "anthropic") {
+            // 依次支持：lx 自有 thinkingBudget（数字预算）、opencode 式 thinking 对象
+            //（如 minimax-m3 的 disabled/adaptive）、opencode 式 effort 裸键（非 Claude 系自适应档位）。
+            const thinkingOption =
+              typeof variantConfig.thinkingBudget === "number"
                 ? {
                     thinking: {
                       type: "enabled",
                       budgetTokens: variantConfig.thinkingBudget,
                     },
                   }
-                : {}),
+                : typeof variantConfig.thinking === "object" &&
+                    variantConfig.thinking !== null &&
+                    !Array.isArray(variantConfig.thinking)
+                  ? { thinking: variantConfig.thinking }
+                  : {}
+            providerOptions["anthropic"] = {
+              ...thinkingOption,
+              ...(typeof variantConfig.effort === "string" ? { effort: variantConfig.effort } : {}),
               ...variantConfig,
             }
-          } else if (providerConfig?.type === "openai") {
+          } else if (effectiveTransport === "openai" || effectiveTransport === "openai-responses") {
             providerOptions["openai"] = {
               ...(typeof variantConfig.reasoningEffort === "string"
                 ? { reasoningEffort: variantConfig.reasoningEffort }
                 : {}),
+              // opencode responses 系三件套：档位 + 摘要 + 加密推理透传。
+              ...(typeof variantConfig.reasoningSummary === "string"
+                ? { reasoningSummary: variantConfig.reasoningSummary }
+                : {}),
+              ...(Array.isArray(variantConfig.include) ? { include: variantConfig.include } : {}),
               ...variantConfig,
             }
-          } else if (providerConfig?.type === "google") {
+          } else if (effectiveTransport === "google") {
             providerOptions["google"] = {
               ...(typeof variantConfig.thinkingBudget === "number"
                 ? {
@@ -259,6 +279,15 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
           stopWhen: stepCountIs(1),
           abortSignal: combinedSignal,
           ...(Object.keys(providerOptions).length > 0 ? { providerOptions } : {}),
+          // OpenCode Go 要求每请求携带稳定会话 id（x-opencode-session）用于路由与 prompt caching，
+          // 缺失会被服务端拒绝；仅对 Go 发送，避免向第三方泄露会话标识。
+          ...(providerConfig?.id === OPENCODE_GO_PROVIDER_ID
+            ? {
+                headers: {
+                  "x-opencode-session": options?.sessionId ?? getSessionId?.() ?? "draft-session",
+                },
+              }
+            : {}),
         })
 
         stream.push({ type: "start", partial })

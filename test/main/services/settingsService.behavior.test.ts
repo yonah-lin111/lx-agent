@@ -9,6 +9,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import type { ModelProvider, ModelProviderSettings } from "@shared/settings"
 import { ALL_CLI_IDS, DEFAULT_LSP_SETTINGS, DEFAULT_VOICE_SETTINGS } from "@shared/settings"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -37,10 +38,12 @@ import {
   getCliSettings,
   getLspSettings,
   getMcpSettings,
+  getModelProviderSettings,
   getUiSettings,
   getVoiceSettings,
   normalizeSkillSettings,
   normalizeVoiceSettings,
+  refreshOpencodeGoProvider,
   saveCliSettings,
   saveLspSettings,
   saveMcpSettings,
@@ -170,6 +173,225 @@ describe("settingsService 写盘不变量", () => {
     ).toThrow("Provider ID 重复")
 
     expect(readConfig()).toEqual(original)
+  })
+
+  it("模型计价与传输覆盖保存后往返保留，非法值被丢弃", () => {
+    writeConfig({})
+
+    const saved = saveModelProviderSettings({
+      providers: {
+        go: {
+          id: "go",
+          type: "openai-compatible",
+          name: "go",
+          options: { apiKey: "sk-go", baseURL: "https://opencode.ai/zen/go/v1" },
+          models: {
+            priced: {
+              id: "priced",
+              name: "Priced",
+              transport: "anthropic",
+              pricing: { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0 },
+            },
+            zero: {
+              id: "zero",
+              name: "Zero",
+              pricing: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            },
+            bogus: {
+              id: "bogus",
+              name: "Bogus",
+              transport: "bogus" as unknown as "anthropic",
+              pricing: { input: -1, output: Number.NaN, cacheRead: 0, cacheWrite: 0 },
+            },
+          },
+        },
+      },
+      enabledProviders: ["go"],
+      defaultModel: { provider: "go", model: "priced" },
+      titleSummary: { provider: "go", model: "priced" },
+      suggestedQuestions: { provider: "go", model: "priced" },
+      compactionModel: { provider: "", model: "" },
+      suggestedQuestionsEnabled: false,
+      compactionEnabled: true,
+      streamIdleTimeoutMs: 1000,
+    })
+
+    expect(saved.providers.go.models.priced.pricing).toEqual({
+      input: 0.3,
+      output: 1.2,
+      cacheRead: 0.006,
+      cacheWrite: 0,
+    })
+    expect(saved.providers.go.models.priced.transport).toBe("anthropic")
+    expect(saved.providers.go.models.zero.pricing).toBeUndefined()
+    expect(saved.providers.go.models.bogus.pricing).toBeUndefined()
+    expect(saved.providers.go.models.bogus.transport).toBeUndefined()
+    // 落盘后重新读取仍保留合法计价与传输覆盖。
+    expect(getModelProviderSettings().providers.go.models.priced.pricing).toEqual({
+      input: 0.3,
+      output: 1.2,
+      cacheRead: 0.006,
+      cacheWrite: 0,
+    })
+    expect(getModelProviderSettings().providers.go.models.priced.transport).toBe("anthropic")
+  })
+})
+
+describe("内置 Provider 读写分离", () => {
+  const goRecord = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
+    id: "opencode-go",
+    type: "openai-compatible",
+    name: "OpenCode Go",
+    options: { apiKey: "sk-go", baseURL: "https://opencode.ai/zen/go/v1" },
+    models: {},
+    ...overrides,
+  })
+
+  const customRecord = (id: string): ModelProvider => ({
+    id,
+    type: "openai",
+    name: id,
+    options: { apiKey: "", baseURL: "" },
+    models: {},
+  })
+
+  const shellSettings = (providers: Record<string, ModelProvider>): ModelProviderSettings => ({
+    providers,
+    enabledProviders: Object.keys(providers),
+    defaultModel: { provider: "opencode-go", model: "" },
+    titleSummary: { provider: "opencode-go", model: "" },
+    suggestedQuestions: { provider: "opencode-go", model: "" },
+    compactionModel: { provider: "", model: "" },
+    suggestedQuestionsEnabled: false,
+    compactionEnabled: true,
+    streamIdleTimeoutMs: 1000,
+  })
+
+  it("保存时内置记录写入独立文件，用户文件不含内置", () => {
+    writeConfig({})
+
+    const saved = saveModelProviderSettings(
+      shellSettings({ "opencode-go": goRecord(), custom: customRecord("custom") }),
+    )
+
+    expect(Object.keys(saved.providers).sort()).toEqual(["custom", "opencode-go"])
+    const configDir = getTestConfigDir(holder.configPath)
+    expect(
+      JSON.parse(readFileSync(join(configDir, "builtin-providers.json"), "utf8")),
+    ).toMatchObject({ builtinProviders: { "opencode-go": { id: "opencode-go" } } })
+    expect(
+      Object.keys(
+        (
+          JSON.parse(readFileSync(join(configDir, "ai.json"), "utf8")) as {
+            ai: { providers: Record<string, unknown> }
+          }
+        ).ai.providers,
+      ),
+    ).toEqual(["custom"])
+    // 读取侧合并两文件。
+    expect(Object.keys(getModelProviderSettings().providers).sort()).toEqual([
+      "custom",
+      "opencode-go",
+    ])
+  })
+
+  it("云端刷新合并：保留用户字段，同步管理字段，新增追加，不删数据", async () => {
+    writeConfig({})
+    saveModelProviderSettings(
+      shellSettings({
+        "opencode-go": goRecord({
+          name: "My Go",
+          models: {
+            "kimi-k2.7-code": {
+              id: "kimi-k2.7-code",
+              name: "My Kimi",
+              pricing: { input: 9, output: 9, cacheRead: 9, cacheWrite: 9 },
+            },
+            "my-model": { id: "my-model", name: "My Model" },
+          },
+        }),
+      }),
+    )
+
+    const result = await refreshOpencodeGoProvider(async () => ({
+      npm: "@ai-sdk/openai-compatible",
+      providerName: "OpenCode Go",
+      models: {
+        "kimi-k2.7-code": {
+          id: "kimi-k2.7-code",
+          name: "Upstream Kimi",
+          limit: { context: 262144, output: 262144 },
+          modalities: { input: ["text"], output: ["text"] },
+          cost: { input: 0.1, output: 0.2, cache_read: 0.01 },
+          reasoning_options: [],
+        },
+        "new-model": {
+          id: "new-model",
+          name: "New Model",
+          cost: { input: 1, output: 2, cache_read: 0.1 },
+          reasoning_options: [{ type: "effort", values: ["high"] }],
+        },
+      },
+    }))
+
+    expect(result).toEqual({
+      providerId: "opencode-go",
+      added: ["new-model"],
+      updated: ["kimi-k2.7-code"],
+    })
+    const go = getModelProviderSettings().providers["opencode-go"]
+    // 用户字段保留。
+    expect(go.options.apiKey).toBe("sk-go")
+    expect(go.name).toBe("My Go")
+    expect(go.models["kimi-k2.7-code"].name).toBe("My Kimi")
+    expect(go.models["kimi-k2.7-code"].pricing).toEqual({
+      input: 9,
+      output: 9,
+      cacheRead: 9,
+      cacheWrite: 9,
+    })
+    // 管理字段同步。
+    expect(go.models["kimi-k2.7-code"].limit).toEqual({ context: 262144, output: 262144 })
+    // 自建模型保留，新模型带云端计价。
+    expect(go.models["my-model"].name).toBe("My Model")
+    expect(go.models["new-model"].pricing).toEqual({
+      input: 1,
+      output: 2,
+      cacheRead: 0.1,
+      cacheWrite: 0,
+    })
+    expect(go.models["new-model"].variants).toEqual({ high: { reasoningEffort: "high" } })
+  })
+
+  it("无内置记录时刷新自动创建并启用", async () => {
+    writeConfig({
+      ai: {
+        enabled_providers: ["custom"],
+        providers: { custom: customRecord("custom") },
+      },
+    })
+
+    const result = await refreshOpencodeGoProvider(async () => ({
+      npm: "@ai-sdk/openai-compatible",
+      providerName: "OpenCode Go",
+      models: {},
+    }))
+
+    expect(result.added).toEqual([])
+    const settings = getModelProviderSettings()
+    expect(settings.providers["opencode-go"].options.apiKey).toBe("")
+    expect(settings.enabledProviders).toEqual(["custom", "opencode-go"])
+  })
+
+  it("目录拉取失败时抛错且不写盘", async () => {
+    writeConfig({})
+
+    await expect(
+      refreshOpencodeGoProvider(async () => {
+        throw new Error("offline")
+      }),
+    ).rejects.toThrow("offline")
+    expect(readConfig()).toEqual({})
   })
 })
 

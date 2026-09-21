@@ -57,6 +57,8 @@ export type ProviderNavProps = {
     y: number,
     anchor: HTMLElement | null,
   ) => void
+  // 一键添加 OpenCode Go 整组预设；缺省时不渲染入口。
+  onAddOpencodeGo?: () => void
 }
 
 export type ProviderBasicFieldsProps = {

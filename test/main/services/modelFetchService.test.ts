@@ -20,6 +20,12 @@ describe("buildModelsUrlCandidates", () => {
     ])
   })
 
+  it("OpenCode Go 以 /zen/go/v1 结尾时命中官方 /models 端点", () => {
+    expect(buildModelsUrlCandidates("https://opencode.ai/zen/go/v1")).toEqual([
+      "https://opencode.ai/zen/go/v1/models",
+    ])
+  })
+
   it("智谱 Coding Plan 以 /v4 版本段结尾时，/models 优先于 /v1/models", () => {
     expect(buildModelsUrlCandidates("https://open.bigmodel.cn/api/coding/paas/v4")).toEqual([
       "https://open.bigmodel.cn/api/coding/paas/v4/models",

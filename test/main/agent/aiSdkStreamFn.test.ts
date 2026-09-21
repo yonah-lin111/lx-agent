@@ -651,3 +651,162 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     expect(finalMessage.tokenSaver?.rtkSavedChars).toBeGreaterThan(0)
   })
 })
+
+describe("OpenCode Go 会话请求头", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    settingsState.settings = {
+      providers: {
+        "opencode-go": { id: "opencode-go", type: "openai-compatible", models: {} },
+      },
+      streamIdleTimeoutMs: undefined,
+    }
+  })
+
+  const drainSuccess = async (
+    streamFn: ReturnType<typeof createAiSdkStreamFn>,
+    model: Model,
+    options: Record<string, unknown>,
+  ): Promise<void> => {
+    async function* createMockStream() {
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "ok" }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+    mockStreamText.mockReturnValue({ fullStream: createMockStream() })
+    const stream = await streamFn(model, { systemPrompt: "", messages: [] }, options)
+    for await (const _ of stream) {
+      // consume
+    }
+  }
+
+  it("Go 请求携带回调返回的 x-opencode-session", async () => {
+    const streamFn = createAiSdkStreamFn({ getSessionId: () => "sess-123" })
+    await drainSuccess(streamFn, { provider: "opencode-go", id: "m" }, {})
+
+    expect(mockStreamText).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { "x-opencode-session": "sess-123" } }),
+    )
+  })
+
+  it("显式 options.sessionId 优先于回调", async () => {
+    const streamFn = createAiSdkStreamFn({ getSessionId: () => "sess-cb" })
+    await drainSuccess(streamFn, { provider: "opencode-go", id: "m" }, { sessionId: "sess-opt" })
+
+    expect(mockStreamText).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { "x-opencode-session": "sess-opt" } }),
+    )
+  })
+
+  it("无会话时回退 draft-session，保证请求可被路由", async () => {
+    const streamFn = createAiSdkStreamFn({})
+    await drainSuccess(streamFn, { provider: "opencode-go", id: "m" }, {})
+
+    expect(mockStreamText).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { "x-opencode-session": "draft-session" } }),
+    )
+  })
+
+  it("非 Go Provider 不发送会话头", async () => {
+    const streamFn = createAiSdkStreamFn({ getSessionId: () => "sess-123" })
+    await drainSuccess(streamFn, { provider: "other", id: "m" }, {})
+
+    const call = mockStreamText.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(call).not.toHaveProperty("headers")
+  })
+})
+
+describe("opencode 式思考等级参数翻译", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    settingsState.settings = {
+      providers: {
+        "anthropic-p": {
+          id: "anthropic-p",
+          type: "anthropic",
+          models: {
+            m3: {
+              id: "minimax-m3",
+              variants: {
+                none: { thinking: { type: "disabled" } },
+                thinking: { thinking: { type: "adaptive" } },
+              },
+            },
+            flash: {
+              id: "qwen3.8-flash",
+              variants: { high: { effort: "high" } },
+            },
+          },
+        },
+        "openai-p": {
+          id: "openai-p",
+          type: "openai",
+          models: {
+            grok: {
+              id: "grok-4.6",
+              variants: {
+                high: {
+                  reasoningEffort: "high",
+                  reasoningSummary: "auto",
+                  include: ["reasoning.encrypted_content"],
+                },
+              },
+            },
+          },
+        },
+      },
+      streamIdleTimeoutMs: undefined,
+    }
+  })
+
+  const drainWithVariant = async (model: Model, variant: string): Promise<unknown> => {
+    async function* createMockStream() {
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "ok" }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+    mockStreamText.mockReturnValue({ fullStream: createMockStream() })
+    const streamFn = createAiSdkStreamFn({})
+    const stream = await streamFn({ ...model, variant }, { systemPrompt: "", messages: [] }, {})
+    for await (const _ of stream) {
+      // consume
+    }
+    return mockStreamText.mock.calls[0]?.[0]
+  }
+
+  it("anthropic 通路透传 thinking 对象", async () => {
+    const call = (await drainWithVariant({ provider: "anthropic-p", id: "m3" }, "thinking")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions["anthropic"]["thinking"]).toEqual({ type: "adaptive" })
+  })
+
+  it("anthropic 通路透传 effort 裸键", async () => {
+    const call = (await drainWithVariant({ provider: "anthropic-p", id: "flash" }, "high")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions["anthropic"]["effort"]).toBe("high")
+  })
+
+  it("openai 通路透传档位 + 摘要 + 加密推理三件套", async () => {
+    const call = (await drainWithVariant({ provider: "openai-p", id: "grok" }, "high")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions["openai"]).toMatchObject({
+      reasoningEffort: "high",
+      reasoningSummary: "auto",
+      include: ["reasoning.encrypted_content"],
+    })
+  })
+})
