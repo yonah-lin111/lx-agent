@@ -10,7 +10,6 @@ import { MCP_TOOL_NAMESPACE, type McpServerStatusItem } from "@shared/contracts/
 import { getConfigPath } from "@/paths"
 import { readRawConfig } from "@/services/settingsService/rawConfig"
 import type { AgentTool } from "../core/types"
-import { CONCURRENT_SCHEDULING_HINT, READ_ONLY_PARALLEL_HINT } from "../tools/schedulingHints"
 import { formatSize, truncateHead } from "../tools/truncate"
 import { jsonSchemaToZod } from "./jsonSchemaToZod"
 
@@ -120,14 +119,6 @@ const truncateMcpOutput = (text: string): string => {
   return `${result.content}\n\n[Output truncated: Showing ${result.outputLines} of ${result.totalLines} lines (${formatSize(result.outputBytes)} / ${formatSize(result.totalBytes)}).]`
 }
 
-// 描述尾部追加调度提示：非 serial server 的同批调用并发执行，只读标注的查询工具用更强措辞。
-const mcpSchedulingHint = (def: Tool, serial: boolean): string => {
-  if (serial) return ""
-  return def.annotations?.readOnlyHint === true
-    ? READ_ONLY_PARALLEL_HINT
-    : CONCURRENT_SCHEDULING_HINT
-}
-
 // MCP 工具 → AgentTool 适配：命名空间前缀、并发执行（server 标记 serial 时独占）、isError 抛错、structuredContent 兜底。
 export const wrapMcpTool = (
   server: string,
@@ -138,7 +129,7 @@ export const wrapMcpTool = (
 ): AgentTool<any> => ({
   name: mcpToolName(server, def.name),
   label: def.name,
-  description: `${def.description ?? ""}${mcpSchedulingHint(def, serial)}`,
+  description: def.description ?? "",
   inputSchema: jsonSchemaToZod(def.inputSchema),
   executionMode: serial ? "sequential" : "parallel",
   execute: async (_toolCallId, params, signal) => {

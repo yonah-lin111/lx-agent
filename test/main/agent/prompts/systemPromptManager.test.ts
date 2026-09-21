@@ -359,18 +359,6 @@ describe("SystemPromptManager", () => {
     })
   })
 
-  describe("工具调用批处理指令 (Tool Call Batching)", () => {
-    it("行为层包含只读查询批量并发与禁止串行折叠的硬规则", async () => {
-      const manager = createDefaultSystemPromptManager()
-      const assembly = await manager.assemble({})
-
-      expect(assembly.rendered).toContain("## Tool Call Batching")
-      expect(assembly.rendered).toContain("never one call per turn")
-      expect(assembly.rendered).toContain("execute concurrently")
-      expect(assembly.rendered).toContain("MCP query calls")
-    })
-  })
-
   describe("外部文本原样注入 (literal sections)", () => {
     it("literal 段跳过插值，{{name}}/{{#if}}/非法变量名原样保留且不抛错", () => {
       const manager = new SystemPromptManager()

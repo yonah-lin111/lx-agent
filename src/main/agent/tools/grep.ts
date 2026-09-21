@@ -8,7 +8,6 @@ import type { AgentTool } from "../core/types"
 import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
 import type { SessionDeps } from "./read"
-import { READ_ONLY_PARALLEL_HINT } from "./schedulingHints"
 import { globToRegExp, walkFiles } from "./search"
 import { DEFAULT_MAX_BYTES, GREP_MAX_LINE_LENGTH, truncateHead, truncateLine } from "./truncate"
 
@@ -403,7 +402,7 @@ export const createGrepTool = (
 ): AgentTool<typeof grepSchema> => ({
   name: "grep",
   label: "Search contents",
-  description: `Search file contents in the project. Supports regex and literal strings, glob filtering, and context lines. Output is truncated to ${DEFAULT_LIMIT} matches or ${DEFAULT_MAX_BYTES / 1024}KB, with lines over ${GREP_MAX_LINE_LENGTH} chars truncated.${READ_ONLY_PARALLEL_HINT}`,
+  description: `Search file contents in the project. Supports regex and literal strings, glob filtering, and context lines. Output is truncated to ${DEFAULT_LIMIT} matches or ${DEFAULT_MAX_BYTES / 1024}KB, with lines over ${GREP_MAX_LINE_LENGTH} chars truncated.`,
   inputSchema: grepSchema,
   execute: async (toolCallId, params, signal) => {
     const searchPath = resolveToCwd(params.path || ".", cwd)
