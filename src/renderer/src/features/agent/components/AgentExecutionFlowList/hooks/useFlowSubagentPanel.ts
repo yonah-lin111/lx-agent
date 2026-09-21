@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react"
+import { resolveSubagentDisplayStatus } from "@/features/agent/components/blocks/SubagentStatusRow"
 import type { ChatBlock, ExecutionStep } from "@/features/agent/types"
 
 /**
@@ -38,7 +39,8 @@ export const useFlowSubagentPanel = (
         description: subagent.description || "",
         prompt: subagent.prompt || "",
       },
-      status: step.status,
+      // 单项终态优先：批量扇出下面板按各自完成收敛 loading。
+      status: resolveSubagentDisplayStatus(subagent, step.status),
       subagent,
     }
   }, [selection, steps])

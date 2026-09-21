@@ -21,6 +21,7 @@ export const agent = {
   toolExecutionFailed: "Tool execution failed",
   subagentRunning: "Subagent running...",
   subagentCompleted: "Subagent completed",
+  subagentBatchSummary: "{{done}}/{{total}} completed",
   webSearching: "Searching web...",
   webSearchCompleted: "Web search completed",
   mcpCalling: "Calling MCP tool: {{name}}",

@@ -139,8 +139,10 @@ export const AgentSubagentPanel = ({
   const data: SubagentData | undefined = toolCall?.subagent
   const displayName = data?.name.trim() || "task"
   const displayLabel = formatSubagentLabel(displayName, data?.roleName)
-  // 子代理运行中：面板内消息的流式展示信号（父级 task 调用未结束即运行中）。
-  const isSubagentRunning = toolCall?.status === "running"
+  // 子代理运行中：单项快照终态优先（批量扇出按各自完成收敛），旧数据回退父级调用状态。
+  const isSubagentRunning = data?.status
+    ? data.status === "running"
+    : toolCall?.status === "running"
   const [isIdCopied, setIsIdCopied] = useState(false)
 
   // 沙箱策略文案（复用设置页现有文案）。

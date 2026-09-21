@@ -198,6 +198,34 @@ describe("AgentSubagentBlock 批量扇出", () => {
     expect(rows[1]?.textContent).toContain("read")
   })
 
+  it("按单项终态标记：已完成项展示统计行，未完成项保持运行态（不等整批）", () => {
+    const { container } = render(
+      <AgentSubagentBlock
+        toolCall={{
+          ...buildBatchToolCall(),
+          status: "running",
+          subagents: [
+            {
+              ...buildBatchItem("subagent-1", "review-auth", "explorer"),
+              status: "done",
+              steps: [{ toolName: "grep", args: {}, status: "done" }],
+            },
+            {
+              ...buildBatchItem("subagent-2", "review-db"),
+              status: "running",
+              steps: [{ toolName: "read", args: { filePath: "/tmp/a/db.ts" }, status: "running" }],
+            },
+          ],
+        }}
+      />,
+    )
+
+    const rows = container.querySelectorAll(".agent-subagent-status-row")
+    expect(rows[0]?.getAttribute("data-subagent-row")).toBe("stats")
+    expect(rows[1]?.getAttribute("data-subagent-row")).toBe("tool")
+    expect(rows[1]?.textContent).toContain("read")
+  })
+
   it("单项子代理仍按原有卡片渲染（不进入批量分支）", () => {
     const onOpen = vi.fn()
     render(<AgentSubagentBlock toolCall={buildToolCall("done", [])} onOpen={onOpen} />)

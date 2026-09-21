@@ -524,6 +524,7 @@ export const AgentExecutionFlowItem = ({
           {step.subagentContent && (
             <FlowItemSubagentContent
               content={step.subagentContent}
+              fallbackStatus={step.status}
               onOpenSubagentItem={(subagentIndex) => onOpenSubagent?.(step.id, subagentIndex)}
             />
           )}

@@ -1,9 +1,13 @@
-import { Bot } from "lucide-react"
+import { AlertCircle, Bot, CheckCircle2, Loader2 } from "lucide-react"
 import type React from "react"
 import type { ChatBlock } from "@/features/agent/types"
 import { formatSubagentLabel } from "@/features/agent/utils/subagentLabel"
 import { useTranslation } from "@/i18n"
-import { type SubagentDisplayStatus, SubagentStatusRow } from "./SubagentStatusRow"
+import {
+  resolveSubagentDisplayStatus,
+  type SubagentDisplayStatus,
+  SubagentStatusRow,
+} from "./SubagentStatusRow"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -53,6 +57,8 @@ export const AgentSubagentBlock = ({
         {batch.map((item, index) => {
           const itemName = item.name.trim() || "task"
           const itemLabel = formatSubagentLabel(itemName, item.roleName)
+          // 单项状态：终态优先（各子代理独立完成即标记），旧数据回退整批状态。
+          const itemStatus = resolveSubagentDisplayStatus(item, status)
           return (
             <div key={item.subagentId ?? `${index}`} className="min-w-0">
               <button
@@ -68,10 +74,17 @@ export const AgentSubagentBlock = ({
                 <span className="agent-subagent-detail truncate text-xs text-white/50">
                   {itemLabel}
                 </span>
+                {itemStatus === "running" ? (
+                  <Loader2 className="h-3 w-3 shrink-0 animate-spin text-sky-400" />
+                ) : itemStatus === "error" ? (
+                  <AlertCircle className="h-3 w-3 shrink-0 text-rose-400" />
+                ) : (
+                  <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400/80" />
+                )}
               </button>
               <SubagentStatusRow
                 subagent={item}
-                status={status}
+                status={itemStatus}
                 testId="agent-subagent-status-row"
                 className="agent-subagent-status-row mt-1"
               />

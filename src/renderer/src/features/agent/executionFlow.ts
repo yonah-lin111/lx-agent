@@ -1,4 +1,4 @@
-import type { PromptAssembly } from "@shared/contracts/agent"
+import type { PromptAssembly, SubagentData, Usage } from "@shared/contracts/agent"
 import { cleanUserPrompt } from "./components/AgentMessageList/AgentMessageItem/utils"
 import { getModelDisplayName } from "./hooks/modelsStore"
 import type {
@@ -8,6 +8,19 @@ import type {
   ExecutionStepStatus,
   TokenSaverHit,
 } from "./types"
+
+// 批量子代理 token 聚合：逐项 usage 求和（并行统计展示）。
+const sumSubagentUsage = (items: SubagentData[]): Usage =>
+  items.reduce<Usage>(
+    (total, item) => ({
+      input: total.input + item.usage.input,
+      output: total.output + item.usage.output,
+      cacheRead: total.cacheRead + item.usage.cacheRead,
+      cacheWrite: total.cacheWrite + (item.usage.cacheWrite ?? 0),
+      totalTokens: total.totalTokens + item.usage.totalTokens,
+    }),
+    { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 },
+  )
 
 /**
  * 截断文本为单行预览。
@@ -401,6 +414,8 @@ export const buildExecutionSteps = (
         const pairedResult = paired?.block
         const pairedTimestamp = paired?.timestamp
         const batchSubagents = block.subagents ?? pairedResult?.subagents
+        const batchUsage =
+          batchSubagents && batchSubagents.length > 0 ? sumSubagentUsage(batchSubagents) : undefined
         const isSubagent =
           block.toolName === "task" ||
           block.subagent !== undefined ||
@@ -482,7 +497,14 @@ export const buildExecutionSteps = (
                   cacheRead: subagentData.usage.cacheRead,
                   total: subagentData.usage.totalTokens,
                 }
-              : toolTokens,
+              : batchUsage
+                ? {
+                    input: batchUsage.input,
+                    output: batchUsage.output,
+                    cacheRead: batchUsage.cacheRead,
+                    total: batchUsage.totalTokens,
+                  }
+                : toolTokens,
             parentTokens: subagentData?.usage ? toolTokens : undefined,
             tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
             subagentContent: {

@@ -14,6 +14,27 @@ import { ToolCallTitle } from "./ToolCallTitle"
 // 子代理展示状态（运行中 / 完成 / 失败）。
 export type SubagentDisplayStatus = "running" | "done" | "error"
 
+/**
+ * 子代理快照状态 → 展示状态：终态优先（aborted 归入 error），
+ * 旧持久化数据无 status 时回退调用方判定（配对工具结果 / 步骤状态）。
+ */
+export const resolveSubagentDisplayStatus = (
+  subagent: SubagentData | undefined,
+  fallback: SubagentDisplayStatus,
+): SubagentDisplayStatus => {
+  switch (subagent?.status) {
+    case "running":
+      return "running"
+    case "done":
+      return "done"
+    case "error":
+    case "aborted":
+      return "error"
+    default:
+      return fallback
+  }
+}
+
 // 统计段：计数 + 单复数 i18n key。
 interface SubagentStatSegment {
   count: number

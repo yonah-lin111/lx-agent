@@ -57,6 +57,8 @@ export interface SubagentData {
   steps: SubagentStep[]
   // 聚合 token 用量。
   usage: Usage
+  // 运行状态：流式快照恒为 running；终态为 done / error / aborted（旧持久化数据缺省）。
+  status?: "running" | "done" | "error" | "aborted"
   // 最终输出超限时完整结果落盘路径。
   filePath?: string
 }

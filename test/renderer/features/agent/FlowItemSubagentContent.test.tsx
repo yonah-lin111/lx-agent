@@ -6,15 +6,26 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { FlowItemSubagentContent } from "@/features/agent/components/AgentExecutionFlowList/FlowItemSubagentContent"
 
 // 批量子代理快照。
-const buildItem = (id: string, name: string, roleName?: string): SubagentData => ({
+const buildItem = (
+  id: string,
+  name: string,
+  options?: { roleName?: string; status?: SubagentData["status"]; totalTokens?: number },
+): SubagentData => ({
   subagentId: id,
   name,
-  ...(roleName ? { roleName } : {}),
+  ...(options?.roleName ? { roleName: options.roleName } : {}),
+  ...(options?.status ? { status: options.status } : {}),
   description: `${name} 任务`,
   prompt: `${name} 任务`,
   messages: [],
   steps: [],
-  usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2 },
+  usage: {
+    input: 1,
+    output: 1,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: options?.totalTokens ?? 2,
+  },
 })
 
 describe("FlowItemSubagentContent 批量扇出", () => {
@@ -22,13 +33,17 @@ describe("FlowItemSubagentContent 批量扇出", () => {
 
   it("逐项渲染子代理入口，点击携带对应下标", () => {
     const onOpenSubagentItem = vi.fn()
-    render(
+    const { container } = render(
       <FlowItemSubagentContent
         content={{
           name: "task ×2",
           subagents: [
-            buildItem("subagent-1", "review-auth", "explorer"),
-            buildItem("subagent-2", "review-db"),
+            buildItem("subagent-1", "review-auth", {
+              roleName: "explorer",
+              status: "done",
+              totalTokens: 1200,
+            }),
+            buildItem("subagent-2", "review-db", { status: "running", totalTokens: 800 }),
           ],
         }}
         onOpenSubagentItem={onOpenSubagentItem}
@@ -39,6 +54,16 @@ describe("FlowItemSubagentContent 批量扇出", () => {
     expect(buttons).toHaveLength(2)
     expect(buttons[0]?.textContent).toContain("review-auth")
     expect(buttons[1]?.textContent).toContain("review-db")
+
+    // 单项 token 与状态图标：完成项 ✓、运行项 spinner。
+    expect(buttons[0]?.textContent).toContain("1.2k")
+    expect(buttons[1]?.textContent).toContain("800")
+    expect(buttons[0]?.querySelector(".animate-spin")).toBeNull()
+    expect(buttons[1]?.querySelector(".animate-spin")).not.toBeNull()
+
+    // 汇总行：完成数与并行 token 合计（1200 + 800）。
+    expect(container.textContent).toContain("1/2 completed")
+    expect(container.textContent).toContain("Σ 2.0k tok")
 
     fireEvent.click(buttons[1] as HTMLElement)
     expect(onOpenSubagentItem).toHaveBeenCalledWith(1)

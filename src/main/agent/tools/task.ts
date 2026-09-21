@@ -329,6 +329,8 @@ export const createTaskTool = (
           throttle.schedule()
         },
       )
+      // 终态快照（status = done/error）覆盖流式 running 快照后再 flush，避免完成态回落。
+      if (result.data) latestSnapshot = result.data
       throttle.flushNow()
 
       // 槽位占用前/启动前中止：runner 不返回快照，回传取消结果。
@@ -404,6 +406,12 @@ export const createTaskTool = (
             snapshotBuilders[index] = snapshot
             throttle.schedule()
           })
+          // 单项完成即回推终态快照：UI 逐项标记完成，不等整批结束。
+          if (result.data) {
+            const finalData = result.data
+            snapshotBuilders[index] = () => finalData
+            throttle.schedule()
+          }
           return { kind: "result", request, result }
         } finally {
           lease()

@@ -348,7 +348,7 @@ export const runSubagent = async (
   }
 
   // 构建 SubagentData 快照（每次子代理事件推一次，renderer 覆盖不做增量合并）。
-  const buildSubagentData = (filePath?: string): SubagentData => ({
+  const buildSubagentData = (filePath?: string, status?: SubagentData["status"]): SubagentData => ({
     subagentId,
     name: subagentName,
     ...(roleName ? { roleName } : {}),
@@ -359,6 +359,7 @@ export const runSubagent = async (
     messages: collectMessages(),
     steps: [...steps.values()],
     usage: aggregateUsage(subAgent.state.messages),
+    ...(status ? { status } : {}),
     ...(filePath ? { filePath } : {}),
   })
 
@@ -416,7 +417,8 @@ export const runSubagent = async (
         break
       }
     }
-    onSnapshot?.(() => buildSubagentData(), progress)
+    // 流式快照恒为 running：单项终态由结果快照（data.status）与批量完成回推覆盖。
+    onSnapshot?.(() => buildSubagentData(undefined, "running"), progress)
   })
   // 父 run abort → 子代理级联中止。
   const onAbort = (): void => subAgent.abort()
@@ -524,7 +526,7 @@ export const runSubagent = async (
     },
   })
 
-  const data = buildSubagentData()
+  const data = buildSubagentData(undefined, subagentStatus)
 
   // 在会话池中登记/更新该子代理实例与历史快照数据（续接保留已固定角色）。
   deps.subagentPool?.set(subagentId, {

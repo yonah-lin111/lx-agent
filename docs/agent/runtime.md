@@ -158,7 +158,7 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 - **并发与深度治理**：会话级 `SubagentRuntime` 在 `maxConcurrent`（1–32，缺省不限）达到上限时，顶层会话（depth 0，含单任务与批量项）按 FIFO 排队等待槽位，槽位释放直接移交队首；嵌套子代理（depth ≥ 1）保持 fail-fast 返回错误文案（父代理占槽等待子代理会形成循环等待死锁）。父 run 中止时排队项出队返回 aborted。`maxDepth` 取 1–5（默认 1；根会话为 0，子代理 = 父 + 1），越界不再嵌套。
 - **配置快照**：角色目录与治理项在会话 registry 装配时快照，设置保存仅对新会话生效。
 - **续接不可变**：经 `subagent_id` / `name` 命中池内子代理时沿用创建时的角色、模型与工具集；携带与已固定角色冲突的 `agent_type` 直接报错，未携带或相同则等价于未携带。
-- **长程上下文续接与快照持久化**：向同一子代理多轮追问并保留内部执行状态；内部时间轴、步骤与 Token 统计通过 `SubagentData` 挂载于 `ToolResultMessage.subagent`（批量模式为 `ToolResultMessage.subagents[]`，按输入顺序）随事务落盘，条目携带 `roleName` 供卡片与面板标注角色。
+- **长程上下文续接与快照持久化**：向同一子代理多轮追问并保留内部执行状态；内部时间轴、步骤与 Token 统计通过 `SubagentData` 挂载于 `ToolResultMessage.subagent`（批量模式为 `ToolResultMessage.subagents[]`，按输入顺序）随事务落盘，条目携带 `roleName` 与单项 `status`（流式快照 `running`，终态 `done` / `error` / `aborted`）供卡片、面板与执行流程逐项标记完成；批量模式下单项完成即回推终态快照，不等整批结束。
 - **`@` 子代理提及**：输入框 `@` 面板列出内置与用户角色（`@agent:<name>`），选定后以独立 token 高亮插入；token 随用户消息原样进入模型上下文作为委派意图提示，主进程不做强制路由；Backspace 在 token 末尾整块删除。
 
 ### 5.2 子代理配置 Schema（`~/.lx/config/agent.json` → `agent.subagents`）

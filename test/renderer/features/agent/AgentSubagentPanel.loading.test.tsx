@@ -83,6 +83,15 @@ describe("AgentSubagentPanel 运行态与头部收敛", () => {
     expect(container.querySelector(".lx-liquid-loader")).toBeNull()
   })
 
+  it("批量项：快照终态覆盖父调用运行态，不显示加载指示", () => {
+    const toolCall = buildToolCall("running")
+    // 批量子代理各自完成：单项快照 status=done，父级 task 调用仍在运行。
+    toolCall.subagent = { ...buildSubagentData(), status: "done" }
+    const { container } = render(<AgentSubagentPanel toolCall={toolCall} onClose={vi.fn()} />)
+
+    expect(container.querySelector(".lx-liquid-loader")).toBeNull()
+  })
+
   it("Flow 模式：子代理运行中执行组展示运行状态", () => {
     render(<AgentSubagentPanel toolCall={buildToolCall("running")} onClose={vi.fn()} mode="flow" />)
     expect(screen.getByLabelText("Running")).not.toBeNull()

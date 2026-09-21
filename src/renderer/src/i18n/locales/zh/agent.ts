@@ -21,6 +21,7 @@ export const agent = {
   toolExecutionFailed: "工具执行失败",
   subagentRunning: "子代理运行中...",
   subagentCompleted: "子代理执行完成",
+  subagentBatchSummary: "{{done}}/{{total}} 已完成",
   webSearching: "正在搜索网页...",
   webSearchCompleted: "网页搜索完成",
   mcpCalling: "正在调用 MCP 工具：{{name}}",

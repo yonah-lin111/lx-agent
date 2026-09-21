@@ -259,6 +259,8 @@ describe("executionFlow", () => {
         "review-auth",
         "review-db",
       ])
+      // 并行 token 统计：逐项 usage 求和（15 + 28）。
+      expect(steps[1].tokens?.total).toBe(43)
     })
 
     it("正确处理多轮对话与上下文压缩", () => {

@@ -193,8 +193,9 @@ describe("task 子代理工具", () => {
       expect(subagent?.prompt).toBe("请列出当前目录的文件")
     }
 
-    // 最终结果 details.subagent 含完整上下文、内部步骤与聚合 usage。
+    // 最终结果 details.subagent 含完整上下文、内部步骤、聚合 usage 与终态标记。
     const subagent = (result.details as { subagent: SubagentData }).subagent
+    expect(subagent.status).toBe("done")
     expect(subagent.name).toBe("查询列表")
     expect(subagent.messages.some((message) => message.role === "assistant")).toBe(true)
     expect(subagent.steps).toEqual([
@@ -959,6 +960,52 @@ describe("task 批量扇出", () => {
     ])
     expect(details.subagents.every((item) => item.subagentId)).toBe(true)
     expect(pool.list()).toHaveLength(3)
+  })
+
+  it("单项完成即回推终态快照，最终结果为逐项终态", async () => {
+    const gate = createGateTool()
+    const tool = createTestTool({ tools: [gate.tool] })
+
+    holder.streamResponses.push(
+      { ...assistant([toolCallBlock("g1", "gate", {})]), stopReason: "toolUse" },
+      { ...assistant([toolCallBlock("g2", "gate", {})]), stopReason: "toolUse" },
+      assistant([{ type: "text", text: "完成" }]),
+      assistant([{ type: "text", text: "完成" }]),
+    )
+
+    const snapshots: SubagentData[][] = []
+    const execution = tool.execute(
+      "parent-batch-status",
+      {
+        tasks: [
+          { description: "一", prompt: "p1" },
+          { description: "二", prompt: "p2" },
+        ],
+      },
+      undefined,
+      (update) => {
+        const subagents = (update.details as { subagents?: SubagentData[] }).subagents
+        if (subagents) snapshots.push(subagents)
+      },
+    )
+
+    // 两项都启动并停在闸门：流式快照均为 running。
+    await vi.waitFor(() => expect(gate.state.started).toBe(2))
+    expect(snapshots.at(-1)?.every((item) => item.status === "running")).toBe(true)
+
+    // 释放一项：该项立即标记 done，另一项仍为 running（不等整批结束）。
+    gate.release()
+    await vi.waitFor(() =>
+      expect(snapshots.some((batch) => batch.some((item) => item.status === "done"))).toBe(true),
+    )
+    const midBatch = snapshots.at(-1) ?? []
+    expect(midBatch.some((item) => item.status === "done")).toBe(true)
+    expect(midBatch.some((item) => item.status === "running")).toBe(true)
+
+    gate.release()
+    const result = await execution
+    const details = result.details as { subagents: SubagentData[] }
+    expect(details.subagents.map((item) => item.status)).toEqual(["done", "done"])
   })
 
   it("批量项支持角色派发并保留角色标注", async () => {

@@ -1,47 +1,93 @@
-import { Bot } from "lucide-react"
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import type React from "react"
-import type { ExecutionSubagentContent } from "@/features/agent/types"
+import { useMemo } from "react"
+import { resolveSubagentDisplayStatus } from "@/features/agent/components/blocks/SubagentStatusRow"
+import type { ExecutionStepStatus, ExecutionSubagentContent } from "@/features/agent/types"
 import { formatSubagentLabel } from "@/features/agent/utils/subagentLabel"
 import { useTranslation } from "@/i18n"
+import { formatTokensShort } from "./types"
 
 export interface FlowItemSubagentContentProps {
   content: ExecutionSubagentContent
   // 批量扇出（tasks[]）：点击某项打开对应子代理面板（下标定位快照）。
   onOpenSubagentItem?: (subagentIndex: number) => void
+  // 步骤整体状态：批量项快照缺少 status（旧数据）时的回退。
+  fallbackStatus?: ExecutionStepStatus
 }
 
 export const FlowItemSubagentContent = ({
   content,
   onOpenSubagentItem,
+  fallbackStatus = "done",
 }: FlowItemSubagentContentProps): React.JSX.Element => {
   const { t } = useTranslation()
   const batch = content.subagents && content.subagents.length > 0 ? content.subagents : undefined
 
+  // 批量汇总：完成数与并行 token 合计（终态优先，旧数据回退步骤状态）。
+  const batchStats = useMemo(() => {
+    if (!batch) return undefined
+    let done = 0
+    let totalTokens = 0
+    for (const item of batch) {
+      if (resolveSubagentDisplayStatus(item, fallbackStatus) === "done") done += 1
+      totalTokens += item.usage.totalTokens
+    }
+    return { done, total: batch.length, totalTokens }
+  }, [batch, fallbackStatus])
+
   return (
     <div className="agent-execution-flow-subagent-content flex flex-col gap-2 font-mono text-xs">
-      <div className="flex items-center gap-2 text-white/70">
-        <span className="text-white/40">Task:</span>
-        <span className="font-bold text-blue-300">{content.name}</span>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-white/70">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="text-white/40">Task:</span>
+          <span className="truncate font-bold text-blue-300">{content.name}</span>
+        </div>
+        {batchStats && (
+          <div className="flex shrink-0 items-center gap-2 tabular-nums text-white/40">
+            <span>
+              {t("agent.subagentBatchSummary", {
+                done: batchStats.done,
+                total: batchStats.total,
+              })}
+            </span>
+            <span aria-hidden="true" className="opacity-40">
+              ·
+            </span>
+            <span>Σ {formatTokensShort(batchStats.totalTokens)} tok</span>
+          </div>
+        )}
       </div>
       {batch && (
-        <div className="agent-execution-flow-subagent-batch flex flex-col gap-1">
-          {batch.map((item, index) => (
-            <button
-              key={item.subagentId ?? `${index}`}
-              type="button"
-              aria-label={t("agent.viewSubagentDetails")}
-              onClick={(event) => {
-                event.stopPropagation()
-                onOpenSubagentItem?.(index)
-              }}
-              className="flex w-fit max-w-full items-center gap-1 rounded-[4px] px-1 py-px text-left transition-colors hover:bg-white/5 focus:outline-none"
-            >
-              <Bot className="h-3.5 w-3.5 shrink-0 text-blue-300" />
-              <span className="truncate text-blue-300">
-                {formatSubagentLabel(item.name.trim() || "task", item.roleName)}
-              </span>
-            </button>
-          ))}
+        <div className="agent-execution-flow-subagent-batch flex flex-col overflow-hidden rounded-[6px] border border-white/10 bg-black/20">
+          {batch.map((item, index) => {
+            const status = resolveSubagentDisplayStatus(item, fallbackStatus)
+            return (
+              <button
+                key={item.subagentId ?? `${index}`}
+                type="button"
+                aria-label={t("agent.viewSubagentDetails")}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onOpenSubagentItem?.(index)
+                }}
+                className="flex w-full items-center gap-2 border-white/5 px-2 py-1 text-left transition-colors not-first:border-t hover:bg-white/5 focus:outline-none"
+              >
+                {status === "running" ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-400" />
+                ) : status === "error" ? (
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-400" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400/80" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-blue-300">
+                  {formatSubagentLabel(item.name.trim() || "task", item.roleName)}
+                </span>
+                <span className="shrink-0 text-white/35 tabular-nums">
+                  {formatTokensShort(item.usage.totalTokens)}
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
       {content.subagent?.prompt && (
