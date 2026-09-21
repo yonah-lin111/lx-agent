@@ -44,6 +44,7 @@ const isValidAgentMessage = (value: unknown): value is AgentMessage => {
     role === "toolResult" ||
     role === "undoSummary" ||
     role === "modelSwitch" ||
+    role === "modeSwitch" ||
     role === "compactionSummary" ||
     role === "todoState"
   )

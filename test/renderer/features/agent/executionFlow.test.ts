@@ -400,6 +400,40 @@ describe("executionFlow", () => {
       expect(steps[5].turnIndex).toBe(2)
     })
 
+    it("协作模式切换渲染为独立步骤（turnIndex 为 0，携带模式内容）", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "切到 plan" }],
+          isStreaming: false,
+        },
+        {
+          id: "s1",
+          role: "modeSwitch",
+          collaborationMode: "plan",
+          isInitial: false,
+          isStreaming: false,
+          blocks: [],
+          timestamp: 1000,
+        },
+        {
+          id: "u2",
+          role: "user",
+          blocks: [{ kind: "text", text: "继续" }],
+          isStreaming: false,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      const modeSteps = steps.filter((step) => step.kind === "modeSwitch")
+      expect(modeSteps).toHaveLength(1)
+      expect(modeSteps[0].turnIndex).toBe(0)
+      expect(modeSteps[0].modeSwitchContent?.mode).toBe("plan")
+      expect(modeSteps[0].modeSwitchContent?.isInitial).toBe(false)
+      expect(modeSteps[0].timestamp).toBe(1000)
+    })
+
     it("正确计算步骤间跨度与 Agent 响应开销（间隔时间归属于后置 step）", () => {
       const messages: ChatMessage[] = [
         {

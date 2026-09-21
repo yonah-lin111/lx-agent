@@ -676,6 +676,18 @@ export const toChatMessage = (
     }
   }
 
+  if (message.role === "modeSwitch") {
+    return {
+      id,
+      role: "modeSwitch",
+      blocks: [],
+      isStreaming: false,
+      timestamp: message.timestamp,
+      collaborationMode: message.mode,
+      isInitial: message.isInitial,
+    }
+  }
+
   if (message.role === "hookContext") {
     return {
       id,
@@ -771,11 +783,37 @@ export const toChatMessage = (
   }
 }
 
+// 切换类消息角色：会话尾部连续出现时按同类合并，避免来回切换刷屏（与 main 侧同一规则）。
+const SWITCH_MESSAGE_ROLES = new Set<ChatMessage["role"]>(["modelSwitch", "modeSwitch"])
+
+/**
+ * 追加切换类消息：会话尾部连续的切换消息中已有同类条目时原地更新（保留 id/位置），否则追加。
+ */
+export const upsertSwitchMessage = (
+  messages: ChatMessage[],
+  incoming: ChatMessage,
+): ChatMessage[] => {
+  if (!SWITCH_MESSAGE_ROLES.has(incoming.role)) return [...messages, incoming]
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const current = messages[index]
+    if (!SWITCH_MESSAGE_ROLES.has(current.role)) break
+    if (current.role === incoming.role) {
+      const next = [...messages]
+      next[index] = { ...incoming, id: current.id }
+      return next
+    }
+  }
+  return [...messages, incoming]
+}
+
 // 将展示条目转回 shared AgentMessage（恢复会话时发送给 main）。
 export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
   messages.flatMap((message): AgentMessage[] => {
     // 压缩摘要为派生数据：不落库、不进 main 上下文。
     if (message.role === "compactionSummary") return []
+
+    // 协作模式切换为非 LLM 标记（main 侧已有同条目），不回传上下文。
+    if (message.role === "modeSwitch") return []
 
     if (message.role === "undoSummary") {
       return [

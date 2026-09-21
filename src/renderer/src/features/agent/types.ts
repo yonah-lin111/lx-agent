@@ -4,6 +4,7 @@ import type {
   AgentUndoDiffSummary,
   AgentUndoSummaryItem,
   AgentUndoSummaryPayload,
+  CollaborationMode,
   CompactionUsage,
   HookEventName,
   HookRunStatus,
@@ -205,6 +206,8 @@ export interface ChatMessage {
   family?: string
   instructions?: string
   isInitial?: boolean
+  // 协作模式切换消息的模式值（modeSwitch 专用）。
+  collaborationMode?: CollaborationMode
   // hook 运行产物属性（hookContext 专用；驱动 FlowList hook 步骤）。
   hookEvent?: HookEventName
   hookName?: string
@@ -234,6 +237,7 @@ export type ExecutionStepKind =
   | "undo"
   | "assistant"
   | "modelSwitch"
+  | "modeSwitch"
   | "error"
   | "proposedPlan"
   | "reviewFindings"
@@ -319,6 +323,8 @@ export interface ExecutionStep {
   frontDesignContent?: FrontDesignData
   // 模型切换/初始模型内容。
   modelSwitchContent?: ExecutionModelSwitchContent
+  // 协作模式切换内容。
+  modeSwitchContent?: ExecutionModeSwitchContent
   // hook 运行内容。
   hookContent?: ExecutionHookContent
   // 异常/中断说明内容。
@@ -338,6 +344,11 @@ export interface ExecutionModelSwitchContent {
   variant?: string
   family?: string
   instructions?: string
+  isInitial?: boolean
+}
+
+export interface ExecutionModeSwitchContent {
+  mode: CollaborationMode
   isInitial?: boolean
 }
 

@@ -12,6 +12,7 @@ import {
   extractSubagentData,
   extractSubagentsData,
   toChatMessage,
+  upsertSwitchMessage,
 } from "@/features/agent/utils"
 import { synthesizeDesignUpdate } from "@/features/agent/utils/designSynthesizer"
 
@@ -296,23 +297,8 @@ export const useAgentChatEvents = ({
 
         case "model_switch": {
           const msg = event.message
-          setMessages((prev) => {
-            const alreadyExists = prev.some(
-              (m) =>
-                m.role === "modelSwitch" &&
-                m.timestamp === msg.timestamp &&
-                m.model === msg.model &&
-                m.provider === msg.provider,
-            )
-            if (alreadyExists) return prev
-            const item = toChatMessage(
-              msg,
-              false,
-              createChatMessageId(),
-              currentSessionIdRef.current,
-            )
-            return [...prev, item]
-          })
+          const item = toChatMessage(msg, false, createChatMessageId(), currentSessionIdRef.current)
+          setMessages((prev) => upsertSwitchMessage(prev, item))
           break
         }
 
@@ -382,6 +368,15 @@ export const useAgentChatEvents = ({
         case "collaboration_mode_changed":
           // 协作模式更新（驱动状态栏指示器并 Toast 提示用户）。
           setCollaborationMode(event.mode)
+          if (event.message) {
+            const item = toChatMessage(
+              event.message,
+              false,
+              createChatMessageId(),
+              currentSessionIdRef.current,
+            )
+            setMessages((prev) => upsertSwitchMessage(prev, item))
+          }
           if (event.mode === "plan") {
             successToast(t("agent.collaborationModeSwitchedToPlan"))
           } else if (event.mode === "review") {

@@ -16,9 +16,13 @@ export interface MessageQaGroup {
 
 export const groupAgentMessages = (messages: ChatMessage[]): MessageGroupEntry[] =>
   messages.reduce<MessageGroupEntry[]>((entries, message) => {
-    // modelSwitch 消息不应在 AgentMessageList 中显示，只在 AgentExecutionFlowList 中显示；
+    // modelSwitch / modeSwitch 消息不应在 AgentMessageList 中显示，只在 AgentExecutionFlowList 中显示；
     // hookContext 审计消息同理：仅进 FlowList，不进 MsgList 分组。
-    if (message.role === "modelSwitch" || message.role === "hookContext") {
+    if (
+      message.role === "modelSwitch" ||
+      message.role === "modeSwitch" ||
+      message.role === "hookContext"
+    ) {
       return entries
     }
 

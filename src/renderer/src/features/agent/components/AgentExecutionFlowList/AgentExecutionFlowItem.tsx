@@ -33,6 +33,7 @@ import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
 import { FlowItemCompactionContent } from "./FlowItemCompactionContent"
 import { FlowItemErrorContent } from "./FlowItemErrorContent"
 import { FlowItemModelSwitchContent } from "./FlowItemModelSwitchContent"
+import { FlowItemModeSwitchContent } from "./FlowItemModeSwitchContent"
 import { FlowItemQuestionContent } from "./FlowItemQuestionContent"
 import { FlowItemSubagentContent } from "./FlowItemSubagentContent"
 import { FlowItemSystemContent } from "./FlowItemSystemContent"
@@ -173,6 +174,7 @@ export const AgentExecutionFlowItem = ({
     if (step.modelSwitchContent) {
       return `${step.title}\n${step.modelSwitchContent.instructions || ""}`
     }
+    if (step.modeSwitchContent) return step.title
     if (step.hookContent) return step.hookContent.text || step.title
     if (step.planContent) return step.planContent.content
     if (step.reviewFindingsContent) return step.reviewFindingsContent.raw
@@ -199,6 +201,9 @@ export const AgentExecutionFlowItem = ({
     }
     if (step.kind === "modelSwitch") {
       return "agent-execution-flow-step-body--modelSwitch agent-execution-flow-step-body--cyan border-cyan-500/15 bg-cyan-500/[0.05]"
+    }
+    if (step.kind === "modeSwitch") {
+      return "agent-execution-flow-step-body--modeSwitch border-violet-500/15 bg-violet-500/[0.05]"
     }
     if (step.kind === "frontDesign") {
       return "agent-execution-flow-step-body--frontDesign agent-execution-flow-step-body--pink border-pink-500/15 bg-pink-500/[0.05]"
@@ -369,6 +374,7 @@ export const AgentExecutionFlowItem = ({
               {step.durationMs !== undefined &&
               step.kind !== "undo" &&
               step.kind !== "modelSwitch" &&
+              step.kind !== "modeSwitch" &&
               step.kind !== "compaction" ? (
                 step.kind === "user" ? (
                   step.durationMs > 0 ? (
@@ -605,6 +611,9 @@ export const AgentExecutionFlowItem = ({
           {step.modelSwitchContent && (
             <FlowItemModelSwitchContent content={step.modelSwitchContent} previewRef={previewRef} />
           )}
+
+          {/* 协作模式切换详情 */}
+          {step.modeSwitchContent && <FlowItemModeSwitchContent content={step.modeSwitchContent} />}
 
           {/* hook 运行详情（审计文本） */}
           {step.hookContent && (

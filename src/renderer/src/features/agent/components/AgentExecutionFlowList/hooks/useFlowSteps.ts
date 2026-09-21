@@ -69,7 +69,7 @@ export const useFlowSteps = ({
     return max
   }, [steps])
 
-  // 每个已完成 turn 的最后一个合格步骤 ID 集合（排除 modelSwitch / compaction / undo）。
+  // 每个已完成 turn 的最后一个合格步骤 ID 集合（排除 modelSwitch / modeSwitch / compaction / undo）。
   // 这些收尾步骤默认展开；turn 完成后即使再发送新消息也保持展开，不再自动折叠。
   const lastStepIdsOfCompletedTurns = useMemo(() => {
     const ids = new Set<string>()
@@ -77,7 +77,12 @@ export const useFlowSteps = ({
     for (let i = steps.length - 1; i >= 0; i--) {
       const step = steps[i]
       if (step.turnIndex <= 0 || seenTurns.has(step.turnIndex)) continue
-      if (step.kind === "modelSwitch" || step.kind === "compaction" || step.kind === "undo") {
+      if (
+        step.kind === "modelSwitch" ||
+        step.kind === "modeSwitch" ||
+        step.kind === "compaction" ||
+        step.kind === "undo"
+      ) {
         continue
       }
       seenTurns.add(step.turnIndex)
@@ -167,6 +172,7 @@ export const useFlowSteps = ({
       step.kind === "user" ||
       step.kind === "compaction" ||
       step.kind === "modelSwitch" ||
+      step.kind === "modeSwitch" ||
       step.kind === "hook" ||
       step.kind === "error" ||
       step.kind === "subagent" ||

@@ -123,6 +123,9 @@ const messageCharCount = (message: AgentMessage): number => {
       return message.summary.length
     case "modelSwitch":
       return (message.instructions ?? "").length
+    case "modeSwitch":
+      // 模式切换消息仅作历史标记，不注入模型上下文。
+      return 0
     case "todoState":
       // 任务清单消息仅存在于 transformContext 输出（不进 state.messages），不参与上下文估计。
       return 0
@@ -247,7 +250,9 @@ const extractConversationText = (messages: AgentMessage[]): string => {
               ? message.summary
               : message.role === "modelSwitch"
                 ? `[Model Switched to ${message.model}]`
-                : ""
+                : message.role === "modeSwitch"
+                  ? `[Collaboration Mode Switched to ${message.mode}]`
+                  : ""
     if (text.trim()) parts.push(`${prefix}: ${text}`)
   }
   return parts.join("\n")

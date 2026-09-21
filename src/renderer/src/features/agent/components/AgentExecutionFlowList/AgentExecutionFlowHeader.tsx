@@ -135,6 +135,14 @@ const FILTER_TAB_COLORS: Record<
     highlightExtra: "font-semibold ring-1 ring-cyan-500/30",
     dot: "bg-cyan-400",
   },
+  modeSwitch: {
+    highlightBg: "bg-violet-500/20",
+    highlightText: "text-violet-300",
+    hoverBg: "hover:bg-violet-500/10",
+    hoverText: "hover:text-violet-300",
+    highlightExtra: "font-semibold ring-1 ring-violet-500/30",
+    dot: "bg-violet-400",
+  },
   proposedPlan: {
     highlightBg: "bg-emerald-500/20",
     highlightText: "text-emerald-300",
@@ -313,6 +321,8 @@ export const AgentExecutionFlowHeader = ({
               renderTab("frontDesign", t("frontDesign.designCardBadge"), filterCounts.frontDesign)}
             {filterCounts.modelSwitch > 0 &&
               renderTab("modelSwitch", t("agent.modelSwitched"), filterCounts.modelSwitch)}
+            {filterCounts.modeSwitch > 0 &&
+              renderTab("modeSwitch", t("agent.modeSwitched"), filterCounts.modeSwitch)}
             {filterCounts.hook > 0 && renderTab("hook", t("agent.kindHook"), filterCounts.hook)}
             {filterCounts.compaction > 0 &&
               renderTab("compaction", t("settings.contextCompaction"), filterCounts.compaction)}

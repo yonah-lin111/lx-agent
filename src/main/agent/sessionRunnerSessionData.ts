@@ -2,9 +2,12 @@ import type {
   AgentMessage,
   AgentSwitchProjectResult,
   AgentSwitchWorktreeResult,
+  CollaborationMode,
+  CollaborationModeSwitchMessage,
   ModelSwitchMessage,
   TodoList,
 } from "@shared/contracts/agent"
+import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
@@ -84,6 +87,66 @@ export const restoreSessionData = async (
   host.compactor.emitUsage()
 }
 
+// 切换协作模式：更新运行时模式并把 modeSwitch 消息落库（mode_change entry），
+// 会话尾部连续的切换消息中已有模式条目时原地更新，不新建。
+export const switchCollaborationMode = (
+  host: SessionRunnerHost,
+  mode: CollaborationMode,
+): { ok: true } => {
+  const normalized = normalizeCollaborationMode(mode)
+  const modeChanged = host.collaborationMode !== normalized
+  host.collaborationMode = normalized
+  host.builtSignature = ""
+
+  const sessionId = host.currentSessionId
+  // 会话尚未落库（草稿态仅持有 id）或模式未变化时不写历史：只更新运行时状态并广播模式事件。
+  const sessionPersisted = sessionId
+    ? agentSessionService.getSession(sessionId) !== undefined
+    : false
+  if (!sessionId || !sessionPersisted || !modeChanged) {
+    host.emitEvent({ type: "collaboration_mode_changed", mode: normalized })
+    return { ok: true }
+  }
+
+  const message: CollaborationModeSwitchMessage = {
+    role: "modeSwitch",
+    mode: normalized,
+    timestamp: Date.now(),
+  }
+
+  const trailing = findTrailingSwitchMessage(host, "modeSwitch")
+  if (trailing && trailing.role === "modeSwitch") {
+    const previousTimestamp = trailing.timestamp
+    Object.assign(trailing, { ...message, isInitial: trailing.isInitial })
+    updateSwitchEntryPayload(sessionId, "mode_change", "modeSwitch", previousTimestamp, trailing)
+    host.emitEvent({ type: "collaboration_mode_changed", mode: normalized, message: trailing })
+    return { ok: true }
+  }
+
+  const now = new Date().toISOString()
+  let insertedSeq: number | undefined
+  agentSessionService.transaction(() => {
+    const seq = agentSessionService.nextSeq(sessionId)
+    agentSessionService.insertEntry({
+      externalId: createExternalId(),
+      sessionId,
+      seq,
+      type: "mode_change",
+      payload: JSON.stringify(message),
+      createdAt: now,
+    })
+    agentSessionService.touchSession(sessionId, now)
+    insertedSeq = seq
+  })
+  // 事务提交成功后再对齐内存 seq（回滚不得留下幽灵 seq）。
+  if (insertedSeq !== undefined) {
+    host.turnStore.getMessageSeqs().push(insertedSeq)
+  }
+  host.agent?.state.appendMessage(message)
+  host.emitEvent({ type: "collaboration_mode_changed", mode: normalized, message })
+  return { ok: true }
+}
+
 // 切换工作区目录：清理排队消息并同步会话 cwd。
 export const switchWorktree = (
   host: SessionRunnerHost,
@@ -128,6 +191,48 @@ export const switchProject = (
   return { ok: true }
 }
 
+// 切换类消息角色：会话尾部连续出现时按同类合并，避免来回切换刷屏（位置/ID 保持不变）。
+const SWITCH_MESSAGE_ROLES = new Set<AgentMessage["role"]>(["modelSwitch", "modeSwitch"])
+
+// 从会话尾部向前扫描连续的切换消息，命中同类时返回该条目（越过非切换消息即停止）。
+const findTrailingSwitchMessage = (
+  host: SessionRunnerHost,
+  role: "modelSwitch" | "modeSwitch",
+): ModelSwitchMessage | CollaborationModeSwitchMessage | undefined => {
+  const messages = host.agent?.state.messages ?? []
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index]
+    if (!SWITCH_MESSAGE_ROLES.has(message.role)) return undefined
+    if (message.role === role) {
+      return message as ModelSwitchMessage | CollaborationModeSwitchMessage
+    }
+  }
+  return undefined
+}
+
+// 原地更新同一条切换 entry 的 payload（按 role + timestamp 定位，seq 与位置不变）。
+const updateSwitchEntryPayload = (
+  sessionId: string,
+  entryType: "model_change" | "mode_change",
+  role: "modelSwitch" | "modeSwitch",
+  timestamp: number,
+  message: AgentMessage,
+): void => {
+  const target = agentSessionService
+    .listEntries(sessionId)
+    .filter((entry) => entry.type === entryType)
+    .find((entry) => {
+      try {
+        const parsed = JSON.parse(entry.payload) as { role?: string; timestamp?: number }
+        return parsed.role === role && parsed.timestamp === timestamp
+      } catch {
+        return false
+      }
+    })
+  if (!target) return
+  agentSessionService.updateEntryPayload(target.external_id, JSON.stringify(message))
+}
+
 // 切换会话模型：落库 model_change entry 并插入 modelSwitch 消息（仅 variant 变化时不落库）。
 export const switchModel = (
   host: SessionRunnerHost,
@@ -167,6 +272,17 @@ export const switchModel = (
     instructions,
     timestamp: Date.now(),
     isInitial: false,
+  }
+
+  // 连续切换合并：会话尾部连续切换消息中已有模型切换条目时，原地更新消息与落库 payload。
+  const trailing = findTrailingSwitchMessage(host, "modelSwitch")
+  if (trailing && trailing.role === "modelSwitch") {
+    const previousTimestamp = trailing.timestamp
+    const merged: ModelSwitchMessage = { ...message, isInitial: trailing.isInitial }
+    Object.assign(trailing, merged)
+    updateSwitchEntryPayload(sessionId, "model_change", "modelSwitch", previousTimestamp, trailing)
+    host.emitEvent({ type: "model_switch", message: trailing })
+    return { ok: true, message: trailing }
   }
 
   const now = new Date().toISOString()
