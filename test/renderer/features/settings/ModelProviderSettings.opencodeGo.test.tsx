@@ -143,9 +143,11 @@ describe("ModelProviderSettings OpenCode Go 单预设", () => {
     // 导航行按 DOM 顺序排列：预设先于自定义。
     const navButtons = screen.getAllByRole("button", { name: /Custom|OpenCode Go/ })
     expect(navButtons.map((button) => button.textContent)).toEqual(["OpenCode Go", "Custom"])
-    // 预设行经主题 accent 取色标识，未选中为 10% tint。
+    // 预设行经主题 accent 取色标识（仅改底色，无左侧条），未选中为 10% tint。
+    expect(navButtons[0]?.className).toContain("provider-preset-row")
     expect(navButtons[0]?.className).toContain("var(--color-theme-accent)")
-    expect(navButtons[1]?.className).not.toContain("var(--color-theme-accent)")
+    expect(navButtons[0]?.className).not.toContain("inset_2px")
+    expect(navButtons[1]?.className).not.toContain("provider-preset-row")
   })
 
   it("仅 Go 选中时展示云端更新按钮，点击后刷新配置并提示计数", async () => {

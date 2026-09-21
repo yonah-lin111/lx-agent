@@ -777,6 +777,15 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     1px 1px 0px 0px #000000 !important;
 }
 
+/* 预设 Provider 导航行：accent tint 加深对应默认主题的淡 tint，像素屏上可辨识 */
+[data-theme="pixel"] .provider-preset-row {
+  background-color: color-mix(in srgb, var(--color-theme-accent) 22%, transparent) !important;
+}
+
+[data-theme="pixel"] .provider-preset-row:hover {
+  background-color: color-mix(in srgb, var(--color-theme-accent) 30%, transparent) !important;
+}
+
 /* Skill 设置页面专属像素风格槽位与像素化质感 */
 [data-theme="pixel"] .settings-skill-list-card,
 [data-theme="pixel"] .settings-skill-detail-card {

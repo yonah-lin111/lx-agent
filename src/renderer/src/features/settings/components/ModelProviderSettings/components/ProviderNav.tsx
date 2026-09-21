@@ -11,12 +11,12 @@ import { isOpencodeGoMissing } from "../utils"
 const defaultRowClass = (isSelected: boolean): string =>
   isSelected ? "bg-white/5 text-white" : "text-white/70"
 
-// 预设行底色：主题 accent 淡 tint + 左侧实色条；选中加深。
-// 全经 CSS Token 取色（含像素主题），不硬编码颜色。
+// 预设行底色：主题 accent 淡 tint；选中加深。
+// 全经 CSS Token 取色，不硬编码颜色；像素主题另有专属加深规则（见 pixel/index.css）。
 const presetRowClass = (isSelected: boolean): string =>
   isSelected
-    ? "bg-[color-mix(in_srgb,var(--color-theme-accent)_18%,transparent)] text-white shadow-[inset_2px_0_0_var(--color-theme-accent)]"
-    : "bg-[color-mix(in_srgb,var(--color-theme-accent)_10%,transparent)] text-white/70 shadow-[inset_2px_0_0_var(--color-theme-accent)]"
+    ? "provider-preset-row bg-[color-mix(in_srgb,var(--color-theme-accent)_18%,transparent)] text-white"
+    : "provider-preset-row bg-[color-mix(in_srgb,var(--color-theme-accent)_10%,transparent)] text-white/70"
 
 /**
  * 渲染左侧 Provider 导航列表与右键菜单入口。
