@@ -14,6 +14,7 @@ const buildItem = (
     status?: SubagentData["status"]
     totalTokens?: number
     steps?: SubagentData["steps"]
+    usage?: Partial<SubagentData["usage"]>
   },
 ): SubagentData => ({
   subagentId: id,
@@ -30,6 +31,7 @@ const buildItem = (
     cacheRead: 0,
     cacheWrite: 0,
     totalTokens: options?.totalTokens ?? 2,
+    ...options?.usage,
   },
 })
 
@@ -48,6 +50,7 @@ describe("FlowItemSubagentContent 批量扇出", () => {
               status: "done",
               totalTokens: 1200,
               steps: [{ toolName: "grep", args: {}, status: "done" }],
+              usage: { input: 900, output: 300, cacheRead: 1200 },
             }),
             buildItem("subagent-2", "review-db", {
               status: "running",
@@ -62,14 +65,25 @@ describe("FlowItemSubagentContent 批量扇出", () => {
 
     const buttons = screen.getAllByLabelText("View subagent execution details")
     expect(buttons).toHaveLength(2)
-    expect(buttons[0]?.textContent).toContain("review-auth")
-    expect(buttons[1]?.textContent).toContain("review-db")
+    // 名称不带 " - " 前缀，角色以括号紧随名称。
+    expect(buttons[0]?.textContent?.trim().startsWith("review-auth (explorer)")).toBe(true)
+    expect(buttons[0]?.textContent).not.toContain(" - ")
+    expect(buttons[1]?.textContent?.trim().startsWith("review-db")).toBe(true)
 
-    // 单项 token 与状态图标：完成项 ✓、运行项 spinner。
-    expect(buttons[0]?.textContent).toContain("1.2k")
-    expect(buttons[1]?.textContent).toContain("800")
+    // 第一行只保留状态图标，不再展示 token 数字。
+    expect(buttons[0]?.textContent).not.toContain("1.2k")
     expect(buttons[0]?.querySelector(".animate-spin")).toBeNull()
     expect(buttons[1]?.querySelector(".animate-spin")).not.toBeNull()
+
+    // 第三行：Token 明细（IN / OUT / CACHE）位于单项底部，仅终态展示。
+    const items = container.querySelectorAll(".agent-execution-flow-subagent-item")
+    expect(items).toHaveLength(2)
+    const doneUsage = items[0]?.querySelector(".agent-execution-flow-subagent-usage")
+    expect(doneUsage?.textContent).toContain("IN 900")
+    expect(doneUsage?.textContent).toContain("OUT 300")
+    expect(doneUsage?.textContent).toContain("CACHE 1.2k")
+    expect(items[0]?.contains(doneUsage as Node)).toBe(true)
+    expect(items[1]?.querySelector(".agent-execution-flow-subagent-usage")).toBeNull()
 
     // 第二行：直角图标 + 当前内部工具（运行项）/ 调用统计（完成项）。
     const rows = container.querySelectorAll("[data-subagent-row]")

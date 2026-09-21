@@ -1,14 +1,20 @@
+import type { SubagentData } from "@shared/contracts/agent"
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import type React from "react"
 import { useMemo } from "react"
 import {
   resolveSubagentDisplayStatus,
+  type SubagentDisplayStatus,
   SubagentStatusRow,
 } from "@/features/agent/components/blocks/SubagentStatusRow"
 import type { ExecutionStepStatus, ExecutionSubagentContent } from "@/features/agent/types"
-import { formatSubagentLabel } from "@/features/agent/utils/subagentLabel"
 import { useTranslation } from "@/i18n"
 import { formatTokensShort } from "./types"
+
+// 单项 Token 明细仅在终态展示：运行中数值持续跳动，且会与右侧汇总冲突。
+const showItemUsage = (item: SubagentData, status: SubagentDisplayStatus): boolean =>
+  status !== "running" &&
+  (item.usage.input > 0 || item.usage.output > 0 || item.usage.cacheRead > 0)
 
 export interface FlowItemSubagentContentProps {
   content: ExecutionSubagentContent
@@ -69,7 +75,7 @@ export const FlowItemSubagentContent = ({
                 key={item.subagentId ?? `${index}`}
                 className="agent-execution-flow-subagent-item flex flex-col gap-0.5 border-white/5 px-2 py-1.5 not-first:border-t"
               >
-                {/* 第一行：名称 + 状态，右侧为该子代理累计消耗 */}
+                {/* 第一行：名称（角色）+ 状态图标 */}
                 <button
                   type="button"
                   aria-label={t("agent.viewSubagentDetails")}
@@ -80,7 +86,10 @@ export const FlowItemSubagentContent = ({
                   className="flex w-full items-center gap-2 text-left transition-colors hover:opacity-90 focus:outline-none"
                 >
                   <span className="min-w-0 flex-1 truncate text-blue-300">
-                    {formatSubagentLabel(item.name.trim() || "task", item.roleName)}
+                    {item.name.trim() || "task"}
+                    {item.roleName && item.roleName !== item.name.trim() && (
+                      <span className="text-blue-300/60"> ({item.roleName})</span>
+                    )}
                   </span>
                   {status === "running" ? (
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-400" />
@@ -89,9 +98,6 @@ export const FlowItemSubagentContent = ({
                   ) : (
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400/80" />
                   )}
-                  <span className="shrink-0 text-white/35 tabular-nums">
-                    {formatTokensShort(item.usage.totalTokens)}
-                  </span>
                 </button>
 
                 {/* 第二行：直角图标 + 当前内部工具（运行中）或调用统计（完成后） */}
@@ -101,6 +107,26 @@ export const FlowItemSubagentContent = ({
                   testId="flow-subagent-status-row"
                   className="agent-execution-flow-subagent-status-row"
                 />
+
+                {/* 第三行：该子代理 Token 明细（仅终态展示，运行中不跳动） */}
+                {showItemUsage(item, status) && (
+                  <div className="agent-execution-flow-subagent-usage flex items-center gap-1 text-xs tabular-nums text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
+                    <span aria-hidden className="w-3.5 shrink-0" />
+                    <span>IN {formatTokensShort(item.usage.input)}</span>
+                    <span aria-hidden className="opacity-40">
+                      ·
+                    </span>
+                    <span>OUT {formatTokensShort(item.usage.output)}</span>
+                    {item.usage.cacheRead > 0 && (
+                      <>
+                        <span aria-hidden className="opacity-40">
+                          ·
+                        </span>
+                        <span>CACHE {formatTokensShort(item.usage.cacheRead)}</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}
