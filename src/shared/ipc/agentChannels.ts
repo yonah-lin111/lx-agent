@@ -65,7 +65,5 @@ export const AGENT_CHANNELS = {
   saveFrontDesign: "agent:saveFrontDesign",
   // 打开指定设计目录。
   openDesignDir: "agent:openDesignDir",
-  // 导出指定设计的预览图（PNG）。
-  exportDesignPng: "agent:exportDesignPng",
   event: "agent:event",
 } as const

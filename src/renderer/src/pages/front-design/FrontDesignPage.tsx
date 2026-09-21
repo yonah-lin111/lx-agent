@@ -17,7 +17,7 @@ import type { ViewportMode } from "@/pages/front-design/types"
  */
 export const FrontDesignPage = (): React.JSX.Element => {
   const { t } = useTranslation()
-  const { success: successToast, error: errorToast } = useLxAgentToast()
+  const { success: successToast } = useLxAgentToast()
   const designState = useFrontDesign()
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -25,7 +25,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
   const [viewport, setViewport] = useState<ViewportMode>("desktop")
   const [copied, setCopied] = useState<boolean>(false)
   const [refreshKey, setRefreshKey] = useState<number>(0)
-  const [isExporting, setIsExporting] = useState<boolean>(false)
 
   const { pageTheme, setPageTheme, effectiveMode } = useDesignTheme()
 
@@ -84,42 +83,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
     await agentApi.openDesignDir(sessionId, activeDesignId)
   }, [sessionId, activeDesignId])
 
-  const handleExportPng = useCallback(async () => {
-    if (!sessionId || !activeDesignId || !html || isExporting) return
-    setIsExporting(true)
-    try {
-      const result = await agentApi.exportDesignPng({
-        sessionId,
-        designId: activeDesignId,
-        viewport,
-        theme: effectiveMode,
-      })
-      if (result.cancelled) {
-        // 用户在系统保存对话框中取消，静默结束。
-        return
-      }
-      if (result.ok && result.path) {
-        successToast(t("frontDesign.exportPngSuccess", { path: result.path }))
-      } else {
-        errorToast(result.error || t("frontDesign.exportPngFailed"))
-      }
-    } catch (err) {
-      errorToast(err instanceof Error ? err.message : t("frontDesign.exportPngFailed"))
-    } finally {
-      setIsExporting(false)
-    }
-  }, [
-    sessionId,
-    activeDesignId,
-    html,
-    isExporting,
-    viewport,
-    effectiveMode,
-    successToast,
-    errorToast,
-    t,
-  ])
-
   const viewportWidthClass = useMemo(() => {
     switch (viewport) {
       case "mobile":
@@ -158,8 +121,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
         copied={copied}
         pageTheme={pageTheme}
         onSelectTheme={setPageTheme}
-        onExportPng={handleExportPng}
-        isExporting={isExporting}
       />
       <FrontDesignCanvas
         hasHtml={Boolean(html)}

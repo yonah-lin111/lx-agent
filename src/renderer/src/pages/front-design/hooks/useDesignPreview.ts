@@ -117,8 +117,7 @@ export const useDesignPreview = ({
         ? ":root { color-scheme: dark; } html { color-scheme: dark; background-color: #0b0f19; color: #f3f4f6; }"
         : ":root { color-scheme: light; } html { color-scheme: light; background-color: #ffffff; color: #111827; }"
 
-    // 仅清除浏览器默认外边距：padding/height 强制归零会覆盖设计稿在 body 上的内边距与高度策略，
-    // 导致画布与 PNG 导出（忠实渲染落盘 HTML）表现不一致。
+    // 仅清除浏览器默认外边距：padding/height 强制归零会覆盖设计稿在 body 上的内边距与高度策略。
     const resetOverrides = `
       ${colorSchemeCss}
       html, body {

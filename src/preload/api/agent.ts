@@ -3,7 +3,6 @@ import type {
   AgentEvent,
   AgentSendContext,
   AgentSendOptions,
-  ExportFrontDesignPngOptions,
   PermissionResponse,
   QuestionResponse,
   SuggestedQuestionContextMessage,
@@ -115,8 +114,6 @@ export const agentApi: AgentApi["agent"] = {
   }) => ipcRenderer.invoke(AGENT_CHANNELS.saveFrontDesign, options),
   openDesignDir: (sessionId: string, designId: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.openDesignDir, sessionId, designId),
-  exportDesignPng: (options: ExportFrontDesignPngOptions) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.exportDesignPng, options),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

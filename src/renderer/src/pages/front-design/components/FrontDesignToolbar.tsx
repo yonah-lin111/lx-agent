@@ -5,9 +5,7 @@ import {
   Eraser,
   FolderOpen,
   GitBranch,
-  ImageDown,
   Laptop,
-  Loader2,
   MousePointerClick,
   Palette,
   RefreshCw,
@@ -44,12 +42,10 @@ export interface FrontDesignToolbarProps {
   copied: boolean
   pageTheme: FrontDesignPageTheme
   onSelectTheme: (theme: FrontDesignPageTheme) => void
-  onExportPng: () => void
-  isExporting: boolean
 }
 
 /**
- * FrontDesignToolbar - 设计画布顶部工具栏：版本切换、视口预设、Inspector、主题、复制与 PNG 导出。
+ * FrontDesignToolbar - 设计画布顶部工具栏：版本切换、视口预设、Inspector、主题与复制。
  */
 export const FrontDesignToolbar = ({
   mode,
@@ -71,8 +67,6 @@ export const FrontDesignToolbar = ({
   copied,
   pageTheme,
   onSelectTheme,
-  onExportPng,
-  isExporting,
 }: FrontDesignToolbarProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -301,17 +295,6 @@ export const FrontDesignToolbar = ({
           title={{ content: t("frontDesign.copyCode"), placement: "bottom" }}
         >
           {copied ? <Check className="text-emerald-400" /> : <Copy />}
-        </LxIconButton>
-
-        {/* 导出预览图（全页 PNG） */}
-        <LxIconButton
-          size="small"
-          disabled={!hasHtml || isExporting}
-          onClick={onExportPng}
-          aria-label={t("frontDesign.exportPng")}
-          title={{ content: t("frontDesign.exportPng"), placement: "bottom" }}
-        >
-          {isExporting ? <Loader2 className="animate-spin" /> : <ImageDown />}
         </LxIconButton>
 
         {/* 清空画布 */}
