@@ -19,8 +19,8 @@ describe("themeStore", () => {
     document.documentElement.removeAttribute("data-theme")
   })
 
-  it("should default to default theme when localStorage is empty", () => {
-    expect(getInitialTheme()).toBe("default")
+  it("should default to pixel theme when localStorage is empty", () => {
+    expect(getInitialTheme()).toBe("pixel")
   })
 
   it("should read stored theme from localStorage and fallback on invalid theme", () => {
@@ -28,7 +28,7 @@ describe("themeStore", () => {
     expect(getInitialTheme()).toBe("pixel")
 
     localStorage.setItem("lx_app_theme", "invalid_theme_name")
-    expect(getInitialTheme()).toBe("default")
+    expect(getInitialTheme()).toBe("pixel")
 
     localStorage.setItem("lx_app_theme", "default")
     expect(getInitialTheme()).toBe("default")
@@ -39,7 +39,7 @@ describe("themeStore", () => {
     expect(getInitialTheme()).toBe("pixel")
 
     localStorage.setItem("lx_app_theme", "minecraft")
-    expect(getInitialTheme()).toBe("default")
+    expect(getInitialTheme()).toBe("pixel")
   })
 
   it("should apply theme to documentElement attribute", () => {
@@ -52,7 +52,7 @@ describe("themeStore", () => {
 
   it("should update theme state and persist to localStorage and DOM", () => {
     const { result } = renderHook(() => useAppTheme())
-    expect(result.current.theme).toBe("default")
+    expect(result.current.theme).toBe("pixel")
 
     act(() => {
       result.current.setTheme("pixel")

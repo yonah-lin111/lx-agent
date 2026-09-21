@@ -6,7 +6,7 @@ const THEME_STORAGE_KEY = "lx_app_theme"
 const VALID_THEMES: readonly AppTheme[] = ["default", "pixel"]
 
 /**
- * 获取当前持久化的主题配置，默认为 default。
+ * 获取当前持久化的主题配置，默认为 pixel。
  */
 export const getInitialTheme = (): AppTheme => {
   try {
@@ -17,7 +17,7 @@ export const getInitialTheme = (): AppTheme => {
   } catch (error) {
     console.error("Failed to read theme from localStorage", error)
   }
-  return "default"
+  return "pixel"
 }
 
 /**
@@ -80,7 +80,7 @@ export const useAppTheme = (): {
 
   const toggleTheme = (): void => {
     const nextIndex = (VALID_THEMES.indexOf(theme) + 1) % VALID_THEMES.length
-    setTheme(VALID_THEMES[nextIndex] ?? "default")
+    setTheme(VALID_THEMES[nextIndex] ?? "pixel")
   }
 
   return {
