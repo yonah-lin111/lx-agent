@@ -7,7 +7,7 @@ import { agentApi } from "@/features/agent/api/agentApi"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { formatDurationMs } from "../types"
-import { FlowToolArgsSection, FlowToolResultSection } from "./FlowToolSections"
+import { FlowToolRawSection } from "./FlowToolRawSection"
 
 export interface FlowToolFileOpsProps {
   content: ExecutionToolContent
@@ -112,17 +112,13 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
         </div>
       )}
 
-      {/* 结果或常规内容输出 */}
-      {content.result !== undefined && !content.diff && (
-        <FlowToolResultSection
-          result={content.result}
-          isError={content.isError}
-          fallbackText="(empty)"
-        />
-      )}
-
-      {/* 原始参数（默认折叠） */}
-      <FlowToolArgsSection args={content.args} toolCallId={content.toolCallId} />
+      {/* 原始参数与执行结果（默认折叠在底部） */}
+      <FlowToolRawSection
+        args={content.args}
+        result={content.result}
+        isError={content.isError}
+        toolCallId={content.toolCallId}
+      />
     </div>
   )
 }

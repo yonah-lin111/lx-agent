@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 import { FlowItemToolContent } from "@/features/agent/components/AgentExecutionFlowList/FlowItemToolContent"
 import { AgentToolCallBlock } from "@/features/agent/components/blocks/AgentToolCallBlock"
@@ -112,7 +112,9 @@ describe("FlowItemToolContent view_image 分派", () => {
     expect(container.querySelector("img")?.getAttribute("src")).toBe(
       "lx-image://local/repo/artifacts/shot.png",
     )
-    // 与其他流程工具一致：展示 Input Arguments 与 Execution Result。
+    // 与其他流程工具一致：参数与结果默认折叠在底部，展开后可查看。
+    expect(screen.queryByText("Input Arguments")).toBeNull()
+    fireEvent.click(screen.getByText(/Raw Arguments & Result|原始参数与执行结果/i))
     expect(screen.getByText("Input Arguments")).not.toBeNull()
     expect(screen.getByText("Execution Result")).not.toBeNull()
   })

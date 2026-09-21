@@ -279,7 +279,7 @@ export const agent = {
   contextCriticalTip: "Context is near limit (recommend using /compact)",
   todoListProgress: "Progress · {{completed}}/{{total}} completed",
   todoEmpty: "No todo items",
-  todoRawDebug: "Raw Arguments & Result",
+  toolRawDebug: "Raw Arguments & Result",
   todoStatusPending: "Pending",
   todoStatusInProgress: "In Progress",
   todoStatusCompleted: "Completed",

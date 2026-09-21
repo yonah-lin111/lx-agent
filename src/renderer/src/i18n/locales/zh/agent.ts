@@ -269,7 +269,7 @@ export const agent = {
   contextCriticalTip: "上下文接近极限（建议使用 /compact 压缩）",
   todoListProgress: "任务进度 · {{completed}}/{{total}} 已完成",
   todoEmpty: "任务清单为空",
-  todoRawDebug: "原始参数与执行结果",
+  toolRawDebug: "原始参数与执行结果",
   todoStatusPending: "待办",
   todoStatusInProgress: "进行中",
   todoStatusCompleted: "已完成",

@@ -100,6 +100,10 @@ describe("AgentExecutionFlowList", () => {
     expect(toolStepHeader).not.toBeNull()
     fireEvent.click(toolStepHeader!)
 
+    // 工具详情：参数与结果默认折叠在底部一行
+    expect(screen.queryByText("found 12 files")).toBeNull()
+    fireEvent.click(screen.getByText(/Raw Arguments & Result|原始参数与执行结果/i))
+
     // 展开后应显示输入参数与执行结果区域
     expect(screen.getByText("Input Arguments")).not.toBeNull()
     expect(screen.getByText("Execution Result")).not.toBeNull()
@@ -895,8 +899,10 @@ describe("AgentExecutionFlowList", () => {
     // 助手文本作为 AI item 默认展开（标题与正文均出现）
     expect(screen.getAllByText("好的，即将修改代码：").length).toBeGreaterThanOrEqual(2)
 
-    // 最后一个步骤为写操作 write 步骤，turn 结束后应默认展开其执行结果详情
+    // 最后一个步骤为写操作 write 步骤，turn 结束后应默认展开；结果与参数收在底部折叠区
     expect(screen.getByText("main.ts")).not.toBeNull()
+    expect(screen.queryByText("saved successfully")).toBeNull()
+    fireEvent.click(screen.getByText(/Raw Arguments & Result|原始参数与执行结果/i))
     expect(screen.getByText("Execution Result")).not.toBeNull()
     expect(screen.getByText("saved successfully")).not.toBeNull()
   })
