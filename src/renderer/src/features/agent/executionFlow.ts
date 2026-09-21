@@ -342,6 +342,15 @@ export const buildExecutionSteps = (
     const hasTextBlock = message.blocks.some((b) => b.kind === "text" && Boolean(b.text.trim()))
     const toolCallBlocksCount = message.blocks.filter((b) => b.kind === "toolCall").length
     let toolCallIndexInMessage = 0
+    // 一次模型请求的用量只结算一处：有工具调用时挂到末个工具步骤，无工具调用时由回复/思考步骤承载。
+    const messageUsageTokens = message.usage
+      ? {
+          input: message.usage.input,
+          output: message.usage.output,
+          cacheRead: message.usage.cacheRead,
+          total: message.usage.totalTokens,
+        }
+      : undefined
 
     if (turn !== lastTurnForParallelBatch) {
       lastTurnForParallelBatch = turn
@@ -462,15 +471,7 @@ export const buildExecutionSteps = (
         const isLastToolCallInBatch =
           toolCallBlocksCount <= 1 || toolCallIndexInMessage === toolCallBlocksCount
 
-        const toolTokens =
-          !hasTextBlock && message.usage && isLastToolCallInBatch
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined
+        const toolTokens = isLastToolCallInBatch ? messageUsageTokens : undefined
 
         if (isSubagent) {
           const subagentData = block.subagent ?? pairedResult?.subagent
@@ -588,14 +589,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount === 0 ? messageUsageTokens : undefined,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           planContent: block.plan,
           assistantContent: {
@@ -640,14 +634,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount === 0 ? messageUsageTokens : undefined,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           reviewFindingsContent: block.findings,
           assistantContent: {
@@ -693,14 +680,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount === 0 ? messageUsageTokens : undefined,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           frontDesignContent: block.design,
           assistantContent: {
@@ -746,14 +726,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount === 0 ? messageUsageTokens : undefined,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           assistantContent: {
             text: block.text,

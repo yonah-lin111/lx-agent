@@ -1371,13 +1371,16 @@ describe("AgentExecutionFlowList", () => {
     const userStep = container.querySelector('[data-step-kind="user"]')
     expect(userStep?.querySelector(".agent-execution-flow-step-footer")).toBeNull()
 
-    // 2. Assistant item 底部展示 IN 2.4k · OUT 650 · CACHE 1.2k
+    // 2. 含工具调用的回合：请求用量结算在末个工具步骤，回复 item 不重复展示
     const assistantStep = container.querySelector('[data-step-kind="assistant"]')
-    const assistantFooter = assistantStep?.querySelector(".agent-execution-flow-step-footer")
-    expect(assistantFooter).not.toBeNull()
-    expect(assistantFooter?.textContent).toContain("IN 2.4k")
-    expect(assistantFooter?.textContent).toContain("OUT 650")
-    expect(assistantFooter?.textContent).toContain("CACHE 1.2k")
+    expect(assistantStep?.querySelector(".agent-execution-flow-step-footer")).toBeNull()
+
+    const toolStep = container.querySelector('[data-step-kind="tool"]')
+    const toolFooter = toolStep?.querySelector(".agent-execution-flow-step-footer")
+    expect(toolFooter).not.toBeNull()
+    expect(toolFooter?.textContent).toContain("IN 2.4k")
+    expect(toolFooter?.textContent).toContain("OUT 650")
+    expect(toolFooter?.textContent).toContain("CACHE 1.2k")
 
     // 3. Subagent 步骤与独立步骤：包含 subagent.usage
     const subagentStep = container.querySelector('[data-step-kind="subagent"]')

@@ -92,12 +92,13 @@ describe("executionFlow", () => {
       expect(steps[2].toolContent?.result).toContain("src/main.ts")
       expect(steps[2].toolContent?.isError).toBe(false)
 
-      // 4. Assistant Text
+      // 4. Assistant Text（请求级用量结算在工具步骤，回复步骤不重复承载）
       expect(steps[3].kind).toBe("assistant")
       expect(steps[3].turnIndex).toBe(1)
       expect(steps[3].stepIndex).toBe(3)
       expect(steps[3].title).toBe("已找到 main.ts 文件如下：")
-      expect(steps[3].tokens?.total).toBe(150)
+      expect(steps[3].tokens).toBeUndefined()
+      expect(steps[2].tokens?.total).toBe(150)
     })
 
     it("支持系统提示词装配并注入 Step #0", () => {
@@ -833,6 +834,78 @@ describe("executionFlow", () => {
         output: 62,
         cacheRead: 1000,
         total: 7462,
+      })
+    })
+
+    it("文本 + 多个并发调用（如 MCP 查询）时，仅末项结算整批用量，回复步骤不重复展示", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "并行查三个库" }],
+          isStreaming: false,
+          timestamp: 1000,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            { kind: "text", text: "我将同时并发调用 context7 的库解析工具。" },
+            {
+              kind: "toolCall",
+              toolCallId: "c1",
+              toolName: "mcp__context7__resolve-library-id",
+              args: { libraryName: "react" },
+              status: "done",
+            },
+            {
+              kind: "toolCall",
+              toolCallId: "c2",
+              toolName: "mcp__context7__resolve-library-id",
+              args: { libraryName: "zod" },
+              status: "done",
+            },
+            {
+              kind: "toolCall",
+              toolCallId: "c3",
+              toolName: "mcp__context7__resolve-library-id",
+              args: { libraryName: "express" },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: {
+            input: 26038,
+            output: 239,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 26277,
+          },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(5)
+
+      // 回复步骤不承载请求级用量
+      expect(steps[1].kind).toBe("assistant")
+      expect(steps[1].tokens).toBeUndefined()
+
+      // 仅末项（Parallel 3/3）结算整批共享的请求用量
+      expect(steps[2].tokens).toBeUndefined()
+      expect(steps[3].tokens).toBeUndefined()
+      expect(steps[4].parallel).toEqual({
+        index: 3,
+        total: 3,
+        batchId: "a1",
+        batchIndex: 0,
+      })
+      expect(steps[4].tokens).toEqual({
+        input: 26038,
+        output: 239,
+        cacheRead: 0,
+        total: 26277,
       })
     })
 
