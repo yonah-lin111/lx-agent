@@ -14,8 +14,11 @@
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ [Gate 1: Collaboration Mode]                                │
-│   - Plan / Review 模式: write/edit/apply_patch/todowrite/   │
-│     task ──► 硬拦截 (拒绝执行，返回模式专用错误文案)          │
+│   - Plan / Review / Design: write/edit/apply_patch/         │
+│     todowrite/memory ──► 硬拦截（模式身份约束）               │
+│   - Design 额外硬拦截 wireframe                              │
+│   - 子代理调用同时叠加父模式硬基线（parentMode）              │
+│   - 模式能力白名单 (agent.permissions.modes) 只能收紧         │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
@@ -59,15 +62,20 @@
 export type CollaborationMode = "build" | "plan" | "review" | "design"
 ```
 
-| 模式 | 写入工具（`write`/`edit`/`apply_patch`） | `todowrite` / `task` | 其他工具 | 输出契约 |
+| 模式 | 硬基线（`deny`，配置不可放开） | 子代理派发（`task`） | 其他工具 | 输出契约 |
 | :--- | :--- | :--- | :--- | :--- |
-| **`build`** | 按沙箱/规则/审批正常判定 | 允许 | 正常判定 | 无 |
-| **`plan`** | **deny**（Plan Mode 提示词引导输出 `<proposed_plan>`） | **deny** | 只读工具正常 | 见 modes.md §2 |
-| **`review`** | **deny**（提示词引导输出 `<review_findings>`） | **deny** | 只读工具正常 | 见 modes.md §3 |
-| **`design`** | 按沙箱/规则/审批正常判定（无模式级硬拦截） | 允许 | `wireframe` **deny**（布局直接走 `<front_design>`） | `<front_design>` / `<front_design_update>`，见 modes.md §4 |
+| **`build`** | 无 | 缺省不限制；可经 `modes.build.subagents` 白名单收窄 | 正常判定；可经 `modes.build` 白名单收紧 | 无 |
+| **`plan`** | `write` / `edit` / `apply_patch` / `todowrite` / `memory` | 缺省仅 `explorer`；白名单覆盖缺省，空数组 = 全禁 | 只读工具正常；可经白名单再收紧 | 见 modes.md §2 |
+| **`review`** | 同 `plan` | 同 `plan` | 只读工具正常；可经白名单再收紧 | 见 modes.md §3 |
+| **`design`** | 同 `plan` + `wireframe` | 同 `plan` | 只读工具正常；可经白名单再收紧 | `<front_design>` / `<front_design_update>`，见 modes.md §4 |
 
-- Plan / Review 的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`PLAN_MODE_MUTATION_REASON` / `REVIEW_MODE_MUTATION_REASON`）。
-- `design` 模式除输出协议约束外，另对 `wireframe` 做工具级硬拦截（`DESIGN_MODE_WIREFRAME_REASON`）：ASCII 线框图与 `<front_design>` 协议互斥，提示词同步声明该工具禁用；其余工具仍按沙箱/规则/审批正常判定（原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
+- 非 build 模式的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`MODE_MUTATION_REASONS`）；`memory` 会写 `<project>/.lx/memory/*.md`，因此同样纳入基线。
+- **子代理派发**：`task` 不再属于硬基线，由 `modes.<mode>.subagents` 白名单控制（按 `agent_type` 判定，批量 `tasks[]` 逐项校验，未携带角色视为未命中）。非 build 模式缺省白名单 = `["explorer"]`（内置只读探索子代理），`build` 缺省 = 不限制；显式配置覆盖缺省，显式空数组 = 该模式完全禁止派发。
+- **父模式基线穿透**：子代理按 `agent.subagents.mode`（缺省 `build`）装配提示词与门控，但父会话的硬基线会以 `parentMode` 叠加到子代理的每次工具调用上——`plan` / `review` / `design` 下派发的子代理同样不能写文件，`design` 下还不能用 `wireframe`，派发无法绕过模式约束。
+- **角色兼容性**：角色能力集与模式硬基线有交集时（含 `tools` 未限制的角色，如内置 `worker`），该角色在此非 build 模式**永久禁用**——设置页锁定为不可勾选，门控层同时拒绝派发（白名单列出也不放行），避免派发一个写操作必然被拒的残废子代理；`build` 无硬基线，因此不锁定任何角色。角色被改动后与已保存白名单失配时，权限页模式行会提示「永久禁用角色：…」，打开编辑弹窗即自动剔除该角色并在确认后落盘。
+- **提示词层（缓存友好）**：Plan / Review / Design 的模式段声明子代理派发限制（引用 `task` 工具描述中的 `Available agent types`，并把 `memory` 补入禁用清单）；`task` 工具描述在会话装配与模式切换（registry 重建）时按模式裁剪角色目录——白名单未命中或能力集冲突的角色不再出现在模型可见的目录里，模型无需靠一次被拒绝来发现限制。两处内容只随模式 / 能力集重建，不含轮次级易变数据，不额外破坏提示词前缀缓存（易变上下文如 `<current_time>` 本就在系统提示词尾部）。
+- **模式能力白名单**（`agent.permissions.modes`）：`tools` / `mcp` / `skills` / `websearch` / `subagents` 五组，缺省 = 不限制（`subagents` 在非 build 模式除外）；硬基线工具在保存时被剥离、运行时二次兜底拒绝，配置只能收紧、永不放开。
+- `design` 模式的工具级门禁与 plan/review 共享同一只读基线并额外禁用 `wireframe`（原型交付走 `<front_design>` 协议，原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
 - 模式切换：`Shift + Tab` 在 `build → plan → review → design → build` 间循环（状态栏按钮等价），或经 IPC `setCollaborationMode` 定向切换；卡片一键采纳也会切回 `build`。
 
 ---
@@ -88,10 +96,10 @@ Guardian 在工具执行前进行实时四维风险评估：
 
 | 风险维度 | 监测目标与特征 | 拦截与升级行为 |
 | :--- | :--- | :--- |
-| **Data Exfiltration（数据外发）** | 向外部未授权域名上传代码、敏感文件、Token、密钥文件内容 | `High`/`Critical`：Plan/Review 直接拦截；Build 强制升级审批 |
+| **Data Exfiltration（数据外发）** | 向外部未授权域名上传代码、敏感文件、Token、密钥文件内容 | `High`/`Critical`：非 build 模式直接拦截；Build 强制升级审批 |
 | **Credential Probing（凭据刺探）** | 探测 `.ssh/`、`.aws/`、Keychain、系统密码文件或浏览器 Cookie 数据库 | `Critical`：直接拦截并记录安全告警 |
 | **Persistent Security Weakening（持久化降权）** | 修改 `/etc/hosts`、`sudoers`、禁用防火墙/SIP 或全盘 `chmod 777` | 强制拦截，禁止自动放行 |
-| **Destructive Actions（破坏性操作）** | 广义递归删除（`rm -rf /`、`rm -rf ~`）、`git reset --hard`、`git push --force` | `High`/`Critical`：Plan/Review 拦截；Build 强制人工二次确认 |
+| **Destructive Actions（破坏性操作）** | 广义递归删除（`rm -rf /`、`rm -rf ~`）、`git reset --hard`、`git push --force` | `High`/`Critical`：非 build 模式拦截；Build 强制人工二次确认 |
 
 被 Guardian 判定为 `high` / `critical` 的操作，即使处于 `bypassPermissions` 或 `danger-full-access`，在 Build 模式也强制升级为 `ask`。
 
@@ -101,21 +109,23 @@ Guardian 在工具执行前进行实时四维风险评估：
 
 ### 5.1 判定顺序（`permissionManager.evaluate()`）
 
-1. Plan / Review 模式写入工具、`todowrite` 与 `task` 子代理派发 → `deny`；
-2. `read-only` 沙箱的 `write` / `edit` / `apply_patch` → `deny`；
-3. `CommandSafetyGuard` 判定 `dangerous` 的 bash 命令 → `deny`；
-4. **Deny 规则**命中 → `deny`（最高优先级的配置规则）；
-5. **Guardian** `high`/`critical`：Plan/Review → `deny`，其余模式 → `ask`（`apply_patch` 按补丁正文解析出的每个目标路径逐条评估）；
-6. **会话白名单**：`allowAll` → 工具级放行；
-7. 全局放行通道：`bypassPermissions` 或 `danger-full-access` → `allow`；非 MCP 工具的 `EXEMPT_TOOLS` → `allow`；非受控内置工具与非 MCP 工具 → `allow`（`mcp__` 命名空间工具始终走审批，不因名称进入豁免/默认放行）；
-8. `CommandSafetyGuard` 判定 `sensitive` 的 bash 命令 → `ask`；
-9. **Ask 规则**优先于 **Allow 规则**匹配；
-10. `acceptEdits` 模式的 `write` / `edit` / `apply_patch` → `allow`；
-11. 兜底 → `ask`。
+1. 模式硬基线：`write` / `edit` / `apply_patch` / `memory` / `todowrite`（`design` 另含 `wireframe`）→ `deny`；子代理调用（`parentMode`）时父模式基线同样生效；
+2. 模式能力白名单（`agent.permissions.modes`，五组未命中；非 build 的 `subagents` 缺省回退 `["explorer"]`）→ `deny`（build 也可收紧；派发未命中时附允许角色清单；嵌套派发同时校验父模式的角色白名单）；
+3. 子代理角色兼容性：能力集与模式硬基线有交集（含 `tools` 未限制）的角色 → `deny`（该模式下永久禁用）；
+4. `read-only` 沙箱的 `write` / `edit` / `apply_patch` → `deny`；
+5. `CommandSafetyGuard` 判定 `dangerous` 的 bash 命令 → `deny`；
+6. **Deny 规则**命中 → `deny`（最高优先级的配置规则）；
+7. **Guardian** `high`/`critical`：非 build 模式 → `deny`，Build → `ask`（`apply_patch` 按补丁正文解析出的每个目标路径逐条评估）；
+8. **会话白名单**：`allowAll` → 工具级放行；
+9. 全局放行通道：`bypassPermissions` 或 `danger-full-access` → `allow`；非 MCP 工具的 `EXEMPT_TOOLS` → `allow`；非受控内置工具与非 MCP 工具 → `allow`（`mcp__` 命名空间工具始终走审批，不因名称进入豁免/默认放行）；
+10. `CommandSafetyGuard` 判定 `sensitive` 的 bash 命令 → `ask`；
+11. **Ask 规则**优先于 **Allow 规则**匹配；
+12. `acceptEdits` 模式的 `write` / `edit` / `apply_patch` → `allow`；
+13. 兜底 → `ask`。
 
 ### 5.2 工具分级
 
-- **豁免工具（`EXEMPT_TOOLS`，永不询问）**：`web_search` / `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `question` / `lsp` / `view_image` / `memory`。
+- **豁免工具（`EXEMPT_TOOLS`，永不询问）**：`web_search` / `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `question` / `lsp` / `view_image` / `memory`（非 build 模式的硬基线先于豁免判定将 `memory` 拦截）。
 - **受控内置工具（`GATED_BUILTIN_TOOLS`）**：`bash` / `write` / `edit` / `apply_patch` / `task` / `webfetch`；加上全部已连接 MCP 工具均进入审批判定。
 
 ### 5.3 审批决策流 (Approval Decisions)
@@ -163,12 +173,21 @@ Esc 仅收起面板，请求保持挂起；决策经 IPC `permissionResponse` �
       ],
       "ask": [
         "Bash(docker *)"
-      ]
+      ],
+      // 协作模式能力白名单（可选；缺省 = 不限制，非 build 的 subagents 缺省 = ["explorer"]，只能收紧）
+      "modes": {
+        "build": {
+          "tools": ["read", "grep", "write", "edit"],
+          "subagents": ["explorer", "worker"]
+        },
+        "plan": { "subagents": ["explorer", "custom-role"] },
+        "review": { "tools": ["read", "grep", "lsp"], "websearch": ["web_search"] }
+      }
     }
   }
 }
 ```
 
 - **规则形态**：`Tool(arg)`，支持 `Bash(git status*)` 前缀匹配（带命令词边界）、`Edit(src/**)` 路径 glob、`webfetch(https://example.com)` 按 URL scheme/host/port 与路径段边界匹配、`apply_patch(src/a.ts)` 按补丁目标路径匹配、MCP 全名（`mcp__server__tool`）与无参工具 `Tool()`；`rule.ts` 负责解析与匹配，非法规则忽略并告警。
-- **优先级铁律**（与 §5.1 一致）：`模式硬门禁 > read-only 沙箱 > dangerous 命令 > Deny 规则 > Guardian > 会话白名单 > 全局放行 > sensitive 命令 > Ask 规则 > Allow 规则 > acceptEdits > 默认审批`。
+- **优先级铁律**（与 §5.1 一致）：`模式硬基线（含父模式基线） > read-only 沙箱 > dangerous 命令 > Deny 规则 > Guardian > 会话白名单 > 全局放行 > sensitive 命令 > Ask 规则 > Allow 规则 > acceptEdits > 默认审批`。
 - **原子持久化**：永久允许/拒绝经 `settingsService.savePermissionSettings` 安全写入 `~/.lx/config/agent.json` 并热重载。

@@ -64,6 +64,24 @@ Controls the **interactive approval behavior** between Agent and human user.
   ruleSyntaxHint:
     "Syntax: ToolName(arg). Bash uses prefix match; write/edit uses path glob; MCP tools use parameter substring match.",
 
+  // Collaboration Mode Permissions
+  collaborationModePermissions: "Collaboration Mode Permissions",
+  collaborationModePermissionsDesc:
+    "Configure capabilities for each collaboration mode (Build / Plan / Review / Design); configuration can only narrow the hard baseline, never widen it.",
+  collaborationModePermissionsDoc: `### Collaboration Mode Permissions
+
+Configure independent capability allowlists for the four collaboration modes (Build / Plan / Review / Design).
+
+- **Non-Build hard baseline**: \`write\` / \`edit\` / \`apply_patch\` / \`todowrite\` / \`memory\` are permanently disabled and cannot be re-enabled by configuration.
+- **Sub-agent dispatch**: \`task\` is controlled by the \`subagents\` group. Non-Build modes default to the built-in explorer sub-agent only; other or custom roles can be checked in. Sub-agent tool calls also inherit the parent mode's hard baseline.
+- **Design Mode**: additionally disables \`wireframe\` (deliver prototypes via the \`<front_design>\` protocol).
+- **Semantics**: an unrestricted group is bounded only by the hard baseline; a restricted group keeps only the checked items (none checked = group fully disabled).
+- **Effective**: applies from the next turn; hard-baseline tools are stripped from saved allowlists automatically.`,
+  collaborationModePermissionsEdit: "Edit permissions",
+  collaborationModePermissionsLockedHint: "Permanently disabled: {{tools}}",
+  collaborationModePermissionsLockedRolesHint:
+    "Permanently disabled roles: {{roles}} (capability set includes blocked tools; removed once you confirm an edit)",
+
   // Custom Commands section
   customCommandAgentInputTab: "Chat Commands (AgentInput)",
   customCommandAgentMDTab: "Markdown Template Commands (AgentMD)",

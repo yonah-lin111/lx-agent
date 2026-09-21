@@ -1,4 +1,5 @@
 import type { PermissionSettings } from "@shared/contracts/agent"
+import type { SubagentSettings } from "@shared/settings"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { BeforeToolCallContext } from "@/agent/core/types"
 
@@ -16,6 +17,8 @@ const holder = vi.hoisted(() => ({
     summary: string
     mode: PermissionSettings["defaultMode"]
   }>,
+  // 子代理角色源（task 角色兼容性门控用）：缺省无自定义角色，仅内置 explorer/worker。
+  subagentSettings: { roles: {}, maxDepth: 1 } as SubagentSettings,
 }))
 
 vi.mock("@/services/settingsService", () => ({
@@ -24,6 +27,7 @@ vi.mock("@/services/settingsService", () => ({
     holder.permissionSettings = input
     return input
   },
+  getSubagentSettings: () => holder.subagentSettings,
 }))
 
 // hooks 派发用可控 spy（不触达真实配置/子进程）；保留真实辅助函数。
@@ -68,6 +72,7 @@ const resetManager = (): void => {
   manager.requestSequence = 0
   holder.permissionSettings = { defaultMode: "default", allow: [], deny: [], ask: [] }
   holder.capturedRequests = []
+  holder.subagentSettings = { roles: {}, maxDepth: 1 }
 }
 
 // 应用权限配置并刷新解析结果。
@@ -750,24 +755,18 @@ describe("permissionManager 永久决策写回（G5）", () => {
       expect(result).toEqual({
         block: true,
         reason:
-          "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) and task subagent dispatch are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags.",
+          "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite, memory) are strictly prohibited in Review Mode. Sub-agent dispatch is limited to the configured role allow-list. Please output structured findings using <review_findings> tags.",
       })
     })
 
-    it("Plan/Review 模式下 task 子代理派发被硬拦（防止子代理绕过写限制）", async () => {
+    it("Plan/Review 模式下 task 仅放行白名单角色（缺省 explorer），未携带角色即拒绝", async () => {
       applySettings({
         defaultMode: "default",
         allow: [],
         deny: [],
         ask: [],
       })
-      expect(
-        permissionManager.evaluate("task", { prompt: "x" }, { collaborationMode: "plan" }),
-      ).toBe("deny")
-      expect(
-        permissionManager.evaluate("task", { prompt: "x" }, { collaborationMode: "review" }),
-      ).toBe("deny")
-
+      // 缺省白名单仅 explorer：未携带角色 → 拒绝（reason 附允许角色清单）。
       const result = await permissionManager.gate(
         gateContext("task", { prompt: "x" }),
         "s1",
@@ -775,7 +774,23 @@ describe("permissionManager 永久决策写回（G5）", () => {
         { collaborationMode: "plan" },
       )
       expect(result?.block).toBe(true)
-      expect(result?.reason).toContain("subagent dispatch")
+      expect(result?.reason).toContain("explorer")
+
+      expect(
+        permissionManager.evaluate(
+          "task",
+          { description: "d", prompt: "x", agent_type: "worker" },
+          { collaborationMode: "review" },
+        ),
+      ).toBe("deny")
+      // 白名单命中的角色走常规门控（default → ask），不被硬拦截。
+      expect(
+        permissionManager.evaluate(
+          "task",
+          { description: "d", prompt: "x", agent_type: "explorer" },
+          { collaborationMode: "plan" },
+        ),
+      ).toBe("ask")
     })
   })
 
@@ -809,12 +824,380 @@ describe("permissionManager 永久决策写回（G5）", () => {
         undefined,
         { collaborationMode: "design" },
       )
-      expect(result).toEqual({
-        block: true,
-        reason:
-          "Action denied: Current collaboration mode is Front Design Mode. The wireframe tool is disabled in Front Design Mode; deliver the layout directly through the <front_design> protocol tag instead.",
-      })
+      // 统一模式硬基线 reason（Front Design Mode 段）取代了此前的 wireframe 专用文案。
+      expect(result?.block).toBe(true)
+      expect(result?.reason).toContain("Front Design Mode")
+      expect(result?.reason).toContain("wireframe")
     })
+  })
+})
+
+describe("permissionManager 协作模式权限（模式策略统一表）", () => {
+  beforeEach(resetManager)
+  afterEach(resetManager)
+
+  it("非 build 模式硬基线覆盖写操作/todowrite/memory，配置不可放开", async () => {
+    // 直接写入含硬基线工具的覆盖配置（模拟绕过 normalize 的配置），运行时仍必须拒绝。
+    applySettings({
+      defaultMode: "bypassPermissions",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { review: { tools: ["read", "write", "memory"] } },
+    })
+    for (const toolName of ["write", "edit", "apply_patch", "todowrite", "memory"]) {
+      expect(permissionManager.evaluate(toolName, {}, { collaborationMode: "review" })).toBe("deny")
+      expect(permissionManager.evaluate(toolName, {}, { collaborationMode: "plan" })).toBe("deny")
+      expect(permissionManager.evaluate(toolName, {}, { collaborationMode: "design" })).toBe("deny")
+    }
+    // build 模式不受硬基线约束（bypassPermissions 放行）。
+    expect(
+      permissionManager.evaluate("write", { path: "a.ts" }, { collaborationMode: "build" }),
+    ).toBe("allow")
+    expect(permissionManager.evaluate("memory", {}, { collaborationMode: "build" })).toBe("allow")
+  })
+
+  it("非 build 模式缺省仅允许探索子代理；显式白名单覆盖缺省，空数组全禁", () => {
+    applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+    const plan = { collaborationMode: "plan" as const }
+    const explorerTask = { description: "d", prompt: "p", agent_type: "explorer" }
+    const scoutTask = { description: "d", prompt: "p", agent_type: "scout" }
+    // 缺省：explorer 放行（bypassPermissions 下 allow），未携带角色拒绝。
+    expect(permissionManager.evaluate("task", explorerTask, plan)).toBe("allow")
+    expect(permissionManager.evaluate("task", { description: "d", prompt: "p" }, plan)).toBe("deny")
+
+    // 显式配置：只读自定义角色 scout 覆盖缺省白名单，explorer 随之不再放行。
+    holder.subagentSettings = {
+      roles: {
+        scout: { description: "read-only scout", permissions: { tools: ["read", "grep"] } },
+      },
+      maxDepth: 1,
+    }
+    applySettings({
+      defaultMode: "bypassPermissions",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { plan: { subagents: ["scout"] } },
+    })
+    expect(permissionManager.evaluate("task", scoutTask, plan)).toBe("allow")
+    expect(permissionManager.evaluate("task", explorerTask, plan)).toBe("deny")
+
+    // 显式空数组：该模式完全禁止派发。
+    applySettings({
+      defaultMode: "bypassPermissions",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { plan: { subagents: [] } },
+    })
+    expect(permissionManager.evaluate("task", explorerTask, plan)).toBe("deny")
+
+    // 缺省白名单只作用于非 build：build 未配置时不限制角色。
+    expect(permissionManager.evaluate("task", scoutTask, { collaborationMode: "build" })).toBe(
+      "allow",
+    )
+  })
+
+  it("能力集含模式硬基线工具的角色在非 build 模式永久禁用（白名单列出也不放行）", () => {
+    applySettings({
+      defaultMode: "bypassPermissions",
+      allow: [],
+      deny: [],
+      ask: [],
+      // 白名单显式列出 worker：角色兼容性仍按硬基线拒绝。
+      modes: { plan: { subagents: ["explorer", "worker"] } },
+    })
+    const workerTask = { description: "d", prompt: "p", agent_type: "worker" }
+    expect(permissionManager.evaluate("task", workerTask, { collaborationMode: "plan" })).toBe(
+      "deny",
+    )
+    expect(permissionManager.evaluate("task", workerTask, { collaborationMode: "design" })).toBe(
+      "deny",
+    )
+    // build 模式硬基线为空：无限制角色不受影响。
+    expect(permissionManager.evaluate("task", workerTask, { collaborationMode: "build" })).toBe(
+      "allow",
+    )
+  })
+
+  it("角色兼容性与父模式白名单对嵌套派发同样生效", () => {
+    applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+    const nested = { collaborationMode: "build" as const, parentMode: "plan" as const }
+    // 父为 plan：build 子代理派发 worker 被父模式缺省白名单拦下（缺省仅 explorer）。
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "worker" },
+        nested,
+      ),
+    ).toBe("deny")
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "explorer" },
+        nested,
+      ),
+    ).toBe("allow")
+  })
+
+  it("派发拒绝 reason 区分角色白名单未命中与角色永久禁用", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const missingRole = await permissionManager.gate(
+      gateContext("task", { description: "d", prompt: "p" }),
+      "s1",
+      undefined,
+      { collaborationMode: "plan" },
+    )
+    expect(missingRole?.reason).toContain("Allowed roles: explorer.")
+
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { plan: { subagents: ["worker"] } },
+    })
+    const blockedRole = await permissionManager.gate(
+      gateContext("task", { description: "d", prompt: "p", agent_type: "worker" }),
+      "s1",
+      undefined,
+      { collaborationMode: "plan" },
+    )
+    expect(blockedRole?.reason).toContain("permanently disabled")
+    expect(blockedRole?.reason).toContain("worker")
+    expect(blockedRole?.reason).toContain("write")
+  })
+
+  it("父模式硬基线随子代理调用生效（parentMode），派发不绕过父模式只读约束", () => {
+    applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+    // 子代理自身为 build，但父会话处于 review：写操作与 wireframe 之外的基线仍被拒。
+    const child = { collaborationMode: "build" as const, parentMode: "review" as const }
+    expect(permissionManager.evaluate("write", { path: "a.ts" }, child)).toBe("deny")
+    expect(permissionManager.evaluate("memory", {}, child)).toBe("deny")
+    expect(permissionManager.evaluate("read", {}, child)).toBe("allow")
+    // 父为 design 时子代理同样禁用 wireframe。
+    expect(
+      permissionManager.evaluate(
+        "wireframe",
+        { title: "t" },
+        {
+          collaborationMode: "build",
+          parentMode: "design",
+        },
+      ),
+    ).toBe("deny")
+    // 父为 build（或缺省）时不额外限制。
+    expect(
+      permissionManager.evaluate(
+        "write",
+        { path: "a.ts" },
+        {
+          collaborationMode: "build",
+          parentMode: "build",
+        },
+      ),
+    ).toBe("allow")
+  })
+
+  it("design 模式额外禁用 wireframe，其余模式不受影响", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "design" })).toBe(
+      "deny",
+    )
+    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "build" })).toBe(
+      "allow",
+    )
+    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "plan" })).toBe("allow")
+    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "review" })).toBe(
+      "allow",
+    )
+  })
+
+  it("模式白名单四组独立判定：tools/mcp/skills/websearch 缺省组不限制", () => {
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: {
+        review: {
+          tools: ["read"],
+          mcp: ["codegraph"],
+          skills: ["deploy"],
+          websearch: ["web_search"],
+        },
+      },
+    })
+    expect(permissionManager.evaluate("read", {}, { collaborationMode: "review" })).toBe("allow")
+    expect(permissionManager.evaluate("grep", {}, { collaborationMode: "review" })).toBe("deny")
+    expect(permissionManager.evaluate("web_search", {}, { collaborationMode: "review" })).toBe(
+      "allow",
+    )
+    expect(permissionManager.evaluate("webfetch", {}, { collaborationMode: "review" })).toBe("deny")
+    // read_skill 按 skills 白名单判定参数 name。
+    expect(
+      permissionManager.evaluate("read_skill", { name: "deploy" }, { collaborationMode: "review" }),
+    ).toBe("allow")
+    expect(
+      permissionManager.evaluate("read_skill", { name: "other" }, { collaborationMode: "review" }),
+    ).toBe("deny")
+    // MCP 按 server 白名单判定：命中走门控（注册后 ask），未命中 deny。
+    permissionManager.setMcpTools("s1", ["mcp__codegraph__search", "mcp__other__read"])
+    expect(
+      permissionManager.evaluate(
+        "mcp__codegraph__search",
+        {},
+        { collaborationMode: "review", sessionId: "s1" },
+      ),
+    ).toBe("ask")
+    expect(
+      permissionManager.evaluate(
+        "mcp__other__read",
+        {},
+        { collaborationMode: "review", sessionId: "s1" },
+      ),
+    ).toBe("deny")
+    // 缺省组不限制：plan 模式未配置，read_skill 任意 skill 放行。
+    expect(
+      permissionManager.evaluate("read_skill", { name: "other" }, { collaborationMode: "plan" }),
+    ).toBe("allow")
+  })
+
+  it("build 模式白名单同样只能收紧（可自定义禁用工具）", () => {
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { build: { tools: ["read"] } },
+    })
+    expect(permissionManager.evaluate("read", {}, { collaborationMode: "build" })).toBe("allow")
+    expect(
+      permissionManager.evaluate("write", { path: "a.ts" }, { collaborationMode: "build" }),
+    ).toBe("deny")
+    expect(
+      permissionManager.evaluate("bash", { command: "ls" }, { collaborationMode: "build" }),
+    ).toBe("deny")
+  })
+
+  it("subagents 白名单按 task 的 agent_type 判定（批量逐项校验，未携带角色即未命中）", () => {
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { build: { subagents: ["explorer"] } },
+    })
+    const build = { collaborationMode: "build" as const }
+    // 命中白名单 → 进入常规门控（默认 ask）；未列出角色 / 未携带角色 → deny。
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "explorer" },
+        build,
+      ),
+    ).toBe("ask")
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "worker" },
+        build,
+      ),
+    ).toBe("deny")
+    expect(permissionManager.evaluate("task", { description: "d", prompt: "p" }, build)).toBe(
+      "deny",
+    )
+    // 批量：每一项都必须在白名单内。
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { tasks: [{ description: "a", prompt: "a", agent_type: "explorer" }] },
+        build,
+      ),
+    ).toBe("ask")
+    expect(
+      permissionManager.evaluate(
+        "task",
+        {
+          tasks: [
+            { description: "a", prompt: "a", agent_type: "explorer" },
+            { description: "b", prompt: "b", agent_type: "worker" },
+          ],
+        },
+        build,
+      ),
+    ).toBe("deny")
+    // 未配置 subagents 组时不限制角色（tools 白名单只收窄工具集）。
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { build: { tools: ["read", "task"] } },
+    })
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "worker" },
+        build,
+      ),
+    ).toBe("ask")
+  })
+
+  it("模式白名单优先于会话白名单与 bypass 放行", () => {
+    applySettings({
+      defaultMode: "bypassPermissions",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { review: { tools: ["read"] } },
+    })
+    permissionManager.rememberForSession("s1", "bash")
+    expect(
+      permissionManager.evaluate(
+        "bash",
+        { command: "ls" },
+        { collaborationMode: "review", sessionId: "s1" },
+      ),
+    ).toBe("deny")
+  })
+
+  it("gate 透传模式硬基线 reason 与白名单 reason", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const blocked = await permissionManager.gate(
+      gateContext("write", { path: "a.ts" }),
+      "s1",
+      undefined,
+      { collaborationMode: "design" },
+    )
+    expect(blocked?.block).toBe(true)
+    expect(blocked?.reason).toContain("Front Design Mode")
+
+    const wireframe = await permissionManager.gate(
+      gateContext("wireframe", { title: "t", layout: "x" }),
+      "s1",
+      undefined,
+      { collaborationMode: "design" },
+    )
+    expect(wireframe?.block).toBe(true)
+    expect(wireframe?.reason).toContain("wireframe")
+
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { review: { tools: ["read"] } },
+    })
+    const whitelistDenied = await permissionManager.gate(
+      gateContext("bash", { command: "ls" }),
+      "s1",
+      undefined,
+      { collaborationMode: "review" },
+    )
+    expect(whitelistDenied?.block).toBe(true)
+    expect(whitelistDenied?.reason).toContain("permission configuration")
   })
 })
 

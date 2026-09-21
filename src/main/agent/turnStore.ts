@@ -655,12 +655,16 @@ export class TurnStore {
     let todos: TodoList = []
 
     for (const entry of agentSessionService.listEntries(sessionId)) {
-      if (entry.type === "message" || entry.type === "model_change") {
+      if (
+        entry.type === "message" ||
+        entry.type === "model_change" ||
+        entry.type === "mode_change"
+      ) {
         try {
           messages.push(JSON.parse(entry.payload) as AgentMessage)
           seqs.push(entry.seq)
         } catch {
-          // 损坏的 message / model_change entry 跳过，不阻断恢复。
+          // 损坏的 message / model_change / mode_change entry 跳过，不阻断恢复。
         }
       } else if (entry.type === "active_capabilities") {
         const parsed = JSON.parse(entry.payload) as Partial<AgentCapabilitySnapshot>

@@ -50,6 +50,11 @@ const loadedCapabilities = (): SubagentCapabilityCatalog => ({
     { name: "code-review", disabled: false },
     { name: "deploy", disabled: true },
   ],
+  subagents: [
+    { name: "explorer", builtIn: true },
+    { name: "worker", builtIn: true },
+    { name: "reviewer", builtIn: false },
+  ],
 })
 
 const loadedProviders = (): ModelProviderSettings => ({

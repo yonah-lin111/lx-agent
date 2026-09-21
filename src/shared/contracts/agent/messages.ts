@@ -1,6 +1,7 @@
 // Agent 消息契约：用户/助手消息、记忆引用与消息联合类型。
 
 import type { HookContextMessage } from "./hooks"
+import type { CollaborationMode } from "./permissions"
 import type {
   CompactionUsage,
   ImageContent,
@@ -120,6 +121,15 @@ export interface ModelSwitchMessage {
   isInitial?: boolean
 }
 
+// 协作模式切换/初始模式消息：非交互块，记录模式切换（模式提示词由系统提示词模式段注入，不重复落库）。
+export interface CollaborationModeSwitchMessage {
+  role: "modeSwitch"
+  mode: CollaborationMode
+  timestamp: number
+  // 是否为会话创建时的初始模式条目
+  isInitial?: boolean
+}
+
 // 上下文压缩摘要消息：可见的非交互块，标注"此处已压缩"。
 // 不落 message entry（compaction entry 的 payload 即摘要）；UI 与模型上下文共用同一份。
 export interface CompactionSummaryMessage {
@@ -147,6 +157,7 @@ export type AgentMessage =
   | TodoStateMessage
   | ToolResultMessage
   | ModelSwitchMessage
+  | CollaborationModeSwitchMessage
   | HookContextMessage
 
 // 建议问题生成请求的对话上下文消息。

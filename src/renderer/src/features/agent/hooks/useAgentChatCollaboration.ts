@@ -5,7 +5,7 @@ import { agentApi } from "@/features/agent/api/agentApi"
 import { createChatMessageId } from "@/features/agent/hooks/agentChatStreamUtils"
 import type { AgentChatCore } from "@/features/agent/hooks/useAgentChat.types"
 import type { ProposedPlanData } from "@/features/agent/types"
-import { toChatMessage } from "@/features/agent/utils"
+import { toChatMessage, upsertSwitchMessage } from "@/features/agent/utils"
 
 /**
  * 协作与模型域：协作模式切换、采纳计划/审查修复、模型切换与上下文容量刷新。
@@ -119,17 +119,8 @@ export const useAgentChatCollaboration = ({
       const result = await agentApi.switchModel(selection, sessionId, tabId)
       if (result.ok && result.message) {
         const msg = result.message
-        setMessages((prev) => {
-          const alreadyExists = prev.some(
-            (m) =>
-              m.role === "modelSwitch" &&
-              m.timestamp === msg.timestamp &&
-              m.model === msg.model &&
-              m.provider === msg.provider,
-          )
-          if (alreadyExists) return prev
-          return [...prev, toChatMessage(msg, false, createChatMessageId(), sessionId)]
-        })
+        const item = toChatMessage(msg, false, createChatMessageId(), sessionId)
+        setMessages((prev) => upsertSwitchMessage(prev, item))
       }
       return result
     },

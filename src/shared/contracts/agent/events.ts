@@ -3,6 +3,7 @@
 import type {
   AgentMessage,
   AssistantMessage,
+  CollaborationModeSwitchMessage,
   CompactionSummaryMessage,
   ModelSwitchMessage,
 } from "./messages"
@@ -87,6 +88,8 @@ export type AgentEvent =
       sessionId?: string
       tabId?: string
       mode: CollaborationMode
+      // 模式切换历史条目（会话尾部连续切换时原地更新，renderer 直接保证不刷屏）。
+      message?: CollaborationModeSwitchMessage
     }
   | { type: "session_title"; sessionId: string; tabId?: string; title: string | null }
   | { type: "permission_request"; sessionId?: string; tabId?: string; request: PermissionRequest }

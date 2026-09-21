@@ -166,6 +166,17 @@ export const FlowListElement = ({
           <div className="h-[1px] flex-1 bg-cyan-500/10" />
         </div>
       )}
+      {/* 协作模式切换分割线说明 */}
+      {element.kind === "single" && element.step.kind === "modeSwitch" && (
+        <div className="agent-execution-flow-mode-switch-divider my-1.5 flex items-center gap-2">
+          <div className="h-[1px] flex-1 bg-violet-500/10" />
+          <span className="font-mono text-xs font-semibold tracking-wider text-violet-300/65 uppercase flex items-center gap-1.5">
+            <Compass className="h-3 w-3" />
+            {t("agent.modeSwitched") || "MODE SWITCHED"}
+          </span>
+          <div className="h-[1px] flex-1 bg-violet-500/10" />
+        </div>
+      )}
       {/* System 分割线 */}
       {isSystemStart && (
         <div className="agent-execution-flow-system-divider my-1.5 flex items-center gap-2">

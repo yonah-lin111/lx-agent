@@ -213,6 +213,7 @@ export const useFlowStats = ({
       undo: 0,
       assistant: 0,
       modelSwitch: 0,
+      modeSwitch: 0,
       hook: 0,
       proposedPlan: 0,
       reviewFindings: 0,

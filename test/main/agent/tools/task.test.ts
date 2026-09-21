@@ -1,4 +1,9 @@
-import type { AssistantMessage, SubagentData, Usage } from "@shared/contracts/agent"
+import type {
+  AssistantMessage,
+  PermissionSettings,
+  SubagentData,
+  Usage,
+} from "@shared/contracts/agent"
 import type { SubagentSettings } from "@shared/settings"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
@@ -15,11 +20,22 @@ const TEST_TOOL_SCHEMA = z.object({ path: z.string().optional() })
 
 // 脚本化的 mock streamFn：逐次返回预设助手响应；streamHandler 存在时按上下文动态应答。
 const holder = vi.hoisted(() => ({
+  permissionSettings: {
+    defaultMode: "default",
+    allow: [],
+    deny: [],
+    ask: [],
+  } as PermissionSettings,
   streamResponses: [] as AssistantMessage[],
   streamHandler: null as
     | null
     | ((context: { messages: Array<{ role: string }> }) => AssistantMessage),
   streamCalls: 0,
+}))
+
+// 权限配置源：task 工具描述按协作模式裁剪角色目录时读取（测试用内存态替换）。
+vi.mock("@/services/settingsService", () => ({
+  getPermissionSettings: () => holder.permissionSettings,
 }))
 
 vi.mock("@/agent/stream/aiSdkStreamFn", async () => {
@@ -75,6 +91,7 @@ const createTestTool = (options: {
   settings?: SubagentSettings
   tools?: AgentTool<any>[]
   depth?: number
+  collaborationMode?: NonNullable<TaskToolDeps["collaborationMode"]>
   resolveModelSelection?: NonNullable<TaskToolDeps["resolveModelSelection"]>
 }): ReturnType<typeof createTaskTool> => {
   return createTaskTool({
@@ -87,6 +104,7 @@ const createTestTool = (options: {
     ...(options.runtime ? { subagentRuntime: options.runtime } : {}),
     ...(options.settings ? { subagentSettings: options.settings } : {}),
     ...(options.depth !== undefined ? { depth: options.depth } : {}),
+    ...(options.collaborationMode ? { collaborationMode: options.collaborationMode } : {}),
     ...(options.resolveModelSelection
       ? { resolveModelSelection: options.resolveModelSelection }
       : {}),
@@ -383,6 +401,57 @@ describe("task 子代理角色", () => {
 
     const noLimitTool = createTestTool({ settings: { roles: {} } })
     expect(noLimitTool.description).not.toContain("Concurrency:")
+  })
+
+  it("工具描述按协作模式裁剪角色目录（非 build 排除未白名单与能力集冲突角色）", () => {
+    const settings: SubagentSettings = {
+      roles: {
+        scout: { description: "Read-only scout", permissions: { tools: ["read", "grep"] } },
+        builder: { description: "Writes code", permissions: { tools: ["read", "write"] } },
+      },
+      maxDepth: 1,
+    }
+
+    // build：无硬基线且缺省不限制 → 目录包含全部角色。
+    holder.permissionSettings = { defaultMode: "default", allow: [], deny: [], ask: [] }
+    const buildTool = createTestTool({ settings, collaborationMode: "build" })
+    for (const name of ["explorer", "worker", "scout", "builder"]) {
+      expect(buildTool.description).toContain(`- ${name}:`)
+    }
+
+    // plan 缺省：白名单仅 explorer → 其余角色（含只读自定义角色）均不出现。
+    const planDefaultTool = createTestTool({ settings, collaborationMode: "plan" })
+    expect(planDefaultTool.description).toContain("- explorer:")
+    for (const name of ["worker", "scout", "builder"]) {
+      expect(planDefaultTool.description).not.toContain(`- ${name}:`)
+    }
+
+    // plan 显式白名单：scout 命中且能力兼容 → 出现；worker 命中但能力集含硬基线工具 → 排除。
+    holder.permissionSettings = {
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { plan: { subagents: ["explorer", "scout", "worker"] } },
+    }
+    const planWhitelistTool = createTestTool({ settings, collaborationMode: "plan" })
+    expect(planWhitelistTool.description).toContain("- explorer:")
+    expect(planWhitelistTool.description).toContain("- scout: Read-only scout")
+    expect(planWhitelistTool.description).not.toContain("- worker:")
+    expect(planWhitelistTool.description).not.toContain("- builder:")
+
+    // 空白名单：该模式无可派发角色，描述给出明确说明。
+    holder.permissionSettings = {
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { plan: { subagents: [] } },
+    }
+    const noneTool = createTestTool({ settings, collaborationMode: "plan" })
+    expect(noneTool.description).toContain("does not allow sub-agent dispatch")
+
+    holder.permissionSettings = { defaultMode: "default", allow: [], deny: [], ask: [] }
   })
 
   it("自定义角色：指令追加在末尾、角色模型生效，续接保留角色与实例", async () => {

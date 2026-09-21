@@ -16,7 +16,6 @@ import type {
   TodoList,
   UserMessage,
 } from "@shared/contracts/agent"
-import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
@@ -28,6 +27,7 @@ import { clearQueue, enqueueMessage, kickDrain } from "./sessionRunnerQueue"
 import {
   restoreMessages,
   restoreSessionData,
+  switchCollaborationMode,
   switchModel,
   switchProject,
   switchWorktree,
@@ -444,10 +444,7 @@ export class AgentSessionRunner {
   }
 
   public setCollaborationMode(mode: CollaborationMode): { ok: true } {
-    this.collaborationMode = normalizeCollaborationMode(mode)
-    this.builtSignature = ""
-    this.emitEvent({ type: "collaboration_mode_changed", mode: this.collaborationMode })
-    return { ok: true }
+    return switchCollaborationMode(this, mode)
   }
 
   public getContextUsage(selection?: ModelSelection): AgentContextUsage {

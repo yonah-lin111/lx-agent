@@ -1,4 +1,9 @@
-import type { PromptAssembly, SubagentData, Usage } from "@shared/contracts/agent"
+import type {
+  CollaborationMode,
+  PromptAssembly,
+  SubagentData,
+  Usage,
+} from "@shared/contracts/agent"
 import { cleanUserPrompt } from "./components/AgentMessageList/AgentMessageItem/utils"
 import { getModelDisplayName } from "./hooks/modelsStore"
 import type {
@@ -29,6 +34,14 @@ export const formatPreview = (text: string, maxLength = 80): string => {
   const normalized = text.trim().replace(/\s+/g, " ")
   if (!normalized) return ""
   return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}...` : normalized
+}
+
+// 模式切换步骤标题（与模型切换步骤同风格，使用英文展示名）。
+const MODE_STEP_TITLES: Record<CollaborationMode, string> = {
+  build: "Build Mode",
+  plan: "Plan Mode",
+  review: "Review Mode",
+  design: "Design Mode",
 }
 
 /**
@@ -260,6 +273,31 @@ export const buildExecutionSteps = (
           model: message.model,
           family: message.family,
           instructions: message.instructions,
+          isInitial: message.isInitial,
+        },
+      })
+      continue
+    }
+
+    // 处理协作模式切换（独立步骤，不计入对话轮次）
+    if (message.role === "modeSwitch") {
+      stepIndex++
+      const isInitial = message.isInitial === true
+      const mode = message.collaborationMode ?? "build"
+      const modeTitle = MODE_STEP_TITLES[mode]
+      steps.push({
+        id: `step-${stepIndex}-mode-switch`,
+        messageId: message.id,
+        turnIndex: 0,
+        stepIndex,
+        kind: "modeSwitch",
+        title: isInitial ? `Initial Mode: ${modeTitle}` : `Mode Switched: ${modeTitle}`,
+        status: "done",
+        timestamp: message.timestamp,
+        startedAt: message.timestamp,
+        completedAt: message.timestamp,
+        modeSwitchContent: {
+          mode,
           isInitial: message.isInitial,
         },
       })

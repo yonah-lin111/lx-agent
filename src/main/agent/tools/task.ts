@@ -1,7 +1,14 @@
-import type { SandboxPolicy, SubagentData, TextContent } from "@shared/contracts/agent"
+import type {
+  CollaborationMode,
+  SandboxPolicy,
+  SubagentData,
+  TextContent,
+} from "@shared/contracts/agent"
+import { roleBlockedTools, withModePermissionDefaults } from "@shared/contracts/agent"
 import type { ModelSelection, SubagentSettings } from "@shared/settings"
 import { DEFAULT_SUBAGENT_SETTINGS } from "@shared/settings"
 import { z } from "zod"
+import { getPermissionSettings } from "@/services/settingsService"
 import type {
   AfterToolCallContext,
   AfterToolCallResult,
@@ -147,6 +154,8 @@ export interface TaskToolDeps {
   depth?: number
   // 角色模型解析器（默认复用 modelFactory.resolveModelSelection）。
   resolveModelSelection?: (selection: ModelSelection) => { model: Model } | { error: string }
+  // 当前协作模式（缺省 build）：用于把不可派发角色从工具描述中裁掉。
+  collaborationMode?: CollaborationMode
 }
 
 // task 工具基础描述（角色目录与并发治理在装配时追加）。
@@ -226,6 +235,24 @@ export const createTaskTool = (
 ): AgentTool<typeof TASK_INPUT_SCHEMA> => {
   const settings = deps.subagentSettings ?? DEFAULT_SUBAGENT_SETTINGS
   const roles = resolveAgentRoles(settings)
+  const collaborationMode = deps.collaborationMode ?? "build"
+  // 工具描述按协作模式裁剪角色目录：白名单未命中或能力集与模式硬基线冲突的角色不出现，
+  // 模型无需靠被拒绝来发现限制。内容仅在会话装配 / 模式切换（registry 重建）时计算，
+  // 不含轮次级易变数据，不额外破坏提示词前缀缓存。
+  const modePermissions = withModePermissionDefaults(
+    collaborationMode,
+    getPermissionSettings().modes?.[collaborationMode],
+  )
+  const allowedSubagents = modePermissions?.subagents
+  const dispatchableRoles = [...roles.values()].filter(
+    (role) =>
+      (allowedSubagents === undefined || allowedSubagents.includes(role.name)) &&
+      roleBlockedTools(role.permissions, collaborationMode).length === 0,
+  )
+  const agentTypesSection =
+    dispatchableRoles.length > 0
+      ? buildAgentTypesDescription(dispatchableRoles)
+      : "Available agent types: none — the current collaboration mode does not allow sub-agent dispatch."
   const runtime = deps.subagentRuntime ?? new SubagentRuntime(settings.maxConcurrent)
   // 仅顶层会话允许排队：嵌套子代理占着槽位等待子代理会形成循环等待。
   const isTopLevel = (deps.depth ?? 0) === 0
@@ -456,7 +483,7 @@ export const createTaskTool = (
   return {
     name: "task",
     label: "Subagent",
-    description: `${BASE_DESCRIPTION}\n\n${buildAgentTypesDescription(roles.values())}${concurrencyNote}`,
+    description: `${BASE_DESCRIPTION}\n\n${agentTypesSection}${concurrencyNote}`,
     inputSchema: TASK_INPUT_SCHEMA,
     execute: async (toolCallId, params, signal, onUpdate) => {
       if (params.tasks !== undefined && params.tasks.length > 0) {

@@ -11,6 +11,7 @@ import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { type TranslationKey, useTranslation } from "@/i18n"
+import { CollaborationModePermissions } from "./CollaborationModePermissions"
 
 // 规则组配置（按优先级展示）。
 const RULE_GROUPS: Array<{
@@ -32,7 +33,7 @@ export interface PermissionSettingsProps {
 }
 
 /**
- * 设置页"权限与沙箱"分区：沙箱三态选择 + 权限模式三选一 + allow/deny/ask 规则编辑器。
+ * 设置页"权限与沙箱"分区：沙箱三态选择 + 权限模式三选一 + 协作模式权限 + allow/deny/ask 规则编辑器。
  * 仅维护编辑态，保存由设置页统一处理（写入 agent.permissions）。
  */
 export const PermissionSettings = ({
@@ -142,8 +143,11 @@ export const PermissionSettings = ({
         ) : null}
       </div>
 
+      {/* 协作模式权限 */}
+      <CollaborationModePermissions settings={settings} setSettings={setSettings} />
+
       {/* 规则组 */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {RULE_GROUPS.map((group) => {
           const groupLabel = t(group.labelKey)
           const groupDesc = t(group.descKey)

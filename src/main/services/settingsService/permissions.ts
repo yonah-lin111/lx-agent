@@ -1,4 +1,10 @@
-import type { PermissionSettings } from "@shared/contracts/agent"
+import type {
+  CapabilityPermissions,
+  CollaborationMode,
+  PermissionSettings,
+} from "@shared/contracts/agent"
+import { getModeBlockedTools } from "@shared/contracts/agent"
+import { SUBAGENT_PERMISSION_TOOL_NAMES, SUBAGENT_WEBSEARCH_TOOL_NAMES } from "@shared/settings"
 
 import { getConfigPath } from "@/paths"
 
@@ -11,6 +17,69 @@ const DEFAULT_PERMISSION_SETTINGS: PermissionSettings = {
   allow: [],
   deny: [],
   ask: [],
+}
+
+// 合法协作模式（其余键丢弃）。
+const COLLABORATION_MODES: readonly CollaborationMode[] = ["build", "plan", "review", "design"]
+// 合法内置工具名与联网工具名（未知名称丢弃）。
+const SUBAGENT_TOOL_NAMES: ReadonlySet<string> = new Set<string>(SUBAGENT_PERMISSION_TOOL_NAMES)
+const WEBSEARCH_TOOL_NAMES: ReadonlySet<string> = new Set<string>(SUBAGENT_WEBSEARCH_TOOL_NAMES)
+
+const toStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+
+// 去重去空白；白名单显式空数组保留（= 该组全禁）。
+const normalizeList = (
+  value: unknown,
+  isValid: (item: string) => boolean,
+): string[] | undefined => {
+  if (!Array.isArray(value)) return undefined
+  const items: string[] = []
+  const seen = new Set<string>()
+  for (const item of toStringArray(value)) {
+    const name = item.trim()
+    if (!name || seen.has(name) || !isValid(name)) continue
+    seen.add(name)
+    items.push(name)
+  }
+  return items
+}
+
+// 规范化单个模式的能力权限：丢弃未知名称与模式硬拦截工具（配置永远不能放开硬基线）。
+const normalizeModePermissions = (
+  raw: unknown,
+  mode: CollaborationMode,
+): CapabilityPermissions | undefined => {
+  if (!isRecord(raw)) return undefined
+  const blockedTools = getModeBlockedTools(mode)
+  const permissions: CapabilityPermissions = {}
+  const tools = normalizeList(
+    raw.tools,
+    (name) => SUBAGENT_TOOL_NAMES.has(name) && !blockedTools.has(name),
+  )
+  if (tools !== undefined) permissions.tools = tools
+  const mcp = normalizeList(raw.mcp, () => true)
+  if (mcp !== undefined) permissions.mcp = mcp
+  const skills = normalizeList(raw.skills, () => true)
+  if (skills !== undefined) permissions.skills = skills
+  const websearch = normalizeList(raw.websearch, (name) => WEBSEARCH_TOOL_NAMES.has(name))
+  if (websearch !== undefined) permissions.websearch = websearch
+  const subagents = normalizeList(raw.subagents, () => true)
+  if (subagents !== undefined) permissions.subagents = subagents
+  return Object.keys(permissions).length > 0 ? permissions : undefined
+}
+
+// 规范化模式权限映射：空映射归并为 undefined（配置不落冗余空节点）。
+const normalizeModePermissionsMap = (
+  raw: unknown,
+): Partial<Record<CollaborationMode, CapabilityPermissions>> | undefined => {
+  if (!isRecord(raw)) return undefined
+  const modes: Partial<Record<CollaborationMode, CapabilityPermissions>> = {}
+  for (const mode of COLLABORATION_MODES) {
+    const permissions = normalizeModePermissions(raw[mode], mode)
+    if (permissions) modes[mode] = permissions
+  }
+  return Object.keys(modes).length > 0 ? modes : undefined
 }
 
 /**
@@ -26,15 +95,16 @@ const normalizePermissionSettings = (raw: unknown): PermissionSettings => {
     policy === "read-only" || policy === "danger-full-access" || policy === "workspace-write"
       ? policy
       : "workspace-write"
-  const toStringArray = (value: unknown): string[] =>
-    Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
-  return {
+  const settings: PermissionSettings = {
     defaultMode,
     sandboxPolicy,
     allow: toStringArray(raw.allow),
     deny: toStringArray(raw.deny),
     ask: toStringArray(raw.ask),
   }
+  const modes = normalizeModePermissionsMap(raw.modes)
+  if (modes) settings.modes = modes
+  return settings
 }
 
 /**

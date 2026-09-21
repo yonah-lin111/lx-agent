@@ -228,6 +228,13 @@ export const getKindMeta = (
         tagColor: "gray",
         textColor: "text-cyan-300",
       }
+    case "modeSwitch":
+      return {
+        icon: Compass,
+        labelKey: "agent.kindModeSwitch",
+        tagColor: "gray",
+        textColor: "text-violet-300",
+      }
     case "hook":
       return { icon: Webhook, labelKey: "agent.kindHook", tagColor: "orange" }
     case "assistant":

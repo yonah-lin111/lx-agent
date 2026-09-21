@@ -1,10 +1,20 @@
-import type { SubagentRolePermissions } from "@shared/settings"
-import { SUBAGENT_SKILL_TOOL_NAME, SUBAGENT_WEBSEARCH_TOOL_NAMES } from "@shared/settings"
+import type { CapabilityPermissions } from "@shared/settings"
+import {
+  SUBAGENT_SKILL_TOOL_NAME,
+  SUBAGENT_TASK_TOOL_NAME,
+  SUBAGENT_WEBSEARCH_TOOL_NAMES,
+} from "@shared/settings"
 import type { AgentTool } from "../core/types"
 import { sanitizeMcpNameSegment } from "../mcp/mcpManager"
 
 // MCP 工具全名前缀（`mcp__server__tool`）。
 const MCP_PREFIX = "mcp__"
+
+// 联网工具名集合（与 websearch 白名单字段同源）。
+const WEBSEARCH_TOOL_NAMES: ReadonlySet<string> = new Set<string>(SUBAGENT_WEBSEARCH_TOOL_NAMES)
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
 
 // 从 MCP 工具全名解析 server 名（与 mcpToolName 的 `mcp__server__tool` 格式对应）。
 const mcpServerOf = (toolName: string): string | undefined => {
@@ -19,6 +29,68 @@ const matchesMcpServer = (allowed: string[], toolName: string): boolean => {
   const server = mcpServerOf(toolName)
   if (server === undefined) return false
   return allowed.some((name) => sanitizeMcpNameSegment(name) === server)
+}
+
+// task 调用请求的角色集合：单任务取 agent_type，批量取每一项；缺角色即视为未命中白名单。
+const isTaskAllowedByRole = (args: unknown, allowed: string[]): boolean => {
+  const isAllowed = (value: unknown): boolean =>
+    typeof value === "string" && allowed.includes(value.trim())
+  if (!isRecord(args)) return false
+  if (Array.isArray(args.tasks)) {
+    if (args.tasks.length === 0) return false
+    return args.tasks.every((item) => isRecord(item) && isAllowed(item.agent_type))
+  }
+  return isAllowed(args.agent_type)
+}
+
+/**
+ * 提取 task 调用请求的角色名（单任务 + 批量逐项去重；未携带角色的条目不出现在结果中）。
+ */
+export const requestedTaskRoles = (args: unknown): string[] => {
+  if (!isRecord(args)) return []
+  const names: string[] = []
+  const push = (value: unknown): void => {
+    if (typeof value === "string" && value.trim()) names.push(value.trim())
+  }
+  if (Array.isArray(args.tasks)) {
+    for (const item of args.tasks) {
+      if (isRecord(item)) push(item.agent_type)
+    }
+  } else {
+    push(args.agent_type)
+  }
+  return [...new Set(names)]
+}
+
+/**
+ * 单次工具调用是否命中能力权限：五组独立判定，字段缺省 = 不限制。
+ * 子代理工具表过滤与协作模式门控共用同一语义（永不新增能力）。
+ */
+export const isToolAllowedByPermissions = (
+  toolName: string,
+  args: unknown,
+  permissions: CapabilityPermissions | undefined,
+): boolean => {
+  if (!permissions) return true
+  if (toolName.startsWith(MCP_PREFIX)) {
+    if (permissions.mcp === undefined) return true
+    return matchesMcpServer(permissions.mcp, toolName)
+  }
+  if (toolName === SUBAGENT_SKILL_TOOL_NAME) {
+    if (permissions.skills === undefined) return true
+    const requested = isRecord(args) ? args.name : undefined
+    return typeof requested === "string" && permissions.skills.includes(requested)
+  }
+  if (WEBSEARCH_TOOL_NAMES.has(toolName)) {
+    if (permissions.websearch === undefined) return true
+    return permissions.websearch.includes(toolName)
+  }
+  if (toolName === SUBAGENT_TASK_TOOL_NAME) {
+    if (permissions.subagents === undefined) return true
+    return isTaskAllowedByRole(args, permissions.subagents)
+  }
+  if (permissions.tools === undefined) return true
+  return permissions.tools.includes(toolName)
 }
 
 /**
@@ -44,32 +116,20 @@ const withSkillAllowlist = (tool: AgentTool<any>, allowedSkills: string[]): Agen
 })
 
 /**
- * 按角色权限过滤子代理工具集：四组独立求交，永不新增能力。
- * tools 组覆盖其余内置工具（含 task）；mcp 组按 server 名匹配；websearch 组管理联网工具；skills 组管理 read_skill。
+ * 按角色权限过滤子代理工具集：五组独立求交，永不新增能力。
+ * tools 组覆盖其余内置工具（含 task）；mcp 组按 server 名匹配；websearch 组管理联网工具；skills 组管理 read_skill；
+ * subagents 组按 task 参数判定，静态过滤时无参数可用，配置该组即移除 task（由调用方门控层按参数放行）。
  */
 export const filterToolsByPermissions = (
   tools: AgentTool<any>[],
-  permissions: SubagentRolePermissions | undefined,
+  permissions: CapabilityPermissions | undefined,
 ): AgentTool<any>[] => {
   if (!permissions) return tools
-  const websearchNames = new Set<string>(SUBAGENT_WEBSEARCH_TOOL_NAMES)
-  const allowedSkills = permissions.skills
   return tools.flatMap((tool): AgentTool<any>[] => {
-    const name = tool.name
-    if (name.startsWith(MCP_PREFIX)) {
-      if (permissions.mcp === undefined) return [tool]
-      return matchesMcpServer(permissions.mcp, name) ? [tool] : []
+    if (tool.name === SUBAGENT_SKILL_TOOL_NAME && permissions.skills !== undefined) {
+      if (permissions.skills.length === 0) return []
+      return [withSkillAllowlist(tool, permissions.skills)]
     }
-    if (name === SUBAGENT_SKILL_TOOL_NAME) {
-      if (allowedSkills === undefined) return [tool]
-      if (allowedSkills.length === 0) return []
-      return [withSkillAllowlist(tool, allowedSkills)]
-    }
-    if (websearchNames.has(name)) {
-      if (permissions.websearch === undefined) return [tool]
-      return permissions.websearch.includes(name) ? [tool] : []
-    }
-    if (permissions.tools === undefined) return [tool]
-    return permissions.tools.includes(name) ? [tool] : []
+    return isToolAllowedByPermissions(tool.name, undefined, permissions) ? [tool] : []
   })
 }

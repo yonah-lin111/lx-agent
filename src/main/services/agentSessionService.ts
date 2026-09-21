@@ -124,6 +124,13 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       .prepare("SELECT * FROM agent_session_entry WHERE session_id = ? ORDER BY seq ASC")
       .all(sessionId) as AgentSessionEntryRecord[],
 
+  // 原地更新条目 payload（seq 不变）：用于会话尾部连续切换时合并同一条切换记录，避免刷屏。
+  updateEntryPayload: (externalId: string, payload: string): void => {
+    getConnection()
+      .prepare("UPDATE agent_session_entry SET payload = ? WHERE external_id = ?")
+      .run(payload, externalId)
+  },
+
   // 只读会话的消息条目（删除一轮对话时定位边界用）。
   listMessageEntries: (sessionId: string): AgentSessionEntryRecord[] =>
     getConnection()

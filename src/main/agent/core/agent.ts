@@ -54,7 +54,11 @@ function defaultConvertToLlm(messages: AgentMessage[]): LlmMessage[] {
         },
       ]
     }
-    if (message.role === "modelSwitch" || message.role === "undoSummary") {
+    if (
+      message.role === "modelSwitch" ||
+      message.role === "modeSwitch" ||
+      message.role === "undoSummary"
+    ) {
       return []
     }
     if (message.role === "hookContext") {

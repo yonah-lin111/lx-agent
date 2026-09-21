@@ -109,4 +109,94 @@ describe("settingsService 权限配置", () => {
       permissions: { defaultMode: "default", allow: ["Bash(git status)"], deny: [], ask: [] },
     })
   })
+
+  it("规范化 modes：丢弃非法模式键/未知工具名，硬基线工具剥离，保留显式空数组", () => {
+    writeConfigTree(holder.configPath, {
+      agent: {
+        permissions: {
+          defaultMode: "default",
+          allow: [],
+          deny: [],
+          ask: [],
+          modes: {
+            build: { tools: ["read", "write", "unknown_tool"] },
+            plan: {
+              tools: ["read", "write", "memory", "wireframe"],
+              websearch: ["web_search", "bash"],
+            },
+            review: { tools: [], mcp: ["codegraph", "codegraph", " "], skills: ["deploy"] },
+            design: { tools: ["read", "wireframe"] },
+            bogus: { tools: ["read"] },
+          },
+        },
+      },
+    })
+
+    expect(getPermissionSettings().modes).toEqual({
+      build: { tools: ["read", "write"] },
+      plan: { tools: ["read", "wireframe"], websearch: ["web_search"] },
+      review: { tools: [], mcp: ["codegraph"], skills: ["deploy"] },
+      design: { tools: ["read"] },
+    })
+  })
+
+  it("规范化 modes.subagents：去重去空白，角色名不受工具目录限制", () => {
+    writeConfigTree(holder.configPath, {
+      agent: {
+        permissions: {
+          defaultMode: "default",
+          allow: [],
+          deny: [],
+          ask: [],
+          modes: {
+            build: { subagents: [" explorer ", "worker", "explorer", "", 42, "custom-role"] },
+            plan: { subagents: ["explorer"] },
+          },
+        },
+      },
+    })
+
+    expect(getPermissionSettings().modes).toEqual({
+      build: { subagents: ["explorer", "worker", "custom-role"] },
+      plan: { subagents: ["explorer"] },
+    })
+  })
+
+  it("非法 modes 结构归并为 undefined（不落空节点）", () => {
+    writeConfigTree(holder.configPath, {
+      agent: { permissions: { defaultMode: "default", modes: { plan: "bad", review: [] } } },
+    })
+    expect(getPermissionSettings().modes).toBeUndefined()
+
+    writeConfigTree(holder.configPath, {
+      agent: { permissions: { defaultMode: "default", modes: [] } },
+    })
+    expect(getPermissionSettings().modes).toBeUndefined()
+  })
+
+  it("保存 modes 时剥离硬基线工具（配置不可放开写操作）", () => {
+    savePermissionSettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: {
+        build: { tools: ["write", "read"] },
+        review: { tools: ["read", "write", "memory", "task"] },
+        design: { tools: ["read", "wireframe"] },
+      },
+    })
+
+    const config = readConfig()
+    expect(config.agent).toMatchObject({
+      permissions: {
+        modes: {
+          build: { tools: ["write", "read"] },
+          // task 由 subagents 白名单控制，不再作为硬基线剥离。
+          review: { tools: ["read", "task"] },
+          design: { tools: ["read"] },
+        },
+      },
+    })
+  })
 })

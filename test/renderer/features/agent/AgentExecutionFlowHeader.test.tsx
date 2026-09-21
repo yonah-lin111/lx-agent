@@ -19,6 +19,7 @@ const FILTER_COUNTS: Record<FilterKind, number> = {
   compaction: 0,
   undo: 0,
   modelSwitch: 0,
+  modeSwitch: 0,
   proposedPlan: 0,
   reviewFindings: 0,
   frontDesign: 0,

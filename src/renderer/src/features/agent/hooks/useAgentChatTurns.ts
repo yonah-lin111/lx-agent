@@ -203,7 +203,10 @@ export const useAgentChatTurns = ({
 
       // 检查剩余消息：若全空或只剩初始模型/撤销摘要，脱离并移除当前会话（会话的所有 undo 记录随之清空，直接回到新会话草稿态）
       const hasMeaningfulMessages = nextMessages.some(
-        (m) => !(m.role === "modelSwitch" && m.isInitial) && m.role !== "undoSummary",
+        (m) =>
+          !(m.role === "modelSwitch" && m.isInitial) &&
+          m.role !== "modeSwitch" &&
+          m.role !== "undoSummary",
       )
       if (!hasMeaningfulMessages) {
         setMessages([])

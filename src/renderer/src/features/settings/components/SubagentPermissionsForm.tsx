@@ -1,4 +1,5 @@
-import type { SubagentCapabilityCatalog, SubagentRolePermissions } from "@shared/settings"
+import type { CapabilityPermissions, SubagentCapabilityCatalog } from "@shared/settings"
+import { Lock } from "lucide-react"
 import { useCallback, useMemo } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -6,33 +7,97 @@ import { LxTag } from "@/components/ui/LxTag"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
 // 权限分组标识。
-type PermissionGroup = "tools" | "mcp" | "skills" | "websearch"
+export type PermissionGroup = "tools" | "mcp" | "skills" | "websearch" | "subagents"
 
 // 分组条目（展示名 + 状态标记）。
 interface PermissionItem {
   name: string
-  state?: "connected" | "disconnected" | "disabled"
+  state?: "connected" | "disconnected" | "disabled" | "builtin"
 }
 
 // 子代理权限编辑器属性。
 export interface SubagentPermissionsFormProps {
   catalog: SubagentCapabilityCatalog | null
-  value: SubagentRolePermissions | undefined
-  onChange: (permissions: SubagentRolePermissions | undefined) => void
+  value: CapabilityPermissions | undefined
+  onChange: (permissions: CapabilityPermissions | undefined) => void
+  // 各组的永久禁用条目（协作模式：tools 组为模式硬基线工具，subagents 组为能力集冲突的角色）。
+  lockedItemsByGroup?: Partial<Record<PermissionGroup, readonly string[]>>
+  // 展示的分组与顺序（缺省四组；协作模式弹窗追加 subagents 组）。
+  groups?: readonly PermissionGroup[]
 }
 
 // 分组键 → 权限字段名（同构）。
-const GROUP_KEYS: readonly PermissionGroup[] = ["tools", "mcp", "skills", "websearch"]
+const DEFAULT_GROUPS: readonly PermissionGroup[] = ["tools", "mcp", "skills", "websearch"]
+
+// 权限等值判定：按固定分组顺序 + 排序后的白名单比较（键序与勾选顺序不影响语义）。
+export const permissionsEqual = (
+  a: CapabilityPermissions | undefined,
+  b: CapabilityPermissions | undefined,
+): boolean => {
+  const canonical = (value: CapabilityPermissions | undefined): string => {
+    if (value === undefined) return "~"
+    const groups: Array<keyof CapabilityPermissions> = [
+      "tools",
+      "mcp",
+      "skills",
+      "websearch",
+      "subagents",
+    ]
+    return groups
+      .map((group) => {
+        const list = value[group]
+        return list === undefined ? "~" : `${group}:${[...list].sort().join(",")}`
+      })
+      .join("|")
+  }
+  return canonical(a) === canonical(b)
+}
+
+// 权限摘要：五组各自统计；未限制分组不展示（子代理与协作模式共用）。
+export const describePermissions = (
+  permissions: CapabilityPermissions | undefined,
+  t: (key: TranslationKey) => string,
+): string => {
+  if (!permissions) return t("settings.subagentsPermissionsUnlimitedAll")
+  const parts: string[] = []
+  const groups: Array<[keyof CapabilityPermissions, TranslationKey]> = [
+    ["tools", "settings.subagentsPermissions_tools"],
+    ["mcp", "settings.subagentsPermissions_mcp"],
+    ["skills", "settings.subagentsPermissions_skills"],
+    ["websearch", "settings.subagentsPermissions_websearch"],
+    ["subagents", "settings.subagentsPermissions_subagents"],
+  ]
+  for (const [key, labelKey] of groups) {
+    const list = permissions[key]
+    if (list === undefined) continue
+    parts.push(`${t(labelKey)}: ${list.length}`)
+  }
+  return parts.length > 0 ? parts.join(" / ") : t("settings.subagentsPermissionsUnlimitedAll")
+}
 
 /**
  * 渲染子代理角色能力权限编辑器：2×2 网格分组，每组「不限制 / 自定义白名单」两态，白名单为空表示该组全禁。
+ * lockedItemsByGroup 用于协作模式硬基线：命中的条目永久排除在白名单之外（单独以锁定行展示）。
  */
 export const SubagentPermissionsForm = ({
   catalog,
   value,
   onChange,
+  lockedItemsByGroup,
+  groups = DEFAULT_GROUPS,
 }: SubagentPermissionsFormProps): React.JSX.Element => {
   const { t } = useTranslation()
+
+  const lockedSets = useMemo<Record<PermissionGroup, ReadonlySet<string>>>(
+    () => ({
+      tools: new Set(lockedItemsByGroup?.tools ?? []),
+      mcp: new Set(lockedItemsByGroup?.mcp ?? []),
+      skills: new Set(lockedItemsByGroup?.skills ?? []),
+      websearch: new Set(lockedItemsByGroup?.websearch ?? []),
+      subagents: new Set(lockedItemsByGroup?.subagents ?? []),
+    }),
+    [lockedItemsByGroup],
+  )
 
   const itemsByGroup = useMemo<Record<PermissionGroup, PermissionItem[]>>(
     () => ({
@@ -46,8 +111,25 @@ export const SubagentPermissionsForm = ({
         state: item.disabled ? "disabled" : undefined,
       })),
       websearch: ["web_search", "webfetch"].map((name) => ({ name })),
+      subagents: (catalog?.subagents ?? []).map((item) => ({
+        name: item.name,
+        state: item.builtIn ? "builtin" : undefined,
+      })),
     }),
     [catalog],
+  )
+
+  // 可勾选条目：剔除该组的永久禁用条目（单独以锁定行展示）。
+  const selectableItems = useCallback(
+    (group: PermissionGroup): PermissionItem[] =>
+      itemsByGroup[group].filter((item) => !lockedSets[group].has(item.name)),
+    [itemsByGroup, lockedSets],
+  )
+
+  const lockedItemsOf = useCallback(
+    (group: PermissionGroup): PermissionItem[] =>
+      itemsByGroup[group].filter((item) => lockedSets[group].has(item.name)),
+    [itemsByGroup, lockedSets],
   )
 
   const groupLabel = useCallback(
@@ -61,12 +143,12 @@ export const SubagentPermissionsForm = ({
     value?.[group] !== undefined && value[group]?.length === 0
 
   const handleToggleGroup = (group: PermissionGroup, restricted: boolean): void => {
-    const next: SubagentRolePermissions = { ...value }
+    const next: CapabilityPermissions = { ...value }
     if (!restricted) {
       delete next[group]
     } else {
       // 打开限制时预置当前目录全选，避免空清单直接变成"全禁"。
-      next[group] = itemsByGroup[group].map((item) => item.name)
+      next[group] = selectableItems(group).map((item) => item.name)
     }
     onChange(Object.keys(next).length > 0 ? next : undefined)
   }
@@ -78,7 +160,7 @@ export const SubagentPermissionsForm = ({
   }
 
   const handleSelectAll = (group: PermissionGroup): void => {
-    onChange({ ...value, [group]: itemsByGroup[group].map((item) => item.name) })
+    onChange({ ...value, [group]: selectableItems(group).map((item) => item.name) })
   }
 
   const handleClearAll = (group: PermissionGroup): void => {
@@ -87,8 +169,8 @@ export const SubagentPermissionsForm = ({
 
   return (
     <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-      {GROUP_KEYS.map((group) => {
-        const items = itemsByGroup[group]
+      {groups.map((group) => {
+        const items = selectableItems(group)
         const restricted = value?.[group] !== undefined
         const selected = value?.[group] ?? []
         const disabledAll = isGroupDisabledAll(group)
@@ -176,10 +258,35 @@ export const SubagentPermissionsForm = ({
                           {t("settings.subagentsPermissionsSkillDisabled")}
                         </span>
                       ) : null}
+                      {item.state === "builtin" ? (
+                        <span className="ml-auto shrink-0 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                          {t("settings.subagentsBuiltinTag")}
+                        </span>
+                      ) : null}
                     </label>
                   ))}
                 </div>
               )
+            ) : null}
+
+            {lockedItemsOf(group).length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {lockedItemsOf(group).map((item) => (
+                  <div
+                    key={item.name}
+                    data-locked-item={item.name}
+                    className="flex items-center gap-1.5 rounded-[4px] px-1 py-0.5 opacity-70"
+                  >
+                    <Lock className="h-3 w-3 shrink-0 text-rose-300/80" aria-hidden />
+                    <span className="truncate font-mono text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] line-through">
+                      {item.name}
+                    </span>
+                    <span className="ml-auto shrink-0 text-xs text-rose-300/80">
+                      {t("settings.subagentsPermissionsLocked")}
+                    </span>
+                  </div>
+                ))}
+              </div>
             ) : null}
           </div>
         )

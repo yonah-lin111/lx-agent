@@ -141,6 +141,30 @@ describe("useAgentChat 事件路由剩余分支", () => {
     expect(result.current.collaborationMode).toBe("design")
   })
 
+  it("collaboration_mode_changed 携带 message 时落位 FlowList 条目，连续切换原地合并", async () => {
+    const { result } = await renderAgentChat()
+
+    act(() => {
+      eventHandler({
+        type: "collaboration_mode_changed",
+        mode: "plan",
+        message: { role: "modeSwitch", mode: "plan", timestamp: 100 },
+      })
+    })
+    expect(result.current.messages.filter((m) => m.role === "modeSwitch")).toHaveLength(1)
+
+    act(() => {
+      eventHandler({
+        type: "collaboration_mode_changed",
+        mode: "review",
+        message: { role: "modeSwitch", mode: "review", timestamp: 200 },
+      })
+    })
+    const items = result.current.messages.filter((m) => m.role === "modeSwitch")
+    expect(items).toHaveLength(1)
+    expect(items[0].collaborationMode).toBe("review")
+  })
+
   it("question_request 把提问请求回填到对应 question 工具块", async () => {
     const { result } = await renderAgentChat()
 
