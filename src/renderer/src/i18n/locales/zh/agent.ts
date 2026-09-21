@@ -323,6 +323,8 @@ export const agent = {
   questionNext: "下一题",
   questionSubmit: "提交回答",
   noAvailableModels: "无可用模型",
+  searchModel: "搜索模型...",
+  noMatchingModels: "未找到匹配模型",
   noContentToCopy: "暂无内容可复制",
   unknownSize: "未知大小",
   mcpStatusAria: "MCP 连接状态",

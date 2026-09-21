@@ -97,17 +97,18 @@ describe("AgentInput 布局与操作按钮测试", () => {
     expect(onStop).toHaveBeenCalledTimes(1)
   })
 
-  it("思考等级以 LxTag 展示在模型选择器右侧，不内嵌在选择器内部", () => {
+  it("思考等级内联展示在模型选择器触发按钮内部，不再使用 LxTag", () => {
     const { container } = render(<AgentInput {...defaultProps} selectedVariant="low" />)
 
-    const tag = container.querySelector(".lx-tag")
-    expect(tag).not.toBeNull()
-    expect(tag?.textContent).toBe("low")
-    expect(container.querySelector(".agent-model-select .lx-tag")).toBeNull()
+    const variantEl = container.querySelector(".agent-model-select .agent-model-variant")
+    expect(variantEl).not.toBeNull()
+    expect(variantEl?.textContent).toBe("low")
+    expect(container.querySelector(".lx-tag")).toBeNull()
   })
 
-  it("未选中思考等级时不展示等级标签", () => {
+  it("未选中思考等级时不展示等级文本", () => {
     const { container } = render(<AgentInput {...defaultProps} />)
+    expect(container.querySelector(".agent-model-variant")).toBeNull()
     expect(container.querySelector(".lx-tag")).toBeNull()
   })
 })
