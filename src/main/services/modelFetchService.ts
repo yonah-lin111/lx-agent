@@ -1,8 +1,12 @@
+import { MODELS_DEV_CATALOG_URL, type ModelsDevGoCatalog } from "@shared/opencodeGo"
 import type { FetchedProviderModel } from "@shared/settings"
 import { net } from "electron"
 
 // 单端点请求超时时间（毫秒）。
 const FETCH_TIMEOUT_MS = 15_000
+
+// models.dev 全量目录拉取超时时间（毫秒，文件约数 MB）。
+const CATALOG_FETCH_TIMEOUT_MS = 60_000
 
 // 404/405 响应体截断长度：避免把几十 KB HTML 404 页整页保留到错误串里。
 const ERROR_BODY_MAX_CHARS = 512
@@ -97,6 +101,48 @@ export const buildModelsUrlCandidates = (baseUrl: string): string[] => {
   return unique
 }
 
+/**
+ * 拉取 models.dev 全量目录并提取 opencode-go 一节（云端更新用，无需鉴权）。
+ */
+export const fetchModelsDevCatalog = async (): Promise<ModelsDevGoCatalog> => {
+  let response: Response
+  try {
+    response = await net.fetch(MODELS_DEV_CATALOG_URL, {
+      signal: AbortSignal.timeout(CATALOG_FETCH_TIMEOUT_MS),
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new Error(`Request timed out: ${message}`)
+    }
+    throw new Error(`Request failed: ${message}`)
+  }
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${truncateBody(await response.text())}`)
+  }
+  let payload: unknown
+  try {
+    payload = await response.json()
+  } catch {
+    throw new Error("Failed to parse response")
+  }
+  const entry =
+    typeof payload === "object" && payload !== null
+      ? (payload as Record<string, unknown>)["opencode-go"]
+      : undefined
+  if (typeof entry !== "object" || entry === null) {
+    throw new Error("Catalog entry opencode-go not found")
+  }
+  const record = entry as Record<string, unknown>
+  if (typeof record["models"] !== "object" || record["models"] === null) {
+    throw new Error("Catalog entry opencode-go has no models")
+  }
+  return {
+    npm: typeof record["npm"] === "string" ? record["npm"] : "@ai-sdk/openai-compatible",
+    providerName: typeof record["name"] === "string" ? record["name"] : "OpenCode Go",
+    models: record["models"] as ModelsDevGoCatalog["models"],
+  }
+}
 /**
  * 获取供应商的可用模型列表。
  *

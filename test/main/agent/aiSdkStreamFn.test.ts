@@ -355,6 +355,74 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     })
   })
 
+  it("无文本的空思考块不上库（上游未回 summary 的场景）", async () => {
+    async function* createEmptyThinkingStream() {
+      yield { type: "reasoning-start" as const }
+      yield { type: "reasoning-end" as const }
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "最终回答" }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createEmptyThinkingStream() })
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000 })
+    const stream = await streamFn(TEST_MODEL, { systemPrompt: "", messages: [] }, {})
+    for await (const _ of stream) {
+      // consume
+    }
+
+    const finalResult = await stream.result()
+    expect(finalResult.content).toEqual([
+      { type: "text", text: "最终回答", durationMs: expect.any(Number) },
+    ])
+  })
+
+  it("空白字符思考块不上库，但带签名的空块必须保留", async () => {
+    async function* createMixedStream() {
+      yield { type: "reasoning-start" as const }
+      yield { type: "reasoning-delta" as const, text: "   " }
+      yield { type: "reasoning-end" as const }
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "x" }
+      yield { type: "reasoning-start" as const }
+      yield {
+        type: "reasoning-delta" as const,
+        text: "",
+        providerMetadata: { anthropic: { signature: "sig-keep" } },
+      }
+      yield { type: "reasoning-end" as const }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createMixedStream() })
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000 })
+    const stream = await streamFn(TEST_MODEL, { systemPrompt: "", messages: [] }, {})
+    for await (const _ of stream) {
+      // consume
+    }
+
+    const finalResult = await stream.result()
+    expect(finalResult.content).toEqual([
+      { type: "text", text: "x", durationMs: expect.any(Number) },
+      {
+        type: "thinking",
+        thinking: "",
+        signature: "sig-keep",
+        durationMs: expect.any(Number),
+      },
+    ])
+  })
+
   it("thinking + tool-call 双轮：第二轮请求回传带签名的 reasoning 块", async () => {
     async function* firstRoundStream() {
       yield { type: "reasoning-start" as const }
@@ -649,5 +717,223 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     expect(output.value.length).toBeLessThan(makeLargeDiff().length)
     expect(finalMessage.tokenSaver?.rtkFilters).toEqual(["git-diff"])
     expect(finalMessage.tokenSaver?.rtkSavedChars).toBeGreaterThan(0)
+  })
+})
+
+describe("OpenCode Go 会话请求头", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    settingsState.settings = {
+      providers: {
+        "opencode-go": { id: "opencode-go", type: "openai-compatible", models: {} },
+      },
+      streamIdleTimeoutMs: undefined,
+    }
+  })
+
+  const drainSuccess = async (
+    streamFn: ReturnType<typeof createAiSdkStreamFn>,
+    model: Model,
+    options: Record<string, unknown>,
+  ): Promise<void> => {
+    async function* createMockStream() {
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "ok" }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+    mockStreamText.mockReturnValue({ fullStream: createMockStream() })
+    const stream = await streamFn(model, { systemPrompt: "", messages: [] }, options)
+    for await (const _ of stream) {
+      // consume
+    }
+  }
+
+  it("Go 请求携带回调返回的 x-opencode-session", async () => {
+    const streamFn = createAiSdkStreamFn({ getSessionId: () => "sess-123" })
+    await drainSuccess(streamFn, { provider: "opencode-go", id: "m" }, {})
+
+    expect(mockStreamText).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { "x-opencode-session": "sess-123" } }),
+    )
+  })
+
+  it("显式 options.sessionId 优先于回调", async () => {
+    const streamFn = createAiSdkStreamFn({ getSessionId: () => "sess-cb" })
+    await drainSuccess(streamFn, { provider: "opencode-go", id: "m" }, { sessionId: "sess-opt" })
+
+    expect(mockStreamText).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { "x-opencode-session": "sess-opt" } }),
+    )
+  })
+
+  it("无会话时回退 draft-session，保证请求可被路由", async () => {
+    const streamFn = createAiSdkStreamFn({})
+    await drainSuccess(streamFn, { provider: "opencode-go", id: "m" }, {})
+
+    expect(mockStreamText).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { "x-opencode-session": "draft-session" } }),
+    )
+  })
+
+  it("非 Go Provider 不发送会话头", async () => {
+    const streamFn = createAiSdkStreamFn({ getSessionId: () => "sess-123" })
+    await drainSuccess(streamFn, { provider: "other", id: "m" }, {})
+
+    const call = mockStreamText.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(call).not.toHaveProperty("headers")
+  })
+})
+
+describe("opencode 式思考等级参数翻译", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    settingsState.settings = {
+      providers: {
+        "anthropic-p": {
+          id: "anthropic-p",
+          type: "anthropic",
+          models: {
+            m3: {
+              id: "minimax-m3",
+              variants: {
+                none: { thinking: { type: "disabled" } },
+                thinking: { thinking: { type: "adaptive" } },
+              },
+            },
+            flash: {
+              id: "qwen3.8-flash",
+              variants: { high: { effort: "high" } },
+            },
+          },
+        },
+        "openai-p": {
+          id: "openai-p",
+          type: "openai",
+          models: {
+            grok: {
+              id: "grok-4.6",
+              variants: {
+                high: {
+                  reasoningEffort: "high",
+                  reasoningSummary: "auto",
+                  include: ["reasoning.encrypted_content"],
+                },
+              },
+            },
+          },
+        },
+        "go-p": {
+          id: "opencode-go",
+          type: "openai-compatible",
+          options: { apiKey: "sk-go", baseURL: "https://opencode.ai/zen/go/v1" },
+          models: {
+            spark: {
+              id: "muse-spark-1.3-contributor",
+              transport: "openai-responses",
+              variants: {
+                xhigh: {
+                  reasoningEffort: "xhigh",
+                  reasoningSummary: "auto",
+                  include: ["reasoning.encrypted_content"],
+                },
+              },
+            },
+            sparkDefault: {
+              id: "muse-spark-1.2-contributor",
+              transport: "openai-responses",
+              variants: {
+                medium: {
+                  reasoningEffort: "medium",
+                  reasoningSummary: "auto",
+                  include: ["reasoning.encrypted_content"],
+                },
+              },
+            },
+          },
+        },
+      },
+      streamIdleTimeoutMs: undefined,
+    }
+  })
+
+  const drainWithVariant = async (model: Model, variant: string): Promise<unknown> => {
+    async function* createMockStream() {
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "ok" }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+    mockStreamText.mockReturnValue({ fullStream: createMockStream() })
+    const streamFn = createAiSdkStreamFn({})
+    const stream = await streamFn({ ...model, variant }, { systemPrompt: "", messages: [] }, {})
+    for await (const _ of stream) {
+      // consume
+    }
+    return mockStreamText.mock.calls[0]?.[0]
+  }
+
+  it("anthropic 通路透传 thinking 对象", async () => {
+    const call = (await drainWithVariant({ provider: "anthropic-p", id: "m3" }, "thinking")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions["anthropic"]["thinking"]).toEqual({ type: "adaptive" })
+  })
+
+  it("anthropic 通路透传 effort 裸键", async () => {
+    const call = (await drainWithVariant({ provider: "anthropic-p", id: "flash" }, "high")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions["anthropic"]["effort"]).toBe("high")
+  })
+
+  it("openai 通路透传档位 + 摘要 + 加密推理三件套", async () => {
+    const call = (await drainWithVariant({ provider: "openai-p", id: "grok" }, "high")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions["openai"]).toMatchObject({
+      reasoningEffort: "high",
+      reasoningSummary: "auto",
+      include: ["reasoning.encrypted_content"],
+    })
+  })
+
+  it("openai 通路不强制推理判定（chat 的 reasoning_effort 本就直传）", async () => {
+    const call = (await drainWithVariant({ provider: "openai-p", id: "grok" }, "high")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions["openai"]).not.toHaveProperty("forceReasoning")
+  })
+
+  it("responses 通路强制推理判定：第三方模型 ID 也能送出 reasoning", async () => {
+    const call = (await drainWithVariant({ provider: "go-p", id: "spark" }, "xhigh")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    // SDK 按 ID 前缀判定推理模型，muse-spark 会被误判；forceReasoning 保证
+    // reasoning: { effort, summary } 上线，否则思考流永不到达。
+    expect(call.providerOptions["openai"]).toMatchObject({
+      reasoningEffort: "xhigh",
+      reasoningSummary: "auto",
+      forceReasoning: true,
+    })
+  })
+
+  it("responses 通路无选中档位时不带推理参数（与 opencode 开箱行为一致）", async () => {
+    const call = (await drainWithVariant({ provider: "go-p", id: "sparkDefault" }, "")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions ?? {}).not.toHaveProperty("openai")
   })
 })

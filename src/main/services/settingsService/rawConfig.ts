@@ -32,6 +32,8 @@ export type RawAiConfig = {
 export type RawConfig = {
   ai?: RawAiConfig
   bailian?: RawProvider
+  // 内置 Provider 记录（独立文件 builtin-providers.json，不与用户自定义混存）。
+  builtinProviders?: Record<string, RawProvider>
   [key: string]: unknown
 }
 

@@ -3,7 +3,11 @@ export { getCompactionSettings } from "./compaction"
 export { getHookSettings, saveHookSettings } from "./hooks"
 export { getLspSettings, saveLspSettings } from "./lsp"
 export { getMcpSettings, saveMcpSettings } from "./mcp"
-export { getModelProviderSettings, saveModelProviderSettings } from "./modelProviders"
+export {
+  getModelProviderSettings,
+  refreshOpencodeGoProvider,
+  saveModelProviderSettings,
+} from "./modelProviders"
 export {
   getOpenClawSettings,
   normalizeOpenClawSettings,

@@ -1,4 +1,6 @@
+import { OPENCODE_GO_PROVIDER_ID } from "@shared/opencodeGo"
 import { KeyRound } from "lucide-react"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { useTranslation } from "@/i18n"
@@ -15,6 +17,9 @@ export const ProviderBasicFields = ({
   invalidateFetchedModels,
 }: ProviderBasicFieldsProps): React.JSX.Element => {
   const { t } = useTranslation()
+  // OpenCode Go 的协议按模型内部自适应，provider 级 type 锁定不可改。
+  const isOpencodeGo =
+    providerId === OPENCODE_GO_PROVIDER_ID || provider.id === OPENCODE_GO_PROVIDER_ID
 
   return (
     <div className="settings-item-card rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
@@ -44,22 +49,31 @@ export const ProviderBasicFields = ({
             }
           />
         </label>
-        <label
+        <div
           className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2"
           onClick={(event) => event.preventDefault()}
         >
-          {t("settings.providerType")}
-          <LxSelect
-            value={provider.type}
-            options={PROVIDER_TYPES.map((type) => ({ value: type, label: type }))}
-            onChange={(event) =>
-              updateProvider(providerId, (current) => ({
-                ...current,
-                type: event,
-              }))
-            }
-          />
-        </label>
+          <span className="flex items-center gap-1.5">
+            {t("settings.providerType")}
+            {isOpencodeGo ? (
+              <LxInfoTooltip markdown={t("settings.opencodeGoDoc")} placement="right" />
+            ) : null}
+          </span>
+          {isOpencodeGo ? (
+            <span className="text-white/85">{t("settings.opencodeGoAutoType")}</span>
+          ) : (
+            <LxSelect
+              value={provider.type}
+              options={PROVIDER_TYPES.map((type) => ({ value: type, label: type }))}
+              onChange={(event) =>
+                updateProvider(providerId, (current) => ({
+                  ...current,
+                  type: event,
+                }))
+              }
+            />
+          )}
+        </div>
         <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
           {t("settings.baseUrl")}
           <LxInput

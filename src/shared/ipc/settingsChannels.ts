@@ -3,6 +3,7 @@ export const SETTINGS_CHANNELS = {
   getModelProviders: "settings:model-providers:get",
   saveModelProviders: "settings:model-providers:save",
   fetchModels: "settings:model-providers:fetch-models",
+  refreshOpencodeGo: "settings:model-providers:refresh-opencode-go",
   getPermissionSettings: "settings:permissions:get",
   savePermissionSettings: "settings:permissions:save",
   getHookSettings: "settings:hooks:get",

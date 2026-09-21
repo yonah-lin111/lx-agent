@@ -8,7 +8,7 @@ import { invalidateModelCache } from "@/agent/stream/modelFactory"
 import { BUILT_IN_AGENT_ROLES, resolveAgentRoles } from "@/agent/subagent/agentRoles"
 import { getCliVersions, runCliLifecycleAction } from "@/services/cliToolService"
 import { getMcpPresetStatus, installMcpPreset } from "@/services/mcpPresetService"
-import { fetchProviderModels } from "@/services/modelFetchService"
+import { fetchModelsDevCatalog, fetchProviderModels } from "@/services/modelFetchService"
 import {
   deleteSkill,
   getCliSettings,
@@ -24,6 +24,7 @@ import {
   getTokenSaverSettings,
   getUiSettings,
   getVoiceSettings,
+  refreshOpencodeGoProvider,
   saveCliSettings,
   saveHookSettings,
   saveLspSettings,
@@ -52,6 +53,11 @@ export const registerSettingsHandlers = (): void => {
   ipcMain.handle(SETTINGS_CHANNELS.fetchModels, (_, input: FetchModelsInput) =>
     fetchProviderModels(input.baseURL, input.apiKey),
   )
+  ipcMain.handle(SETTINGS_CHANNELS.refreshOpencodeGo, async () => {
+    const result = await refreshOpencodeGoProvider(fetchModelsDevCatalog)
+    invalidateModelCache()
+    return result
+  })
   ipcMain.handle(SETTINGS_CHANNELS.getPermissionSettings, () => getPermissionSettings())
   ipcMain.handle(SETTINGS_CHANNELS.savePermissionSettings, (_, input) =>
     savePermissionSettings(input),

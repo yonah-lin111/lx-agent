@@ -99,4 +99,18 @@ export const models = {
   presetVariantAnthropic: "Anthropic thinking budget (budgetTokens)",
   presetVariantReasoningEffort: "Generic reasoning effort (reasoning_effort)",
   invalidVariantJson: "Invalid JSON configuration",
+
+  addOpencodeGo: "Add OpenCode Go",
+  addOpencodeGoSuccess: "OpenCode Go provider added — paste your API key to use all models",
+  refreshOpencodeGo: "Refresh models from cloud",
+  refreshOpencodeGoSuccess: "Cloud update complete: {{added}} new, {{updated}} updated",
+  refreshOpencodeGoFailed: "Cloud update failed, please retry later",
+  opencodeGoAutoType: "Auto (per-model)",
+  opencodeGoDoc: `### OpenCode Go
+
+Subscribe to [OpenCode Go](https://opencode.ai) (Zen console → Go), copy your API key, and paste it into the provider to use all models.
+
+The transport protocol adapts per model and cannot be changed.
+
+[Full model list](https://opencode.ai/docs/go)`,
 }

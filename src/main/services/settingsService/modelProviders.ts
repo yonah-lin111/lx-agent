@@ -1,9 +1,19 @@
+import type { ModelPricing } from "@shared/contracts/usage"
+import {
+  isBuiltinProviderId,
+  type ModelsDevGoCatalog,
+  mapModelsDevModel,
+  OPENCODE_GO_BASE_URL,
+  OPENCODE_GO_PROVIDER_ID,
+  type RefreshOpencodeGoResult,
+} from "@shared/opencodeGo"
 import {
   DEFAULT_STREAM_IDLE_TIMEOUT_MS,
   type ModelProvider,
   type ModelProviderModel,
   type ModelProviderSettings,
   type ModelSelection,
+  type ModelTransportType,
   type ProviderTransportType,
 } from "@shared/settings"
 import { getConfigPath } from "@/paths"
@@ -30,6 +40,45 @@ const inferProviderType = (provider: RawProvider): ProviderTransportType => {
 }
 
 /**
+ * 规范化模型计价（附带修复：此前读取与保存链路均丢弃 pricing，导致设置页的计价改动无法持久化、用量成本恒为 --）。
+ */
+const normalizePricing = (value: unknown): ModelPricing | undefined => {
+  if (!isRecord(value)) return undefined
+  const fields = ["input", "output", "cacheRead", "cacheWrite"] as const
+  const pricing = {} as ModelPricing
+  for (const field of fields) {
+    const parsed = value[field]
+    if (typeof parsed !== "number" || !Number.isFinite(parsed) || parsed < 0) return undefined
+    pricing[field] = parsed
+  }
+  if (
+    pricing.input === 0 &&
+    pricing.output === 0 &&
+    pricing.cacheRead === 0 &&
+    pricing.cacheWrite === 0
+  ) {
+    return undefined
+  }
+  return pricing
+}
+
+/**
+ * 规范化模型级传输协议覆盖；非法值丢弃（回退为继承 provider.type）。
+ */
+const normalizeTransport = (value: unknown): ModelTransportType | undefined => {
+  if (
+    value === "openai" ||
+    value === "anthropic" ||
+    value === "google" ||
+    value === "openai-compatible" ||
+    value === "openai-responses"
+  ) {
+    return value
+  }
+  return undefined
+}
+
+/**
  * 规范化单个模型配置。
  */
 const normalizeModel = (
@@ -39,13 +88,17 @@ const normalizeModel = (
   const variants = normalizeVariants(model?.variants)
   const variant =
     typeof model?.variant === "string" && model.variant.trim() ? model.variant.trim() : undefined
+  const pricing = normalizePricing(model?.pricing)
+  const transport = normalizeTransport(model?.transport)
   return {
     id,
     name: model?.name?.trim() || id,
+    ...(transport ? { transport } : {}),
     limit: model?.limit,
     modalities: model?.modalities,
     ...(variants ? { variants } : {}),
     ...(variant ? { variant } : {}),
+    ...(pricing ? { pricing } : {}),
   }
 }
 
@@ -188,6 +241,8 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
           const limit = normalizeLimit(model.limit)
           const modalities = normalizeModalities(model.modalities)
           const variants = normalizeVariants(model.variants)
+          const pricing = normalizePricing(model.pricing)
+          const transport = normalizeTransport(model.transport)
           const variant =
             typeof model.variant === "string" && model.variant.trim()
               ? model.variant.trim()
@@ -197,10 +252,12 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
             {
               id: modelId,
               name: typeof model.name === "string" ? model.name.trim() || modelId : modelId,
+              ...(transport ? { transport } : {}),
               ...(limit ? { limit } : {}),
               ...(modalities ? { modalities } : {}),
               ...(variants ? { variants } : {}),
               ...(variant ? { variant } : {}),
+              ...(pricing ? { pricing } : {}),
             },
           ]
         }),
@@ -267,14 +324,21 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
 }
 
 /**
- * 读取可编辑的模型 Provider 配置。
+ * 读取可编辑的模型 Provider 配置（用户自定义与内置独立文件合并，内置同名记录优先）。
  */
 export const getModelProviderSettings = (): ModelProviderSettings => {
   const rawConfig = readRawConfig(getConfigPath())
   const rawAi = isRecord(rawConfig.ai) ? (rawConfig.ai as RawAiConfig) : {}
   const rawProviders = rawAi.providers ?? (rawConfig.bailian ? { bailian: rawConfig.bailian } : {})
+  const rawBuiltin = isRecord(rawConfig.builtinProviders)
+    ? (rawConfig.builtinProviders as Record<string, RawProvider>)
+    : {}
+  // 先用户后内置：同名记录以内置（云端 managed）为准，避免手写残留遮挡。
   const providers = Object.fromEntries(
-    Object.entries(rawProviders).map(([id, provider]) => [id, normalizeProvider(id, provider)]),
+    [...Object.entries(rawProviders), ...Object.entries(rawBuiltin)].map(([id, provider]) => [
+      id,
+      normalizeProvider(id, provider),
+    ]),
   )
 
   const defaultModel = normalizeSelection(rawAi.defaultModel, providers)
@@ -299,9 +363,17 @@ export const getModelProviderSettings = (): ModelProviderSettings => {
 
 /**
  * 保存模型 Provider 配置，同时保留配置文件中未由设置页管理的字段。
+ * 内置 Provider（见 BUILTIN_PROVIDER_IDS）写入 builtinProviders 独立节点
+ * （独立文件 builtin-providers.json），其余写入 ai.providers。
  */
 export const saveModelProviderSettings = (input: ModelProviderSettings): ModelProviderSettings => {
   const settings = normalizeSettings(input)
+  const builtinProviders = Object.fromEntries(
+    Object.entries(settings.providers).filter(([id]) => isBuiltinProviderId(id)),
+  )
+  const userProviders = Object.fromEntries(
+    Object.entries(settings.providers).filter(([id]) => !isBuiltinProviderId(id)),
+  )
   updateRawConfig((rawConfig) => {
     const rawAiObj = isRecord(rawConfig.ai) ? { ...rawConfig.ai } : {}
     delete rawAiObj.weeklySummary
@@ -310,10 +382,11 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
 
     return {
       ...rawConfig,
+      builtinProviders,
       ai: {
         ...rawAiObj,
         enabled_providers: settings.enabledProviders,
-        providers: settings.providers,
+        providers: userProviders,
         defaultModel: settings.defaultModel,
         titleSummary: settings.titleSummary,
         suggestedQuestions: settings.suggestedQuestions,
@@ -326,4 +399,108 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
   })
 
   return settings
+}
+
+// 云端模型记录与本地记录的管理字段快照（transport/limit/modalities/variants），用于判定是否需要更新。
+const managedSnapshot = (model: ModelProviderModel): string =>
+  JSON.stringify({
+    transport: model.transport ?? null,
+    limit: model.limit ?? null,
+    modalities: model.modalities ?? null,
+    variants: model.variants ?? null,
+  })
+
+/**
+ * 将云端目录合并到 OpenCode Go 内置记录：
+ * - options（apiKey/baseURL）、展示名、用户默认等级选择原样保留；
+ * - 云端模型的 transport/limit/modalities/variants 同步覆盖，存量计价不覆盖（以本地 Go 账单价为准），
+ *   缺计价的新模型才用云端 cost 填充；
+ * - 云端新增的模型追加；云端已下架的与用户自建的模型一律保留（不删数据）。
+ */
+export const mergeOpencodeGoCatalog = (
+  existing: ModelProvider | undefined,
+  catalog: ModelsDevGoCatalog,
+): { provider: ModelProvider; added: string[]; updated: string[] } => {
+  const added: string[] = []
+  const updated: string[] = []
+  const models: Record<string, ModelProviderModel> = {}
+  for (const [modelKey, current] of Object.entries(existing?.models ?? {})) {
+    models[modelKey] = { ...current }
+  }
+  for (const cloud of Object.values(catalog.models)) {
+    const modelId = typeof cloud.id === "string" ? cloud.id.trim() : ""
+    if (!modelId) continue
+    const mapped = mapModelsDevModel({ ...cloud, id: modelId }, catalog.npm)
+    const current = models[modelId]
+    if (!current) {
+      models[modelId] = mapped
+      added.push(modelId)
+      continue
+    }
+    const next: ModelProviderModel = {
+      ...current,
+      ...(mapped.transport ? { transport: mapped.transport } : {}),
+      ...(mapped.limit ? { limit: mapped.limit } : {}),
+      ...(mapped.modalities ? { modalities: mapped.modalities } : {}),
+      ...(mapped.variants ? { variants: mapped.variants } : {}),
+      // 存量计价保留，仅缺失时用云端填充。
+      ...(current.pricing ? {} : mapped.pricing ? { pricing: mapped.pricing } : {}),
+    }
+    // 云端移除的覆盖/档位要同步删除（transport/variants 缺席即删）。
+    if (!mapped.transport) delete next.transport
+    if (!mapped.limit) delete next.limit
+    if (!mapped.modalities) delete next.modalities
+    if (!mapped.variants) delete next.variants
+    if (managedSnapshot(current) !== managedSnapshot(next)) updated.push(modelId)
+    models[modelId] = next
+  }
+  const provider: ModelProvider = {
+    id: OPENCODE_GO_PROVIDER_ID,
+    type: "openai-compatible",
+    name: existing?.name?.trim() || catalog.providerName || "OpenCode Go",
+    options: {
+      apiKey: existing?.options.apiKey ?? "",
+      baseURL: existing?.options.baseURL || OPENCODE_GO_BASE_URL,
+    },
+    models,
+  }
+  return { provider, added, updated }
+}
+
+/**
+ * 从云端（models.dev）刷新 OpenCode Go 内置记录的模型与思考等级。
+ * loader 可注入（测试用）；默认实现见 modelFetchService.fetchModelsDevCatalog。
+ * 仅重写 builtinProviders 节点，用户配置与启用状态不受影响
+ * （新建记录时自动启用）。
+ */
+export const refreshOpencodeGoProvider = async (
+  loadCatalog: () => Promise<ModelsDevGoCatalog>,
+): Promise<RefreshOpencodeGoResult> => {
+  const catalog = await loadCatalog()
+  const rawConfig = readRawConfig(getConfigPath())
+  const rawBuiltin = isRecord(rawConfig.builtinProviders)
+    ? (rawConfig.builtinProviders as Record<string, RawProvider>)
+    : {}
+  const existingRaw = rawBuiltin[OPENCODE_GO_PROVIDER_ID]
+  const existing = existingRaw ? normalizeProvider(OPENCODE_GO_PROVIDER_ID, existingRaw) : undefined
+  const { provider, added, updated } = mergeOpencodeGoCatalog(existing, catalog)
+  const created = !existing
+  updateRawConfig((current) => ({
+    ...current,
+    builtinProviders: {
+      ...(isRecord(current.builtinProviders) ? current.builtinProviders : {}),
+      [provider.id]: provider,
+    },
+  }))
+  if (created) {
+    // 新建记录自动启用（沿用读取侧默认：enabled 缺省即全量）。
+    const settings = getModelProviderSettings()
+    if (!settings.enabledProviders.includes(provider.id)) {
+      saveModelProviderSettings({
+        ...settings,
+        enabledProviders: [...settings.enabledProviders, provider.id],
+      })
+    }
+  }
+  return { providerId: provider.id, added, updated }
 }

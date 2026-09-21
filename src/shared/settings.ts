@@ -1,14 +1,21 @@
 import type { CollaborationMode, HookEventName, PermissionSettings } from "./contracts/agent"
 import type { ModelPricing } from "./contracts/usage"
 import type { McpPresetId, McpPresetInstallResult, McpPresetStatusItem } from "./mcpPresets"
+import type { RefreshOpencodeGoResult } from "./opencodeGo"
 
 // Provider 传输格式。
 export type ProviderTransportType = "openai" | "anthropic" | "google" | "openai-compatible"
+
+// 模型级传输协议：缺省继承所属 Provider 的 type；
+// "openai-responses" 走 OpenAI Responses API（OpenCode Go 的 grok/GPT-Luna/Muse-Spark 类模型）。
+export type ModelTransportType = ProviderTransportType | "openai-responses"
 
 // 模型配置。
 export type ModelProviderModel = {
   id: string
   name: string
+  // 模型级传输协议覆盖；缺省继承所属 Provider 的 type。
+  transport?: ModelTransportType
   limit?: {
     context: number
     output: number
@@ -44,6 +51,14 @@ export type ModelProvider = {
   }
   models: Record<string, ModelProviderModel>
 }
+
+/**
+ * 解析模型实际使用的传输协议：模型级 transport 覆盖优先，缺省继承所属 Provider 的 type。
+ */
+export const resolveModelTransport = (
+  provider: ModelProvider,
+  modelId: string,
+): ModelTransportType => provider.models[modelId]?.transport ?? provider.type
 
 // 可编辑的模型 Provider 设置。
 export type ModelProviderSettings = {
@@ -479,6 +494,7 @@ export interface SettingsApi {
     getModelProviders: () => Promise<ModelProviderSettings>
     saveModelProviders: (settings: ModelProviderSettings) => Promise<ModelProviderSettings>
     fetchModels: (input: FetchModelsInput) => Promise<FetchedProviderModel[]>
+    refreshOpencodeGo: () => Promise<RefreshOpencodeGoResult>
     getPermissionSettings: () => Promise<PermissionSettings>
     savePermissionSettings: (settings: PermissionSettings) => Promise<PermissionSettings>
     getHookSettings: () => Promise<HookSettings>

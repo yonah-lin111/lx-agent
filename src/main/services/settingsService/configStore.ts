@@ -11,6 +11,8 @@ import { basename, dirname, join } from "node:path"
 export const CONFIG_ROUTES: Readonly<Record<string, string>> = {
   ai: "ai.json",
   bailian: "ai.json",
+  // 内置 Provider（如下 OpenCode Go）独立成文件，不与用户自定义配置混存。
+  builtinProviders: "builtin-providers.json",
   agent: "agent.json",
   openclaw: "openclaw.json",
   ui: "app.json",
@@ -25,6 +27,7 @@ export const EXTRA_CONFIG_FILE = "extra.json"
 // 读取顺序固定，保证重复顶层 key 的覆盖行为可预期。
 const CONFIG_FILE_ORDER = [
   "ai.json",
+  "builtin-providers.json",
   "agent.json",
   "openclaw.json",
   "app.json",
