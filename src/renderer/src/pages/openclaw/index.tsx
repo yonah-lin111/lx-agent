@@ -57,6 +57,7 @@ export const OpenClawPage = (): React.JSX.Element => {
   const selectOffice = useOpenClawOfficeStore((state) => state.selectOffice)
   const selectAgent = useOpenClawOfficeStore((state) => state.selectAgent)
   const setSelectedAgentIds = useOpenClawOfficeStore((state) => state.setSelectedAgentIds)
+  const pendingDispatch = useOpenClawOfficeStore((state) => state.pendingDispatch)
   const consumePendingDispatch = useOpenClawOfficeStore((state) => state.consumePendingDispatch)
 
   const [input, setInput] = useState("")
@@ -132,7 +133,9 @@ export const OpenClawPage = (): React.JSX.Element => {
   )
 
   // 跨页派发的 @claw 委派：定位办公区/员工后立即下发任务。
+  // 订阅 pendingDispatch 而非仅在挂载时读取：页面已打开时（同路径导航不触发重挂载）也要即时消费。
   useEffect(() => {
+    if (!pendingDispatch) return
     const dispatch = consumePendingDispatch()
     if (!dispatch) return
     selectOffice(dispatch.instanceId, dispatch.agentId)
@@ -140,7 +143,7 @@ export const OpenClawPage = (): React.JSX.Element => {
     void store
       .connect(dispatch.instanceId)
       .then(() => store.sendMessage(dispatch.instanceId, dispatch.agentId, dispatch.task))
-  }, [consumePendingDispatch, selectOffice])
+  }, [pendingDispatch, consumePendingDispatch, selectOffice])
 
   // 未选中或已失效时，回落到第一个启用实例及其首个员工。
   useEffect(() => {
