@@ -15,7 +15,7 @@ export interface WireframeToolDetails {
  */
 export const createWireframeTool = (): AgentTool<
   z.ZodObject<{
-    title: z.ZodString
+    name: z.ZodString
     layout: z.ZodString
     description: z.ZodOptional<z.ZodString>
   }>,
@@ -26,7 +26,9 @@ export const createWireframeTool = (): AgentTool<
   description:
     "Record and present an ASCII wireframe layout using Unicode box-drawing characters for UI planning. Call this tool before creating or modifying frontend components, pages, or DOM structures to visualize and review layout hierarchy.",
   inputSchema: z.object({
-    title: z.string().min(1).max(100).describe("Frontend page or component name"),
+    // 参数名必须避开 `title`：OpenAI 兼容网关（如 9router → Gemini）转换 function declaration 时
+    // 会把属性键 `title` 当作 schema 注解吞掉，模型永远收不到该必填项并持续校验失败。
+    name: z.string().min(1).max(100).describe("Frontend page or component name"),
     layout: z
       .string()
       .min(1)
@@ -38,7 +40,7 @@ export const createWireframeTool = (): AgentTool<
       .describe("Layout description, component hierarchy, responsive notes, or core interactions"),
   }),
   execute: async (_toolCallId, params) => {
-    const lines = [`# Wireframe: ${params.title}`]
+    const lines = [`# Wireframe: ${params.name}`]
     if (params.description) {
       lines.push(`Description: ${params.description}`)
     }
@@ -47,7 +49,7 @@ export const createWireframeTool = (): AgentTool<
     return {
       content: [{ type: "text", text: lines.join("\n") }],
       details: {
-        title: params.title,
+        title: params.name,
         layout: params.layout,
         description: params.description,
       },

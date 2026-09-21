@@ -30,7 +30,9 @@ export const AgentWireframeCallBlock = ({
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
 
-  const title = typeof toolCall.args?.title === "string" ? toolCall.args.title : ""
+  // 参数名兼容：新调用使用 name（规避网关吞掉 title 键），历史消息仍为 title。
+  const rawName = toolCall.args?.name ?? toolCall.args?.title
+  const title = typeof rawName === "string" ? rawName : ""
   const layout = typeof toolCall.args?.layout === "string" ? toolCall.args.layout : ""
   const description =
     typeof toolCall.args?.description === "string" ? toolCall.args.description : ""

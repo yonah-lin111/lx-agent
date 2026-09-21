@@ -17,7 +17,9 @@ export const FlowToolWireframe = ({ content }: FlowToolWireframeProps): React.JS
   const [isCopied, setIsCopied] = useState(false)
   const [showDebug, setShowDebug] = useState(false)
 
-  const title = typeof content.args?.title === "string" ? content.args.title : ""
+  // 参数名兼容：新调用使用 name（规避网关吞掉 title 键），历史消息仍为 title。
+  const rawName = content.args?.name ?? content.args?.title
+  const title = typeof rawName === "string" ? rawName : ""
   const layout = typeof content.args?.layout === "string" ? content.args.layout : ""
   const description = typeof content.args?.description === "string" ? content.args.description : ""
   // 调用失败时参数中的布局并不代表已产出内容，仅呈现错误信息，避免渲染出误导性的线框图。

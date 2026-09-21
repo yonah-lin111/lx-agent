@@ -116,6 +116,7 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 - 二次修改时提示词会收到 `<referenced_design>` 基准代码，输出必须携带 `parent_id="{referenced_id}"`，且仍输出完整可执行 HTML（不允许片段 diff）。显式引用优先于 `<current_design>`。
 - 定向节点修改时提示词会收到 `<global_styling_context>` 与 `<target_element>`，模型必须输出 `<front_design_update parent_id target>` 且**只输出目标节点的替换子树**；明确禁止在该场景输出 `<front_design>` 全量。
 - **布局完整性契约**：全视口单焦点页面（登录/注册/404/空状态/单卡片）必须显式水平+垂直居中（`min-h-screen flex items-center justify-center` 或 `min-height:100vh; display:flex`）；常规页面顶部对齐 + `max-w-* mx-auto` 水平约束；提示词示例本身即为居中型布局。
+- **`wireframe` 工具禁用**：design 模式下 `PermissionManager` 对 `wireframe` 硬拦截（`DESIGN_MODE_WIREFRAME_REASON`，不进入审批弹窗），提示词同步声明禁用；布局结构必须直接表达在 `<front_design>` HTML 中。
 - 工程品味约束：优先原生 `<details>` / `<dialog>` / CSS `:has()` 等原语，慎写脆弱 JS；必要脚本使用 IIFE 并规避 `DOMContentLoaded` 依赖。
 
 ```xml

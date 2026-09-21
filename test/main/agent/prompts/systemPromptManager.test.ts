@@ -394,6 +394,16 @@ describe("SystemPromptManager", () => {
         expect(assembly.rendered).toContain("min-height: 100vh; display: flex")
         expect(assembly.rendered).toContain("Content glued to the top-left corner")
       })
+
+      it("design 模式声明 wireframe 工具禁用，布局必须直接走 <front_design>", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("The `wireframe` tool is DISABLED in Front Design Mode")
+        expect(assembly.rendered).toContain("Never call it")
+      })
     })
   })
 

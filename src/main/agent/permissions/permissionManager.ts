@@ -24,11 +24,15 @@ const PLAN_MODE_MUTATION_REASON =
   "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite) and task subagent dispatch are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags."
 const REVIEW_MODE_MUTATION_REASON =
   "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) and task subagent dispatch are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags."
+const DESIGN_MODE_WIREFRAME_REASON =
+  "Action denied: Current collaboration mode is Front Design Mode. The wireframe tool is disabled in Front Design Mode; deliver the layout directly through the <front_design> protocol tag instead."
 const READ_ONLY_SANDBOX_REASON =
   "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
 
 // Plan / Review 模式下硬拦截的工具（含 task：禁止派发可写子代理绕过协作模式限制）。
 const PLAN_REVIEW_BLOCKED_TOOLS = new Set(["write", "edit", "apply_patch", "todowrite", "task"])
+// Front Design 模式下硬拦截的工具：布局直接走 <front_design> 协议，禁止先行输出 ASCII 线框图。
+const DESIGN_BLOCKED_TOOLS = new Set(["wireframe"])
 // read-only 沙箱策略下硬拦截的工具。
 const READ_ONLY_BLOCKED_TOOLS = new Set(["write", "edit", "apply_patch"])
 // 无会话上下文（全局）时的 MCP 工具集合键。
@@ -238,6 +242,11 @@ class PermissionManager {
       }
     }
 
+    // 1b. Front Design Mode：布局必须直接走 <front_design> 协议，wireframe 工具禁用
+    if (collaborationMode === "design" && DESIGN_BLOCKED_TOOLS.has(toolName)) {
+      return "deny"
+    }
+
     // 2. 只读沙箱策略 (read-only)：严禁任何写文件/编辑/修改操作
     if (sandboxPolicy === "read-only") {
       if (READ_ONLY_BLOCKED_TOOLS.has(toolName)) {
@@ -351,6 +360,11 @@ class PermissionManager {
       }
     }
 
+    // Front Design Mode 门控硬拦截：wireframe 与 <front_design> 协议互斥
+    if (collaborationMode === "design" && DESIGN_BLOCKED_TOOLS.has(toolName)) {
+      return { block: true, reason: DESIGN_MODE_WIREFRAME_REASON }
+    }
+
     const decision = this.evaluateWithAssessments(
       toolName,
       args,
@@ -368,6 +382,9 @@ class PermissionManager {
       }
       if (collaborationMode === "review" && PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
         return { block: true, reason: REVIEW_MODE_MUTATION_REASON }
+      }
+      if (collaborationMode === "design" && DESIGN_BLOCKED_TOOLS.has(toolName)) {
+        return { block: true, reason: DESIGN_MODE_WIREFRAME_REASON }
       }
       if (sandboxPolicy === "read-only" && READ_ONLY_BLOCKED_TOOLS.has(toolName)) {
         return { block: true, reason: READ_ONLY_SANDBOX_REASON }

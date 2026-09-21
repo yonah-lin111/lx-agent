@@ -19,7 +19,7 @@ describe("AgentWireframeCallBlock", () => {
       toolCallId: "call-wf-1",
       toolName: "wireframe",
       args: {
-        title: "Main Dashboard",
+        name: "Main Dashboard",
         description: "Dashboard layout with sidebar",
         layout,
       },
@@ -35,6 +35,25 @@ describe("AgentWireframeCallBlock", () => {
     expect(screen.getByText((content) => content.includes("Panel"))).not.toBeNull()
   })
 
+  it("兼容历史消息中的 title 参数（参数已改名 name）", () => {
+    const layout = "┌────────┐\n│ Legacy │\n└────────┘"
+    const toolCall: Extract<ChatBlock, { kind: "toolCall" }> = {
+      kind: "toolCall",
+      toolCallId: "call-wf-legacy",
+      toolName: "wireframe",
+      args: {
+        title: "Legacy Dashboard",
+        layout,
+      },
+      status: "done",
+    }
+
+    render(<AgentWireframeCallBlock toolCall={toolCall} />)
+
+    expect(screen.getByText("Legacy Dashboard")).not.toBeNull()
+    expect(screen.getAllByText((content) => content.includes("Legacy")).length).toBeGreaterThan(0)
+  })
+
   it("copies layout on copy button click", async () => {
     const layout = "┌─┐\n└─┘"
     const writeTextMock = vi.fn().mockResolvedValue(undefined)
@@ -46,7 +65,7 @@ describe("AgentWireframeCallBlock", () => {
       kind: "toolCall",
       toolCallId: "call-wf-2",
       toolName: "wireframe",
-      args: { title: "Box", layout },
+      args: { name: "Box", layout },
       status: "done",
     }
 
@@ -68,7 +87,7 @@ describe("AgentWireframeCallBlock", () => {
           kind: "toolCall",
           toolCallId: "call-wf-3",
           toolName: "wireframe",
-          args: { title: "Widget Card", layout },
+          args: { name: "Widget Card", layout },
           status: "done",
         },
       ],

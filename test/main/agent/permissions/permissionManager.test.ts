@@ -778,6 +778,44 @@ describe("permissionManager 永久决策写回（G5）", () => {
       expect(result?.reason).toContain("subagent dispatch")
     })
   })
+
+  describe("前端设计模式 (Front Design Mode 门禁)", () => {
+    it("Design 模式下硬拦截 wireframe 工具，其他工具不受影响", async () => {
+      applySettings({
+        defaultMode: "default",
+        allow: [],
+        deny: [],
+        ask: [],
+      })
+
+      expect(
+        permissionManager.evaluate(
+          "wireframe",
+          { name: "Login", layout: "┌─┐" },
+          { collaborationMode: "design" },
+        ),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate(
+          "read",
+          { path: "src/test.ts" },
+          { collaborationMode: "design" },
+        ),
+      ).toBe("allow")
+
+      const result = await permissionManager.gate(
+        gateContext("wireframe", { name: "Login", layout: "┌─┐" }),
+        "s1",
+        undefined,
+        { collaborationMode: "design" },
+      )
+      expect(result).toEqual({
+        block: true,
+        reason:
+          "Action denied: Current collaboration mode is Front Design Mode. The wireframe tool is disabled in Front Design Mode; deliver the layout directly through the <front_design> protocol tag instead.",
+      })
+    })
+  })
 })
 
 describe("permissionManager PermissionRequest hook", () => {

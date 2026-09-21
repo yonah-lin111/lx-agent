@@ -740,6 +740,7 @@ export function createDefaultSystemPromptManager(
           "",
           "## Mode rules (strict)",
           "- You are in **Front Design Mode**.",
+          "- The `wireframe` tool is DISABLED in Front Design Mode (it is hard-blocked by the host and its ASCII output is not part of this mode). Never call it; express the layout directly inside the `<front_design>` HTML.",
           "- All frontend prototypes, UI layouts, and page mockups MUST be delivered directly via the `<front_design>` protocol tag.",
           "- The client IDE automatically captures your `<front_design>` payload, hot-reloads it in the Front Design view, and automatically splits and saves `index.html`, `style.css`, and `script.js` to disk.",
           "",
