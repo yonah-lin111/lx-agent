@@ -24,7 +24,7 @@ describe("FlowToolWireframe", () => {
     const toolContent: ExecutionToolContent = {
       toolName: "wireframe",
       args: {
-        title: "User Profile Card",
+        name: "User Profile Card",
         description: "Layout for user info and actions",
         layout,
       },
@@ -58,7 +58,7 @@ describe("FlowToolWireframe", () => {
     const toolContent: ExecutionToolContent = {
       toolName: "wireframe",
       args: {
-        title: "Box",
+        name: "Box",
         layout,
       },
     }
@@ -75,7 +75,7 @@ describe("FlowToolWireframe", () => {
     const toolContent: ExecutionToolContent = {
       toolName: "wireframe",
       args: {
-        title: "Empty Wireframe",
+        name: "Empty Wireframe",
         layout: "",
       },
     }
@@ -118,7 +118,7 @@ describe("FlowToolWireframe", () => {
       toolContent: {
         toolName: "wireframe",
         args: {
-          title: "Card Layout",
+          name: "Card Layout",
           layout,
         },
       },

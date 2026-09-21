@@ -2,6 +2,7 @@ import type { AgentMessage, QuestionAnswer, SubagentData } from "@shared/contrac
 import type {
   ChatBlock,
   ChatMessage,
+  FrontDesignUpdateAction,
   ReviewFindingItem,
   ReviewFindingsData,
   ReviewSeverity,
@@ -61,7 +62,7 @@ export const parseQuestionAnswersFromText = (text: string): QuestionAnswer[] | u
   return answers.length > 0 ? answers : undefined
 }
 
-// 清洗用户输入纯文本（剥离 <skill ...> 与 <referenced_design ...> 注入块与命令前缀）。
+// 清洗用户输入纯文本（剥离 <skill ...>、<referenced_design ...> 与 <current_design ...> 注入块与命令前缀）。
 export const cleanUserPrompt = (
   rawText: string,
   options?: { isSteer?: boolean; command?: { kind?: string; name: string } },
@@ -69,6 +70,7 @@ export const cleanUserPrompt = (
   let cleaned = rawText
     .replace(/<skill\b[\s\S]*?<\/skill>\s*/gi, "")
     .replace(/<referenced_design\b[\s\S]*?(?:<\/referenced_design>|$)\s*/gi, "")
+    .replace(/<current_design\b[\s\S]*?(?:<\/current_design>|$)\s*/gi, "")
 
   if (options?.isSteer || options?.command?.name === "steer") {
     cleaned = cleaned.replace(/^\s*\/steer(?:\s+|$)/, "").trim()
@@ -95,11 +97,29 @@ const PROPOSED_PLAN_CLOSE_REGEX = /<\/proposed_plan>/i
 const REVIEW_FINDINGS_OPEN_REGEX = /<review_findings>/i
 const REVIEW_FINDINGS_CLOSE_REGEX = /<\/review_findings>/i
 
-const FRONT_DESIGN_OPEN_REGEX = /<front_design(?=[\s>])(?:\s+[^>]*)?>/i
+// 属性值内的 `>` 是合法字符（如 target="body > div > details:nth-child(2)"），
+// 因此开标签必须按引号配对解析，不能简单用 [^>]* 截断。
+const buildOpenTagRegex = (tagName: string): RegExp =>
+  new RegExp(
+    `<${tagName}(?=[\\s>])(?:\\s+[a-zA-Z0-9_-]+(?:\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+))?)*\\s*>`,
+    "i",
+  )
+
+const FRONT_DESIGN_OPEN_REGEX = buildOpenTagRegex("front_design")
 const FRONT_DESIGN_CLOSE_REGEX = /<\/front_design>/i
 
-const FRONT_DESIGN_UPDATE_OPEN_REGEX = /<front_design_update(?=[\s>])(?:\s+[^>]*)?>/i
+const FRONT_DESIGN_UPDATE_OPEN_REGEX = buildOpenTagRegex("front_design_update")
 const FRONT_DESIGN_UPDATE_CLOSE_REGEX = /<\/front_design_update>/i
+
+const UPDATE_ACTIONS = new Set<string>(["replace", "append", "prepend", "before", "after"])
+
+// 归一化模型给出的更新动作；未知值一律退回 replace。
+const normalizeUpdateAction = (value: string | undefined): FrontDesignUpdateAction => {
+  const normalized = value?.trim().toLowerCase()
+  return normalized && UPDATE_ACTIONS.has(normalized)
+    ? (normalized as FrontDesignUpdateAction)
+    : "replace"
+}
 
 const extractFrontDesignAttributes = (
   tagStr: string,
@@ -109,11 +129,14 @@ const extractFrontDesignAttributes = (
   parentId?: string
   mode?: "tailwindcss" | "css"
   target?: string
+  action: FrontDesignUpdateAction
 } => {
   const titleMatch = /title=["']([^"']*)["']/i.exec(tagStr)
-  const idMatch = /id=["']([^"']*)["']/i.exec(tagStr)
+  // 边界保护：`parent_id="x"` / `parentId="x"` 中的 `id=` 不得被误认为本标签自身的 id。
+  const idMatch = /(?<![A-Za-z0-9_-])id=["']([^"']*)["']/i.exec(tagStr)
   const parentIdMatch = /(?:parent_id|parentId)=["']([^"']*)["']/i.exec(tagStr)
   const modeMatch = /mode=["']([^"']*)["']/i.exec(tagStr)
+  const actionMatch = /action=["']([^"']*)["']/i.exec(tagStr)
   let target: string | undefined
   const bracketTargetMatch = /target=["']?(\[[^\]]+\])["']?/i.exec(tagStr)
   if (bracketTargetMatch) {
@@ -135,6 +158,7 @@ const extractFrontDesignAttributes = (
     parentId: parentIdMatch ? parentIdMatch[1].trim() : undefined,
     mode,
     target,
+    action: normalizeUpdateAction(actionMatch?.[1]),
   }
 }
 
@@ -522,6 +546,7 @@ export const parseTextWithProposedPlan = (
       parentId: parsedParentId,
       mode: parsedMode,
       target: parsedTarget,
+      action: parsedAction,
     } = extractFrontDesignAttributes(designUpdateOpenMatch[0])
     const title = parsedTitle || "Frontend Component Update"
     const designId =
@@ -556,6 +581,7 @@ export const parseTextWithProposedPlan = (
           id: designId,
           parentId: parsedParentId ?? null,
           target: parsedTarget ?? null,
+          action: parsedAction,
           isUpdate: true,
           title,
           html: htmlContent,
@@ -577,6 +603,7 @@ export const parseTextWithProposedPlan = (
           id: designId,
           parentId: parsedParentId ?? null,
           target: parsedTarget ?? null,
+          action: parsedAction,
           isUpdate: true,
           title,
           html: htmlContent,
@@ -612,6 +639,12 @@ export const parseTextWithProposedPlan = (
 }
 
 // 将 shared AgentMessage 转换为展示条目。
+// 设计 id 前缀：以消息时间戳（base36）为稳定锚点，保证同一消息在任何路径解析出的设计 id 一致。
+export const buildStableDesignBaseId = (timestamp: number | undefined): string =>
+  typeof timestamp === "number" && Number.isFinite(timestamp)
+    ? `d${timestamp.toString(36)}`
+    : "design"
+
 export const toChatMessage = (
   message: AgentMessage,
   isStreaming: boolean,
@@ -732,7 +765,9 @@ export const toChatMessage = (
       return parseTextWithProposedPlan(
         block.text,
         block.durationMs,
-        id,
+        // 设计 id 前缀用消息时间戳（实时与恢复两条路径一致），
+        // 避免依赖聊天消息自增 id 导致重启后设计 id 漂移、版本链 parent_id 解析失败。
+        buildStableDesignBaseId(message.timestamp),
         sessionId,
         message.timestamp,
         isStreaming,

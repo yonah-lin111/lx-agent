@@ -64,10 +64,10 @@ export type CollaborationMode = "build" | "plan" | "review" | "design"
 | **`build`** | 按沙箱/规则/审批正常判定 | 允许 | 正常判定 | 无 |
 | **`plan`** | **deny**（Plan Mode 提示词引导输出 `<proposed_plan>`） | **deny** | 只读工具正常 | 见 modes.md §2 |
 | **`review`** | **deny**（提示词引导输出 `<review_findings>`） | **deny** | 只读工具正常 | 见 modes.md §3 |
-| **`design`** | 按沙箱/规则/审批正常判定（无模式级硬拦截） | 允许 | 正常判定 | `<front_design>` / `<front_design_update>`，见 modes.md §4 |
+| **`design`** | 按沙箱/规则/审批正常判定（无模式级硬拦截） | 允许 | `wireframe` **deny**（布局直接走 `<front_design>`） | `<front_design>` / `<front_design_update>`，见 modes.md §4 |
 
 - Plan / Review 的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`PLAN_MODE_MUTATION_REASON` / `REVIEW_MODE_MUTATION_REASON`）。
-- `design` 模式仅约束输出协议（提示词层），不做工具级拦截（原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
+- `design` 模式除输出协议约束外，另对 `wireframe` 做工具级硬拦截（`DESIGN_MODE_WIREFRAME_REASON`）：ASCII 线框图与 `<front_design>` 协议互斥，提示词同步声明该工具禁用；其余工具仍按沙箱/规则/审批正常判定（原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
 - 模式切换：`Shift + Tab` 在 `build → plan → review → design → build` 间循环（状态栏按钮等价），或经 IPC `setCollaborationMode` 定向切换；卡片一键采纳也会切回 `build`。
 
 ---

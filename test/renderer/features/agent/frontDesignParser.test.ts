@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
+
+import type { AgentMessage } from "@shared/contracts/agent"
 import { beforeEach, describe, expect, it } from "vitest"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import type { ChatBlock } from "@/features/agent/types"
-import { parseTextWithProposedPlan } from "@/features/agent/utils"
+import { parseTextWithProposedPlan, toChatMessage } from "@/features/agent/utils"
 
 const syncBlocksToStore = (blocks: ChatBlock[], sessionId?: string, autoActivate = false): void => {
   for (const b of blocks) {
@@ -204,6 +206,63 @@ Done!`
     expect(blocks[2]).toEqual({ kind: "text", text: "Done!" })
   })
 
+  it("解析 action 属性：合法动作透传，未知动作归一化为 replace", () => {
+    const appendBlocks = parseTextWithProposedPlan(
+      `<front_design_update parent_id="p-1" target="#list" action="append" title="Add">
+<div>new</div>
+</front_design_update>`,
+    )
+    expect(appendBlocks[0].kind).toBe("frontDesign")
+    if (appendBlocks[0].kind === "frontDesign") {
+      expect(appendBlocks[0].design.action).toBe("append")
+      expect(appendBlocks[0].design.target).toBe("#list")
+    }
+
+    const unknownBlocks = parseTextWithProposedPlan(
+      `<front_design_update parent_id="p-1" target="#list" action="upsert" title="Add">
+<div>new</div>
+</front_design_update>`,
+    )
+    if (unknownBlocks[0].kind === "frontDesign") {
+      expect(unknownBlocks[0].design.action).toBe("replace")
+    }
+
+    const noActionBlocks = parseTextWithProposedPlan(
+      `<front_design_update parent_id="p-1" target="#list" title="Add">
+<div>new</div>
+</front_design_update>`,
+    )
+    if (noActionBlocks[0].kind === "frontDesign") {
+      expect(noActionBlocks[0].design.action).toBe("replace")
+    }
+  })
+
+  it("target 选择器含 `>` 路径时开标签仍完整解析（引号内 > 不截断标签）", () => {
+    const raw = `Patching card:
+<front_design_update parent_id="m5-design-0" target="body > main:nth-child(2) > div:nth-child(2) > details:nth-child(2)" title="Update Second Card">
+<details name="cluster-group" class="group"><summary>New Card</summary></details>
+</front_design_update>
+Done!`
+
+    const blocks = parseTextWithProposedPlan(raw)
+    expect(blocks.length).toBe(3)
+    expect(blocks[1].kind).toBe("frontDesign")
+
+    if (blocks[1].kind === "frontDesign") {
+      expect(blocks[1].design.isUpdate).toBe(true)
+      expect(blocks[1].design.parentId).toBe("m5-design-0")
+      expect(blocks[1].design.target).toBe(
+        "body > main:nth-child(2) > div:nth-child(2) > details:nth-child(2)",
+      )
+      expect(blocks[1].design.title).toBe("Update Second Card")
+      expect(blocks[1].design.html).toBe(
+        '<details name="cluster-group" class="group"><summary>New Card</summary></details>',
+      )
+    }
+
+    expect(blocks[2]).toEqual({ kind: "text", text: "Done!" })
+  })
+
   it("流式生成中正确捕获未闭合的 <front_design_update> 块", () => {
     const raw = `Updating header:
 <front_design_update parent_id="base-1" target="#header">
@@ -220,6 +279,49 @@ Done!`
       expect(blocks[1].design.isStreaming).toBe(true)
       expect(blocks[1].design.html).toBe('<header class="p-4 bg-zinc-900">')
     }
+  })
+
+  it("update 标签的 parent_id 不会被误解析为自身 id，版本链不再依赖自引用兜底", () => {
+    const raw = `<front_design_update parent_id="parent-1" target="#list" title="Add">
+<div>new</div>
+</front_design_update>`
+
+    const blocks = parseTextWithProposedPlan(raw, undefined, "m9", "s1", 1700000000000, false)
+    expect(blocks[0].kind).toBe("frontDesign")
+    if (blocks[0].kind === "frontDesign") {
+      expect(blocks[0].design.parentId).toBe("parent-1")
+      expect(blocks[0].design.id).not.toBe("parent-1")
+      expect(blocks[0].design.id).toContain("design-update")
+    }
+  })
+
+  it("设计 id 以消息时间戳锚定：不同聊天消息 id 解析结果一致（跨重启稳定）", () => {
+    const raw = `<front_design title="Card" mode="tailwindcss">
+<!DOCTYPE html><html><body><div>card</div></body></html>
+</front_design>`
+
+    const message = {
+      role: "assistant",
+      content: [{ type: "text", text: raw }],
+      stopReason: "end_turn",
+      timestamp: 1700000000000,
+    } as unknown as AgentMessage
+
+    const idOf = (chatMessage: ReturnType<typeof toChatMessage>): string | undefined => {
+      const block = chatMessage.blocks.find((b) => b.kind === "frontDesign")
+      return block && block.kind === "frontDesign" ? block.design.id : undefined
+    }
+
+    // 实时路径（m1）与恢复路径（m99）使用不同聊天消息 id，但设计 id 必须一致
+    expect(idOf(toChatMessage(message, false, "m1", "s1"))).toBe(
+      idOf(toChatMessage(message, false, "m99", "s1")),
+    )
+    // 不同消息（时间戳不同）必须得到不同设计 id
+    expect(idOf(toChatMessage(message, false, "m1", "s1"))).not.toBe(
+      idOf(
+        toChatMessage({ ...message, timestamp: 1700000009999 } as AgentMessage, false, "m1", "s1"),
+      ),
+    )
   })
 
   it('正确容忍并解析 LLM 输出带嵌套引号的 target 选择器（如 target="[data-design-id="el-123"]"）', () => {

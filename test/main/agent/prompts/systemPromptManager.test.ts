@@ -356,6 +356,88 @@ describe("SystemPromptManager", () => {
         expect(assembly.rendered).toContain("<front_design")
         expect(assembly.rendered).toContain("</front_design>")
       })
+
+      it("design 模式默认以 <current_design> 为修改基线，显式新建才省略 parent_id", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("MODIFICATION BASELINE: <current_design>")
+        expect(assembly.rendered).toContain("Default Behavior: Modify, Do Not Recreate")
+        expect(assembly.rendered).toContain("NEW DESIGN EXCEPTION")
+        expect(assembly.rendered).toContain("WITHOUT `parent_id`")
+        expect(assembly.rendered).toContain("<referenced_design>")
+        expect(assembly.rendered).toContain("take precedence over `<current_design>`")
+      })
+
+      it("design 模式局部修改必须走 <front_design_update>，并优先复用大纲选择器", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("<design_outline>")
+        expect(assembly.rendered).toContain("LOCALIZED CHANGE (the common case)")
+        expect(assembly.rendered).toContain("copied VERBATIM from `<design_outline>`")
+        expect(assembly.rendered).toContain("DOCUMENT-WIDE CHANGE (exception)")
+        expect(assembly.rendered).toContain("REQUIRED channel for localized modifications")
+        expect(assembly.rendered).toContain(
+          "if the selector does not resolve, the update is discarded",
+        )
+      })
+
+      it("design 模式新增内容必须走 append/prepend/before/after 补丁而非重写", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("ADDING content is a localized change too")
+        expect(assembly.rendered).toContain("NEVER regenerate the document just to add something")
+        expect(assembly.rendered).toContain("`action` selects how the fragment attaches")
+        expect(assembly.rendered).toContain(
+          "`append` / `prepend`: the fragment is inserted inside the target",
+        )
+        expect(assembly.rendered).toContain(
+          "`before` / `after`: the fragment is inserted as a sibling",
+        )
+        expect(assembly.rendered).toContain("never rename the document title")
+      })
+
+      it("design 模式意图含糊时要求先调用 question 工具澄清", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("AMBIGUOUS INTENT")
+        expect(assembly.rendered).toContain("call the `question` tool to clarify BEFORE generating")
+        expect(assembly.rendered).toContain("do NOT emit `<front_design>` in that turn")
+      })
+
+      it("design 模式注入布局完整性契约，禁止内容贴左上角", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("LAYOUT COMPLETENESS & VISUAL BALANCE")
+        expect(assembly.rendered).toContain("centers NOTHING")
+        expect(assembly.rendered).toContain("min-h-screen flex items-center justify-center")
+        expect(assembly.rendered).toContain("min-height: 100vh; display: flex")
+        expect(assembly.rendered).toContain("Content glued to the top-left corner")
+      })
+
+      it("design 模式声明 wireframe 工具禁用，布局必须直接走 <front_design>", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("The `wireframe` tool is DISABLED in Front Design Mode")
+        expect(assembly.rendered).toContain("Never call it")
+      })
     })
   })
 

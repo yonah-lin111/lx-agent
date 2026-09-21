@@ -36,6 +36,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 ### 1.1 契约铁律
 
 - **参数校验前置**：在进入 `execute` 前由框架统一执行 `validateToolArguments`，校验失败立即封装结构化错误 ToolResult 回灌，不触发实际执行。
+- **参数命名避让 schema 保留键**：工具参数名**不得使用 `title`**。OpenAI 兼容网关（如 9router → Gemini）转换 function declaration 时会把属性键 `title` 当作 schema 注解丢弃，模型永远收不到该参数并持续校验失败（历史事故：`wireframe` 因 `title` 必填项被吞导致 87.5% 调用失败，参数已改名 `name`）。
 - **异常非阻塞**：工具执行抛出未捕获异常时，框架捕获并封装为 `isError: true` 的 ToolResult 回灌，主推理循环永不崩溃。
 - **快速响应 Signal**：所有长时或网络类工具必须监听并传递 `AbortSignal`，收到打断信号立即退出。
 
@@ -61,6 +62,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | **系统** | `time` | `{}` | 获取当前系统精确时间戳、本地格式化时间与时区 |
 | **记忆与规划** | `memory` | `{ action: "view" \| "save" \| "search" \| "delete"; topic?; name?; description?; type?; content?; query?; path? }` | 项目分层记忆管理（`MEMORY.md` 索引与 Topic Notes；豁免工具） |
 | | `todowrite` | `{ todos: { content; status }[] }` | 任务清单状态机整表替换；驱动状态栏与执行面板；Plan/Review 模式下被硬拦截 |
+| | `wireframe` | `{ name; layout; description? }` | 记录并展示 ASCII 线框图（Unicode 制表符）辅助 UI 布局评审；design 模式下被硬拦截（布局直接走 `<front_design>`）；参数名不得使用 `title`（见 §1.1） |
 | **语言服务** | `lsp` | `{ operation; filePath; line?; character?; query? }` | 9 种 LSP 语义操作：`goToDefinition` / `findReferences` / `hover` / `documentSymbol` / `workspaceSymbol` / `goToImplementation` / `prepareCallHierarchy` / `incomingCalls` / `outgoingCalls`；支持懒安装 |
 | **交互与协作** | `question` | `{ questions: { question; header; options; multiple? }[] }` | 向用户发起结构化交互式提问（支持 Markdown 与选项选择） |
 | | `task` | `{ description; prompt; agent_type?; name?; subagent_id? }` 或 `{ tasks: { description; prompt; agent_type?; name? }[] }` | 单任务模式启动独立子代理或向 `SubagentPool` 续接；批量模式（`tasks[]`，上限 64 项）一次扇出多个新子代理并行执行、按输入顺序回传结构化结果数组与 `details.subagents`；角色目录注入工具描述，工具集取父激活集与角色白名单交集，模型按 `role.model → defaultModel → 父模型` 覆盖，协作模式按 `agent.subagents.mode`（缺省 `build`，不继承主 Agent）绑定提示词与门禁；并发 `maxConcurrent` 顶层 FIFO 排队、嵌套 fail-fast，嵌套深度 `maxDepth` 1–5（详见 runtime.md §5） |

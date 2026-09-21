@@ -2,13 +2,12 @@ import type { AgentSendContext, AgentSendOptions } from "@shared/contracts/agent
 import type { ModelSelection } from "@shared/settings"
 import { useCallback, useMemo } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
-import { extractDesignMentions } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import type { AgentChatCore } from "@/features/agent/hooks/useAgentChat.types"
 import { cleanUserPrompt } from "@/features/agent/utils"
-import { extractDesignTargetContext } from "@/features/agent/utils/designSynthesizer"
+import { buildDesignReferenceBlocks } from "@/features/agent/utils/designReferenceInjection"
 import { extractClawMentions, stripClawMention } from "@/features/openclaw/clawMention"
 import { useOpenClawOfficeStore } from "@/features/openclaw/openclawOfficeStore"
 import { navigateTo } from "@/lib/navigate"
@@ -29,6 +28,7 @@ export const useAgentChatSend = ({
     | "isStreaming"
     | "isCompacting"
     | "isCompactingManual"
+    | "collaborationMode"
     | "tabId"
     | "onSessionBound"
     | "toasts"
@@ -43,7 +43,7 @@ export const useAgentChatSend = ({
   >
 }) => {
   const { inputText, selectedFiles, context, contextUsage, isCompacting, isCompactingManual } = core
-  const { tabId, onSessionBound, t } = core
+  const { tabId, onSessionBound, t, collaborationMode } = core
   const { error: errorToast, success: successToast } = core.toasts
   const { isStreaming, messages, currentSessionIdRef } = core
   const { setInputText, setSelectedFiles, setMessages, setCurrentSessionId } = core
@@ -86,35 +86,15 @@ export const useAgentChatSend = ({
         return
       }
 
-      // 提取 @design:{id}#selector 引用，并将基准设计 HTML 或定向切片作为 <referenced_design> 注入到上下文中
-      const designMentions = extractDesignMentions(text)
-      if (designMentions.length > 0) {
-        const referencedBlocks: string[] = []
-        for (const mention of designMentions) {
-          const design = frontDesignStore.getDesign(mention.id)
-          if (design && design.html) {
-            if (mention.target) {
-              const targetContext = extractDesignTargetContext(design.html, mention.target)
-              if (targetContext.ok && targetContext.targetElementHtml) {
-                referencedBlocks.push(
-                  `<referenced_design id="${design.id}" target="${mention.target}" title="${design.title || "Frontend Prototype"}" mode="${design.mode ?? "tailwindcss"}">\n<global_styling_context>\n  ${targetContext.globalContext}\n</global_styling_context>\n<target_element selector="${mention.target}">\n${targetContext.targetElementHtml}\n</target_element>\n</referenced_design>`,
-                )
-              } else {
-                // 目标节点未找到时降级全量注入
-                referencedBlocks.push(
-                  `<referenced_design id="${design.id}" title="${design.title || "Frontend Prototype"}" mode="${design.mode ?? "tailwindcss"}">\n${design.html}\n</referenced_design>`,
-                )
-              }
-            } else {
-              referencedBlocks.push(
-                `<referenced_design id="${design.id}" title="${design.title || "Frontend Prototype"}" mode="${design.mode ?? "tailwindcss"}">\n${design.html}\n</referenced_design>`,
-              )
-            }
-          }
-        }
-        if (referencedBlocks.length > 0) {
-          text = `${referencedBlocks.join("\n\n")}\n\n${text}`
-        }
+      // 注入设计上下文：显式 @design:{id}#selector 引用优先，design 模式下无引用时以画布激活设计为默认修改基线。
+      const designBlocks = buildDesignReferenceBlocks(text, {
+        collaborationMode,
+        currentSessionId: currentSessionIdRef.current,
+        activeDesign: frontDesignStore.getActiveDesign(),
+        resolveDesign: (id) => frontDesignStore.getDesign(id),
+      })
+      if (designBlocks.length > 0) {
+        text = `${designBlocks.join("\n\n")}\n\n${text}`
       }
       // 上下文压缩中：禁止发送，避免与压缩/续跑竞态。
       if (isCompacting) {
@@ -182,6 +162,7 @@ export const useAgentChatSend = ({
       successToast,
       isCompacting,
       isCompactingManual,
+      collaborationMode,
       tabId,
       onSessionBound,
       t,

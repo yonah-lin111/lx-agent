@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { z } from "zod"
 import { ALL_TOOL_NAMES, createRegistry } from "@/agent/assembly"
 import { EXEMPT_TOOLS } from "@/agent/permissions/rule"
 import { createWireframeTool } from "@/agent/tools/wireframe"
@@ -8,26 +9,38 @@ describe("wireframe tool", () => {
   it("validates inputSchema correctly", () => {
     const tool = createWireframeTool()
 
-    // Missing title
+    // Missing name
     expect(tool.inputSchema.safeParse({ layout: "┌─┐\n└─┘" }).success).toBe(false)
 
     // Missing layout
-    expect(tool.inputSchema.safeParse({ title: "My Page" }).success).toBe(false)
+    expect(tool.inputSchema.safeParse({ name: "My Page" }).success).toBe(false)
 
     // Valid minimal input
     const minParsed = tool.inputSchema.safeParse({
-      title: "My Page",
+      name: "My Page",
       layout: "┌─┐\n└─┘",
     })
     expect(minParsed.success).toBe(true)
 
     // Valid input with description
     const fullParsed = tool.inputSchema.safeParse({
-      title: "My Page",
+      name: "My Page",
       layout: "┌─┐\n└─┘",
       description: "Simple card layout",
     })
     expect(fullParsed.success).toBe(true)
+  })
+
+  it("参数名避开 title，防止网关 schema 转换吞掉必填项（回归）", () => {
+    const tool = createWireframeTool()
+    const jsonSchema = z.toJSONSchema(tool.inputSchema, { io: "input" }) as {
+      properties?: Record<string, unknown>
+      required?: string[]
+    }
+
+    expect(jsonSchema.properties?.name).toBeDefined()
+    expect(jsonSchema.properties?.title).toBeUndefined()
+    expect(jsonSchema.required).toEqual(["name", "layout"])
   })
 
   it("executes and formats wireframe layout into text content and details", async () => {
@@ -41,7 +54,7 @@ describe("wireframe tool", () => {
     ].join("\n")
 
     const result = await tool.execute("call_123", {
-      title: "Dashboard Overview",
+      name: "Dashboard Overview",
       layout,
       description: "Header on top, content below",
     })
@@ -63,7 +76,7 @@ describe("wireframe tool", () => {
     const tool = createWireframeTool()
     const layout = "┌─┐\n└─┘"
     const result = await tool.execute("call_456", {
-      title: "Small Box",
+      name: "Small Box",
       layout,
     })
 

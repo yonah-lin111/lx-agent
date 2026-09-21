@@ -87,12 +87,16 @@ export interface ReviewFindingsData {
 }
 
 // 前端设计数据结构。
+// 定向更新动作：replace（默认）/ append / prepend / before / after
+export type FrontDesignUpdateAction = "replace" | "append" | "prepend" | "before" | "after"
+
 export interface FrontDesignData {
   id: string
   parentId?: string | null
   version?: number
   title?: string
   target?: string | null
+  action?: FrontDesignUpdateAction
   isUpdate?: boolean
   html: string
   raw: string

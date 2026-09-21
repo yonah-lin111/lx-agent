@@ -111,8 +111,16 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 `design` 模式下注入专用英文提示词，核心约束：
 
 - 所有前端原型必须通过 `<front_design>` 协议输出完整 HTML；`mode="tailwindcss"`（默认）或 `mode="css"`。
-- 二次修改时提示词会收到 `<referenced_design>` 基准代码，输出必须携带 `parent_id="{referenced_id}"`，且仍输出完整可执行 HTML（不允许片段 diff）。
-- 定向节点修改时提示词会收到 `<global_styling_context>` 与 `<target_element>`，模型必须输出 `<front_design_update parent_id target>` 且**只输出目标节点的替换子树**；明确禁止在该场景输出 `<front_design>` 全量。
+- **默认修改基线（`<current_design>`）**：画布有激活设计时，发送端自动注入其完整 HTML 为 `<current_design id title mode version>`，紧随其后注入 `<design_outline>` 结构大纲；提示词规定默认修改基线而非重建，仅当用户**明确要求新建**（"make a new one" 等）时才省略 `parent_id`。`mode` 属性默认沿用基线。
+- **修改通道按影响面选择（默认局部补丁）**：局部可定位的改动（某张卡片/某个区块/某个按钮）与**新增内容**都必须走 `<front_design_update>`，只输出受影响或新增的标记；仅当改动覆盖整篇（整体换风格、骨架重排、多处无关区域同时改）才回退 `<front_design parent_id>` 全量重写，且重写时禁止改名文档标题、禁止重排/重绘未触及区块、必须沿用基线 body 布局类。避免"一句话改动 → 全文重生成"造成的成本与无关漂移。
+- **更新动作（`action`）**：`replace`（默认，片段替换目标子树）/ `append`、`prepend`（插入目标容器内部末尾/开头，用于新增区块）/ `before`、`after`（插入目标同级前后）。`<html>`/`<body>` 不支持兄弟插入（直接失败）。未知动作归一化为 `replace`。新增类请求因此无需重写整篇文档。
+- **同轮多补丁链式累积**：一轮回复中的多个 `<front_design_update>` 按出现顺序依次缝合，后一个补丁基于前一个结果（版本链 `patch1 → patch2`），避免多区域修改互相覆盖而被迫重写。
+- **结构大纲（`<design_outline>`，嵌套在基线块内）**：由 `buildDesignOutline()` 从基线 HTML 现算（`body > tag:nth-child(n)` 路径选择器 + 标签/类名/文本预览，深度 4、上限 40 条），与基线严格同源，宿主保证选择器可命中；模型应**逐字复用**大纲选择器，必要时可追加一层子级步骤（如 `> summary`），无匹配节点时才自行从基线推导选择器（优先 `#id`/`[data-section]`，退化 `:nth-child()` 路径）。选择器无法解析时补丁会被丢弃。
+- **意图含糊先反问**：无法判定"新建 vs 修改"时必须先调用 `question` 工具澄清，该轮不得输出 `<front_design>`；视觉细节（配色/间距/字体）不反问，由模型自行决策。
+- 二次修改时提示词会收到 `<referenced_design>` 基准代码，输出必须携带 `parent_id="{referenced_id}"`，且仍输出完整可执行 HTML（不允许片段 diff）。显式引用优先于 `<current_design>`。
+- 定向节点修改（`@design:{id}#{selector}`）时提示词会收到 `<global_styling_context>` 与 `<target_element>`，模型必须原样使用该 `target` 输出 `<front_design_update parent_id target>` 且**只输出目标节点的替换子树**（`replace` 动作下含目标元素自身标签与属性）。
+- **布局完整性契约**：全视口单焦点页面（登录/注册/404/空状态/单卡片）必须显式水平+垂直居中（`min-h-screen flex items-center justify-center` 或 `min-height:100vh; display:flex`）；常规页面顶部对齐 + `max-w-* mx-auto` 水平约束；提示词示例本身即为居中型布局。
+- **`wireframe` 工具禁用**：design 模式下 `PermissionManager` 对 `wireframe` 硬拦截（`DESIGN_MODE_WIREFRAME_REASON`，不进入审批弹窗），提示词同步声明禁用；布局结构必须直接表达在 `<front_design>` HTML 中。
 - 工程品味约束：优先原生 `<details>` / `<dialog>` / CSS `:has()` 等原语，慎写脆弱 JS；必要脚本使用 IIFE 并规避 `DOMContentLoaded` 依赖。
 
 ```xml
@@ -121,6 +129,10 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 
 <front_design_update parent_id="design-1" target="#hero-cta" title="更新行动按钮">
   <button id="hero-cta" class="...">立即开始体验</button>
+</front_design_update>
+
+<front_design_update parent_id="design-1" target="body > main" action="append" title="新增登录卡片">
+  <section id="login-card" class="...">...</section>
 </front_design_update>
 ```
 
@@ -160,8 +172,10 @@ export interface FrontDesignItem {
 
 `frontDesignStore` 关键行为：
 
-- **响应式订阅**：`subscribe/getState/useFrontDesign` 基于 `useSyncExternalStore`；`getDesign` / `getActiveDesign` / `getParentDesign` / `getDesignVersions` / `getRootDesigns` 提供谱系查询。
+- **响应式订阅**：`subscribe/getState/useFrontDesign` 基于 `useSyncExternalStore`；`getDesign` / `getActiveDesign` / `getParentDesign` / `getDesignVersions` / `getRootDesigns` 提供谱系查询。侧边栏按"设计族"渲染：每个根节点一行，版本经工具栏下拉切换（`getDesignVersions`），版本不再单独成行。
 - **版本派生链**：`registerDesign` 依据 `parent_id`、同会话同名设计推断派生关系；跨轮次流式二次修改自动生成 `-v{n}` 新版本而**不覆盖**旧版本；同一次流式更新就地更新同一项；防御自引用环。
+- **稳定设计 id**：设计 id 前缀取消息时间戳（base36，`toChatMessage` → `buildStableDesignBaseId`），实时流式、消息定稿与会话恢复三条路径解析结果一致，避免依赖聊天消息自增 id 造成重启后 id 漂移、`parent_id` 失效。属性提取对 `id=` 做边界保护，`parent_id="x"` / `parentId="x"` 不会被误认为标签自身 id。
+- **恢复期版本链回落**：历史消息中的 `parent_id` 若指向已不存在的旧 id（老数据漂移），恢复时回落到同会话版本链头，保证同一设计的多个版本聚合在单一根节点下，不在侧边栏拆成独立条目。
 - **会话归属**：设计项记录 `sessionId`，草稿设计在会话落库后回填；`@` 提及与左栏均按当前会话过滤。
 - **激活联动**：`autoActivate` 时激活目标设计并在必要时切换到宿主 Tab。
 - **纯内存**：不写 localStorage（启动时清除历史遗留 key）。
@@ -172,7 +186,7 @@ export interface FrontDesignItem {
 2. **聊天卡片**：`FrontDesignCard` 展示标题、`v{n}` 版本徽标、血缘链接、代码预览与【基于此迭代】按钮。
 3. **设计画布**：`/design` 路由的 `FrontDesignPage` 订阅 store 热更新，将 HTML 注入沙箱 Iframe（`sandbox="allow-scripts allow-same-origin"`），使用 `agentApi.compileTailwind(html)` 实时编译 Tailwind JIT；支持 Desktop / Tablet / Mobile 视口切换、刷新与复制代码。
 4. **三件套落盘**：`agentApi.saveFrontDesign` 将设计拆分为 `index.html` / `style.css` / `script.js` 写入 `~/.lx/session/{sessionId}/design/{designId}/`；`openDesignDir` 在系统文件管理器中打开。
-5. **左栏谱系**：`FrontDesignLeftSideBar` 按根节点聚合版本，展示原型演进历史。
+6. **左栏谱系**：`FrontDesignLeftSideBar` 按根节点聚合版本，展示原型演进历史。
 
 ### 4.4 二次修改与 `@` 设计提及
 
@@ -187,10 +201,11 @@ export interface FrontDesignItem {
 
 - **`@` 综合提及面板**：聚合文件 / Skill / 子代理角色 / 当前会话设计卡片，设计项带 Palette 图标、标题、代码行数与 `Design` 标签；选中插入 `@design:{id} ({title}) `。
 - **快捷迭代入口**：`FrontDesignCard` 与 `FrontDesignPage` 工具栏的【基于此迭代】自动切到 `design` 模式、填入引用并聚焦当前 Tab 输入框。
-- **发送端上下文注入（Zero Tool-Call）**：`useAgentChat.sendMessage` 解析引用并直接注入基准代码，模型首轮即可见，无需读盘：
+- **发送端上下文注入（Zero Tool-Call）**：`useAgentChat.sendMessage` 经 `utils/designReferenceInjection.ts` 的 `buildDesignReferenceBlocks` 解析引用并直接注入基准代码，模型首轮即可见，无需读盘：
   - 无 `target`：注入完整 `<referenced_design id title mode>`（基准 HTML 全文）。
-  - 带 `target`：调用 `extractDesignTargetContext` 做分层切片，仅注入 `<global_styling_context>`（主题、`html/body` 类名、标题）与 `<target_element selector>`（目标节点 `outerHTML`），避免携带数百行无关结构。
-  - 清洗用户气泡：`<referenced_design>` 块不显示在用户消息文本中。
+  - 带 `target`：调用 `extractDesignTargetContext` 做分层切片，仅注入 `<global_styling_context>`（主题、`html/body` 类名、标题）与 `<target_element selector>`（目标节点 `outerHTML`），避免携带数百行无关结构；目标未命中时降级全量注入。
+  - **隐式基线**：`design` 模式下无任何显式 `@design` 引用且画布有激活设计时，注入 `<current_design id title mode version>`（完整 HTML）（块内嵌套 `<design_outline>` 结构大纲选择器清单）作为默认修改基线；激活设计已绑定会话时要求与当前会话一致（草稿放行），跨会话不注入。显式引用存在时自动基线让位。
+  - 清洗用户气泡：`<referenced_design>` 与 `<current_design>` 块（含嵌套大纲）均不显示在用户消息文本中（`cleanUserPrompt`）。
 
 ### 4.5 画布检查器与 DOM 定向更新
 
@@ -228,10 +243,17 @@ generateElementSelector(element): { selector, description, injectedAttr? }
 | `lib/pageRoutes.ts` / `lib/navigationItems.ts` | `design: "/design"`，左栏底部 Palette 导航项 |
 | `routes/PageRouter.tsx` / `App.tsx` | 注册 `FrontDesignPage` 与专属 `FrontDesignLeftSideBar` |
 | `features/agent/components/blocks/FrontDesignCard.tsx` | 聊天流设计卡片（版本徽标 / 血缘 / 迭代入口 / 展开预览） |
-| `pages/front-design/FrontDesignPage.tsx` | 设计画布：Inspector、视口切换、Tailwind JIT、Iframe 热更新、落盘与打开目录 |
+| `pages/front-design/FrontDesignPage.tsx` | 设计画布容器：组合工具栏与画布，编排导出/复制/刷新动作 |
+| `pages/front-design/hooks/useDesignTheme.ts` | 主题持久化、系统深浅色订阅与 `effectiveMode` 计算 |
+| `pages/front-design/hooks/useDesignPreview.ts` | Tailwind 编译、沙箱文档构建、iframe 增量更新与落盘同步 |
+| `pages/front-design/hooks/useDesignInspector.ts` | Inspector 开关、快捷键、iframe 浮层与 `@design` 引用回填 |
+| `pages/front-design/components/FrontDesignToolbar.tsx` | 顶部工具栏（版本 / 视口 / 主题 / Inspector / 复制 / 打开设计目录） |
+| `pages/front-design/components/FrontDesignCanvas.tsx` | 空状态提示与沙箱 iframe 预览 |
 | `pages/front-design/components/FrontDesignLeftSideBar.tsx` | 设计族谱与版本导航 |
 | `features/agent/hooks/frontDesignStore.ts` | 响应式单例存储与版本谱系 |
 | `features/agent/utils/designSynthesizer.ts` | DOM 切片提取、选择器生成与定向缝合纯函数 |
+| `features/agent/utils/designOutline.ts` | 基线结构大纲生成（`body > tag:nth-child(n)` 路径选择器清单），供模型选择 `<front_design_update target>` |
+| `features/agent/utils/designReferenceInjection.ts` | 显式引用与隐式 `<current_design>` 基线的上下文注入纯函数 |
 
 ### 4.7 已知限制
 

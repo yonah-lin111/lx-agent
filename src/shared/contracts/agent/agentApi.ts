@@ -200,6 +200,7 @@ export interface AgentApi {
     }>
     // 打开指定前端设计本地目录
     openDesignDir: (sessionId: string, designId: string) => Promise<boolean>
+    // 导出指定前端设计的预览图（PNG，全页、按档位宽度与主题）
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

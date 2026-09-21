@@ -175,17 +175,22 @@ export const useAgentChatEvents = ({
           streamingRef.current = null
           setMessages((prev) => prev.map((item) => (item.id === final.id ? final : item)))
 
-          // 流式生成完毕，固化并注册设计卡片（isStreaming: false）
+          // 流式生成完毕，固化并注册设计卡片（isStreaming: false）。
+          // 同一轮内的多个补丁按出现顺序链式累积：后一个补丁基于前一个结果，避免多区域修改互相覆盖。
+          let chainBaseHtml: string | null = null
+          let chainParentId: string | null = null
+
           final.blocks.forEach((block) => {
             if (block.kind === "frontDesign") {
               if (block.design.isUpdate) {
-                const parentId = block.design.parentId
+                const declaredParentId = block.design.parentId
                 const targetSelector = block.design.target
-                const parentDesign = parentId
-                  ? frontDesignStore.getDesign(parentId)
+                const parentDesign = declaredParentId
+                  ? frontDesignStore.getDesign(declaredParentId)
                   : frontDesignStore.getActiveDesign()
+                const baseHtml = chainBaseHtml ?? parentDesign?.html ?? null
 
-                if (!parentDesign || !targetSelector) {
+                if (!baseHtml || !targetSelector) {
                   warningToast(
                     t("frontDesign.updateTargetNotFound", {
                       target: targetSelector || "unknown",
@@ -195,9 +200,10 @@ export const useAgentChatEvents = ({
                 }
 
                 const synthResult = synthesizeDesignUpdate(
-                  parentDesign.html,
+                  baseHtml,
                   targetSelector,
                   block.design.html,
+                  block.design.action,
                 )
 
                 if (!synthResult.ok || !synthResult.synthesizedHtml) {
@@ -211,17 +217,19 @@ export const useAgentChatEvents = ({
 
                 frontDesignStore.registerDesign({
                   id: block.design.id,
-                  parentId: parentDesign.id,
+                  parentId: chainParentId ?? parentDesign?.id ?? declaredParentId ?? null,
                   title:
-                    block.design.title || `${parentDesign.title || "Frontend Prototype"} (Update)`,
+                    block.design.title || `${parentDesign?.title || "Frontend Prototype"} (Update)`,
                   html: synthResult.synthesizedHtml,
                   isStreaming: false,
                   autoActivate: true,
                   sessionId: currentSessionIdRef.current,
                   updatedAt: final.timestamp,
-                  mode: block.design.mode || parentDesign.mode,
+                  mode: block.design.mode || parentDesign?.mode,
                   designDir: block.design.designDir,
                 })
+                chainBaseHtml = synthResult.synthesizedHtml
+                chainParentId = block.design.id
                 return
               }
 
@@ -237,6 +245,8 @@ export const useAgentChatEvents = ({
                 mode: block.design.mode,
                 designDir: block.design.designDir,
               })
+              chainBaseHtml = block.design.html
+              chainParentId = block.design.id
             }
           })
           break

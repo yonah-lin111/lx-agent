@@ -1,3 +1,5 @@
+import type { FrontDesignUpdateAction } from "@/features/agent/types"
+
 export interface SynthesizeUpdateResult {
   ok: boolean
   synthesizedHtml?: string
@@ -18,12 +20,16 @@ export interface ElementSelectorResult {
 }
 
 /**
- * 使用 DOMParser 安全执行 DOM 树定向子树替换，生成完整合法的 HTML 文档快照。
+ * 使用 DOMParser 安全执行 DOM 树定向缝合，生成完整合法的 HTML 文档快照。
+ *
+ * `action` 决定片段与目标节点的关系：replace（默认，替换目标子树）/ append / prepend（插入目标内部）
+ * / before / after（插入目标同级），使"新增区块"无需重写整篇文档。
  */
 export const synthesizeDesignUpdate = (
   baseHtml: string,
   targetSelector: string,
   newFragmentHtml: string,
+  action: FrontDesignUpdateAction = "replace",
 ): SynthesizeUpdateResult => {
   if (typeof window === "undefined" || !window.DOMParser) {
     return { ok: false, error: "DOMParser is not available in current environment" }
@@ -120,7 +126,32 @@ export const synthesizeDesignUpdate = (
       frag.appendChild(doc.importNode(child, true))
     }
 
-    targetNode.replaceWith(frag)
+    switch (action) {
+      case "replace":
+        targetNode.replaceWith(frag)
+        break
+      case "append":
+        targetNode.appendChild(frag)
+        break
+      case "prepend":
+        targetNode.insertBefore(frag, targetNode.firstChild)
+        break
+      case "before":
+      case "after": {
+        // 根节点没有合法兄弟位：<html>/<body> 的兄弟插入会产出非法文档，直接失败交由提示词约束。
+        if (targetNode === doc.body || targetNode === doc.documentElement) {
+          return { ok: false, error: `Cannot insert ${action} a root node: ${targetSelector}` }
+        }
+        const parent = targetNode.parentNode
+        if (!parent) {
+          return { ok: false, error: `Cannot insert ${action} a detached node: ${targetSelector}` }
+        }
+        parent.insertBefore(frag, action === "before" ? targetNode : targetNode.nextSibling)
+        break
+      }
+      default:
+        return { ok: false, error: `Unsupported update action: ${action}` }
+    }
 
     // 序列化导出完整的 HTML 结构
     let serialized = doc.documentElement.outerHTML

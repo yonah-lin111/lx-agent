@@ -87,6 +87,124 @@ describe("前端设计二次修改与提及迭代集成数据流", () => {
     const sentText = (agentApi.send as any).mock.calls[0][0]
     expect(sentText).toBe("请查看 @design:non-existent (Unknown)")
     expect(sentText).not.toContain("<referenced_design")
+    expect(sentText).not.toContain("<current_design")
+  })
+
+  it("design 模式下未显式引用时，自动注入 <current_design> 作为默认修改基线", async () => {
+    frontDesignStore.registerDesign({
+      id: "design-active",
+      title: "Active Page",
+      html: "<main>Active baseline</main>",
+      mode: "tailwindcss",
+      sessionId: "session-baseline-test",
+    })
+    frontDesignStore.setActiveDesignId("design-active")
+
+    let eventHandler: any = null
+    vi.mocked(agentApi.onEvent).mockImplementation((handler: any) => {
+      eventHandler = handler
+      return () => {}
+    })
+
+    const { result } = renderHook(() =>
+      useAgentChat(undefined, "tab-baseline-test", "session-baseline-test"),
+    )
+
+    await act(async () => {
+      eventHandler({
+        type: "collaboration_mode_changed",
+        sessionId: "session-baseline-test",
+        tabId: "tab-baseline-test",
+        mode: "design",
+      })
+    })
+
+    await act(async () => {
+      await result.current.sendMessage("把主按钮改成圆角")
+    })
+
+    expect(agentApi.send).toHaveBeenCalledTimes(1)
+    const sentText = (agentApi.send as any).mock.calls[0][0]
+    expect(sentText).toContain(
+      '<current_design id="design-active" title="Active Page" mode="tailwindcss" version="1">',
+    )
+    expect(sentText).toContain("<main>Active baseline</main>")
+    expect(sentText).toContain("</current_design>")
+    expect(sentText).not.toContain("<referenced_design")
+    expect(sentText).toContain("把主按钮改成圆角")
+  })
+
+  it("design 模式下存在显式 @design 引用时，只注入 referenced_design，自动基线让位", async () => {
+    frontDesignStore.registerDesign({
+      id: "design-active",
+      title: "Active Page",
+      html: "<main>Active baseline</main>",
+      mode: "tailwindcss",
+      sessionId: "session-explicit-test",
+    })
+    frontDesignStore.registerDesign({
+      id: "design-other",
+      title: "Other Page",
+      html: "<section>Other baseline</section>",
+      mode: "css",
+      sessionId: "session-explicit-test",
+    })
+    frontDesignStore.setActiveDesignId("design-active")
+
+    let eventHandler: any = null
+    vi.mocked(agentApi.onEvent).mockImplementation((handler: any) => {
+      eventHandler = handler
+      return () => {}
+    })
+
+    const { result } = renderHook(() =>
+      useAgentChat(undefined, "tab-explicit-test", "session-explicit-test"),
+    )
+
+    await act(async () => {
+      eventHandler({
+        type: "collaboration_mode_changed",
+        sessionId: "session-explicit-test",
+        tabId: "tab-explicit-test",
+        mode: "design",
+      })
+    })
+
+    await act(async () => {
+      await result.current.sendMessage("@design:design-other (Other Page) 改成圆角")
+    })
+
+    expect(agentApi.send).toHaveBeenCalledTimes(1)
+    const sentText = (agentApi.send as any).mock.calls[0][0]
+    expect(sentText).toContain(
+      '<referenced_design id="design-other" title="Other Page" mode="css">',
+    )
+    expect(sentText).toContain("<section>Other baseline</section>")
+    expect(sentText).not.toContain("<current_design")
+    expect(sentText).not.toContain("Active baseline")
+  })
+
+  it("build 模式下不自动注入 <current_design> 基线", async () => {
+    frontDesignStore.registerDesign({
+      id: "design-active",
+      title: "Active Page",
+      html: "<main>Active baseline</main>",
+      mode: "tailwindcss",
+      sessionId: "session-build-test",
+    })
+    frontDesignStore.setActiveDesignId("design-active")
+
+    const { result } = renderHook(() =>
+      useAgentChat(undefined, "tab-build-test", "session-build-test"),
+    )
+
+    await act(async () => {
+      await result.current.sendMessage("把主按钮改成圆角")
+    })
+
+    const sentText = (agentApi.send as any).mock.calls[0][0]
+    expect(sentText).toBe("把主按钮改成圆角")
+    expect(sentText).not.toContain("<current_design")
   })
 
   it("全链路版本派生：从 parent_id 到 store 版本聚合链条", () => {
@@ -236,6 +354,191 @@ Hope it looks awesome!`
     // 其余节点完整保留
     expect(updatedDesign?.html).toContain('<h1 id="title">Old Title</h1>')
     expect(updatedDesign?.html).toContain("<!DOCTYPE html>")
+  })
+
+  it("接收端：action=append 在目标容器内追加新区块，既有节点与 body 布局类零改动", async () => {
+    frontDesignStore.registerDesign({
+      id: "d-append-base",
+      title: "Append Base",
+      html: `<!DOCTYPE html><html><body class="min-h-screen flex items-center justify-center"><div id="content"><h1 id="title">Old Title</h1></div></body></html>`,
+      mode: "tailwindcss",
+      sessionId: "session-append-test",
+    })
+
+    let eventHandler: any = null
+    vi.mocked(agentApi.onEvent).mockImplementation((handler: any) => {
+      eventHandler = handler
+      return () => {}
+    })
+
+    renderHook(() => useAgentChat(undefined, "tab-append-test", "session-append-test"))
+
+    await act(async () => {
+      eventHandler({
+        type: "message_start",
+        sessionId: "session-append-test",
+        tabId: "tab-append-test",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "" }],
+          stopReason: "pending",
+          timestamp: Date.now(),
+        },
+      })
+      eventHandler({
+        type: "message_end",
+        sessionId: "session-append-test",
+        tabId: "tab-append-test",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "text",
+              text: `Added the login card:
+<front_design_update id="d-append-1" parent_id="d-append-base" target="#content" action="append" title="Add Login Card">
+<section id="login-card"><h2>控制台登录</h2></section>
+</front_design_update>`,
+            },
+          ],
+          stopReason: "end_turn",
+          timestamp: Date.now(),
+        },
+      })
+    })
+
+    const design = frontDesignStore.getDesign("d-append-1")
+    expect(design).toBeDefined()
+    expect(design?.html).toContain('id="login-card"')
+    expect(design?.html).toContain('id="title"')
+    expect(design?.html).toContain("min-h-screen flex items-center justify-center")
+
+    const doc = new DOMParser().parseFromString(design?.html ?? "", "text/html")
+    expect(doc.querySelector("#content")?.lastElementChild?.id).toBe("login-card")
+    expect(doc.querySelector("#title")?.textContent).toBe("Old Title")
+  })
+
+  it("接收端：同一轮多个补丁按顺序链式累积，后一个补丁基于前一个结果", async () => {
+    frontDesignStore.registerDesign({
+      id: "d-chain-base",
+      title: "Chain Base",
+      html: `<!DOCTYPE html><html><body><div id="a"><h1 id="t1">A1</h1></div><div id="b"><h1 id="t2">B1</h1></div></body></html>`,
+      mode: "tailwindcss",
+      sessionId: "session-chain-test",
+    })
+
+    let eventHandler: any = null
+    vi.mocked(agentApi.onEvent).mockImplementation((handler: any) => {
+      eventHandler = handler
+      return () => {}
+    })
+
+    renderHook(() => useAgentChat(undefined, "tab-chain-test", "session-chain-test"))
+
+    await act(async () => {
+      eventHandler({
+        type: "message_start",
+        sessionId: "session-chain-test",
+        tabId: "tab-chain-test",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "" }],
+          stopReason: "pending",
+          timestamp: Date.now(),
+        },
+      })
+      eventHandler({
+        type: "message_end",
+        sessionId: "session-chain-test",
+        tabId: "tab-chain-test",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "text",
+              text: `Two localized changes:
+<front_design_update id="d-chain-1" parent_id="d-chain-base" target="#t1" title="Update A">
+<h1 id="t1">A2</h1>
+</front_design_update>
+<front_design_update id="d-chain-2" parent_id="d-chain-base" target="#t2" title="Update B">
+<h1 id="t2">B2</h1>
+</front_design_update>`,
+            },
+          ],
+          stopReason: "end_turn",
+          timestamp: Date.now(),
+        },
+      })
+    })
+
+    const first = frontDesignStore.getDesign("d-chain-1")
+    const second = frontDesignStore.getDesign("d-chain-2")
+
+    expect(first?.html).toContain("A2")
+    expect(first?.html).toContain("B1")
+    expect(first?.parentId).toBe("d-chain-base")
+
+    // 第二个补丁必须基于第一个补丁的结果，两个改动都在最终版本中
+    expect(second?.html).toContain("A2")
+    expect(second?.html).toContain("B2")
+    expect(second?.parentId).toBe("d-chain-1")
+  })
+
+  it("恢复历史会话时：parent_id 漂移的版本自动回落到版本链头，不再拆成独立根节点", async () => {
+    const createText = `<front_design title="现代折叠卡片组件" mode="tailwindcss">
+<!DOCTYPE html><html><body><div id="page"><h1 id="title">Old</h1></div></body></html>
+</front_design>`
+    const updateText = `<front_design_update parent_id="m22-design-0" target="#title" title="更新第三项">
+<h1 id="title">New</h1>
+</front_design_update>`
+
+    vi.mocked(agentApi.restoreSession).mockResolvedValue({
+      ok: true,
+      todos: [],
+      messages: [
+        {
+          role: "assistant",
+          content: [{ type: "text", text: createText }],
+          stopReason: "end_turn",
+          timestamp: 1700000000000,
+        },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: updateText }],
+          stopReason: "end_turn",
+          timestamp: 1700000001000,
+        },
+      ],
+    } as never)
+
+    const { result } = renderHook(() =>
+      useAgentChat({ sessionId: "session-restore-drift", tabId: "tab-restore-drift" }),
+    )
+
+    await act(async () => {
+      await result.current.restoreChat("session-restore-drift")
+    })
+
+    const designs = frontDesignStore
+      .getAllDesigns()
+      .filter((d) => d.sessionId === "session-restore-drift")
+    expect(designs).toHaveLength(2)
+
+    const root = designs.find((d) => !d.parentId)
+    const update = designs.find((d) => d.parentId)
+    expect(root).toBeDefined()
+    expect(update).toBeDefined()
+    // 漂移的 parent_id（m22-design-0）不存在于 store：更新必须挂到同会话版本链头
+    expect(update?.parentId).toBe(root?.id)
+    expect(update?.html).toContain("New")
+    expect(update?.version).toBe(2)
+
+    // 版本族聚合：单一根节点 + 两个版本（侧边栏只渲染一行）
+    const versions = frontDesignStore.getDesignVersions(root?.id as string)
+    expect(versions.map((v) => v.id)).toEqual([root?.id, update?.id])
+    const roots = designs.filter(
+      (d) => !d.parentId || !designs.some((parent) => parent.id === d.parentId),
+    )
+    expect(roots).toHaveLength(1)
   })
 
   it("容灾拦截：当 <front_design_update> 的 target 选择器未命中时，安全拦截并不落库破损数据", async () => {
