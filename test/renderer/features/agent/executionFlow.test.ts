@@ -189,6 +189,78 @@ describe("executionFlow", () => {
       expect(steps[1].toolContent?.result).toBe("Task execution timeout")
     })
 
+    it("批量扇出：toolResult 携带的 subagents 聚合为子代理步骤并保留逐项快照", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "并行审查四个文件" }],
+          isStreaming: false,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "call-batch-1",
+              toolName: "task",
+              args: { tasks: [] },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+        },
+        {
+          id: "t1",
+          role: "toolResult",
+          blocks: [
+            {
+              kind: "toolResult",
+              toolCallId: "call-batch-1",
+              toolName: "task",
+              text: "[1/2] review-auth - done",
+              isError: false,
+              subagents: [
+                {
+                  subagentId: "subagent-1",
+                  name: "review-auth",
+                  roleName: "explorer",
+                  description: "审查 auth",
+                  prompt: "审查 auth",
+                  messages: [],
+                  steps: [],
+                  usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15 },
+                },
+                {
+                  subagentId: "subagent-2",
+                  name: "review-db",
+                  description: "审查 db",
+                  prompt: "审查 db",
+                  messages: [],
+                  steps: [],
+                  usage: { input: 20, output: 8, cacheRead: 0, cacheWrite: 0, totalTokens: 28 },
+                },
+              ],
+            },
+          ],
+          isStreaming: false,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(2)
+      expect(steps[1].kind).toBe("subagent")
+      // 批量标题用 `工具名 ×项数` 标识，展开内容携带逐项快照。
+      expect(steps[1].title).toBe("task ×2")
+      expect(steps[1].subagentContent?.name).toBe("task ×2")
+      expect(steps[1].subagentContent?.subagent).toBeUndefined()
+      expect(steps[1].subagentContent?.subagents?.map((item) => item.name)).toEqual([
+        "review-auth",
+        "review-db",
+      ])
+    })
+
     it("正确处理多轮对话与上下文压缩", () => {
       const messages: ChatMessage[] = [
         {

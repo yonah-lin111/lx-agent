@@ -92,7 +92,7 @@ export interface AgentMessageItemProps {
   // 点击"从此分支"：从该用户轮切割复制历史到新会话（assistant / toolResult 消息不显示）。
   onFork?: (userMessageTimestamp: number) => void
   // 点击子代理 label 打开面板弹窗。
-  onOpenSubagent?: (toolCall: ToolCallBlock) => void
+  onOpenSubagent?: (toolCall: ToolCallBlock, subagentIndex?: number) => void
   // 只读模式（子代理面板内渲染，隐藏编辑/删除操作，保留复制）。
   readOnly?: boolean
   // 回到底部按钮是否可见（可见时由按钮接管 loader，隐藏条目内 loading 效果）。

@@ -131,6 +131,8 @@ export type ChatBlock =
       progress?: string
       // 子代理面板数据（task 流式快照/落库重建；驱动弹窗与时间轴）。
       subagent?: SubagentData
+      // 批量扇出子代理数据（tasks[] 批量模式；逐项点击打开各自面板）。
+      subagents?: SubagentData[]
       // 挂起的模型提问（question 工具；question_request 事件回填，作答后清除）。
       question?: QuestionRequest
       // question 工具的用户作答（随消息落库/事件回填，只读展示用）。
@@ -146,6 +148,8 @@ export type ChatBlock =
       diff?: AgentDiff
       // 子代理面板数据（随 task 工具结果落库，恢复后重建弹窗）。
       subagent?: SubagentData
+      // 批量扇出子代理数据（随 task 批量模式结果落库，恢复后重建弹窗）。
+      subagents?: SubagentData[]
       // LSP 检索结果（随 lsp 工具结果落库，恢复后渲染块复用跳转）。
       lsp?: LspToolDetails
       // 图片查看结果（随 view_image 工具结果落库，渲染缩略图与大图预览）。
@@ -389,6 +393,8 @@ export interface ExecutionToolContent {
 export interface ExecutionSubagentContent {
   name: string
   subagent?: SubagentData
+  // 批量扇出子代理数据（tasks[] 批量模式；展开内容逐项列出并可打开各自面板）。
+  subagents?: SubagentData[]
 }
 
 export interface ExecutionCompactionContent {

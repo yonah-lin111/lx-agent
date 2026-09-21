@@ -29,7 +29,36 @@ const buildStep = (stepId: string, toolCallId: string, description: string): Exe
   toolContent: { toolName: "task", toolCallId, args: {}, result: "" },
 })
 
+// 批量扇出步骤（subagentContent 携带逐项快照，无单项 subagent）。
+const buildBatchStep = (): ExecutionStep => ({
+  id: "step-batch",
+  turnIndex: 1,
+  stepIndex: 1,
+  kind: "subagent",
+  title: "task ×2",
+  status: "done",
+  subagentContent: {
+    name: "task ×2",
+    subagents: [buildSubagent("第一项"), buildSubagent("第二项")],
+  },
+  toolContent: { toolName: "task", toolCallId: "call-batch", args: {}, result: "" },
+})
+
 describe("useFlowSubagentPanel", () => {
+  it("批量扇出：按下标定位快照，越界回退最后一项，省略下标取第一项", () => {
+    const { result } = renderHook(() => useFlowSubagentPanel([buildBatchStep()]))
+
+    act(() => result.current.handleOpenSubagent("step-batch", 1))
+    expect(result.current.activeSubagentToolCall?.subagent?.description).toBe("第二项")
+    expect(result.current.activeSubagentToolCall?.toolCallId).toBe("call-batch")
+
+    act(() => result.current.handleOpenSubagent("step-batch", 5))
+    expect(result.current.activeSubagentToolCall?.subagent?.description).toBe("第二项")
+
+    act(() => result.current.handleOpenSubagent("step-batch"))
+    expect(result.current.activeSubagentToolCall?.subagent?.description).toBe("第一项")
+  })
+
   it("同 id 子代理的不同调用步骤使用各自 toolCallId 作为面板标识", () => {
     const steps = [
       buildStep("step-1", "call-1", "第一次调用"),

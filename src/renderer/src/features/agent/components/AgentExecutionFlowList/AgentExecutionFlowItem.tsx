@@ -54,7 +54,7 @@ export interface AgentExecutionFlowItemProps {
   step: ExecutionStep
   isExpanded: boolean
   onToggleExpand: () => void
-  onOpenSubagent?: (stepId: string) => void
+  onOpenSubagent?: (stepId: string, subagentIndex?: number) => void
   onAcceptPlan?: (plan: ProposedPlanData) => void
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   onFillInput?: (text: string) => void
@@ -521,7 +521,12 @@ export const AgentExecutionFlowItem = ({
           {step.toolContent && <FlowItemToolContent content={step.toolContent} />}
 
           {/* 子代理详情 */}
-          {step.subagentContent && <FlowItemSubagentContent content={step.subagentContent} />}
+          {step.subagentContent && (
+            <FlowItemSubagentContent
+              content={step.subagentContent}
+              onOpenSubagentItem={(subagentIndex) => onOpenSubagent?.(step.id, subagentIndex)}
+            />
+          )}
 
           {/* 上下文压缩详情 */}
           {step.compactionContent && (

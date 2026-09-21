@@ -364,6 +364,8 @@ export const AgentPage = ({
 
   // 当前打开的子代理面板 toolCallId（点击 AgentSubagentBlock 顶部 label 触发；从头部下方覆盖消息列表展开）。
   const [activeSubagentId, setActiveSubagentId] = useState<string | null>(null)
+  // 批量扇出（tasks[]）下选中的子代理下标；单项子代理恒为 0。
+  const [activeSubagentIndex, setActiveSubagentIndex] = useState(0)
 
   // 历史会话面板开关（右侧栏历史 icon 触发；与子代理面板互斥）。
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
@@ -380,12 +382,18 @@ export const AgentPage = ({
     for (const message of messages) {
       for (const block of message.blocks) {
         if (block.kind === "toolCall" && block.toolCallId === activeSubagentId) {
+          // 批量扇出：按选中下标定位快照，面板只展示该子代理的完整记录。
+          const batch = block.subagents
+          if (batch && batch.length > 0) {
+            const item = batch[Math.min(Math.max(activeSubagentIndex, 0), batch.length - 1)]
+            if (item) return { ...block, subagent: item }
+          }
           return block
         }
       }
     }
     return null
-  }, [messages, activeSubagentId])
+  }, [messages, activeSubagentId, activeSubagentIndex])
   // 当前视图模式：qa 为消息列表，flow 为执行流程视图；两者互斥并持久化，输出中禁止切换。
   const viewMode = useSyncExternalStore(agentViewStore.subscribe, agentViewStore.getViewMode)
 
@@ -399,8 +407,9 @@ export const AgentPage = ({
     setActiveSubagentId(null)
   }, [])
 
-  const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
+  const openSubagent = useCallback((toolCall: SubagentToolCall, subagentIndex = 0): void => {
     setActiveSubagentId(toolCall.toolCallId)
+    setActiveSubagentIndex(subagentIndex)
     setIsHistoryOpen(false)
   }, [])
 

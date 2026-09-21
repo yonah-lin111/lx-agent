@@ -52,7 +52,7 @@ export interface AgentMessageListProps {
   // 点击"从此分支"：从该用户轮切割复制历史到新会话。
   onFork?: (userMessageTimestamp: number) => void
   // 点击子代理 label 打开面板弹窗。
-  onOpenSubagent?: (toolCall: ToolCallBlock) => void
+  onOpenSubagent?: (toolCall: ToolCallBlock, subagentIndex?: number) => void
   // 面板是否打开（打开时禁用上下轮次导航，且滚动按钮接管当前打开面板的滚动）。
   isSubagentPanelOpen?: boolean
   // 当前打开面板的消息列表滚动容器（滚动按钮的目标）。

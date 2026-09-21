@@ -7,7 +7,12 @@ import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import type { AgentChatCore, AgentChatFrames } from "@/features/agent/hooks/useAgentChat.types"
 import type { ChatMessage } from "@/features/agent/types"
-import { extractQuestionAnswers, extractSubagentData, toChatMessage } from "@/features/agent/utils"
+import {
+  extractQuestionAnswers,
+  extractSubagentData,
+  extractSubagentsData,
+  toChatMessage,
+} from "@/features/agent/utils"
 import { synthesizeDesignUpdate } from "@/features/agent/utils/designSynthesizer"
 
 /**
@@ -252,6 +257,7 @@ export const useAgentChatEvents = ({
           // 最终快照（含聚合 usage）随结果回传，覆盖流式期间的中间快照。
           pendingToolUpdatesRef.current.delete(event.toolCallId)
           const subagent = extractSubagentData(event.result)
+          const subagents = extractSubagentsData(event.result)
           const answers = extractQuestionAnswers(event.result)
           patchToolCallBlocks(
             new Map([
@@ -263,6 +269,7 @@ export const useAgentChatEvents = ({
                   ...(event.toolName === "question" ? { question: undefined } : {}),
                   ...(answers !== undefined ? { answers } : {}),
                   ...(subagent !== undefined ? { subagent } : {}),
+                  ...(subagents !== undefined ? { subagents } : {}),
                 },
               ],
             ]),

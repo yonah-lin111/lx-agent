@@ -29,6 +29,14 @@ export const extractSubagentData = (partialResult: unknown): SubagentData | unde
   return details?.subagent
 }
 
+// 提取工具执行的批量子代理快照（partialResult/result 的 details.subagents；空数组视为缺省）。
+export const extractSubagentsData = (partialResult: unknown): SubagentData[] | undefined => {
+  if (!partialResult || typeof partialResult !== "object") return undefined
+  const details = (partialResult as { details?: { subagents?: SubagentData[] } }).details
+  const subagents = details?.subagents
+  return subagents && subagents.length > 0 ? subagents : undefined
+}
+
 // 提取 question 工具的用户作答（result 的 details.answers）。
 export const extractQuestionAnswers = (result: unknown): QuestionAnswer[] | undefined => {
   if (!result || typeof result !== "object") return undefined
@@ -698,6 +706,7 @@ export const toChatMessage = (
           durationMs: message.durationMs,
           ...(message.diff ? { diff: message.diff } : {}),
           ...(message.subagent ? { subagent: message.subagent } : {}),
+          ...(message.subagents ? { subagents: message.subagents } : {}),
           ...(message.lsp ? { lsp: message.lsp } : {}),
           ...(message.image ? { image: message.image } : {}),
         },
@@ -809,6 +818,7 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
           isError: block.isError,
           timestamp: message.timestamp ?? Date.now(),
           ...(block.subagent ? { subagent: block.subagent } : {}),
+          ...(block.subagents ? { subagents: block.subagents } : {}),
           ...(block.lsp ? { lsp: block.lsp } : {}),
           ...(block.image ? { image: block.image } : {}),
         },

@@ -400,10 +400,12 @@ export const buildExecutionSteps = (
         const paired = toolResultsByCallId.get(block.toolCallId)
         const pairedResult = paired?.block
         const pairedTimestamp = paired?.timestamp
+        const batchSubagents = block.subagents ?? pairedResult?.subagents
         const isSubagent =
           block.toolName === "task" ||
           block.subagent !== undefined ||
-          pairedResult?.subagent !== undefined
+          pairedResult?.subagent !== undefined ||
+          (batchSubagents !== undefined && batchSubagents.length > 0)
 
         let status: ExecutionStepStatus = "done"
         if (pairedResult?.isError || block.status === "error") {
@@ -457,7 +459,9 @@ export const buildExecutionSteps = (
 
         if (isSubagent) {
           const subagentData = block.subagent ?? pairedResult?.subagent
-          const subagentName = subagentData?.name || block.toolName
+          const subagentName =
+            subagentData?.name ||
+            (batchSubagents ? `${block.toolName} ×${batchSubagents.length}` : block.toolName)
           steps.push({
             id: `step-${stepIndex}-subagent-${block.toolCallId}`,
             messageId: message.id,
@@ -483,7 +487,8 @@ export const buildExecutionSteps = (
             tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
             subagentContent: {
               name: subagentName,
-              subagent: subagentData,
+              ...(subagentData ? { subagent: subagentData } : {}),
+              ...(batchSubagents ? { subagents: batchSubagents } : {}),
             },
             toolContent: {
               toolName: block.toolName,
