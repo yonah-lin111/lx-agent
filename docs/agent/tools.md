@@ -32,6 +32,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 ```
 
 - **分段调度**：同一助手消息内的工具调用按 `executionMode` 分段执行——连续 `parallel` 调用组成一个并发段，`sequential` 工具独占一段作为屏障，段间保持消息顺序；会话级 `toolExecution: "sequential"` 仍强制整批串行。
+- **批量提示**：调度是反应式的——只有模型在同一条助手消息里发出多个调用才会并发。因此行为层提示词含 `## Tool Call Batching` 硬规则（独立只读调用必须合并到一步、依赖调用分步、变更类调用不合并），且只读查询工具与非 serial MCP 工具在描述尾部追加调度提示（`schedulingHints.ts`：`read`/`ls`/`grep`/`find` 用只读措辞，MCP 按 `annotations.readOnlyHint` 选择措辞，`serial` server 不追加）。
 
 ### 1.1 契约铁律
 
@@ -129,6 +130,7 @@ export const PROMPT_ORDERS = {
   - `jsonSchemaToZod` 动态将 JSON Schema 转换为运行时 Zod 校验器，无法无损解析的高级 Schema 降级为宽松 Record 透传。
   - 每次会话装配按能力快照中的 MCP 白名单包装注册（`wrapMcpTool`），未连接或未授权工具不进入工具集；MCP 工具始终走审批门控，不因名称进入豁免/默认放行（见 permissions.md §5.1）。
   - **执行模式**：MCP 工具默认 `executionMode: "parallel"`（同批次并发）；有状态 server 可在 `agent.mcp.<server>` 配置 `"serial": true` 回退为 sequential（独占屏障），配置项与 `command` / `cwd` / `environment` / `disabled` / `timeout` 同级。
+  - **描述调度提示**：非 serial server 的工具描述尾部追加并发提示（`readOnlyHint: true` 的查询工具用只读查询措辞），引导模型把独立调用放进同一条助手消息；`serial: true` 时不追加。
 
 ---
 

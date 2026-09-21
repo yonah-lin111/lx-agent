@@ -5,6 +5,7 @@ import type { AgentTool } from "../core/types"
 import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
 import type { SessionDeps } from "./read"
+import { READ_ONLY_PARALLEL_HINT } from "./schedulingHints"
 import { globToRegExp, walkFiles } from "./search"
 import { DEFAULT_MAX_BYTES, truncateHead } from "./truncate"
 
@@ -142,7 +143,7 @@ export const createFindTool = (
 ): AgentTool<typeof findSchema> => ({
   name: "find",
   label: "Find files",
-  description: `Find files in the project matching a glob pattern, returning paths relative to search directory. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB.`,
+  description: `Find files in the project matching a glob pattern, returning paths relative to search directory. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB.${READ_ONLY_PARALLEL_HINT}`,
   inputSchema: findSchema,
   execute: async (toolCallId, params, signal) => {
     const searchPath = resolveToCwd(params.path || ".", cwd)

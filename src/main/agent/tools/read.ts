@@ -3,6 +3,7 @@ import { z } from "zod"
 import type { AgentTool } from "../core/types"
 import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
+import { READ_ONLY_PARALLEL_HINT } from "./schedulingHints"
 import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult } from "./truncate"
 
 export const MAX_READ_LINE_LENGTH = 2000
@@ -56,7 +57,8 @@ export const createReadTool = (
   name: "read",
   label: "Read file",
   description:
-    "Read content of a file or directory. Supports line-numbered pagination (<line>: <content>) for large files or entry listings for directories. Relative paths resolve against the project root; absolute paths are supported.",
+    "Read content of a file or directory. Supports line-numbered pagination (<line>: <content>) for large files or entry listings for directories. Relative paths resolve against the project root; absolute paths are supported." +
+    READ_ONLY_PARALLEL_HINT,
   inputSchema: readSchema,
   // 纯只读无副作用：与同批次的 grep/find/ls 等只读调用并发执行（分段调度）。
   executionMode: "parallel",

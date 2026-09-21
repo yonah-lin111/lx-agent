@@ -5,6 +5,7 @@ import type { AgentTool } from "../core/types"
 import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
 import type { SessionDeps } from "./read"
+import { READ_ONLY_PARALLEL_HINT } from "./schedulingHints"
 import { DEFAULT_MAX_BYTES, truncateHead } from "./truncate"
 
 const DEFAULT_LIMIT = 500
@@ -21,7 +22,7 @@ export const createLsTool = (
 ): AgentTool<typeof lsSchema> => ({
   name: "ls",
   label: "List directory",
-  description: `List contents of a directory in the project. Entries are sorted alphabetically, directories have a trailing "/" suffix, and hidden files are included. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB.`,
+  description: `List contents of a directory in the project. Entries are sorted alphabetically, directories have a trailing "/" suffix, and hidden files are included. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB.${READ_ONLY_PARALLEL_HINT}`,
   inputSchema: lsSchema,
   execute: async (toolCallId, params) => {
     const dirPath = resolveToCwd(params.path || ".", cwd)

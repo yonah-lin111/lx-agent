@@ -142,6 +142,32 @@ describe("wrapMcpTool 执行模式", () => {
   })
 })
 
+describe("wrapMcpTool 描述调度提示", () => {
+  const def = {
+    name: "read",
+    description: "Read a file.",
+    inputSchema: { type: "object", properties: {} },
+  }
+
+  it("默认并行：描述尾部追加同批并发提示", () => {
+    const tool = wrapMcpTool("fs", def as never, { callTool: vi.fn() } as never, 1000)
+    expect(tool.description).toContain("Read a file.")
+    expect(tool.description).toContain("issued together in one assistant step")
+    expect(tool.description).not.toContain("read-only query tool")
+  })
+
+  it("readOnlyHint 查询工具使用只读查询措辞", () => {
+    const readOnlyDef = { ...def, annotations: { readOnlyHint: true } }
+    const tool = wrapMcpTool("ctx7", readOnlyDef as never, { callTool: vi.fn() } as never, 1000)
+    expect(tool.description).toContain("read-only query tool")
+  })
+
+  it("server 标记 serial 时不追加提示（独占执行）", () => {
+    const tool = wrapMcpTool("browser", def as never, { callTool: vi.fn() } as never, 1000, true)
+    expect(tool.description).toBe("Read a file.")
+  })
+})
+
 describe("McpManager 连接并发", () => {
   let tmpDir: string
   let gates: Array<() => void>
