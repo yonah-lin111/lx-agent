@@ -90,11 +90,9 @@ export const AgentExecutionFlowItem = ({
   const hasTokenMetrics =
     (step.tokens?.input ?? 0) > 0 || (step.tokens?.output ?? 0) > 0 || (step.tokens?.total ?? 0) > 0
   const showTokenMetrics = !isRunning && hasTokenMetrics
+  // 并行批次用量整批共享同一份模型请求用量：批次内每一项都标注「并行总计」。
   const isParallelBatchTotal = Boolean(
-    step.kind !== "subagent" &&
-      step.parallel &&
-      step.parallel.total > 1 &&
-      step.parallel.index === step.parallel.total,
+    step.kind !== "subagent" && step.parallel && step.parallel.total > 1,
   )
   const showFooter =
     showTokenMetrics ||

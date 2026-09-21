@@ -203,7 +203,7 @@ export const agent = {
     "Parallel call from single model response ({{index}}/{{total}}, shared context)",
   parallelBatchTotal: "Batch Total",
   parallelBatchTokenNotice:
-    "Total token consumption for this parallel batch ({{total}} items, settled on last item)",
+    "Total token consumption for this parallel batch ({{total}} items sharing one model request)",
   tokenSaverTitle: "Token Saver",
   tokenSaverRtkBadge: "RTK −{{saved}}",
   tokenSaverRtkDetail: "RTK: {{filters}} — saved {{saved}} chars",

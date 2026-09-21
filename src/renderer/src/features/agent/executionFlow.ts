@@ -343,6 +343,18 @@ export const buildExecutionSteps = (
     const toolCallBlocksCount = message.blocks.filter((b) => b.kind === "toolCall").length
     let toolCallIndexInMessage = 0
 
+    // 一次模型请求只产生一份 usage：挂在工具项上结算（同批各项共享同一份，标注为整批合计），
+    // 含工具调用的回合不再把同一数字重复挂到回复步骤；无工具调用时仍由回复/思考步骤承载。
+    const messageUsageTokens = message.usage
+      ? {
+          input: message.usage.input,
+          output: message.usage.output,
+          cacheRead: message.usage.cacheRead,
+          total: message.usage.totalTokens,
+        }
+      : undefined
+    const toolBatchTokens = toolCallBlocksCount > 0 ? messageUsageTokens : undefined
+
     if (turn !== lastTurnForParallelBatch) {
       lastTurnForParallelBatch = turn
       turnParallelBatchCount = 0
@@ -459,18 +471,9 @@ export const buildExecutionSteps = (
               }
             : undefined
 
-        const isLastToolCallInBatch =
-          toolCallBlocksCount <= 1 || toolCallIndexInMessage === toolCallBlocksCount
-
-        const toolTokens =
-          !hasTextBlock && message.usage && isLastToolCallInBatch
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined
+        const toolTokens = toolBatchTokens
+        // 并行批次内各项共享同一次模型请求用量：标记后由聚合方（组统计 / 轮次统计）按批次去重。
+        const isBatchSharedUsage = Boolean(parallelMeta && parallelMeta.total > 1)
 
         if (isSubagent) {
           const subagentData = block.subagent ?? pairedResult?.subagent
@@ -505,6 +508,9 @@ export const buildExecutionSteps = (
                     total: batchUsage.totalTokens,
                   }
                 : toolTokens,
+            ...(isBatchSharedUsage && toolTokens && !subagentData?.usage && !batchUsage
+              ? { batchSharedTokens: true }
+              : {}),
             parentTokens: subagentData?.usage ? toolTokens : undefined,
             tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
             subagentContent: {
@@ -534,6 +540,7 @@ export const buildExecutionSteps = (
             title: block.toolName,
             subtitle: formatPreview(JSON.stringify(block.args), 60),
             status,
+            ...(isBatchSharedUsage && toolTokens ? { batchSharedTokens: true } : {}),
             timestamp: toolStartedAt ?? message.timestamp,
             startedAt: toolStartedAt,
             completedAt: toolCompletedAt,
@@ -588,14 +595,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount > 0 ? undefined : messageUsageTokens,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           planContent: block.plan,
           assistantContent: {
@@ -640,14 +640,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount > 0 ? undefined : messageUsageTokens,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           reviewFindingsContent: block.findings,
           assistantContent: {
@@ -693,14 +686,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount > 0 ? undefined : messageUsageTokens,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           frontDesignContent: block.design,
           assistantContent: {
@@ -746,14 +732,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount > 0 ? undefined : messageUsageTokens,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           assistantContent: {
             text: block.text,

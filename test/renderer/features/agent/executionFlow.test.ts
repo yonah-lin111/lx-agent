@@ -92,12 +92,13 @@ describe("executionFlow", () => {
       expect(steps[2].toolContent?.result).toContain("src/main.ts")
       expect(steps[2].toolContent?.isError).toBe(false)
 
-      // 4. Assistant Text
+      // 4. Assistant Text（含工具调用的回合：用量结算在工具步骤，回复步骤不重复展示）
       expect(steps[3].kind).toBe("assistant")
       expect(steps[3].turnIndex).toBe(1)
       expect(steps[3].stepIndex).toBe(3)
       expect(steps[3].title).toBe("已找到 main.ts 文件如下：")
-      expect(steps[3].tokens?.total).toBe(150)
+      expect(steps[3].tokens).toBeUndefined()
+      expect(steps[2].tokens?.total).toBe(150)
     })
 
     it("支持系统提示词装配并注入 Step #0", () => {
@@ -769,7 +770,7 @@ describe("executionFlow", () => {
       expect(steps[1].parallel).toBeUndefined()
     })
 
-    it("当 assistant 消息包含多个并发 toolCall 时，正确标记 parallel 元数据且仅在最后一个 item 结算全部 tokens，前面项不分配", () => {
+    it("当 assistant 消息包含多个并发 toolCall 时，正确标记 parallel 元数据且整批共享同一份模型请求 tokens", () => {
       const messages: ChatMessage[] = [
         {
           id: "u1",
@@ -819,7 +820,14 @@ describe("executionFlow", () => {
         batchId: "a1",
         batchIndex: 0,
       })
-      expect(steps[1].tokens).toBeUndefined()
+      // 同批各项共享同一份请求用量（整批合计），不再只挂在末项。
+      const batchTokens = {
+        input: 7400,
+        output: 62,
+        cacheRead: 1000,
+        total: 7462,
+      }
+      expect(steps[1].tokens).toEqual(batchTokens)
 
       expect(steps[2].kind).toBe("tool")
       expect(steps[2].parallel).toEqual({
@@ -828,12 +836,7 @@ describe("executionFlow", () => {
         batchId: "a1",
         batchIndex: 0,
       })
-      expect(steps[2].tokens).toEqual({
-        input: 7400,
-        output: 62,
-        cacheRead: 1000,
-        total: 7462,
-      })
+      expect(steps[2].tokens).toEqual(batchTokens)
     })
 
     it("undo 步骤跟随当前对话轮次位置，且连续多个 undo 消息自动堆叠合并", () => {

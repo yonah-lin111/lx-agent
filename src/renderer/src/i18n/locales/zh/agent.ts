@@ -193,7 +193,7 @@ export const agent = {
   parallelCall: "并行 {{index}}/{{total}}",
   parallelToolNotice: "单次大模型响应并发触发（第 {{index}}/{{total}} 项，共享该次请求的上下文）",
   parallelBatchTotal: "并行总计",
-  parallelBatchTokenNotice: "本次并发调用的整批总消耗（共 {{total}} 项，于末项统一结算）",
+  parallelBatchTokenNotice: "本次并发调用的整批总消耗（共 {{total}} 项共享同一份模型请求用量）",
   tokenSaverTitle: "Token 节省",
   tokenSaverRtkBadge: "RTK −{{saved}}",
   tokenSaverRtkDetail: "RTK：{{filters}} — 节省 {{saved}} 字符",

@@ -112,12 +112,22 @@ export const AgentExecutionFlowGroup = ({
       let firstTs: number | undefined
       let lastTs: number | undefined
       let lastStepDuration: number | undefined
+      // 并行批次共享同一份请求用量：同批次只累计一次。
+      const countedBatchIds = new Set<string>()
 
       for (const step of steps) {
         if (step.durationMs !== undefined) {
           sumDuration += step.durationMs
         }
-        if (step.tokens) {
+        const batchId = step.parallel?.batchId
+        const isSharedBatchToken = Boolean(step.batchSharedTokens && batchId)
+        const shouldCountTokens =
+          Boolean(step.tokens) &&
+          (!isSharedBatchToken || (batchId !== undefined && !countedBatchIds.has(batchId)))
+        if (isSharedBatchToken && batchId) {
+          countedBatchIds.add(batchId)
+        }
+        if (step.tokens && shouldCountTokens) {
           if (step.tokens.total !== undefined) {
             tokens += step.tokens.total
           }

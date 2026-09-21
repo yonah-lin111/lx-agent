@@ -37,8 +37,20 @@ export const useFlowStats = ({
       }
     >()
 
+    // 并行批次共享同一份模型请求用量：全表（跨轮次）同批次只累计一次。
+    const countedBatchIds = new Set<string>()
+
     for (const step of steps) {
       if (step.turnIndex <= 0) continue
+
+      const batchId = step.parallel?.batchId
+      const isSharedBatchToken = Boolean(step.batchSharedTokens && batchId)
+      const shouldCountTokens =
+        Boolean(step.tokens) &&
+        (!isSharedBatchToken || (batchId !== undefined && !countedBatchIds.has(batchId)))
+      if (isSharedBatchToken && batchId) {
+        countedBatchIds.add(batchId)
+      }
 
       let current = map.get(step.turnIndex)
       if (!current) {
@@ -85,7 +97,7 @@ export const useFlowStats = ({
         current.lastStepDurationMs = step.durationMs
       }
 
-      if (step.kind !== "compaction" && step.tokens) {
+      if (step.kind !== "compaction" && step.tokens && shouldCountTokens) {
         if (step.tokens.input) current.inputTokens += step.tokens.input
         if (step.tokens.output) current.outputTokens += step.tokens.output
         if (step.tokens.cacheRead) current.cacheReadTokens += step.tokens.cacheRead
@@ -164,6 +176,8 @@ export const useFlowStats = ({
     let totalTokens = 0
     let toolCallsCount = 0
     let turnsCount = 0
+    // 并行批次共享同一份模型请求用量：同批次只累计一次。
+    const countedBatchIds = new Set<string>()
 
     for (const step of steps) {
       if (step.turnIndex > turnsCount) {
@@ -172,7 +186,15 @@ export const useFlowStats = ({
       if (step.kind === "tool" || step.kind === "subagent") {
         toolCallsCount++
       }
-      if (step.tokens) {
+      const batchId = step.parallel?.batchId
+      const isSharedBatchToken = Boolean(step.batchSharedTokens && batchId)
+      const shouldCountTokens =
+        Boolean(step.tokens) &&
+        (!isSharedBatchToken || (batchId !== undefined && !countedBatchIds.has(batchId)))
+      if (isSharedBatchToken && batchId) {
+        countedBatchIds.add(batchId)
+      }
+      if (step.tokens && shouldCountTokens) {
         if (step.tokens.input) inputTokens += step.tokens.input
         if (step.tokens.output) outputTokens += step.tokens.output
         if (step.tokens.cacheRead) cacheReadTokens += step.tokens.cacheRead

@@ -168,7 +168,7 @@ describe("AgentExecutionFlowItem - 并行工具调用样式与 Token 结算测�
   })
 
   describe("3. 完整列表集成 (AgentExecutionFlowList)", () => {
-    it("并发工具调用在列表中只在最后一个 item 展示 Token 指标与并行总计文案", () => {
+    it("并发工具调用在列表中每一项都展示整批共享的 Token 指标与并行总计文案", () => {
       const messages: ChatMessage[] = [
         {
           id: "u1",
@@ -223,20 +223,20 @@ describe("AgentExecutionFlowItem - 并行工具调用样式与 Token 结算测�
       expect(parallelBadges[0].textContent).toBe("Parallel 1/2")
       expect(parallelBadges[1].textContent).toBe("Parallel 2/2")
 
-      // 列表中应该只有 1 处并行列出了 tokens (在最后一个 item)
+      // 整批共享同一份请求用量：批次内每一项都标注并行总计
       const tokenTotalBadges = screen.getAllByTestId("flow-item-parallel-token-total")
-      expect(tokenTotalBadges).toHaveLength(1)
-      expect(tokenTotalBadges[0].textContent).toContain("Batch Total")
+      expect(tokenTotalBadges).toHaveLength(2)
+      for (const badge of tokenTotalBadges) {
+        expect(badge.textContent).toContain("Batch Total")
+      }
 
-      // 在展开的两个 tool 步骤项中：第一个步骤的 footer 不应包含 token 元素
+      // 两个 tool 步骤项的 footer 均包含共享 token 指标
       const toolSteps = container.querySelectorAll(".agent-execution-flow-step--tool")
       expect(toolSteps).toHaveLength(2)
       expect(
-        within(toolSteps[0] as HTMLElement).queryByTestId("flow-item-parallel-token-total"),
-      ).toBeNull()
-      expect(within(toolSteps[0] as HTMLElement).queryByText(/IN /)).toBeNull()
-
-      // 第二个步骤（末尾项）包含 token 元素与并行总计标记
+        within(toolSteps[0] as HTMLElement).getByTestId("flow-item-parallel-token-total"),
+      ).toBeDefined()
+      expect(within(toolSteps[0] as HTMLElement).getByText("IN 5.0k")).toBeDefined()
       expect(
         within(toolSteps[1] as HTMLElement).getByTestId("flow-item-parallel-token-total"),
       ).toBeDefined()
