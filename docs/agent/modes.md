@@ -12,7 +12,7 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 - **契约**：`CollaborationMode = "build" | "plan" | "review" | "design"`；历史会话中的 `"default"` 由 `normalizeCollaborationMode` 归一化为 `"build"`。
 - **提示词**：`SystemPromptManager` 的 COLLABORATION_MODE 段（order 380）按模式返回对应英文指令模板；Plan / Review 模板中明确声明「模式不因用户语气或祈使句改变」与「写入工具被禁用」。
 - **运行时门禁**：Plan / Review / Design 下 `write` / `edit` / `apply_patch` / `todowrite` / `memory` 由 `PermissionManager` 直接 deny（`design` 另禁 `wireframe`），模型收到带模式说明的错误结果并以对应 XML 协议输出（见 permissions.md §2）。
-- **子代理派发**：`task` 由 `agent.permissions.modes.<mode>.subagents` 白名单控制——非 build 模式缺省仅允许内置探索子代理 `explorer`，可勾选其他或自定义角色（空数组 = 全禁）；能力集含模式硬基线工具的角色（含未限制能力集）在该模式下永久禁用（设置页锁定 + 门控拒绝）；父模式硬基线经 `parentMode` 叠加到子代理的每次工具调用，派发不能绕过只读约束。
+- **子代理派发**：`task` 由 `agent.permissions.modes.<mode>.subagents` 白名单控制——非 build 模式缺省仅允许内置探索子代理 `explorer`，可勾选其他或自定义角色（空数组 = 全禁）；能力集含模式硬基线工具的角色（含未限制能力集）在该模式下永久禁用（设置页锁定 + 门控拒绝）；父模式硬基线经 `parentMode` 叠加到子代理的每次工具调用，派发不能绕过只读约束；模式段同时声明该限制，`task` 工具描述的 `Available agent types` 按模式裁剪（模型可见目录 = 实际可派发角色）。
 - **共享解析**：`utils.ts` 的 `parseTextWithProposedPlan()` 是统一标签提取器——同一段助手文本中按出现顺序识别 `<review_findings>` / `<proposed_plan>` / `<front_design>` / `<front_design_update>`，拆成结构化块与普通文本块，支持标签未闭合的流式容错与多块级联解析；结构化块同时驱动 `AgentMessageList`（聊天流卡片）与 `AgentExecutionFlowList`（执行步骤），两处复用同一卡片组件。
 
 ---

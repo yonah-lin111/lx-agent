@@ -92,6 +92,10 @@ describe("Context Window Guidance Harness 深度测试", () => {
     expect(planAssembly.rendered).toContain("<proposed_plan>")
     expect(planAssembly.rendered).toContain('<context_window_guidance level="warning">')
     expect(planAssembly.rendered).toContain("85%")
+    // 子代理派发限制写入模式段（与 task 工具描述的模式级裁剪同源）
+    expect(planAssembly.rendered).toContain(
+      "Sub-agent dispatch (`task`) is limited to the roles listed in the task tool's `Available agent types`",
+    )
   })
 
   it("模式协同测试：在 Review Mode 下同时装配，Guidance 与 review_findings 契约互不干扰", async () => {
