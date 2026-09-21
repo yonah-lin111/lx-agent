@@ -282,8 +282,6 @@ export interface ExecutionStep {
     cacheRead?: number
     total?: number
   }
-  // 该 tokens 为整批共享的模型请求用量（同批多项数值相同）：聚合时按批次去重，避免重复累计。
-  batchSharedTokens?: boolean
   // 父级调度/生成该步骤的 Token 用量（Subagent 步骤专用：区分子代理内部消耗与主模型派发消耗）。
   parentTokens?: {
     input?: number
