@@ -32,16 +32,14 @@ export const FlowItemSubagentContent = ({
   const { t } = useTranslation()
   const batch = content.subagents && content.subagents.length > 0 ? content.subagents : undefined
 
-  // 批量汇总：完成数与并行 token 合计（终态优先，旧数据回退步骤状态）。
+  // 批量完成进度（终态优先，旧数据回退步骤状态）；逐项 Token 明细在各条目底部展示。
   const batchStats = useMemo(() => {
     if (!batch) return undefined
     let done = 0
-    let totalTokens = 0
     for (const item of batch) {
       if (resolveSubagentDisplayStatus(item, fallbackStatus) === "done") done += 1
-      totalTokens += item.usage.totalTokens
     }
-    return { done, total: batch.length, totalTokens }
+    return { done, total: batch.length }
   }, [batch, fallbackStatus])
 
   return (
@@ -59,10 +57,6 @@ export const FlowItemSubagentContent = ({
                 total: batchStats.total,
               })}
             </span>
-            <span aria-hidden="true" className="opacity-40">
-              ·
-            </span>
-            <span>Σ {formatTokensShort(batchStats.totalTokens)} tok</span>
           </div>
         )}
       </div>

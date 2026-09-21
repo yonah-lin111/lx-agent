@@ -95,9 +95,9 @@ describe("FlowItemSubagentContent 批量扇出", () => {
     expect(rows[1]?.getAttribute("data-subagent-row")).toBe("tool")
     expect(rows[1]?.textContent).toContain("read")
 
-    // 汇总行：完成数与并行 token 合计（1200 + 800）。
+    // 头部仅保留完成进度，不再展示批量 Token 合计。
     expect(container.textContent).toContain("1/2 completed")
-    expect(container.textContent).toContain("Σ 2.0k tok")
+    expect(container.textContent).not.toContain("Σ")
 
     fireEvent.click(buttons[1] as HTMLElement)
     expect(onOpenSubagentItem).toHaveBeenCalledWith(1)
