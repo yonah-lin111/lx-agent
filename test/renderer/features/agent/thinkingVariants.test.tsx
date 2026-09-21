@@ -21,7 +21,7 @@ describe("Thinking Variants Display & Components", () => {
     cleanup()
   })
 
-  it("AgentModelSelect 触发按钮不再内嵌思考等级徽章（等级由父级以 LxTag 展示）", () => {
+  it("AgentModelSelect 触发按钮内联展示思考等级（纯文本、无边框、非 LxTag）", () => {
     render(
       <AgentModelSelect
         value="openai::gpt-4o"
@@ -33,8 +33,23 @@ describe("Thinking Variants Display & Components", () => {
       />,
     )
 
-    expect(document.querySelector(".agent-model-variant-badge")).toBeNull()
-    expect(screen.queryByText("high")).toBeNull()
+    const variantEl = document.querySelector(".agent-model-variant")
+    expect(variantEl).not.toBeNull()
+    expect(variantEl?.textContent).toBe("high")
+    expect(variantEl?.className).not.toContain("border")
+    expect(document.querySelector(".lx-tag")).toBeNull()
+  })
+
+  it("AgentModelSelect 未选中思考等级时不展示等级文本", () => {
+    render(
+      <AgentModelSelect
+        value="openai::gpt-4o"
+        onChange={vi.fn()}
+        options={[{ value: "openai::gpt-4o", label: "GPT-4o" }]}
+      />,
+    )
+
+    expect(document.querySelector(".agent-model-variant")).toBeNull()
   })
 
   it("AgentModelSelect 直接点击配置了思考等级的模型时应选用默认等级且只触发一次切换回调", () => {
@@ -151,7 +166,10 @@ describe("Thinking Variants Display & Components", () => {
     fireEvent.click(screen.getByRole("button", { name: /claude 3\.7 sonnet/i }))
     fireEvent.mouseEnter(screen.getByRole("option", { name: /claude 3\.7 sonnet/i }))
 
-    const lowItem = (await screen.findByText("low")).closest<HTMLElement>(".lx-menu-item")
+    // 触发按钮内联展示当前等级 low，二级菜单项需按 .lx-menu-item 作用域定位。
+    const lowItem = (
+      await screen.findByText("low", { selector: ".lx-menu-item span" })
+    ).closest<HTMLElement>(".lx-menu-item")
     expect(lowItem?.getAttribute("data-active")).toBe("true")
     expect(lowItem?.className).toContain("bg-white/10")
     expect(lowItem?.className).not.toContain("!bg-")

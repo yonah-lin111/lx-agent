@@ -1,7 +1,8 @@
-import { Check, ChevronDown, ChevronRight } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, Search } from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { LxInput } from "@/components/ui/LxInput"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import type { LxSelectGroup, LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -10,6 +11,7 @@ import {
   useFloatingLayer,
   useLayerPresence,
 } from "@/components/ui/useFloatingLayer"
+import { isFuzzyMatch } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import { useTranslation } from "@/i18n"
 
 // 模型选项扩展类型（携带可选思考等级）。
@@ -57,9 +59,15 @@ const isGroup = (
     | LxSelectGroup<string>,
 ): item is AgentModelSelectGroup | LxSelectGroup<string> => "options" in item
 
+const flattenOptions = (
+  options: AgentModelSelectProps["options"],
+): (AgentModelSelectOption | LxSelectOption<string>)[] =>
+  options.flatMap((item) => (isGroup(item) ? item.options : [item]))
+
 /**
  * AgentModelSelect - Agent 输入栏的模型选择器，向上弹出并限制宽度。
- * 内部集成思考等级二级菜单（LxTooltip 悬停展示）；当前思考等级由父级在触发按钮右侧以 LxTag 展示。
+ * 触发按钮右侧内联展示当前思考等级（纯文本，无边框）；下拉顶部提供模型名模糊搜索，
+ * 支持上下键移动高亮、回车选中，并集成思考等级二级菜单（LxTooltip 悬停展示）。
  */
 export const AgentModelSelect = ({
   value,
@@ -78,10 +86,16 @@ export const AgentModelSelect = ({
     top: number
     minWidth: number
   } | null>(null)
+  // 搜索关键词（仅按模型名过滤）。
+  const [query, setQuery] = useState("")
+  // 键盘 / 悬停共享的高亮项下标（基于过滤后的可选项顺序，不含分组标题）。
+  const [activeIndex, setActiveIndex] = useState(-1)
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const listboxRef = useRef<HTMLDivElement | null>(null)
+  const optionsRef = useRef<HTMLDivElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
 
   // 挂载 / 退场状态机。
   const { shouldRender, isAnimatingOut } = useLayerPresence(isOpen)
@@ -118,24 +132,92 @@ export const AgentModelSelect = ({
 
   // 展开时滚动到选中项
   useEffect(() => {
-    if (!isOpen || !shouldRender || !listboxRef.current) return
-    const selectedEl = listboxRef.current.querySelector(
-      '[aria-selected="true"]',
-    ) as HTMLElement | null
+    if (!isOpen || !shouldRender) return
+    const container = optionsRef.current
+    if (!container) return
+    const selectedEl = container.querySelector('[aria-selected="true"]') as HTMLElement | null
     if (!selectedEl) return
-    const listbox = listboxRef.current
-    listbox.scrollTop =
-      selectedEl.offsetTop - listbox.clientHeight / 2 + selectedEl.clientHeight / 2
+    container.scrollTop =
+      selectedEl.offsetTop - container.clientHeight / 2 + selectedEl.clientHeight / 2
   }, [isOpen, shouldRender, value])
 
+  // 展开后聚焦搜索框，键盘可直接输入过滤。
+  useEffect(() => {
+    if (!isOpen || !shouldRender) return
+    searchInputRef.current?.focus({ preventScroll: true })
+  }, [isOpen, shouldRender])
+
+  // 关闭后清空搜索词，下次展开回到全量列表。
+  useEffect(() => {
+    if (isOpen) return
+    setQuery("")
+  }, [isOpen])
+
   const selectedOption = useMemo(() => {
-    return options
-      .flatMap((item) => (isGroup(item) ? item.options : [item]))
-      .find((item) => item.value === value) as AgentModelSelectOption | undefined
+    return flattenOptions(options).find((item) => item.value === value) as
+      | AgentModelSelectOption
+      | undefined
   }, [options, value])
+
+  // 关键词过滤（仅模型名，大小写不敏感）；分组内无命中则整组隐藏。
+  const filteredOptions = useMemo(() => {
+    const keyword = query.trim().toLocaleLowerCase()
+    if (!keyword) return options
+    return options
+      .map((item) =>
+        isGroup(item)
+          ? {
+              ...item,
+              options: item.options.filter((option) =>
+                isFuzzyMatch(keyword, option.label.toLocaleLowerCase()),
+              ),
+            }
+          : item,
+      )
+      .filter((item) =>
+        isGroup(item)
+          ? item.options.length > 0
+          : isFuzzyMatch(keyword, item.label.toLocaleLowerCase()),
+      )
+  }, [options, query])
+
+  // 过滤后的可选项（分组标题不参与键盘导航）。
+  const selectableOptions = useMemo(() => flattenOptions(filteredOptions), [filteredOptions])
+
+  // 选项值 → 可选项下标：键盘高亮按过滤后的顺序定位。
+  const optionIndexByValue = useMemo(() => {
+    const indexByValue = new Map<string, number>()
+    selectableOptions.forEach((option, index) => indexByValue.set(option.value, index))
+    return indexByValue
+  }, [selectableOptions])
+
+  // 展开或过滤结果变化时，高亮定位到当前选中模型（不可见则落到首条）。
+  useEffect(() => {
+    if (!isOpen) return
+    const selectedIndex = selectableOptions.findIndex((option) => option.value === value)
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : selectableOptions.length > 0 ? 0 : -1)
+  }, [isOpen, query, value, selectableOptions])
+
+  // 键盘 / 悬停移动高亮时，将高亮项滚动进可视区。
+  useEffect(() => {
+    if (!isOpen || activeIndex < 0) return
+    const container = optionsRef.current
+    if (!container) return
+    const activeEl = container.querySelector<HTMLElement>('[data-keyboard-active="true"]')
+    if (!activeEl) return
+    const itemTop = activeEl.offsetTop
+    const itemBottom = itemTop + activeEl.offsetHeight
+    if (itemTop < container.scrollTop) {
+      container.scrollTop = itemTop
+    } else if (itemBottom > container.scrollTop + container.clientHeight) {
+      container.scrollTop = itemBottom - container.clientHeight
+    }
+  }, [isOpen, activeIndex])
 
   const handleSelect = (modelVal: string, chosenVariant?: string): void => {
     setIsOpen(false)
+    // 选中后焦点回到触发按钮，保持键盘流可继续。
+    buttonRef.current?.focus()
     // 换模型：variant 随 onChange 一次性提交，避免二次触发回调导致重复切换。
     if (modelVal !== value) {
       onChange(modelVal, chosenVariant)
@@ -147,12 +229,50 @@ export const AgentModelSelect = ({
     }
   }
 
+  // 计算某选项被选中时应提交的思考等级（与鼠标点击行语义一致）。
+  const resolveChosenVariant = (
+    item: AgentModelSelectOption | LxSelectOption<string>,
+  ): string | undefined => {
+    const defaultVar = (item as AgentModelSelectOption).defaultVariant
+    return item.value === value ? (variant ?? defaultVar) : defaultVar
+  }
+
+  const handleSearchKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ): void => {
+    // 输入法组合态回车用于确认候选词，不触发选中。
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault()
+      if (selectableOptions.length === 0) return
+      setActiveIndex((current) => {
+        const next = event.key === "ArrowDown" ? current + 1 : current - 1
+        return Math.min(Math.max(next, 0), selectableOptions.length - 1)
+      })
+      return
+    }
+    if (event.key === "Enter") {
+      event.preventDefault()
+      const target = selectableOptions[activeIndex]
+      if (!target) return
+      handleSelect(target.value, resolveChosenVariant(target))
+      return
+    }
+    if (event.key === "Escape") {
+      setIsOpen(false)
+      buttonRef.current?.focus()
+    }
+  }
+
   const renderOption = (
     item: AgentModelSelectOption | LxSelectOption<string>,
+    flatIndex: number,
     isGrouped = false,
   ): React.JSX.Element => {
     const isSelected = item.value === value
     const modelItem = item as AgentModelSelectOption
+    // 选中项自身高亮由 active 承担，键盘高亮不叠加 aria-selected（避免语义混淆）。
+    const isKeyboardActive = flatIndex >= 0 && flatIndex === activeIndex && !isSelected
     // 优先使用选项自身携带的 variants，已选中的模型可兜底使用传入的 variants prop
     const itemVariants =
       modelItem.variants && modelItem.variants.length > 0
@@ -163,6 +283,8 @@ export const AgentModelSelect = ({
     const defaultVar = modelItem.defaultVariant
     // 未选中显式等级时 default 项高亮（模型未配置默认等级也始终展示 default 项）。
     const isDefaultActive = isSelected && !variant
+    const keyboardActiveClass = isKeyboardActive ? "bg-white/10 text-white hover:bg-white/10" : ""
+    const keyboardActiveAttr = isKeyboardActive ? "true" : undefined
 
     if (itemVariants && itemVariants.length > 0) {
       return (
@@ -210,8 +332,12 @@ export const AgentModelSelect = ({
         >
           <LxMenuItem
             active={isSelected}
-            className={`group ${isGrouped ? "pl-5" : ""}`}
+            className={`group ${isGrouped ? "pl-5" : ""} ${keyboardActiveClass}`}
             menuRole="option"
+            data-keyboard-active={keyboardActiveAttr}
+            onMouseEnter={() => {
+              if (flatIndex >= 0) setActiveIndex(flatIndex)
+            }}
             trailing={
               <>
                 {isSelected ? <Check className="text-white" /> : null}
@@ -220,7 +346,7 @@ export const AgentModelSelect = ({
             }
             onMouseDown={(event) => {
               event.preventDefault()
-              const chosenVar = isSelected ? (variant ?? defaultVar) : defaultVar
+              const chosenVar = resolveChosenVariant(item)
               handleSelect(item.value, chosenVar)
             }}
           >
@@ -234,12 +360,16 @@ export const AgentModelSelect = ({
       <LxMenuItem
         key={item.value}
         active={isSelected}
-        className={isGrouped ? "pl-5" : ""}
+        className={`${isGrouped ? "pl-5" : ""} ${keyboardActiveClass}`}
         menuRole="option"
+        data-keyboard-active={keyboardActiveAttr}
+        onMouseEnter={() => {
+          if (flatIndex >= 0) setActiveIndex(flatIndex)
+        }}
         trailing={isSelected ? <Check className="text-white" /> : null}
         onMouseDown={(event) => {
           event.preventDefault()
-          handleSelect(item.value, undefined)
+          handleSelect(item.value, resolveChosenVariant(item))
         }}
       >
         {item.label}
@@ -265,6 +395,11 @@ export const AgentModelSelect = ({
           <span className="min-w-0 flex-1 truncate text-left">
             {selectedOption?.label ?? value}
           </span>
+          {variant ? (
+            <span className="agent-model-variant shrink-0 font-mono text-sky-400/80">
+              {variant}
+            </span>
+          ) : null}
           <ChevronDown
             className={`h-3 w-3 shrink-0 text-white/50 transition-transform ${isOpen ? "rotate-180" : ""}`}
           />
@@ -275,24 +410,49 @@ export const AgentModelSelect = ({
           <TooltipLayerContext.Provider value={layerContextValue}>
             <div
               ref={listboxRef}
-              className={`fixed flex max-h-60 flex-col gap-0.5 overflow-y-auto rounded-[var(--theme-radius-base,6px)] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.1))] bg-[var(--color-theme-surface-hover,#303030)] p-1 shadow-lg [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+              className={`fixed flex max-h-60 flex-col overflow-hidden rounded-[var(--theme-radius-base,6px)] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.1))] bg-[var(--color-theme-surface-hover,#303030)] p-1 shadow-lg ${
                 isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
               }`}
               role="listbox"
               style={{ ...(listboxStyle ?? undefined), zIndex: 50 }}
             >
-              {options.map((item) =>
-                isGroup(item) ? (
-                  <div key={item.label} className="flex flex-col gap-0.5">
-                    <div className="flex h-7 items-center px-2.5 text-sm font-medium text-white/35">
-                      {item.label}
-                    </div>
-                    {item.options.map((option) => renderOption(option, true))}
+              <div className="shrink-0 pb-1">
+                <LxInput
+                  ref={searchInputRef}
+                  aria-label={t("agent.searchModel")}
+                  placeholder={t("agent.searchModel")}
+                  prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
+                  size="small"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                />
+              </div>
+              <div
+                ref={optionsRef}
+                className="relative flex min-h-0 flex-auto flex-col gap-0.5 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {selectableOptions.length === 0 ? (
+                  <div className="px-2.5 py-2 text-xs text-white/35">
+                    {t("agent.noMatchingModels")}
                   </div>
                 ) : (
-                  renderOption(item)
-                ),
-              )}
+                  filteredOptions.map((item) =>
+                    isGroup(item) ? (
+                      <div key={item.label} className="flex flex-col gap-0.5">
+                        <div className="flex h-7 items-center px-2.5 text-sm font-medium text-white/35">
+                          {item.label}
+                        </div>
+                        {item.options.map((option) =>
+                          renderOption(option, optionIndexByValue.get(option.value) ?? -1, true),
+                        )}
+                      </div>
+                    ) : (
+                      renderOption(item, optionIndexByValue.get(item.value) ?? -1)
+                    ),
+                  )
+                )}
+              </div>
             </div>
           </TooltipLayerContext.Provider>,
           document.body,

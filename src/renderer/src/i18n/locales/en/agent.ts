@@ -334,6 +334,8 @@ export const agent = {
   questionNext: "Next",
   questionSubmit: "Submit",
   noAvailableModels: "No available models",
+  searchModel: "Search models...",
+  noMatchingModels: "No matching models",
   noContentToCopy: "No content to copy",
   unknownSize: "Unknown size",
   mcpStatusAria: "MCP Connection Status",
