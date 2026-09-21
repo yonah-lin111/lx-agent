@@ -129,6 +129,9 @@ export const CollaborationModePermissions = ({
     const override = settings.modes?.[mode]
     const effective = withModePermissionDefaults(mode, override)
     const lockedTools = [...getModeBlockedTools(mode)]
+    // 白名单里已被角色改动变成永久禁用的角色（死条目）：提示用户重新编辑，确认后自动清理。
+    const lockedRoles = lockedRolesOf(mode)
+    const staleRoles = (effective?.subagents ?? []).filter((name) => lockedRoles.includes(name))
     return (
       <div
         key={mode}
@@ -171,6 +174,14 @@ export const CollaborationModePermissions = ({
             <Lock className="h-3 w-3 shrink-0" />
             {t("settings.collaborationModePermissionsLockedHint", {
               tools: lockedTools.join(", "),
+            })}
+          </p>
+        ) : null}
+        {staleRoles.length > 0 ? (
+          <p className="flex items-center gap-1 text-xs text-rose-300/70">
+            <Lock className="h-3 w-3 shrink-0" />
+            {t("settings.collaborationModePermissionsLockedRolesHint", {
+              roles: staleRoles.join(", "),
             })}
           </p>
         ) : null}

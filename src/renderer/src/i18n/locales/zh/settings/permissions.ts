@@ -75,6 +75,8 @@ export const permissions = {
 - **生效时机**：下一轮对话生效；硬基线工具在保存时自动从白名单中剥离。`,
   collaborationModePermissionsEdit: "编辑权限",
   collaborationModePermissionsLockedHint: "永久禁用：{{tools}}",
+  collaborationModePermissionsLockedRolesHint:
+    "永久禁用角色：{{roles}}（能力集含本模式硬基线工具，编辑确认后自动移除）",
 
   // Custom Commands section
   customCommandAgentInputTab: "对话命令 (AgentInput)",

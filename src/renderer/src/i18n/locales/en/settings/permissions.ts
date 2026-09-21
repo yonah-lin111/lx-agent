@@ -79,6 +79,8 @@ Configure independent capability allowlists for the four collaboration modes (Bu
 - **Effective**: applies from the next turn; hard-baseline tools are stripped from saved allowlists automatically.`,
   collaborationModePermissionsEdit: "Edit permissions",
   collaborationModePermissionsLockedHint: "Permanently disabled: {{tools}}",
+  collaborationModePermissionsLockedRolesHint:
+    "Permanently disabled roles: {{roles}} (capability set includes blocked tools; removed once you confirm an edit)",
 
   // Custom Commands section
   customCommandAgentInputTab: "Chat Commands (AgentInput)",

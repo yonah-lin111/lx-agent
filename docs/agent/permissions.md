@@ -72,7 +72,7 @@ export type CollaborationMode = "build" | "plan" | "review" | "design"
 - 非 build 模式的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`MODE_MUTATION_REASONS`）；`memory` 会写 `<project>/.lx/memory/*.md`，因此同样纳入基线。
 - **子代理派发**：`task` 不再属于硬基线，由 `modes.<mode>.subagents` 白名单控制（按 `agent_type` 判定，批量 `tasks[]` 逐项校验，未携带角色视为未命中）。非 build 模式缺省白名单 = `["explorer"]`（内置只读探索子代理），`build` 缺省 = 不限制；显式配置覆盖缺省，显式空数组 = 该模式完全禁止派发。
 - **父模式基线穿透**：子代理按 `agent.subagents.mode`（缺省 `build`）装配提示词与门控，但父会话的硬基线会以 `parentMode` 叠加到子代理的每次工具调用上——`plan` / `review` / `design` 下派发的子代理同样不能写文件，`design` 下还不能用 `wireframe`，派发无法绕过模式约束。
-- **角色兼容性**：角色能力集与模式硬基线有交集时（含 `tools` 未限制的角色，如内置 `worker`），该角色在此非 build 模式**永久禁用**——设置页锁定为不可勾选，门控层同时拒绝派发（白名单列出也不放行），避免派发一个写操作必然被拒的残废子代理；`build` 无硬基线，因此不锁定任何角色。
+- **角色兼容性**：角色能力集与模式硬基线有交集时（含 `tools` 未限制的角色，如内置 `worker`），该角色在此非 build 模式**永久禁用**——设置页锁定为不可勾选，门控层同时拒绝派发（白名单列出也不放行），避免派发一个写操作必然被拒的残废子代理；`build` 无硬基线，因此不锁定任何角色。角色被改动后与已保存白名单失配时，权限页模式行会提示「永久禁用角色：…」，打开编辑弹窗即自动剔除该角色并在确认后落盘。
 - **模式能力白名单**（`agent.permissions.modes`）：`tools` / `mcp` / `skills` / `websearch` / `subagents` 五组，缺省 = 不限制（`subagents` 在非 build 模式除外）；硬基线工具在保存时被剥离、运行时二次兜底拒绝，配置只能收紧、永不放开。
 - `design` 模式的工具级门禁与 plan/review 共享同一只读基线并额外禁用 `wireframe`（原型交付走 `<front_design>` 协议，原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
 - 模式切换：`Shift + Tab` 在 `build → plan → review → design → build` 间循环（状态栏按钮等价），或经 IPC `setCollaborationMode` 定向切换；卡片一键采纳也会切回 `build`。

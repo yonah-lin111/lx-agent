@@ -174,6 +174,24 @@ describe("CollaborationModePermissions", () => {
     expect(next.modes?.plan?.subagents).toEqual(["explorer", "custom-role"])
   })
 
+  it("白名单角色变为永久禁用时：行内提示死条目，编辑确认后自动清理", async () => {
+    const settings = baseSettings()
+    settings.modes = { plan: { subagents: ["explorer", "worker"] } }
+    const setSettings = renderComponent(settings)
+
+    // 行内提示锁定角色（worker 能力集无限制 → 与非 build 硬基线冲突）。
+    expect(await screen.findByText(/Permanently disabled roles: worker/)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit permissions Plan Mode" }))
+    expect(screen.queryByRole("checkbox", { name: "worker" })).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }))
+
+    await waitFor(() => expect(setSettings).toHaveBeenCalledTimes(1))
+    const next = setSettings.mock.calls[0][0] as PermissionSettingsConfig
+    // 清理后仅剩 explorer（= 非 build 缺省）→ 覆盖节点整体删除。
+    expect(next.modes).toBeUndefined()
+  })
+
   it("build 弹窗无锁定角色（硬基线为空），worker 可勾选", async () => {
     const settings = baseSettings()
     settings.modes = { build: { subagents: ["custom-role"] } }
