@@ -172,8 +172,10 @@ export interface FrontDesignItem {
 
 `frontDesignStore` 关键行为：
 
-- **响应式订阅**：`subscribe/getState/useFrontDesign` 基于 `useSyncExternalStore`；`getDesign` / `getActiveDesign` / `getParentDesign` / `getDesignVersions` / `getRootDesigns` 提供谱系查询。
+- **响应式订阅**：`subscribe/getState/useFrontDesign` 基于 `useSyncExternalStore`；`getDesign` / `getActiveDesign` / `getParentDesign` / `getDesignVersions` / `getRootDesigns` 提供谱系查询。侧边栏按"设计族"渲染：每个根节点一行，版本经工具栏下拉切换（`getDesignVersions`），版本不再单独成行。
 - **版本派生链**：`registerDesign` 依据 `parent_id`、同会话同名设计推断派生关系；跨轮次流式二次修改自动生成 `-v{n}` 新版本而**不覆盖**旧版本；同一次流式更新就地更新同一项；防御自引用环。
+- **稳定设计 id**：设计 id 前缀取消息时间戳（base36，`toChatMessage` → `buildStableDesignBaseId`），实时流式、消息定稿与会话恢复三条路径解析结果一致，避免依赖聊天消息自增 id 造成重启后 id 漂移、`parent_id` 失效。属性提取对 `id=` 做边界保护，`parent_id="x"` / `parentId="x"` 不会被误认为标签自身 id。
+- **恢复期版本链回落**：历史消息中的 `parent_id` 若指向已不存在的旧 id（老数据漂移），恢复时回落到同会话版本链头，保证同一设计的多个版本聚合在单一根节点下，不在侧边栏拆成独立条目。
 - **会话归属**：设计项记录 `sessionId`，草稿设计在会话落库后回填；`@` 提及与左栏均按当前会话过滤。
 - **激活联动**：`autoActivate` 时激活目标设计并在必要时切换到宿主 Tab。
 - **纯内存**：不写 localStorage（启动时清除历史遗留 key）。
@@ -184,7 +186,6 @@ export interface FrontDesignItem {
 2. **聊天卡片**：`FrontDesignCard` 展示标题、`v{n}` 版本徽标、血缘链接、代码预览与【基于此迭代】按钮。
 3. **设计画布**：`/design` 路由的 `FrontDesignPage` 订阅 store 热更新，将 HTML 注入沙箱 Iframe（`sandbox="allow-scripts allow-same-origin"`），使用 `agentApi.compileTailwind(html)` 实时编译 Tailwind JIT；支持 Desktop / Tablet / Mobile 视口切换、刷新与复制代码。
 4. **三件套落盘**：`agentApi.saveFrontDesign` 将设计拆分为 `index.html` / `style.css` / `script.js` 写入 `~/.lx/session/{sessionId}/design/{designId}/`；`openDesignDir` 在系统文件管理器中打开。
-5. **PNG 预览图导出**：`agentApi.exportDesignPng` → main 侧 `frontDesignExportService` 先经系统保存对话框（`dialog.showSaveDialog`）确定落点（默认 `{designDir}/preview-{viewport}.png`，记忆上次导出目录，缺省扩展名自动补 `.png`，取消返回 `{ ok: false, cancelled: true }`），再创建隐藏 `BrowserWindow` 加载 `lx-design://design/{sessionId}/{designId}/index.html`，注入与画布一致的主题（`dark` 类 + `color-scheme`），按档位固定宽度（desktop 1440 / tablet 768 / mobile 375）测量文档全高（上限 12000px）后 `capturePage({ stayHidden: true })` 全页截图并写入所选路径；显式 `targetPath` 可跳过对话框（测试/自动化用）；sessionId/designId 经路径段消毒，失败统一返回 `{ ok: false, error }`。
 6. **左栏谱系**：`FrontDesignLeftSideBar` 按根节点聚合版本，展示原型演进历史。
 
 ### 4.4 二次修改与 `@` 设计提及
@@ -246,22 +247,19 @@ generateElementSelector(element): { selector, description, injectedAttr? }
 | `pages/front-design/hooks/useDesignTheme.ts` | 主题持久化、系统深浅色订阅与 `effectiveMode` 计算 |
 | `pages/front-design/hooks/useDesignPreview.ts` | Tailwind 编译、沙箱文档构建、iframe 增量更新与落盘同步 |
 | `pages/front-design/hooks/useDesignInspector.ts` | Inspector 开关、快捷键、iframe 浮层与 `@design` 引用回填 |
-| `pages/front-design/components/FrontDesignToolbar.tsx` | 顶部工具栏（版本 / 视口 / 主题 / Inspector / 复制 / PNG 导出） |
+| `pages/front-design/components/FrontDesignToolbar.tsx` | 顶部工具栏（版本 / 视口 / 主题 / Inspector / 复制 / 打开设计目录） |
 | `pages/front-design/components/FrontDesignCanvas.tsx` | 空状态提示与沙箱 iframe 预览 |
 | `pages/front-design/components/FrontDesignLeftSideBar.tsx` | 设计族谱与版本导航 |
 | `features/agent/hooks/frontDesignStore.ts` | 响应式单例存储与版本谱系 |
 | `features/agent/utils/designSynthesizer.ts` | DOM 切片提取、选择器生成与定向缝合纯函数 |
 | `features/agent/utils/designOutline.ts` | 基线结构大纲生成（`body > tag:nth-child(n)` 路径选择器清单），供模型选择 `<front_design_update target>` |
 | `features/agent/utils/designReferenceInjection.ts` | 显式引用与隐式 `<current_design>` 基线的上下文注入纯函数 |
-| `main/services/frontDesignExportService.ts` | 隐藏窗口全页 PNG 截图导出（视口宽度 / 主题 / 高度钳制 / 路径消毒） |
-| `shared/contracts/agent/frontDesign.ts` | 导出 IPC 契约（`ExportFrontDesignPngOptions` / `Result`） |
 
 ### 4.7 已知限制
 
 - 设计看板状态为纯内存单例，应用重启后不自动恢复；可用数据源是聊天消息中的协议原文与 `~/.lx/session/.../design/` 下的落盘文件。
 - Inspector 依赖 iframe 同源访问（`allow-same-origin`）；跨源或沙箱策略收紧时高亮与点选不可用。
 - 版本派生在模型未输出 `parent_id` 且标题相同的情况下按标题推断，标题被大改时会视为独立根设计。
-- PNG 导出依赖设计已落盘（画布自动落盘保证），输出为静态全页快照：不含 iframe 滚动位置、悬停态等交互状态；超长页面高度钳制在 12000px。
 
 ---
 

@@ -132,7 +132,8 @@ const extractFrontDesignAttributes = (
   action: FrontDesignUpdateAction
 } => {
   const titleMatch = /title=["']([^"']*)["']/i.exec(tagStr)
-  const idMatch = /id=["']([^"']*)["']/i.exec(tagStr)
+  // 边界保护：`parent_id="x"` / `parentId="x"` 中的 `id=` 不得被误认为本标签自身的 id。
+  const idMatch = /(?<![A-Za-z0-9_-])id=["']([^"']*)["']/i.exec(tagStr)
   const parentIdMatch = /(?:parent_id|parentId)=["']([^"']*)["']/i.exec(tagStr)
   const modeMatch = /mode=["']([^"']*)["']/i.exec(tagStr)
   const actionMatch = /action=["']([^"']*)["']/i.exec(tagStr)
@@ -638,6 +639,12 @@ export const parseTextWithProposedPlan = (
 }
 
 // 将 shared AgentMessage 转换为展示条目。
+// 设计 id 前缀：以消息时间戳（base36）为稳定锚点，保证同一消息在任何路径解析出的设计 id 一致。
+export const buildStableDesignBaseId = (timestamp: number | undefined): string =>
+  typeof timestamp === "number" && Number.isFinite(timestamp)
+    ? `d${timestamp.toString(36)}`
+    : "design"
+
 export const toChatMessage = (
   message: AgentMessage,
   isStreaming: boolean,
@@ -758,7 +765,9 @@ export const toChatMessage = (
       return parseTextWithProposedPlan(
         block.text,
         block.durationMs,
-        id,
+        // 设计 id 前缀用消息时间戳（实时与恢复两条路径一致），
+        // 避免依赖聊天消息自增 id 导致重启后设计 id 漂移、版本链 parent_id 解析失败。
+        buildStableDesignBaseId(message.timestamp),
         sessionId,
         message.timestamp,
         isStreaming,

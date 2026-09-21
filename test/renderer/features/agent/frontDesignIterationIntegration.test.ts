@@ -483,6 +483,64 @@ Hope it looks awesome!`
     expect(second?.parentId).toBe("d-chain-1")
   })
 
+  it("恢复历史会话时：parent_id 漂移的版本自动回落到版本链头，不再拆成独立根节点", async () => {
+    const createText = `<front_design title="现代折叠卡片组件" mode="tailwindcss">
+<!DOCTYPE html><html><body><div id="page"><h1 id="title">Old</h1></div></body></html>
+</front_design>`
+    const updateText = `<front_design_update parent_id="m22-design-0" target="#title" title="更新第三项">
+<h1 id="title">New</h1>
+</front_design_update>`
+
+    vi.mocked(agentApi.restoreSession).mockResolvedValue({
+      ok: true,
+      todos: [],
+      messages: [
+        {
+          role: "assistant",
+          content: [{ type: "text", text: createText }],
+          stopReason: "end_turn",
+          timestamp: 1700000000000,
+        },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: updateText }],
+          stopReason: "end_turn",
+          timestamp: 1700000001000,
+        },
+      ],
+    } as never)
+
+    const { result } = renderHook(() =>
+      useAgentChat({ sessionId: "session-restore-drift", tabId: "tab-restore-drift" }),
+    )
+
+    await act(async () => {
+      await result.current.restoreChat("session-restore-drift")
+    })
+
+    const designs = frontDesignStore
+      .getAllDesigns()
+      .filter((d) => d.sessionId === "session-restore-drift")
+    expect(designs).toHaveLength(2)
+
+    const root = designs.find((d) => !d.parentId)
+    const update = designs.find((d) => d.parentId)
+    expect(root).toBeDefined()
+    expect(update).toBeDefined()
+    // 漂移的 parent_id（m22-design-0）不存在于 store：更新必须挂到同会话版本链头
+    expect(update?.parentId).toBe(root?.id)
+    expect(update?.html).toContain("New")
+    expect(update?.version).toBe(2)
+
+    // 版本族聚合：单一根节点 + 两个版本（侧边栏只渲染一行）
+    const versions = frontDesignStore.getDesignVersions(root?.id as string)
+    expect(versions.map((v) => v.id)).toEqual([root?.id, update?.id])
+    const roots = designs.filter(
+      (d) => !d.parentId || !designs.some((parent) => parent.id === d.parentId),
+    )
+    expect(roots).toHaveLength(1)
+  })
+
   it("容灾拦截：当 <front_design_update> 的 target 选择器未命中时，安全拦截并不落库破损数据", async () => {
     frontDesignStore.registerDesign({
       id: "d-safe-base",
