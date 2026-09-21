@@ -255,7 +255,7 @@ export const useAgentInputPanels = ({
         }
         return [{ id: group.value ?? "", label: group.label, provider: "" }]
       })
-      .filter((model) => !query || `${model.label} ${model.provider}`.toLowerCase().includes(query))
+      .filter((model) => !query || isFuzzyMatch(query, model.label.toLowerCase()))
   }, [value, modelOptions])
   const matchedModelsRef = useRef(matchedModels)
   matchedModelsRef.current = matchedModels
@@ -265,10 +265,7 @@ export const useAgentInputPanels = ({
       return []
     const query = value.slice("/gitWorktree".length).trim().toLowerCase()
     return worktreeOptions.filter(
-      (option) =>
-        !query ||
-        option.name.toLowerCase().includes(query) ||
-        option.path.toLowerCase().includes(query),
+      (option) => !query || isFuzzyMatch(query, option.name.toLowerCase()),
     )
   }, [value, worktreeOptions])
   const matchedWorktreesRef = useRef(matchedWorktrees)
@@ -302,12 +299,7 @@ export const useAgentInputPanels = ({
           isCurrent,
         }
       })
-      .filter(
-        (item) =>
-          !query ||
-          isFuzzyMatch(query, item.name.toLowerCase()) ||
-          (item.path && item.path.toLowerCase().includes(query)),
-      )
+      .filter((item) => !query || isFuzzyMatch(query, item.name.toLowerCase()))
   }, [value, projects, projectPath, projectId, defaultDesktopPath])
   const matchedProjectsRef = useRef(matchedProjects)
   matchedProjectsRef.current = matchedProjects
@@ -344,12 +336,7 @@ export const useAgentInputPanels = ({
         updatedAt: s.updatedAt || s.createdAt,
         isCurrent: s.id === currentSessionId,
       }))
-      .filter(
-        (item) =>
-          !query ||
-          isFuzzyMatch(query, item.title.toLowerCase()) ||
-          item.id.toLowerCase().includes(query),
-      )
+      .filter((item) => !query || isFuzzyMatch(query, item.title.toLowerCase()))
   }, [value, allSessions, projectId, projectPath, currentPath, currentSessionId])
   const matchedSessionsRef = useRef(matchedSessions)
   matchedSessionsRef.current = matchedSessions

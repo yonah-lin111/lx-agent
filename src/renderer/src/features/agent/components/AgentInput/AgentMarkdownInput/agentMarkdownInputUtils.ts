@@ -138,10 +138,7 @@ export const getMatchedCommands = (
         : command.id === "session"
           ? ["session", "resume"]
           : [rawName]
-    return (
-      aliases.some((alias) => isFuzzyMatch(query, alias)) ||
-      isFuzzyMatch(query, command.description.toLowerCase())
-    )
+    return aliases.some((alias) => isFuzzyMatch(query, alias))
   })
 }
 
