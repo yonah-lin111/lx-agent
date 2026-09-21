@@ -119,6 +119,35 @@ describe("ModelProviderSettings OpenCode Go 单预设", () => {
     expect(screen.queryByLabelText("Add OpenCode Go")).toBeNull()
   })
 
+  it("预设在导航列表中置顶且带主题标识底色", () => {
+    const initial = emptySettings()
+    initial.providers = {
+      custom: {
+        id: "custom",
+        type: "openai",
+        name: "Custom",
+        options: { apiKey: "", baseURL: "" },
+        models: {},
+      },
+      "opencode-go": {
+        id: "opencode-go",
+        type: "openai-compatible",
+        name: "OpenCode Go",
+        options: { apiKey: "", baseURL: "https://opencode.ai/zen/go/v1" },
+        models: {},
+      },
+    }
+    initial.enabledProviders = ["custom", "opencode-go"]
+    renderComponent(initial)
+
+    // 导航行按 DOM 顺序排列：预设先于自定义。
+    const navButtons = screen.getAllByRole("button", { name: /Custom|OpenCode Go/ })
+    expect(navButtons.map((button) => button.textContent)).toEqual(["OpenCode Go", "Custom"])
+    // 预设行经主题 accent 取色标识，未选中为 10% tint。
+    expect(navButtons[0]?.className).toContain("var(--color-theme-accent)")
+    expect(navButtons[1]?.className).not.toContain("var(--color-theme-accent)")
+  })
+
   it("仅 Go 选中时展示云端更新按钮，点击后刷新配置并提示计数", async () => {
     const initial = emptySettings()
     initial.providers = {
