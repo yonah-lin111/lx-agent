@@ -94,6 +94,18 @@ describe("AgentModelSelect 搜索", () => {
     expect(screen.queryByText("Anthropic")).toBeNull()
   })
 
+  it("下拉展开高度固定，过滤后不随结果数量收缩", () => {
+    render(<AgentModelSelect value="openai::gpt-4o" onChange={vi.fn()} options={options} />)
+
+    openMenu()
+    const listbox = screen.getByRole("listbox")
+    expect(listbox.classList.contains("h-60")).toBe(true)
+    expect(listbox.classList.contains("max-h-60")).toBe(false)
+
+    fireEvent.change(getSearchInput(), { target: { value: "c37s" } })
+    expect(screen.getByRole("listbox").classList.contains("h-60")).toBe(true)
+  })
+
   it("触发按钮内联展示思考等级：模型名可省略、等级不省略且无边框", () => {
     render(
       <AgentModelSelect
