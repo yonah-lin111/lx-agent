@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import type { QuestionRequest } from "@shared/contracts/agent"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import type { QuestionRequest, SubagentData } from "@shared/contracts/agent"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList"
@@ -2016,6 +2016,90 @@ describe("AgentExecutionFlowList", () => {
 
     // 面板重新收起
     expect(panel?.getAttribute("inert")).toBe("")
+  })
+
+  it("批量扇出子代理默认展开、标题不可点击，逐项行点击打开对应子代理面板", () => {
+    const batchSubagent = (
+      subagentId: string,
+      name: string,
+      status: "running" | "done",
+    ): SubagentData => ({
+      subagentId,
+      name,
+      description: `${name} 任务`,
+      prompt: `${name} 任务`,
+      messages: [],
+      steps: [],
+      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15 },
+      status,
+    })
+
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "并行审查" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "task-batch-1",
+            toolName: "task",
+            args: { tasks: [] },
+            status: "done",
+            subagents: [
+              batchSubagent("subagent-batch-1", "review-auth", "done"),
+              batchSubagent("subagent-batch-2", "review-db", "running"),
+            ],
+          },
+          { kind: "text", text: "全部审查完成" },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "task-batch-1",
+            toolName: "task",
+            text: "批量执行完毕",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // 默认展开：批量逐项列表直接可见（该步骤并非 turn 收尾步骤，仅因批量扇出规则展开）
+    const subagentStep = container.querySelector('[data-step-kind="subagent"]') as HTMLElement
+    expect(subagentStep.getAttribute("data-expanded")).toBe("true")
+    expect(within(subagentStep).getByText(/review-auth/)).not.toBeNull()
+    expect(within(subagentStep).getByText(/review-db/)).not.toBeNull()
+
+    // 标题不可点击：没有打开面板入口，点击标题只切换折叠
+    expect(screen.queryByTestId("flow-item-subagent-open-btn")).toBeNull()
+    fireEvent.click(within(subagentStep).getAllByText("task ×2")[0])
+    expect(
+      container.querySelector('[data-step-kind="subagent"]')?.getAttribute("data-expanded"),
+    ).toBe("false")
+
+    // 重新展开后点击第二项：面板打开并展示对应子代理
+    fireEvent.click(
+      container.querySelector('[data-step-kind="subagent"] .agent-execution-flow-step-header')!,
+    )
+    const panel = container.querySelector(".agent-subagent-panel-dialog") as HTMLElement
+    expect(panel.getAttribute("inert")).toBe("")
+    fireEvent.click(screen.getByText(/review-db/))
+    expect(panel.getAttribute("inert")).toBeNull()
+    expect(within(panel).getByLabelText("Copy subagent ID: subagent-batch-2")).not.toBeNull()
   })
 
   it("渲染撤销步骤的独立分割线与步骤内容", () => {

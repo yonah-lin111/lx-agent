@@ -47,6 +47,7 @@ import {
   formatJsonString,
   formatTokensShort,
   getKindMeta,
+  isBatchSubagentStep,
   PARALLEL_BATCH_COLORS,
 } from "./types"
 
@@ -81,6 +82,9 @@ export const AgentExecutionFlowItem = ({
   const meta = getKindMeta(step)
 
   const isRunning = step.status === "running"
+
+  // 批量扇出子代理：详情默认展开为逐项列表，标题仅作静态标注（面板入口在列表行内，标题点击只切折叠）。
+  const isBatchSubagent = isBatchSubagentStep(step)
 
   // 时间/token 等指标仅在步骤执行完成后展示；运行中不渲染，避免指标频繁跳动
   const hasTokenMetrics =
@@ -296,22 +300,28 @@ export const AgentExecutionFlowItem = ({
                 </LxTag>
               ) : null)}
 
-            {/* 步骤标题与副标题（子代理步骤：点击名称打开子代理面板，名称右侧不再展示描述） */}
+            {/* 步骤标题与副标题（单项子代理步骤：点击名称打开子代理面板；批量扇出：名称仅作静态标注，入口在展开列表内） */}
             <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
               {step.kind === "tool" && step.toolContent ? (
                 <ToolCallTitle toolContent={step.toolContent} />
               ) : step.kind === "user" ? null : step.kind === "subagent" && step.subagentContent ? (
-                <span
-                  data-testid="flow-item-subagent-open-btn"
-                  aria-label={t("agent.viewSubagentDetails")}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onOpenSubagent?.(step.id)
-                  }}
-                  className="truncate font-mono text-xs font-medium leading-none text-blue-300 transition-colors hover:text-blue-200 focus:outline-none"
-                >
-                  {step.title}
-                </span>
+                isBatchSubagent ? (
+                  <span className="truncate font-mono text-xs font-medium leading-none text-blue-300">
+                    {step.title}
+                  </span>
+                ) : (
+                  <span
+                    data-testid="flow-item-subagent-open-btn"
+                    aria-label={t("agent.viewSubagentDetails")}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onOpenSubagent?.(step.id)
+                    }}
+                    className="truncate font-mono text-xs font-medium leading-none text-blue-300 transition-colors hover:text-blue-200 focus:outline-none"
+                  >
+                    {step.title}
+                  </span>
+                )
               ) : (
                 <span
                   className={`truncate font-mono text-xs font-medium leading-none ${

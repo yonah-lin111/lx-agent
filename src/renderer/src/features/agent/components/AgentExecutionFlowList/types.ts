@@ -162,6 +162,12 @@ export const getToolCategoryMeta = (
 }
 
 /**
+ * 批量扇出子代理步骤（task tasks[]）：详情为逐项子代理列表。
+ */
+export const isBatchSubagentStep = (step: ExecutionStep): boolean =>
+  step.kind === "subagent" && (step.subagentContent?.subagents?.length ?? 0) > 0
+
+/**
  * 获取步骤图标与样式配置
  */
 export const getKindMeta = (
