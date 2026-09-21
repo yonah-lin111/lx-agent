@@ -1,17 +1,15 @@
-import { Terminal } from "lucide-react"
 import type React from "react"
 import { LxTag } from "@/components/ui/LxTag"
 import type { ExecutionToolContent } from "@/features/agent/types"
-import { useTranslation } from "@/i18n"
 import { FlowItemExpandableText } from "../FlowItemExpandableText"
 import { formatDurationMs } from "../types"
+import { FlowToolArgsSection, FlowToolResultSection } from "./FlowToolSections"
 
 export interface FlowToolBashProps {
   content: ExecutionToolContent
 }
 
 export const FlowToolBash = ({ content }: FlowToolBashProps): React.JSX.Element => {
-  const { t } = useTranslation()
   const command =
     typeof content.args?.command === "string"
       ? content.args.command
@@ -55,27 +53,15 @@ export const FlowToolBash = ({ content }: FlowToolBashProps): React.JSX.Element 
 
       {/* 输出结果 */}
       {content.result !== undefined && (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between text-xs text-white/45">
-            <span className="flex items-center gap-1">
-              <Terminal className="h-3 w-3" /> {t("agent.toolResult")}
-            </span>
-          </div>
-          <div
-            className={`rounded p-2.5 text-xs ${
-              content.isError
-                ? "border border-rose-500/20 bg-rose-950/20 text-rose-200"
-                : "bg-black/40 text-white/80"
-            }`}
-          >
-            <FlowItemExpandableText
-              content={content.result}
-              fallbackText="(No output)"
-              maxLines={3}
-            />
-          </div>
-        </div>
+        <FlowToolResultSection
+          result={content.result}
+          isError={content.isError}
+          fallbackText="(No output)"
+        />
       )}
+
+      {/* 原始参数（默认折叠） */}
+      <FlowToolArgsSection args={content.args} toolCallId={content.toolCallId} />
     </div>
   )
 }

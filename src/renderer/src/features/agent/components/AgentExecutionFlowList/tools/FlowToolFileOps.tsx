@@ -1,4 +1,4 @@
-import { Code2, ExternalLink, FileCode, FileText, Terminal } from "lucide-react"
+import { Code2, ExternalLink, FileCode } from "lucide-react"
 import type React from "react"
 import { useCallback } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -6,8 +6,8 @@ import { LxTag } from "@/components/ui/LxTag"
 import { agentApi } from "@/features/agent/api/agentApi"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
-import { FlowItemExpandableText } from "../FlowItemExpandableText"
-import { formatDurationMs, formatJsonString } from "../types"
+import { formatDurationMs } from "../types"
+import { FlowToolArgsSection, FlowToolResultSection } from "./FlowToolSections"
 
 export interface FlowToolFileOpsProps {
   content: ExecutionToolContent
@@ -80,21 +80,6 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
         )}
       </div>
 
-      {/* 结构化 Input Arguments (输入参数，最多 3 行折叠) */}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between text-white/45">
-          <span className="flex items-center gap-1">
-            <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
-          </span>
-          {content.toolCallId && (
-            <span className="text-xs text-white/30">ID: {content.toolCallId}</span>
-          )}
-        </div>
-        <div className="rounded bg-black/40 p-2 text-sky-200/90">
-          <FlowItemExpandableText content={formatJsonString(content.args)} maxLines={3} />
-        </div>
-      </div>
-
       {/* 结构化 Diff (针对 write/edit 工具) */}
       {content.diff && content.diff.lines && content.diff.lines.length > 0 && (
         <div className="flex flex-col gap-1">
@@ -129,24 +114,15 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
 
       {/* 结果或常规内容输出 */}
       {content.result !== undefined && !content.diff && (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between text-white/45">
-            <span className="flex items-center gap-1">
-              <FileText className="h-3 w-3" /> {t("agent.toolResult")}
-            </span>
-            {content.isError && <span className="text-xs text-rose-400 font-medium">ERROR</span>}
-          </div>
-          <div
-            className={`rounded p-2.5 ${
-              content.isError
-                ? "border border-rose-500/20 bg-rose-950/20 text-rose-200"
-                : "bg-black/40 text-white/80"
-            }`}
-          >
-            <FlowItemExpandableText content={content.result} fallbackText="(empty)" maxLines={3} />
-          </div>
-        </div>
+        <FlowToolResultSection
+          result={content.result}
+          isError={content.isError}
+          fallbackText="(empty)"
+        />
       )}
+
+      {/* 原始参数（默认折叠） */}
+      <FlowToolArgsSection args={content.args} toolCallId={content.toolCallId} />
     </div>
   )
 }
