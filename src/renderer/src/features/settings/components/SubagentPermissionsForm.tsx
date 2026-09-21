@@ -7,12 +7,12 @@ import { LxTag } from "@/components/ui/LxTag"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
 // 权限分组标识。
-type PermissionGroup = "tools" | "mcp" | "skills" | "websearch"
+export type PermissionGroup = "tools" | "mcp" | "skills" | "websearch" | "subagents"
 
 // 分组条目（展示名 + 状态标记）。
 interface PermissionItem {
   name: string
-  state?: "connected" | "disconnected" | "disabled"
+  state?: "connected" | "disconnected" | "disabled" | "builtin"
 }
 
 // 子代理权限编辑器属性。
@@ -22,12 +22,14 @@ export interface SubagentPermissionsFormProps {
   onChange: (permissions: CapabilityPermissions | undefined) => void
   // 模式硬基线工具：永久禁用、不可勾选（仅 tools 组生效）。
   lockedItems?: readonly string[]
+  // 展示的分组与顺序（缺省四组；协作模式弹窗追加 subagents 组）。
+  groups?: readonly PermissionGroup[]
 }
 
 // 分组键 → 权限字段名（同构）。
-const GROUP_KEYS: readonly PermissionGroup[] = ["tools", "mcp", "skills", "websearch"]
+const DEFAULT_GROUPS: readonly PermissionGroup[] = ["tools", "mcp", "skills", "websearch"]
 
-// 权限摘要：四组各自统计；未限制分组不展示（子代理与协作模式共用）。
+// 权限摘要：五组各自统计；未限制分组不展示（子代理与协作模式共用）。
 export const describePermissions = (
   permissions: CapabilityPermissions | undefined,
   t: (key: TranslationKey) => string,
@@ -39,6 +41,7 @@ export const describePermissions = (
     ["mcp", "settings.subagentsPermissions_mcp"],
     ["skills", "settings.subagentsPermissions_skills"],
     ["websearch", "settings.subagentsPermissions_websearch"],
+    ["subagents", "settings.subagentsPermissions_subagents"],
   ]
   for (const [key, labelKey] of groups) {
     const list = permissions[key]
@@ -57,6 +60,7 @@ export const SubagentPermissionsForm = ({
   value,
   onChange,
   lockedItems,
+  groups = DEFAULT_GROUPS,
 }: SubagentPermissionsFormProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -74,6 +78,10 @@ export const SubagentPermissionsForm = ({
         state: item.disabled ? "disabled" : undefined,
       })),
       websearch: ["web_search", "webfetch"].map((name) => ({ name })),
+      subagents: (catalog?.subagents ?? []).map((item) => ({
+        name: item.name,
+        state: item.builtIn ? "builtin" : undefined,
+      })),
     }),
     [catalog],
   )
@@ -129,7 +137,7 @@ export const SubagentPermissionsForm = ({
 
   return (
     <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-      {GROUP_KEYS.map((group) => {
+      {groups.map((group) => {
         const items = selectableItems(group)
         const restricted = value?.[group] !== undefined
         const selected = value?.[group] ?? []
@@ -216,6 +224,11 @@ export const SubagentPermissionsForm = ({
                       {item.state === "disabled" ? (
                         <span className="ml-auto shrink-0 text-xs text-amber-400/80">
                           {t("settings.subagentsPermissionsSkillDisabled")}
+                        </span>
+                      ) : null}
+                      {item.state === "builtin" ? (
+                        <span className="ml-auto shrink-0 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                          {t("settings.subagentsBuiltinTag")}
                         </span>
                       ) : null}
                     </label>

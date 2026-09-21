@@ -12,10 +12,18 @@ import { LxModal } from "@/components/ui/LxModal"
 import { LxTag } from "@/components/ui/LxTag"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { settingsApi } from "../api/settingsApi"
-import { describePermissions, SubagentPermissionsForm } from "./SubagentPermissionsForm"
+import {
+  describePermissions,
+  type PermissionGroup,
+  SubagentPermissionsForm,
+} from "./SubagentPermissionsForm"
 
 // 协作模式展示顺序与文案键（描述复用 agent 命名空间）。
 const MODE_ORDER: readonly CollaborationMode[] = ["build", "plan", "review", "design"]
+
+// 权限分组：子代理派发（task）仅 build 可用，其余模式的 subagents 白名单不展示（硬基线已整体禁用）。
+const BASE_PERMISSION_GROUPS: readonly PermissionGroup[] = ["tools", "mcp", "skills", "websearch"]
+const BUILD_PERMISSION_GROUPS: readonly PermissionGroup[] = [...BASE_PERMISSION_GROUPS, "subagents"]
 
 const MODE_LABEL_KEYS: Record<CollaborationMode, TranslationKey> = {
   build: "agent.collaborationModeBuild",
@@ -171,6 +179,7 @@ export const CollaborationModePermissions = ({
             value={formPermissions}
             onChange={setFormPermissions}
             lockedItems={lockedItems}
+            groups={editingMode === "build" ? BUILD_PERMISSION_GROUPS : BASE_PERMISSION_GROUPS}
           />
           <div className="mt-1 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
             <LxIconButton

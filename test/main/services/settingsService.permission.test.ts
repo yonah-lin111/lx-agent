@@ -140,6 +140,27 @@ describe("settingsService 权限配置", () => {
     })
   })
 
+  it("规范化 modes.subagents：去重去空白，仅 build 模式保留（其余模式无派发能力）", () => {
+    writeConfigTree(holder.configPath, {
+      agent: {
+        permissions: {
+          defaultMode: "default",
+          allow: [],
+          deny: [],
+          ask: [],
+          modes: {
+            build: { subagents: [" explorer ", "worker", "explorer", "", 42, "custom-role"] },
+            plan: { subagents: ["explorer"] },
+          },
+        },
+      },
+    })
+
+    expect(getPermissionSettings().modes).toEqual({
+      build: { subagents: ["explorer", "worker", "custom-role"] },
+    })
+  })
+
   it("非法 modes 结构归并为 undefined（不落空节点）", () => {
     writeConfigTree(holder.configPath, {
       agent: { permissions: { defaultMode: "default", modes: { plan: "bad", review: [] } } },

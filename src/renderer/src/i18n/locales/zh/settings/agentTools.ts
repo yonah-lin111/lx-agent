@@ -75,6 +75,7 @@ export const agentTools = {
   subagentsPermissions_mcp: "MCP",
   subagentsPermissions_skills: "技能",
   subagentsPermissions_websearch: "联网",
+  subagentsPermissions_subagents: "子代理",
   subagentsPermissionsUnlimited: "不限制",
   subagentsPermissionsUnlimitedAll: "不限制（继承父会话）",
   subagentsPermissionsSelected: "已选 {{count}}",

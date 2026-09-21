@@ -27,6 +27,7 @@ const getSubagentCapabilities = vi.fn(async () => ({
   tools: [] as string[],
   mcp: [] as { name: string; connected: boolean }[],
   skills: [] as { name: string; disabled: boolean }[],
+  subagents: [] as { name: string; builtIn: boolean }[],
 }))
 
 describe("PermissionSettings", () => {

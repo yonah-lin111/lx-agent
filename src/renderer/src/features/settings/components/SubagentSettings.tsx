@@ -36,7 +36,13 @@ const permissionsEqual = (
 ): boolean => {
   const canonical = (value: CapabilityPermissions | undefined): string => {
     if (value === undefined) return "~"
-    const groups: Array<keyof CapabilityPermissions> = ["tools", "mcp", "skills", "websearch"]
+    const groups: Array<keyof CapabilityPermissions> = [
+      "tools",
+      "mcp",
+      "skills",
+      "websearch",
+      "subagents",
+    ]
     return groups
       .map((group) => {
         const list = value[group]

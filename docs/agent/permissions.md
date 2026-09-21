@@ -69,7 +69,8 @@ export type CollaborationMode = "build" | "plan" | "review" | "design"
 | **`design`** | **deny**；`wireframe` 亦 **deny** | **deny** | 只读工具正常；可经白名单再收紧 | `<front_design>` / `<front_design_update>`，见 modes.md §4 |
 
 - 非 build 模式的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`MODE_MUTATION_REASONS`）；`memory` 会写 `<project>/.lx/memory/*.md`，因此同样纳入基线。
-- **模式能力白名单**（`agent.permissions.modes`）：`tools` / `mcp` / `skills` / `websearch` 四组，缺省 = 不限制；硬基线工具在保存时被剥离、运行时二次兜底拒绝，配置只能收紧、永不放开。
+- **模式能力白名单**（`agent.permissions.modes`）：`tools` / `mcp` / `skills` / `websearch` / `subagents` 五组，缺省 = 不限制；硬基线工具在保存时被剥离、运行时二次兜底拒绝，配置只能收紧、永不放开。
+- `subagents` 组按 `task` 的 `agent_type` 判定（批量 `tasks[]` 要求每一项都在白名单内，未携带角色视为未命中）；该组仅 `build` 模式接受配置——其余模式的 `task` 已被硬基线整体禁用，保存时剥离该组。
 - `design` 模式的工具级门禁与 plan/review 共享同一只读基线并额外禁用 `wireframe`（原型交付走 `<front_design>` 协议，原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
 - 模式切换：`Shift + Tab` 在 `build → plan → review → design → build` 间循环（状态栏按钮等价），或经 IPC `setCollaborationMode` 定向切换；卡片一键采纳也会切回 `build`。
 
@@ -105,7 +106,7 @@ Guardian 在工具执行前进行实时四维风险评估：
 ### 5.1 判定顺序（`permissionManager.evaluate()`）
 
 1. 非 build 模式硬基线：`write` / `edit` / `apply_patch` / `memory` / `todowrite` 与 `task` 子代理派发（`design` 另含 `wireframe`）→ `deny`；
-2. 模式能力白名单（`agent.permissions.modes`，四组未命中）→ `deny`（build 也可收紧）；
+2. 模式能力白名单（`agent.permissions.modes`，五组未命中）→ `deny`（build 也可收紧）；
 3. `read-only` 沙箱的 `write` / `edit` / `apply_patch` → `deny`；
 4. `CommandSafetyGuard` 判定 `dangerous` 的 bash 命令 → `deny`；
 5. **Deny 规则**命中 → `deny`（最高优先级的配置规则）；
@@ -170,7 +171,10 @@ Esc 仅收起面板，请求保持挂起；决策经 IPC `permissionResponse` �
       ],
       // 协作模式能力白名单（可选；缺省 = 不限制，只能收紧）
       "modes": {
-        "build": { "tools": ["read", "grep", "write", "edit"] },
+        "build": {
+          "tools": ["read", "grep", "write", "edit"],
+          "subagents": ["explorer", "worker"]
+        },
         "review": { "tools": ["read", "grep", "lsp"], "websearch": ["web_search"] }
       }
     }

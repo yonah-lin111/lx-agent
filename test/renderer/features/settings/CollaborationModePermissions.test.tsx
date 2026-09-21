@@ -40,6 +40,11 @@ const loadedCapabilities = (): SubagentCapabilityCatalog => ({
   ],
   mcp: [{ name: "codegraph", connected: true }],
   skills: [{ name: "deploy", disabled: false }],
+  subagents: [
+    { name: "explorer", builtIn: true },
+    { name: "worker", builtIn: true },
+    { name: "custom-role", builtIn: false },
+  ],
 })
 
 const renderComponent = (settings: PermissionSettingsConfig): ReturnType<typeof vi.fn> => {
@@ -121,5 +126,35 @@ describe("CollaborationModePermissions", () => {
     await waitFor(() => expect(setSettings).toHaveBeenCalledTimes(1))
     const next = setSettings.mock.calls[0][0] as PermissionSettingsConfig
     expect(next.modes?.plan).toEqual({ tools: [] })
+  })
+
+  it("build 弹窗展示 subagents 角色白名单卡片，确认后写入 modes.build.subagents", async () => {
+    const settings = baseSettings()
+    settings.modes = { build: { subagents: ["explorer"] } }
+    const setSettings = renderComponent(settings)
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit permissions Build Mode" }))
+    // 已配置白名单回填：explorer 勾选，worker/custom-role 未勾选；内置角色带 Built-in 标记。
+    expect(await screen.findByText("explorer")).toBeTruthy()
+    expect(screen.getByText("custom-role")).toBeTruthy()
+    expect(screen.getAllByText("Built-in")).toHaveLength(2)
+    expect((screen.getByRole("checkbox", { name: "worker" }) as HTMLInputElement).checked).toBe(
+      false,
+    )
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "custom-role" }))
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }))
+
+    await waitFor(() => expect(setSettings).toHaveBeenCalledTimes(1))
+    const next = setSettings.mock.calls[0][0] as PermissionSettingsConfig
+    expect(next.modes?.build?.subagents).toEqual(["explorer", "custom-role"])
+  })
+
+  it("非 build 模式弹窗不展示 subagents 组（task 已被硬基线整体禁用）", async () => {
+    renderComponent(baseSettings())
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit permissions Plan Mode" }))
+    expect(await screen.findByRole("checkbox", { name: /^Tools/ })).toBeTruthy()
+    expect(screen.queryByRole("checkbox", { name: /^Subagents/ })).toBeNull()
   })
 })

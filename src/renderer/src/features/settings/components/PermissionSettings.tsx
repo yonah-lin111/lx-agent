@@ -147,7 +147,7 @@ export const PermissionSettings = ({
       <CollaborationModePermissions settings={settings} setSettings={setSettings} />
 
       {/* 规则组 */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {RULE_GROUPS.map((group) => {
           const groupLabel = t(group.labelKey)
           const groupDesc = t(group.descKey)

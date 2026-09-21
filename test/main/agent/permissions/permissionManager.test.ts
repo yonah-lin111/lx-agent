@@ -886,6 +886,70 @@ describe("permissionManager 协作模式权限（模式策略统一表）", () =
     ).toBe("deny")
   })
 
+  it("subagents 白名单按 task 的 agent_type 判定（批量逐项校验，未携带角色即未命中）", () => {
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { build: { subagents: ["explorer"] } },
+    })
+    const build = { collaborationMode: "build" as const }
+    // 命中白名单 → 进入常规门控（默认 ask）；未列出角色 / 未携带角色 → deny。
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "explorer" },
+        build,
+      ),
+    ).toBe("ask")
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "worker" },
+        build,
+      ),
+    ).toBe("deny")
+    expect(permissionManager.evaluate("task", { description: "d", prompt: "p" }, build)).toBe(
+      "deny",
+    )
+    // 批量：每一项都必须在白名单内。
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { tasks: [{ description: "a", prompt: "a", agent_type: "explorer" }] },
+        build,
+      ),
+    ).toBe("ask")
+    expect(
+      permissionManager.evaluate(
+        "task",
+        {
+          tasks: [
+            { description: "a", prompt: "a", agent_type: "explorer" },
+            { description: "b", prompt: "b", agent_type: "worker" },
+          ],
+        },
+        build,
+      ),
+    ).toBe("deny")
+    // 未配置 subagents 组时不限制角色（tools 白名单只收窄工具集）。
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { build: { tools: ["read", "task"] } },
+    })
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "worker" },
+        build,
+      ),
+    ).toBe("ask")
+  })
+
   it("模式白名单优先于会话白名单与 bypass 放行", () => {
     applySettings({
       defaultMode: "bypassPermissions",

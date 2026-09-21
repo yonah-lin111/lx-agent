@@ -39,7 +39,7 @@ beforeEach(() => {
 })
 
 describe("getSubagentCapabilityCatalog", () => {
-  it("聚合内置工具、MCP server（含连接状态）与 skill（含禁用状态），并按名称排序", () => {
+  it("聚合内置工具、MCP server（含连接状态）、skill（含禁用状态）与子代理角色，并按名称排序", () => {
     holder.mcpServers = { github: {}, codegraph: {} }
     holder.mcpStatus = [
       { name: "codegraph", status: "connected" },
@@ -61,6 +61,11 @@ describe("getSubagentCapabilityCatalog", () => {
       { name: "code-review", disabled: false },
       { name: "deploy", disabled: true },
     ])
+    // 未配置用户角色时仅内置 explorer / worker（顺序固定）。
+    expect(catalog.subagents).toEqual([
+      { name: "explorer", builtIn: true },
+      { name: "worker", builtIn: true },
+    ])
   })
 
   it("空环境返回空 MCP/skill 清单与完整工具全集", () => {
@@ -69,5 +74,6 @@ describe("getSubagentCapabilityCatalog", () => {
     expect(catalog.mcp).toEqual([])
     expect(catalog.skills).toEqual([])
     expect(catalog.tools.length).toBeGreaterThan(0)
+    expect(catalog.subagents.map((item) => item.name)).toEqual(["explorer", "worker"])
   })
 })

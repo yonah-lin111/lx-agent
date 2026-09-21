@@ -27,6 +27,8 @@ export interface CapabilityPermissions {
   skills?: string[]
   // 联网工具白名单（web_search / webfetch）。
   websearch?: string[]
+  // 子代理角色白名单（task 的 agent_type，含批量 tasks[] 的每一项）；缺省 = 不限制。
+  subagents?: string[]
 }
 
 // 非 build 协作模式的硬拦截工具：写文件/编辑、任务清单、子代理派发与项目记忆写入。

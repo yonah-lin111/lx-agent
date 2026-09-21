@@ -11,7 +11,8 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 - **切换入口**：`Shift + Tab` 在 `build → plan → review → design → build` 循环；状态栏 `CollaborationModeButton` 同步展示；卡片一键采纳会定向切回 `build`。
 - **契约**：`CollaborationMode = "build" | "plan" | "review" | "design"`；历史会话中的 `"default"` 由 `normalizeCollaborationMode` 归一化为 `"build"`。
 - **提示词**：`SystemPromptManager` 的 COLLABORATION_MODE 段（order 380）按模式返回对应英文指令模板；Plan / Review 模板中明确声明「模式不因用户语气或祈使句改变」与「写入工具被禁用」。
-- **运行时门禁**：Plan / Review 下 `write` / `edit` / `apply_patch` / `todowrite` / `task` 由 `PermissionManager` 直接 deny，模型收到带模式说明的错误结果并以对应 XML 协议输出（见 permissions.md §2）。
+- **运行时门禁**：Plan / Review / Design 下 `write` / `edit` / `apply_patch` / `todowrite` / `task` / `memory` 由 `PermissionManager` 直接 deny，模型收到带模式说明的错误结果并以对应 XML 协议输出（见 permissions.md §2）。
+- **子代理白名单**：`build` 模式可经 `agent.permissions.modes.build.subagents` 收窄可派发的子代理角色（按 `task` 的 `agent_type` 判定）；其余模式的 `task` 已被硬基线整体禁用，配置该组会在保存时被剥离。
 - **共享解析**：`utils.ts` 的 `parseTextWithProposedPlan()` 是统一标签提取器——同一段助手文本中按出现顺序识别 `<review_findings>` / `<proposed_plan>` / `<front_design>` / `<front_design_update>`，拆成结构化块与普通文本块，支持标签未闭合的流式容错与多块级联解析；结构化块同时驱动 `AgentMessageList`（聊天流卡片）与 `AgentExecutionFlowList`（执行步骤），两处复用同一卡片组件。
 
 ---

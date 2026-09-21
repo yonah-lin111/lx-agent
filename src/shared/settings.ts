@@ -444,10 +444,16 @@ export interface SubagentSkillCapability {
   disabled: boolean
 }
 
+export interface SubagentRoleCapability {
+  name: string
+  builtIn: boolean
+}
+
 export interface SubagentCapabilityCatalog {
   tools: string[]
   mcp: SubagentMcpCapability[]
   skills: SubagentSkillCapability[]
+  subagents: SubagentRoleCapability[]
 }
 
 // 子代理全局设置（~/.lx/config/agent.json 的 agent.subagents 节点）。
