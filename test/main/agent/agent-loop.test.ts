@@ -486,6 +486,142 @@ describe("Agent 工具循环", () => {
   })
 })
 
+// 构造带执行模式的受控工具：记录启动/结束顺序，闸门工具挂起直到手动释放。
+const createStepTool = (
+  name: string,
+  mode: "parallel" | "sequential",
+  log: string[],
+  gated: Set<string>,
+  releases: Map<string, () => void>,
+  state: { parallelActive: number; maxParallelActive: number; parallelActiveAtBarrier: number },
+): AgentTool => ({
+  name,
+  label: name,
+  description: name,
+  inputSchema: z.object({}),
+  executionMode: mode,
+  execute: async (): Promise<AgentToolResult> => {
+    log.push(`start:${name}`)
+    if (mode === "parallel") {
+      state.parallelActive += 1
+      state.maxParallelActive = Math.max(state.maxParallelActive, state.parallelActive)
+    }
+    if (name === "barrier") state.parallelActiveAtBarrier = state.parallelActive
+    if (gated.has(name)) {
+      await new Promise<void>((resolve) => releases.set(name, resolve))
+    }
+    if (mode === "parallel") state.parallelActive -= 1
+    log.push(`end:${name}`)
+    return { content: [{ type: "text", text: name }] }
+  },
+})
+
+describe("Agent 分段工具调度", () => {
+  const createState = () => ({
+    parallelActive: 0,
+    maxParallelActive: 0,
+    parallelActiveAtBarrier: -1,
+  })
+
+  it("连续并行调用并发执行，sequential 工具独占屏障且段间保持顺序", async () => {
+    const log: string[] = []
+    const gated = new Set(["slow-a", "slow-b"])
+    const releases = new Map<string, () => void>()
+    const state = createState()
+    const tools = [
+      createStepTool("slow-a", "parallel", log, gated, releases, state),
+      createStepTool("slow-b", "parallel", log, gated, releases, state),
+      createStepTool("barrier", "sequential", log, gated, releases, state),
+      createStepTool("tail", "parallel", log, gated, releases, state),
+    ]
+
+    const agent = new Agent({
+      streamFn: createMockStreamFn([
+        assistant(
+          [
+            toolCallBlock("c-a", "slow-a", {}),
+            toolCallBlock("c-b", "slow-b", {}),
+            toolCallBlock("c-barrier", "barrier", {}),
+            toolCallBlock("c-tail", "tail", {}),
+          ],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "完成" }], "stop"),
+      ]),
+      initialState: { model: TEST_MODEL, tools },
+    })
+
+    const execution = runPrompt(agent, "hi")
+
+    // slow-a 与 slow-b 同时启动并停在各自闸门：并行段并发真实发生。
+    await vi.waitFor(() => {
+      expect(log).toContain("start:slow-a")
+      expect(log).toContain("start:slow-b")
+    })
+    expect(log).not.toContain("end:slow-a")
+    expect(log).not.toContain("end:slow-b")
+    // sequential 屏障未开始：独占语义生效。
+    expect(log).not.toContain("start:barrier")
+
+    releases.get("slow-a")?.()
+    releases.get("slow-b")?.()
+    const events = await execution
+
+    // 段间顺序：并行段 → barrier → tail。
+    expect(log.indexOf("start:barrier")).toBeGreaterThan(log.indexOf("end:slow-a"))
+    expect(log.indexOf("start:barrier")).toBeGreaterThan(log.indexOf("end:slow-b"))
+    expect(log.indexOf("start:tail")).toBeGreaterThan(log.indexOf("end:barrier"))
+    // 并发度：并行段内 2 个同时执行；barrier 执行时无并行调用在跑。
+    expect(state.maxParallelActive).toBe(2)
+    expect(state.parallelActiveAtBarrier).toBe(0)
+
+    // 工具结果消息按输入顺序聚合。
+    const resultIds = events.flatMap((event) =>
+      event.type === "message_start" && event.message.role === "toolResult"
+        ? [event.message.toolCallId]
+        : [],
+    )
+    expect(resultIds).toEqual(["c-a", "c-b", "c-barrier", "c-tail"])
+  })
+
+  it("toolExecution: sequential 配置仍强制整批串行（工具标记不生效）", async () => {
+    const log: string[] = []
+    const gated = new Set(["slow-a", "slow-b"])
+    const releases = new Map<string, () => void>()
+    const state = createState()
+    const tools = [
+      createStepTool("slow-a", "parallel", log, gated, releases, state),
+      createStepTool("slow-b", "parallel", log, gated, releases, state),
+    ]
+
+    const agent = new Agent({
+      toolExecution: "sequential",
+      streamFn: createMockStreamFn([
+        assistant(
+          [toolCallBlock("c-a", "slow-a", {}), toolCallBlock("c-b", "slow-b", {})],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "完成" }], "stop"),
+      ]),
+      initialState: { model: TEST_MODEL, tools },
+    })
+
+    const execution = runPrompt(agent, "hi")
+    await vi.waitFor(() => expect(log).toContain("start:slow-a"))
+    // slow-b 必须等待 slow-a 结束，不与闸门中的 slow-a 并发。
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(log).not.toContain("start:slow-b")
+
+    releases.get("slow-a")?.()
+    await vi.waitFor(() => expect(log).toContain("start:slow-b"))
+    releases.get("slow-b")?.()
+    await execution
+
+    expect(state.maxParallelActive).toBe(1)
+    expect(log.indexOf("start:slow-b")).toBeGreaterThan(log.indexOf("end:slow-a"))
+  })
+})
+
 describe("Agent 失败路径不变量", () => {
   it("listener 抛错时失败路径仍为悬空 toolCall 补结果", async () => {
     const agent = new Agent({

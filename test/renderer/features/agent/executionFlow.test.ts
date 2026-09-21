@@ -92,12 +92,13 @@ describe("executionFlow", () => {
       expect(steps[2].toolContent?.result).toContain("src/main.ts")
       expect(steps[2].toolContent?.isError).toBe(false)
 
-      // 4. Assistant Text
+      // 4. Assistant Text（请求级用量结算在工具步骤，回复步骤不重复承载）
       expect(steps[3].kind).toBe("assistant")
       expect(steps[3].turnIndex).toBe(1)
       expect(steps[3].stepIndex).toBe(3)
       expect(steps[3].title).toBe("已找到 main.ts 文件如下：")
-      expect(steps[3].tokens?.total).toBe(150)
+      expect(steps[3].tokens).toBeUndefined()
+      expect(steps[2].tokens?.total).toBe(150)
     })
 
     it("支持系统提示词装配并注入 Step #0", () => {
@@ -187,6 +188,80 @@ describe("executionFlow", () => {
       expect(steps[1].tokens?.total).toBe(280)
       expect(steps[1].toolContent?.isError).toBe(true)
       expect(steps[1].toolContent?.result).toBe("Task execution timeout")
+    })
+
+    it("批量扇出：toolResult 携带的 subagents 聚合为子代理步骤并保留逐项快照", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "并行审查四个文件" }],
+          isStreaming: false,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "call-batch-1",
+              toolName: "task",
+              args: { tasks: [] },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+        },
+        {
+          id: "t1",
+          role: "toolResult",
+          blocks: [
+            {
+              kind: "toolResult",
+              toolCallId: "call-batch-1",
+              toolName: "task",
+              text: "[1/2] review-auth - done",
+              isError: false,
+              subagents: [
+                {
+                  subagentId: "subagent-1",
+                  name: "review-auth",
+                  roleName: "explorer",
+                  description: "审查 auth",
+                  prompt: "审查 auth",
+                  messages: [],
+                  steps: [],
+                  usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15 },
+                },
+                {
+                  subagentId: "subagent-2",
+                  name: "review-db",
+                  description: "审查 db",
+                  prompt: "审查 db",
+                  messages: [],
+                  steps: [],
+                  usage: { input: 20, output: 8, cacheRead: 0, cacheWrite: 0, totalTokens: 28 },
+                },
+              ],
+            },
+          ],
+          isStreaming: false,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(2)
+      expect(steps[1].kind).toBe("subagent")
+      // 批量标题用 `工具名 ×项数` 标识，展开内容携带逐项快照。
+      expect(steps[1].title).toBe("task ×2")
+      expect(steps[1].subagentContent?.name).toBe("task ×2")
+      expect(steps[1].subagentContent?.subagent).toBeUndefined()
+      expect(steps[1].subagentContent?.subagents?.map((item) => item.name)).toEqual([
+        "review-auth",
+        "review-db",
+      ])
+      // 并行 token 统计：逐项 usage 求和（15 + 28）。
+      expect(steps[1].tokens?.total).toBe(43)
     })
 
     it("正确处理多轮对话与上下文压缩", () => {
@@ -759,6 +834,78 @@ describe("executionFlow", () => {
         output: 62,
         cacheRead: 1000,
         total: 7462,
+      })
+    })
+
+    it("文本 + 多个并发调用（如 MCP 查询）时，仅末项结算整批用量，回复步骤不重复展示", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "并行查三个库" }],
+          isStreaming: false,
+          timestamp: 1000,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            { kind: "text", text: "我将同时并发调用 context7 的库解析工具。" },
+            {
+              kind: "toolCall",
+              toolCallId: "c1",
+              toolName: "mcp__context7__resolve-library-id",
+              args: { libraryName: "react" },
+              status: "done",
+            },
+            {
+              kind: "toolCall",
+              toolCallId: "c2",
+              toolName: "mcp__context7__resolve-library-id",
+              args: { libraryName: "zod" },
+              status: "done",
+            },
+            {
+              kind: "toolCall",
+              toolCallId: "c3",
+              toolName: "mcp__context7__resolve-library-id",
+              args: { libraryName: "express" },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: {
+            input: 26038,
+            output: 239,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 26277,
+          },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(5)
+
+      // 回复步骤不承载请求级用量
+      expect(steps[1].kind).toBe("assistant")
+      expect(steps[1].tokens).toBeUndefined()
+
+      // 仅末项（Parallel 3/3）结算整批共享的请求用量
+      expect(steps[2].tokens).toBeUndefined()
+      expect(steps[3].tokens).toBeUndefined()
+      expect(steps[4].parallel).toEqual({
+        index: 3,
+        total: 3,
+        batchId: "a1",
+        batchIndex: 0,
+      })
+      expect(steps[4].tokens).toEqual({
+        input: 26038,
+        output: 239,
+        cacheRead: 0,
+        total: 26277,
       })
     })
 

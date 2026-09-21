@@ -34,7 +34,7 @@ export interface AgentExecutionFlowGroupProps {
   onToggleExpand: () => void
   isStepExpanded: (step: ExecutionStep) => boolean
   onToggleStepExpand: (step: ExecutionStep) => void
-  onOpenSubagent?: (stepId: string) => void
+  onOpenSubagent?: (stepId: string, subagentIndex?: number) => void
   isStreamingActive?: boolean
 }
 

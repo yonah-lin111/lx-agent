@@ -26,12 +26,16 @@ export const cancelFrame = (handle: number): void => {
 // 恢复会话时把 task 子代理快照与 question 答案（兜底）回填到对应 toolCall 块。
 export const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage[] => {
   const subagentByToolCallId = new Map<string, SubagentData>()
+  const subagentsByToolCallId = new Map<string, SubagentData[]>()
   const answersByToolCallId = new Map<string, QuestionAnswer[]>()
   for (const message of chatMessages) {
     for (const block of message.blocks) {
       if (block.kind === "toolResult") {
         if (block.subagent) {
           subagentByToolCallId.set(block.toolCallId, block.subagent)
+        }
+        if (block.subagents && block.subagents.length > 0) {
+          subagentsByToolCallId.set(block.toolCallId, block.subagents)
         }
         if (block.toolName === "question" && block.text) {
           const parsed = parseQuestionAnswersFromText(block.text)
@@ -42,16 +46,24 @@ export const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage
       }
     }
   }
-  if (subagentByToolCallId.size === 0 && answersByToolCallId.size === 0) return chatMessages
+  if (
+    subagentByToolCallId.size === 0 &&
+    subagentsByToolCallId.size === 0 &&
+    answersByToolCallId.size === 0
+  ) {
+    return chatMessages
+  }
   return chatMessages.map((message) => ({
     ...message,
     blocks: message.blocks.map((block) => {
       if (block.kind === "toolCall") {
         const subagent = subagentByToolCallId.get(block.toolCallId)
+        const subagents = subagentsByToolCallId.get(block.toolCallId)
         const fallbackAnswers = answersByToolCallId.get(block.toolCallId)
         return {
           ...block,
           ...(subagent ? { subagent } : {}),
+          ...(subagents ? { subagents } : {}),
           ...(!block.answers && fallbackAnswers ? { answers: fallbackAnswers } : {}),
         }
       }

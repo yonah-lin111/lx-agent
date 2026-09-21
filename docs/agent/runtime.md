@@ -154,10 +154,11 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 - **内置角色**：`explorer`（只读权限：`tools` = `read` / `ls` / `grep` / `find` / `lsp` / `time`，`websearch` 全开，`skills` 全禁）与 `worker`（不限制，继承父激活集）；保留名 `review` / `explorer` / `worker` 禁止用户角色占用（`review` 归属协作模式 Review Mode，不存在 `review` 子代理角色）。
 - **能力只收缩不提权**：子代理工具集以父激活集（已剔除 `task`）为基础，按角色 `permissions` 四组独立求交（缺省 = 不限制继承父集，显式空数组 = 该组全禁）：`tools` 管内置工具（含 `task` 嵌套）、`mcp` 按 server 名匹配 `mcp__server__tool` 全名、`websearch` 管 `web_search` / `webfetch`、`skills` 管 `read_skill` 与子代理提示词的 `available_skills` 注入（同源收窄）。权限门控复用父 `permissionManager.gate`（协作模式按 `agent.subagents.mode` 绑定，缺省 `build`，不继承主 Agent 模式），沙箱策略原样继承，角色无法提升。嵌套 `task` 仅在子代理深度 `< maxDepth` 且 `permissions.tools` 未排除 `task` 时注入，否则维持剔除。
 - **模型优先级**：`role.model → defaultModel → 父会话模型`；任一级解析失败 `console.warn` 并降级到下一级，仅新建时解析，续接沿用创建时模型。
-- **并发与深度治理**：会话级 `SubagentRuntime` 在 `maxConcurrent`（1–32，缺省不限）达到上限时 fail-fast 返回错误文案，不排队；`maxDepth` 取 1–5（默认 1；根会话为 0，子代理 = 父 + 1），越界不再嵌套。
+- **批量扇出**：`tasks[]`（上限 64 项）一次派发多个新子代理并行执行，结果按输入顺序聚合为文本分段与 `details.subagents` 数组；批量项不支持 `subagent_id` 续接（续接走单任务模式），任一 `agent_type` 非法则整批早退、不消费槽位。
+- **并发与深度治理**：会话级 `SubagentRuntime` 在 `maxConcurrent`（1–32，缺省不限）达到上限时，顶层会话（depth 0，含单任务与批量项）按 FIFO 排队等待槽位，槽位释放直接移交队首；嵌套子代理（depth ≥ 1）保持 fail-fast 返回错误文案（父代理占槽等待子代理会形成循环等待死锁）。父 run 中止时排队项出队返回 aborted。`maxDepth` 取 1–5（默认 1；根会话为 0，子代理 = 父 + 1），越界不再嵌套。
 - **配置快照**：角色目录与治理项在会话 registry 装配时快照，设置保存仅对新会话生效。
 - **续接不可变**：经 `subagent_id` / `name` 命中池内子代理时沿用创建时的角色、模型与工具集；携带与已固定角色冲突的 `agent_type` 直接报错，未携带或相同则等价于未携带。
-- **长程上下文续接与快照持久化**：向同一子代理多轮追问并保留内部执行状态；内部时间轴、步骤与 Token 统计通过 `SubagentData` 挂载于 `ToolResultMessage.subagent` 随事务落盘，条目携带 `roleName` 供卡片与面板标注角色。
+- **长程上下文续接与快照持久化**：向同一子代理多轮追问并保留内部执行状态；内部时间轴、步骤与 Token 统计通过 `SubagentData` 挂载于 `ToolResultMessage.subagent`（批量模式为 `ToolResultMessage.subagents[]`，按输入顺序）随事务落盘，条目携带 `roleName` 与单项 `status`（流式快照 `running`，终态 `done` / `error` / `aborted`）供卡片、面板与执行流程逐项标记完成；批量模式下单项完成即回推终态快照，不等整批结束。
 - **`@` 子代理提及**：输入框 `@` 面板列出内置与用户角色（`@agent:<name>`），选定后以独立 token 高亮插入；token 随用户消息原样进入模型上下文作为委派意图提示，主进程不做强制路由；Backspace 在 token 末尾整块删除。
 
 ### 5.2 子代理配置 Schema（`~/.lx/config/agent.json` → `agent.subagents`）

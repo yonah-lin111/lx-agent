@@ -1,105 +1,104 @@
-import type {
-  AgentMessage,
-  AssistantMessage,
-  InterAgentCommunication,
-  SandboxPolicy,
-  SubagentData,
-  SubagentStep,
-  TextContent,
-  Usage,
-} from "@shared/contracts/agent"
-import type { ModelSelection, SubagentRolePermissions, SubagentSettings } from "@shared/settings"
-import {
-  DEFAULT_SUBAGENT_SETTINGS,
-  SUBAGENT_SKILL_TOOL_NAME,
-  SUBAGENT_WEBSEARCH_TOOL_NAMES,
-} from "@shared/settings"
+import type { SandboxPolicy, SubagentData, TextContent } from "@shared/contracts/agent"
+import type { ModelSelection, SubagentSettings } from "@shared/settings"
+import { DEFAULT_SUBAGENT_SETTINGS } from "@shared/settings"
 import { z } from "zod"
-import { Agent } from "../core/agent"
 import type {
   AfterToolCallContext,
   AfterToolCallResult,
   AgentTool,
+  AgentToolResult,
   BeforeToolCallContext,
   BeforeToolCallResult,
   Model,
   ToolHookResult,
 } from "../core/types"
-import { hookResultMessages, hooksManager } from "../hooks"
-import { sanitizeMcpNameSegment } from "../mcp/mcpManager"
-import { spillManager } from "../spill/spillManager"
-import { createAiSdkStreamFn } from "../stream/aiSdkStreamFn"
-import { resolveModelSelection as defaultResolveModelSelection } from "../stream/modelFactory"
 import {
   buildAgentTypesDescription,
   type ResolvedAgentRole,
   resolveAgentRoles,
 } from "../subagent/agentRoles"
-import { DEFAULT_MAX_BYTES, truncateTail } from "./truncate"
-
-// 子代理系统提示词后缀（追加在父系统提示词之后）。
-const SUBAGENT_PROMPT_SUFFIX = [
-  "You are now a sub-agent focused on completing the delegated independent sub-task.",
-  "Only use tools necessary to complete the task; stop immediately after achieving the goal and briefly summarize the result.",
-  "Do not perform unnecessary exploration beyond the task scope.",
-  "Adhere strictly to the inherited sandbox policy and safety constraints.",
-].join("\n")
-
 import type { SubagentPool } from "../subagent/subagentPool"
+import {
+  type ChildCallInput,
+  runSubagent,
+  type SubagentRunnerDeps,
+  type SubagentRunRequest,
+  type SubagentRunResult,
+} from "../subagent/subagentRunner"
 import { SubagentRuntime } from "../subagent/subagentRuntime"
 
-// 子代理最终输出超限阈值（写 spill 文件，父上下文只收有界预览 + 路径标记）。
-const SUBAGENT_MAX_BYTES = DEFAULT_MAX_BYTES
+// 批量扇出单次调用条数上限（防病态任务一次挤爆上下文与内存）。
+const MAX_BATCH_ITEMS = 64
 
-// 空补全（正常结束但零输出）在同一 dispatch 内的最大续跑重试次数。
-const SUBAGENT_EMPTY_OUTPUT_MAX_RETRIES = 2
+// onUpdate 全量快照节流间隔（ms）。
+const SNAPSHOT_THROTTLE_MS = 100
 
-// task 工具输入 schema。
-const TASK_INPUT_SCHEMA = z.object({
+// 批量扇出单条子任务输入。
+const TASK_ITEM_SCHEMA = z.object({
   description: z.string().describe("Brief task description (1-5 words) for progress display"),
   prompt: z
     .string()
     .describe("Complete task prompt to delegate to the sub-agent, must include sufficient context"),
   agent_type: z.string().optional().describe("Agent role name from the Available agent types list"),
   name: z.string().optional().describe("Sub-agent name or role (e.g., 'code-explorer' / 'coder')"),
-  subagent_id: z
-    .string()
-    .optional()
-    .describe(
-      "Subagent ID or name from a previous task call to resume the same sub-agent session with its full context history (e.g., 'subagent-1787802448377-dz12z' or 'code-explorer')",
-    ),
 })
+
+// task 工具输入 schema：单任务模式（description + prompt）与批量扇出模式（tasks[]）二选一。
+const TASK_INPUT_SCHEMA = z
+  .object({
+    description: z
+      .string()
+      .optional()
+      .describe("Single-task mode: brief task description (1-5 words) for progress display"),
+    prompt: z
+      .string()
+      .optional()
+      .describe(
+        "Single-task mode: complete task prompt to delegate to the sub-agent, must include sufficient context",
+      ),
+    agent_type: z
+      .string()
+      .optional()
+      .describe("Single-task mode: agent role name from the Available agent types list"),
+    name: z
+      .string()
+      .optional()
+      .describe("Single-task mode: sub-agent name or role (e.g., 'code-explorer' / 'coder')"),
+    subagent_id: z
+      .string()
+      .optional()
+      .describe(
+        "Subagent ID or name from a previous task call to resume the same sub-agent session with its full context history (e.g., 'subagent-1787802448377-dz12z' or 'code-explorer')",
+      ),
+    tasks: z
+      .array(TASK_ITEM_SCHEMA)
+      .min(1)
+      .max(MAX_BATCH_ITEMS)
+      .optional()
+      .describe(
+        `Batch fan-out mode: ${MAX_BATCH_ITEMS} items max, executed in parallel and returned in input order. Shard per item (one item per file/component/question) with independent prompts; batch items always spawn NEW sub-agents.`,
+      ),
+  })
+  .refine(
+    (value) => {
+      const hasBatch = value.tasks !== undefined && value.tasks.length > 0
+      if (hasBatch) {
+        return value.description === undefined && value.prompt === undefined && !value.subagent_id
+      }
+      return value.description !== undefined && value.prompt !== undefined
+    },
+    {
+      message:
+        "Provide either a single task (description + prompt) or a tasks array (batch mode, new sub-agents only) — never both.",
+    },
+  )
 
 export type TaskInput = z.infer<typeof TASK_INPUT_SCHEMA>
 
-// 子代理工具结果 details（挂落库数据 + 恢复重建弹窗数据）。
+// 子代理工具结果 details（单任务 = subagent；批量 = subagents 按输入顺序）。
 export interface SubagentDetails {
-  subagent: SubagentData
-}
-
-// 工具执行结果 → 摘要文本（供步骤时间轴展示）。
-const summarizeToolResult = (result: unknown): string | undefined => {
-  if (!result || typeof result !== "object") return undefined
-  const content = (result as { content?: Array<{ type?: string; text?: string }> }).content
-  const text = content
-    ?.filter((block) => block.type === "text")
-    .map((block) => block.text ?? "")
-    .join("")
-    .trim()
-    .replace(/\s+/g, " ")
-  if (!text) return undefined
-  return text.length > 96 ? `${text.slice(0, 96)}…` : text
-}
-
-// 子代理内部工具调用记录输入（provenance 落库；runner 负责截断与写库）。
-export interface ChildCallInput {
-  toolCallId: string
-  toolName: string
-  args: unknown
-  status: "running" | "success" | "error" | "aborted"
-  result?: unknown
-  startedAt: number
-  finishedAt: number | null
+  subagent?: SubagentData
+  subagents?: SubagentData[]
 }
 
 // task 工具依赖（agentRunner 装配时注入；execute 时解析）。
@@ -144,168 +143,315 @@ export interface TaskToolDeps {
   subagentSettings?: SubagentSettings
   // 会话级并发槽位（缺省：每个工厂实例独立一个，行为与旧版一致）。
   subagentRuntime?: SubagentRuntime
-  // 当前嵌套深度（根会话为 0；用于决定是否注入嵌套 task）。
+  // 当前嵌套深度（根会话为 0；用于决定是否注入嵌套 task 与是否允许并发排队）。
   depth?: number
   // 角色模型解析器（默认复用 modelFactory.resolveModelSelection）。
   resolveModelSelection?: (selection: ModelSelection) => { model: Model } | { error: string }
 }
 
-// 子代理最终文本有界化：未超限原样返回；超限截断 + 完整内容写 spill 文件。
-const boundSubagentOutput = (
-  text: string,
-  options?: { sessionId?: string; toolCallId?: string },
-): { content: string; filePath?: string } => {
-  const truncated = truncateTail(text, { maxBytes: SUBAGENT_MAX_BYTES })
-  if (!truncated.truncated) return { content: text }
-  const { text: content, spillFilePath: filePath } = spillManager.handleTruncation(
-    text,
-    truncated,
-    {
-      sessionId: options?.sessionId,
-      toolCallId: options?.toolCallId,
-      customActionHint: "Use 'read' tool to inspect the full subagent output.",
-    },
-  )
-  return { content, filePath }
-}
-
-// 提取子代理最新一轮（或指定起始索引）的助手文本（最终输出）与错误信息。
-const extractSubagentResult = (
-  messages: AgentMessage[],
-  startIndex = 0,
-): { text: string; error?: string } => {
-  const targetMessages = messages.slice(startIndex)
-  const text = targetMessages
-    .filter((message) => message.role === "assistant")
-    .flatMap((message) =>
-      message.content
-        .filter((block): block is TextContent => block.type === "text")
-        .map((block) => block.text),
-    )
-    .filter(Boolean)
-    .join("\n\n")
-  const error = targetMessages
-    .filter(
-      (message): message is AssistantMessage =>
-        message.role === "assistant" && message.errorMessage !== undefined,
-    )
-    .map((message) => message.errorMessage)
-    .filter((value): value is string => Boolean(value))
-    .at(-1)
-  return { text, error }
-}
-
-// 聚合子代理全部助手消息的 token 用量（审计/展示用）。
-const aggregateUsage = (messages: AgentMessage[]): Usage => {
-  return messages
-    .filter((message) => message.role === "assistant")
-    .reduce<Usage>(
-      (total, message) => ({
-        input: total.input + message.usage.input,
-        output: total.output + message.usage.output,
-        cacheRead: total.cacheRead + message.usage.cacheRead,
-        // 旧持久化消息无 cacheWrite 字段，按 0 兼容。
-        cacheWrite: total.cacheWrite + (message.usage.cacheWrite ?? 0),
-        totalTokens: total.totalTokens + message.usage.totalTokens,
-      }),
-      { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 },
-    )
-}
-
-// MCP 工具全名前缀（`mcp__server__tool`）。
-const MCP_PREFIX = "mcp__"
-
-// 从 MCP 工具全名解析 server 名（与 mcpToolName 的 `mcp__server__tool` 格式对应）。
-const mcpServerOf = (toolName: string): string | undefined => {
-  if (!toolName.startsWith(MCP_PREFIX)) return undefined
-  const rest = toolName.slice(MCP_PREFIX.length)
-  const separator = rest.indexOf("__")
-  return separator === -1 ? undefined : rest.slice(0, separator)
-}
-
-// 角色配置的 server 名按同一消毒规则归一后比较（与工具全名命名空间保持一致）。
-const matchesMcpServer = (allowed: string[], toolName: string): boolean => {
-  const server = mcpServerOf(toolName)
-  if (server === undefined) return false
-  return allowed.some((name) => sanitizeMcpNameSegment(name) === server)
-}
-
-/**
- * 包装 read_skill：角色技能白名单未命中直接拒绝（保留原 cwd 与其余行为）。
- */
-const withSkillAllowlist = (tool: AgentTool<any>, allowedSkills: string[]): AgentTool<any> => ({
-  ...tool,
-  execute: async (toolCallId, params, signal, onUpdate) => {
-    const requested = (params as { name?: unknown }).name
-    if (typeof requested !== "string" || !allowedSkills.includes(requested)) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Skill "${typeof requested === "string" ? requested : ""}" is not allowed for this sub-agent.`,
-          },
-        ],
-        details: { error: "skill_not_allowed" },
-      }
-    }
-    return tool.execute(toolCallId, params, signal, onUpdate)
-  },
-})
-
-/**
- * 按角色权限过滤子代理工具集：四组独立求交，永不新增能力。
- * tools 组覆盖其余内置工具（含 task）；mcp 组按 server 名匹配；websearch 组管理联网工具；skills 组管理 read_skill。
- */
-const filterToolsByPermissions = (
-  tools: AgentTool<any>[],
-  permissions: SubagentRolePermissions | undefined,
-): AgentTool<any>[] => {
-  if (!permissions) return tools
-  const websearchNames = new Set<string>(SUBAGENT_WEBSEARCH_TOOL_NAMES)
-  const allowedSkills = permissions.skills
-  return tools.flatMap((tool): AgentTool<any>[] => {
-    const name = tool.name
-    if (name.startsWith(MCP_PREFIX)) {
-      if (permissions.mcp === undefined) return [tool]
-      return matchesMcpServer(permissions.mcp, name) ? [tool] : []
-    }
-    if (name === SUBAGENT_SKILL_TOOL_NAME) {
-      if (allowedSkills === undefined) return [tool]
-      if (allowedSkills.length === 0) return []
-      return [withSkillAllowlist(tool, allowedSkills)]
-    }
-    if (websearchNames.has(name)) {
-      if (permissions.websearch === undefined) return [tool]
-      return permissions.websearch.includes(name) ? [tool] : []
-    }
-    if (permissions.tools === undefined) return [tool]
-    return permissions.tools.includes(name) ? [tool] : []
-  })
-}
-
 // task 工具基础描述（角色目录与并发治理在装配时追加）。
 const BASE_DESCRIPTION =
-  "Delegate an independent sub-task to a sub-agent (e.g., parallel search, independent exploration, long-running command execution). " +
-  "The sub-agent runs its own tool loop in an independent context, returning the final text as the result. " +
-  "Use when a task can be decomposed into independent sub-tasks; do not delegate tasks that require parent context decisions."
+  "Delegate independent sub-tasks to sub-agents that run their own tool loop in isolated contexts and return their final text. " +
+  "Single-task mode (description + prompt) runs one sub-agent; batch mode (tasks array) fans out multiple NEW sub-agents in PARALLEL and returns their results in input order. " +
+  "Use batch mode when a task decomposes into 3+ independent units: shard per item (one item per file/component/question), never split a fan-out across turns, and never batch sequential chains (step B needs step A's output) or tasks that require parent context decisions. " +
+  "Use single-task mode with subagent_id to continue an existing sub-agent instead of spawning new ones."
+
+// 批量扇出单项结果（含未启动项）。
+type BatchItemOutcome =
+  | { kind: "result"; request: SubagentRunRequest; result: SubagentRunResult }
+  | { kind: "rejected"; request: SubagentRunRequest }
+  | { kind: "aborted"; request: SubagentRunRequest }
+
+// 并发拒绝文案（单一/批量共用）。
+const concurrencyMessage = (runtime: SubagentRuntime): string =>
+  `Concurrency limit reached: ${runtime.active}/${runtime.limit} subagents running. Reuse an existing subagent (subagent_id) or wait for one to finish before spawning more.`
+
+// 生成子代理唯一 id。
+const generateSubagentId = (): string =>
+  `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+
+// 纯文本工具结果。
+const textResult = (text: string): AgentToolResult<SubagentDetails> => ({
+  content: [{ type: "text", text }],
+})
+
+// onUpdate 全量快照节流：100ms 合并推送 + 结束强制 flush（内部步骤捕获不受影响）。
+const createSnapshotThrottle = (
+  flush: () => void,
+): { schedule: () => void; flushNow: () => void } => {
+  let lastSnapshotAt = 0
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let pending = false
+  const runFlush = (): void => {
+    pending = false
+    lastSnapshotAt = Date.now()
+    flush()
+  }
+  return {
+    schedule: () => {
+      pending = true
+      const elapsed = Date.now() - lastSnapshotAt
+      if (elapsed >= SNAPSHOT_THROTTLE_MS) {
+        if (timer) {
+          clearTimeout(timer)
+          timer = undefined
+        }
+        runFlush()
+        return
+      }
+      timer ??= setTimeout(() => {
+        timer = undefined
+        if (pending) runFlush()
+      }, SNAPSHOT_THROTTLE_MS - elapsed)
+      timer.unref?.()
+    },
+    flushNow: () => {
+      if (timer) {
+        clearTimeout(timer)
+        timer = undefined
+      }
+      if (pending) runFlush()
+    },
+  }
+}
 
 /**
  * 创建 task 工具：委托独立子任务到进程内嵌套 Agent。
  *
- * 子代理在同一 cwd 内以独立上下文运行自己的工具循环（复用父权限门控与沙箱策略），
- * 结构化交互遵循 author / recipient / triggerTurn 信元规范。
+ * 单任务模式复用已有子代理或新建；批量模式一次扇出多个新子代理并行执行，
+ * 顶层会话超出并发上限按 FIFO 排队，嵌套子代理 fail-fast（避免父子互等死锁）。
  */
 export const createTaskTool = (
   deps: TaskToolDeps & { getTools: () => AgentTool<any>[] },
 ): AgentTool<typeof TASK_INPUT_SCHEMA> => {
   const settings = deps.subagentSettings ?? DEFAULT_SUBAGENT_SETTINGS
   const roles = resolveAgentRoles(settings)
-  const resolveSelection = deps.resolveModelSelection ?? defaultResolveModelSelection
   const runtime = deps.subagentRuntime ?? new SubagentRuntime(settings.maxConcurrent)
-  const maxDepth = settings.maxDepth ?? 1
+  // 仅顶层会话允许排队：嵌套子代理占着槽位等待子代理会形成循环等待。
+  const isTopLevel = (deps.depth ?? 0) === 0
   const concurrencyNote = settings.maxConcurrent
-    ? `\n\nConcurrency: at most ${settings.maxConcurrent} subagents may run at the same time. Reuse existing subagents or wait for their completion before spawning more.`
+    ? `\n\nConcurrency: at most ${settings.maxConcurrent} subagents may run at the same time. Tasks dispatched from the top-level session beyond this limit are queued (FIFO); nested sub-agents beyond the limit are rejected immediately.`
     : ""
+
+  // runner 依赖：注入工具集读取与嵌套 task 工厂（工厂回调避免 runner → task 循环依赖）。
+  const runnerDeps: SubagentRunnerDeps = {
+    ...deps,
+    createNestedTaskTool: ({ systemPrompt, model, depth, getTools }) =>
+      createTaskTool({
+        ...deps,
+        subagentSystemPrompt: systemPrompt,
+        model,
+        depth,
+        subagentRuntime: runtime,
+        getTools,
+      }),
+  }
+
+  // 单任务模式：解析续接/角色 → 占槽 → 运行 → 有界回传（行为与旧版一致）。
+  const executeSingle = async (
+    toolCallId: string,
+    params: TaskInput,
+    signal: AbortSignal | undefined,
+    onUpdate: ((update: AgentToolResult<SubagentDetails>) => void) | undefined,
+  ): Promise<AgentToolResult<SubagentDetails>> => {
+    // 1. 优先通过 subagent_id 或 name 寻址解析已有子代理
+    const lookupKey = params.subagent_id?.trim() || params.name?.trim()
+    const existingManaged = lookupKey ? deps.subagentPool?.resolve(lookupKey) : undefined
+
+    // 2. 确定真实的 subagentId（复用已有 id 或为新子代理分配唯一 id）
+    const subagentId =
+      existingManaged?.subagentId ?? params.subagent_id?.trim() ?? generateSubagentId()
+
+    // 3. 角色解析：续接角色不可变；新建按 agent_type > 默认子代理。
+    const requestedType = params.agent_type?.trim()
+    let role: ResolvedAgentRole | undefined
+    if (existingManaged) {
+      const existingRoleName = existingManaged.roleName
+      if (requestedType && requestedType !== existingRoleName) {
+        return textResult(
+          `agent_type cannot be changed when resuming subagent "${subagentId}" (role: ${existingRoleName ?? "default"}). Existing subagents keep their role for their lifetime.`,
+        )
+      }
+      role = existingRoleName ? roles.get(existingRoleName) : undefined
+    } else if (requestedType) {
+      role = roles.get(requestedType)
+      if (!role) {
+        return textResult(
+          `Unknown agent_type "${requestedType}". Available agent types: ${[...roles.keys()].join(", ")}.`,
+        )
+      }
+    }
+
+    const roleName = role?.name ?? existingManaged?.roleName
+
+    // 展示名回退顺序：显式 name → 池内旧名 → 角色名 → "task"。
+    const subagentName = params.name?.trim() || existingManaged?.name || roleName || "task"
+
+    // 4. 并发槽位：所有早退校验之后占用；空闲时同步获取（保持既有启动时机），满则顶层排队、嵌套拒绝。
+    const lease =
+      runtime.tryAcquireLease() ?? (await runtime.acquire({ queue: isTopLevel, signal }))
+    if (!lease) {
+      return textResult(
+        signal?.aborted
+          ? `Subagent execution was aborted before start.\n\n[Subagent ID: ${subagentId}]`
+          : concurrencyMessage(runtime),
+      )
+    }
+
+    try {
+      // onUpdate 快照节流：最后一条合并快照在完成后强制 flush。
+      let latestSnapshot: SubagentData | undefined
+      let pendingProgress: TextContent | undefined
+      const throttle = createSnapshotThrottle(() => {
+        if (!onUpdate || !latestSnapshot) return
+        const progress = pendingProgress
+        pendingProgress = undefined
+        onUpdate({ content: progress ? [progress] : [], details: { subagent: latestSnapshot } })
+      })
+
+      const result = await runSubagent(
+        runnerDeps,
+        {
+          toolCallId,
+          subagentId,
+          description: params.description ?? "",
+          prompt: params.prompt ?? "",
+          name: subagentName,
+          ...(role ? { role } : {}),
+          ...(roleName ? { roleName } : {}),
+          ...(existingManaged ? { existing: existingManaged } : {}),
+          depth: deps.depth ?? 0,
+        },
+        signal,
+        (snapshot, progress) => {
+          latestSnapshot = snapshot()
+          if (progress) pendingProgress = progress
+          throttle.schedule()
+        },
+      )
+      // 终态快照（status = done/error）覆盖流式 running 快照后再 flush，避免完成态回落。
+      if (result.data) latestSnapshot = result.data
+      throttle.flushNow()
+
+      // 槽位占用前/启动前中止：runner 不返回快照，回传取消结果。
+      if (!result.data) {
+        return textResult(
+          `Subagent execution was aborted before start.\n\n[Subagent ID: ${subagentId}]`,
+        )
+      }
+
+      let content: string
+      if (result.text) {
+        content = `${result.text}\n\n[Subagent ID: ${subagentId}]`
+      } else if (result.error) {
+        content = `Subagent execution failed: ${result.error}\n\n[Subagent ID: ${subagentId}]`
+      } else {
+        content = `(Subagent produced no text output)\n\n[Subagent ID: ${subagentId}]`
+      }
+      return { content: [{ type: "text", text: content }], details: { subagent: result.data } }
+    } finally {
+      lease()
+    }
+  }
+
+  // 批量扇出模式：全量前置校验 → 逐项占槽并发运行 → 按输入顺序聚合文本与快照。
+  const executeBatch = async (
+    toolCallId: string,
+    items: NonNullable<TaskInput["tasks"]>,
+    signal: AbortSignal | undefined,
+    onUpdate: ((update: AgentToolResult<SubagentDetails>) => void) | undefined,
+  ): Promise<AgentToolResult<SubagentDetails>> => {
+    // 1. 前置校验：任一角色非法整批早退（不消费槽位与流）。
+    const requests: SubagentRunRequest[] = []
+    for (const [index, item] of items.entries()) {
+      const requestedType = item.agent_type?.trim()
+      let role: ResolvedAgentRole | undefined
+      if (requestedType) {
+        role = roles.get(requestedType)
+        if (!role) {
+          return textResult(
+            `Unknown agent_type "${requestedType}" in tasks[${index}]. Available agent types: ${[...roles.keys()].join(", ")}.`,
+          )
+        }
+      }
+      requests.push({
+        toolCallId,
+        subagentId: generateSubagentId(),
+        description: item.description,
+        prompt: item.prompt,
+        name: item.name?.trim() || role?.name || "task",
+        ...(role ? { role } : {}),
+        ...(role ? { roleName: role.name } : {}),
+        depth: deps.depth ?? 0,
+      })
+    }
+
+    // 2. 并发扇出：逐项占槽（顶层 FIFO 排队），完成后按输入顺序聚合。
+    const snapshotBuilders: Array<(() => SubagentData) | undefined> = new Array(requests.length)
+    const throttle = createSnapshotThrottle(() => {
+      if (!onUpdate) return
+      const snapshots = snapshotBuilders.flatMap((build) => (build ? [build()] : []))
+      onUpdate({ content: [], details: { subagents: snapshots } })
+    })
+
+    const outcomes = await Promise.all(
+      requests.map(async (request, index): Promise<BatchItemOutcome> => {
+        const lease =
+          runtime.tryAcquireLease() ?? (await runtime.acquire({ queue: isTopLevel, signal }))
+        if (!lease) {
+          return signal?.aborted ? { kind: "aborted", request } : { kind: "rejected", request }
+        }
+        try {
+          const result = await runSubagent(runnerDeps, request, signal, (snapshot) => {
+            snapshotBuilders[index] = snapshot
+            throttle.schedule()
+          })
+          // 单项完成即回推终态快照：UI 逐项标记完成，不等整批结束。
+          if (result.data) {
+            const finalData = result.data
+            snapshotBuilders[index] = () => finalData
+            throttle.schedule()
+          }
+          return { kind: "result", request, result }
+        } finally {
+          lease()
+        }
+      }),
+    )
+    throttle.flushNow()
+
+    // 3. 文本按输入顺序聚合；details 只含实际启动项的完整快照。
+    const sections: string[] = []
+    const snapshotData: SubagentData[] = []
+    for (const [index, outcome] of outcomes.entries()) {
+      const { request } = outcome
+      const roleSuffix = request.roleName ? ` (${request.roleName})` : ""
+      const label = `[${index + 1}/${outcomes.length}] ${request.name}${roleSuffix}`
+      if (outcome.kind === "rejected") {
+        sections.push(`${label} - rejected\n${concurrencyMessage(runtime)}`)
+        continue
+      }
+      if (outcome.kind === "aborted") {
+        sections.push(`${label} - aborted\nSubagent execution was aborted before start.`)
+        continue
+      }
+      const { result } = outcome
+      const body = result.text
+        ? result.text
+        : result.error
+          ? `Subagent execution failed: ${result.error}`
+          : result.status === "aborted"
+            ? "Subagent execution was aborted."
+            : "(Subagent produced no text output)"
+      if (result.data) snapshotData.push(result.data)
+      sections.push(`${label} - ${result.status}\n${body}\n[Subagent ID: ${request.subagentId}]`)
+    }
+
+    return {
+      content: [{ type: "text", text: sections.join("\n\n") }],
+      details: snapshotData.length > 0 ? { subagents: snapshotData } : {},
+    }
+  }
 
   return {
     name: "task",
@@ -313,432 +459,10 @@ export const createTaskTool = (
     description: `${BASE_DESCRIPTION}\n\n${buildAgentTypesDescription(roles.values())}${concurrencyNote}`,
     inputSchema: TASK_INPUT_SCHEMA,
     execute: async (toolCallId, params, signal, onUpdate) => {
-      // 1. 优先通过 subagent_id 或 name 寻址解析已有子代理
-      const lookupKey = params.subagent_id?.trim() || params.name?.trim()
-      const existingManaged = lookupKey ? deps.subagentPool?.resolve(lookupKey) : undefined
-
-      // 2. 确定真实的 subagentId（复用已有 id 或为新子代理分配唯一 id）
-      const subagentId =
-        existingManaged?.subagentId ??
-        params.subagent_id?.trim() ??
-        `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-
-      // 3. 角色解析：续接角色不可变；新建按 agent_type > 默认子代理。
-      const requestedType = params.agent_type?.trim()
-      let role: ResolvedAgentRole | undefined
-      if (existingManaged) {
-        const existingRoleName = existingManaged.roleName
-        if (requestedType && requestedType !== existingRoleName) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `agent_type cannot be changed when resuming subagent "${subagentId}" (role: ${existingRoleName ?? "default"}). Existing subagents keep their role for their lifetime.`,
-              },
-            ],
-          }
-        }
-        role = existingRoleName ? roles.get(existingRoleName) : undefined
-      } else if (requestedType) {
-        role = roles.get(requestedType)
-        if (!role) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Unknown agent_type "${requestedType}". Available agent types: ${[...roles.keys()].join(", ")}.`,
-              },
-            ],
-          }
-        }
+      if (params.tasks !== undefined && params.tasks.length > 0) {
+        return executeBatch(toolCallId, params.tasks, signal, onUpdate)
       }
-
-      const roleName = role?.name ?? existingManaged?.roleName
-
-      // 展示名回退顺序：显式 name → 池内旧名 → 角色名 → "task"。
-      const subagentName = params.name?.trim() || existingManaged?.name || roleName || "task"
-
-      // 4. 并发槽位：所有早退校验之后、启动子代理 turn 之前占用；失败不消费流。
-      if (!runtime.tryAcquire()) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Concurrency limit reached: ${runtime.active}/${runtime.limit} subagents running. Reuse an existing subagent (subagent_id) or wait for one to finish before spawning more.`,
-            },
-          ],
-        }
-      }
-
-      try {
-        // 5. 子代理实例：续接复用池内实例（角色/模型/工具与创建时一致），否则按角色新建。
-        let subAgent = existingManaged?.agent
-        if (!subAgent) {
-          const permissions = role?.permissions
-          const allowedSkills = permissions?.skills
-
-          // 系统提示词追加顺序：子代理基座提示词 → 子代理后缀 → 角色指令。
-          // 角色配置技能白名单时，基座提示词的 available_skills 同步收窄（与工具同源）。
-          const basePrompt = allowedSkills
-            ? (deps.renderSubagentSystemPrompt?.(allowedSkills) ?? deps.subagentSystemPrompt)
-            : deps.subagentSystemPrompt
-          const effectivePrompt = role?.instructions
-            ? `${basePrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}\n\n${role.instructions}`
-            : `${basePrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}`
-
-          // 工具集 = 父激活集去 task，再与角色权限求交集（永不新增能力）。
-          const parentTools = deps.getTools().filter((tool) => tool.name !== "task")
-          const childTools: AgentTool<any>[] = filterToolsByPermissions(parentTools, permissions)
-
-          // 模型优先级：role.model → defaultModel → 父会话模型；解析失败告警并降级。
-          const resolveChildModel = (): Model => {
-            if (role?.model) {
-              const resolved = resolveSelection(role.model)
-              if ("model" in resolved) return resolved.model
-              console.warn(
-                `Failed to resolve model for subagent role "${role.name}": ${resolved.error}. Falling back to the default subagent model.`,
-              )
-            }
-            if (settings.defaultModel) {
-              const resolved = resolveSelection(settings.defaultModel)
-              if ("model" in resolved) return resolved.model
-              console.warn(
-                `Failed to resolve default subagent model: ${resolved.error}. Falling back to the parent session model.`,
-              )
-            }
-            return deps.model
-          }
-
-          const childModel = resolveChildModel()
-          const childDepth = (deps.depth ?? 0) + 1
-
-          // 深度允许且角色未排除 task 时注入嵌套 task；getTools 读取同一活数组，避免循环引用。
-          if (
-            childDepth < maxDepth &&
-            (permissions?.tools === undefined || permissions.tools.includes("task"))
-          ) {
-            childTools.push(
-              createTaskTool({
-                ...deps,
-                subagentSystemPrompt: effectivePrompt,
-                model: childModel,
-                depth: childDepth,
-                subagentRuntime: runtime,
-                getTools: () => childTools,
-              }),
-            )
-          }
-
-          subAgent = new Agent({
-            streamFn: createAiSdkStreamFn({
-              purpose: "subagent",
-              getSessionId: () => deps.getSessionId?.() ?? null,
-            }),
-            beforeToolCall: deps.beforeToolCall,
-            afterToolCall: deps.afterToolCall,
-            preToolUse: deps.preToolUse,
-            postToolUse: deps.postToolUse,
-            initialState: {
-              systemPrompt: effectivePrompt,
-              model: childModel,
-              tools: childTools,
-            },
-          })
-        }
-
-        // 子代理名（AI 分发；优先用参数，其次复用旧名，缺失回退 "task"）。
-        const recipientName = `subagent:${subagentName}`
-        const orchestratorName = "orchestrator"
-
-        // 结构化通信信元列表（从已有子代理历史中继承并追加）
-        const communications: InterAgentCommunication[] = existingManaged?.data?.communications
-          ? [...existingManaged.data.communications]
-          : []
-
-        communications.push({
-          id: `comm-turn-${Date.now()}`,
-          author: orchestratorName,
-          recipient: recipientName,
-          content: params.prompt,
-          triggerTurn: true,
-          metadata: {
-            subagentId,
-            description: params.description,
-            timestamp: Date.now(),
-          },
-        })
-
-        // 工具步骤（按 toolCallId 定位，继承已有步骤并追加新步骤）。
-        const steps = new Map<string, SubagentStep>()
-        if (existingManaged?.data?.steps) {
-          existingManaged.data.steps.forEach((s, idx) => {
-            steps.set(`historical-${idx}`, s)
-          })
-        }
-
-        // 聚合子代理完整上下文（已提交 + 正在流式消息）。
-        const collectMessages = (): AgentMessage[] => {
-          const messages = subAgent.state.messages.slice()
-          const streaming = subAgent.state.streamingMessage
-          if (streaming) messages.push(streaming)
-          return messages
-        }
-
-        // 构建 SubagentData 快照（每次子代理事件推一次，renderer 覆盖不做增量合并）。
-        const buildSubagentData = (filePath?: string): SubagentData => ({
-          subagentId,
-          name: subagentName,
-          ...(roleName ? { roleName } : {}),
-          description: params.description,
-          prompt: params.prompt,
-          communications: [...communications],
-          sandboxPolicy: deps.sandboxPolicy,
-          messages: collectMessages(),
-          steps: [...steps.values()],
-          usage: aggregateUsage(subAgent.state.messages),
-          ...(filePath ? { filePath } : {}),
-        })
-
-        const startIndex = subAgent.state.messages.length
-
-        // onUpdate 全量快照节流：100ms 合并推送 + prompt 结束强制 flush（内部步骤捕获不受影响）。
-        const SNAPSHOT_THROTTLE_MS = 100
-        let lastSnapshotAt = 0
-        let snapshotTimer: ReturnType<typeof setTimeout> | undefined
-        let pendingProgress: TextContent | undefined
-        let hasPendingSnapshot = false
-
-        const pushSnapshot = (): void => {
-          if (!onUpdate) return
-          hasPendingSnapshot = false
-          lastSnapshotAt = Date.now()
-          const progress = pendingProgress
-          pendingProgress = undefined
-          onUpdate({
-            content: progress ? [progress] : [],
-            details: { subagent: buildSubagentData() },
-          })
-        }
-
-        const scheduleSnapshot = (progress?: TextContent): void => {
-          if (!onUpdate) return
-          if (progress) pendingProgress = progress
-          hasPendingSnapshot = true
-          const elapsed = Date.now() - lastSnapshotAt
-          if (elapsed >= SNAPSHOT_THROTTLE_MS) {
-            if (snapshotTimer) {
-              clearTimeout(snapshotTimer)
-              snapshotTimer = undefined
-            }
-            pushSnapshot()
-            return
-          }
-          snapshotTimer ??= setTimeout(() => {
-            snapshotTimer = undefined
-            if (hasPendingSnapshot) pushSnapshot()
-          }, SNAPSHOT_THROTTLE_MS - elapsed)
-          snapshotTimer.unref?.()
-        }
-
-        // prompt 结束前强制 flush 最后一次快照，保证完成态不丢。
-        const flushSnapshot = (): void => {
-          if (snapshotTimer) {
-            clearTimeout(snapshotTimer)
-            snapshotTimer = undefined
-          }
-          if (hasPendingSnapshot) pushSnapshot()
-        }
-
-        // 子代理事件 → 快照桥接：内部步骤始终捕获，onUpdate 存在时按节流回传快照。
-        const unsubscribe = subAgent.subscribe((event) => {
-          let progress: TextContent | undefined
-          switch (event.type) {
-            case "message_update":
-              // 流式文本增量（父消息流进度文本；子代理面板以 messages 为准）。
-              if (event.message.role === "assistant") {
-                const text = event.message.content
-                  .filter((block): block is TextContent => block.type === "text")
-                  .map((block) => block.text)
-                  .join("")
-                if (text) progress = { type: "text", text }
-              }
-              break
-
-            case "tool_execution_start": {
-              steps.set(event.toolCallId, {
-                toolName: event.toolName,
-                args: (event.args as Record<string, unknown>) ?? {},
-                status: "running",
-              })
-              // provenance：子代理内部调用写 agent_call（parent_call_id 指父 task 调用行）。
-              deps.recordChildCall(toolCallId, {
-                toolCallId: event.toolCallId,
-                toolName: event.toolName,
-                args: event.args,
-                status: "running",
-                startedAt: Date.now(),
-                finishedAt: null,
-              })
-              break
-            }
-
-            case "tool_execution_end": {
-              const step = steps.get(event.toolCallId)
-              if (step) {
-                step.status = event.isError ? "error" : "done"
-                step.result = summarizeToolResult(event.result)
-              }
-              deps.recordChildCall(toolCallId, {
-                toolCallId: event.toolCallId,
-                toolName: event.toolName,
-                // end 事件不带 args：复用 start 时缓存的步骤参数。
-                args: step?.args ?? {},
-                status: event.isError ? "error" : "success",
-                result: event.result,
-                startedAt: Date.now(),
-                finishedAt: Date.now(),
-              })
-              break
-            }
-          }
-          scheduleSnapshot(progress)
-        })
-        // 父 run abort → 子代理级联中止。
-        const onAbort = (): void => subAgent.abort()
-        signal?.addEventListener("abort", onAbort, { once: true })
-
-        // SubagentStart hook：additionalContext 仅注入子代理自身上下文；agent_type 使用解析后的角色名。
-        const hookSessionId = deps.getSessionId?.() ?? null
-        const hookCwd = deps.getCwd?.() ?? process.cwd()
-        const startHookMessages = hookResultMessages(
-          await hooksManager.dispatch({
-            event: "SubagentStart",
-            sessionId: hookSessionId,
-            cwd: hookCwd,
-            payload: {
-              agent_id: subagentId,
-              agent_type: roleName ?? subagentName,
-              task: params.prompt,
-            },
-            signal,
-          }),
-        )
-
-        let text = ""
-        let error: string | undefined
-        try {
-          // 父 run 在 hook 派发期间中止：不启动新 turn（无活动 run 的 abort 是 no-op）。
-          if (signal?.aborted) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Subagent execution was aborted before start.\n\n[Subagent ID: ${subagentId}]`,
-                },
-              ],
-            }
-          }
-          const userMessage: AgentMessage = {
-            role: "user",
-            content: params.prompt,
-            timestamp: Date.now(),
-          }
-          await subAgent.prompt(
-            startHookMessages.length > 0 ? [...startHookMessages, userMessage] : userMessage,
-          )
-
-          const initialResult = extractSubagentResult(subAgent.state.messages, startIndex)
-          text = initialResult.text
-          error = initialResult.error
-
-          // 空输出兜底：provider 偶发「正常结束但零输出」的空补全（usage.output = 0）时，
-          // 丢弃空 assistant 消息并按原上下文续跑；重试仍在同一次 dispatch（同一 Protocol）内。
-          for (
-            let attempt = 0;
-            attempt < SUBAGENT_EMPTY_OUTPUT_MAX_RETRIES && !text && !error && !signal?.aborted;
-            attempt++
-          ) {
-            if (subAgent.state.messages.at(-1)?.role !== "assistant") break
-            try {
-              subAgent.state.removeLastMessage()
-              await subAgent.continue()
-            } catch (retryError) {
-              console.warn(
-                `Subagent empty-output retry failed: ${
-                  retryError instanceof Error ? retryError.message : String(retryError)
-                }`,
-              )
-              break
-            }
-            const retriedResult = extractSubagentResult(subAgent.state.messages, startIndex)
-            text = retriedResult.text
-            error = retriedResult.error
-          }
-        } finally {
-          flushSnapshot()
-          unsubscribe()
-          signal?.removeEventListener("abort", onAbort)
-        }
-
-        // SubagentStop hook：成功/失败/中止状态审计；消息仅进入子代理自身历史（面板展示）。
-        const subagentStatus = signal?.aborted ? "aborted" : error ? "error" : "done"
-        const stopHookMessages = hookResultMessages(
-          await hooksManager.dispatch({
-            event: "SubagentStop",
-            sessionId: hookSessionId,
-            cwd: hookCwd,
-            payload: {
-              agent_id: subagentId,
-              agent_type: roleName ?? subagentName,
-              status: subagentStatus,
-            },
-          }),
-        )
-        for (const hookMessage of stopHookMessages) {
-          subAgent.state.appendMessage(hookMessage)
-        }
-
-        // 子代理产出最终结论，回传结构化通信信元
-        communications.push({
-          id: `comm-done-${Date.now()}`,
-          author: recipientName,
-          recipient: orchestratorName,
-          content: text || (error ? `Error: ${error}` : ""),
-          triggerTurn: false,
-          metadata: {
-            status: error ? "error" : "done",
-            timestamp: Date.now(),
-          },
-        })
-
-        const details: SubagentDetails = { subagent: buildSubagentData() }
-
-        // 在会话池中登记/更新该子代理实例与历史快照数据（续接保留已固定角色）。
-        deps.subagentPool?.set(subagentId, {
-          subagentId,
-          name: subagentName,
-          agent: subAgent,
-          data: details.subagent,
-          createdAt: existingManaged?.createdAt ?? Date.now(),
-          lastActiveAt: Date.now(),
-          ...(roleName ? { roleName } : {}),
-        })
-
-        let content: string
-        if (text) {
-          const sessionId = deps.getSessionId?.() ?? undefined
-          const bounded = boundSubagentOutput(text, { sessionId, toolCallId })
-          content = `${bounded.content}\n\n[Subagent ID: ${subagentId}]`
-          if (bounded.filePath) details.subagent.filePath = bounded.filePath
-        } else if (error) {
-          content = `Subagent execution failed: ${error}\n\n[Subagent ID: ${subagentId}]`
-        } else {
-          content = `(Subagent produced no text output)\n\n[Subagent ID: ${subagentId}]`
-        }
-        return { content: [{ type: "text", text: content }], details }
-      } finally {
-        runtime.release()
-      }
+      return executeSingle(toolCallId, params, signal, onUpdate)
     },
   }
 }

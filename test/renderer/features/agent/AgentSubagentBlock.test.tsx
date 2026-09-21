@@ -130,3 +130,106 @@ describe("AgentSubagentBlock 状态行", () => {
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 })
+
+// 批量子代理快照（各自独立 id / 展示名 / 角色）。
+const buildBatchItem = (id: string, name: string, roleName?: string): SubagentData => ({
+  subagentId: id,
+  name,
+  ...(roleName ? { roleName } : {}),
+  description: `${name} 任务`,
+  prompt: `${name} 任务`,
+  messages: [],
+  steps: [{ toolName: "grep", args: {}, status: "done" }],
+  usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2 },
+})
+
+// 批量扇出 task 调用块（tasks[] 模式）。
+const buildBatchToolCall = (): ToolCallBlock => ({
+  kind: "toolCall",
+  toolCallId: "task-batch-1",
+  toolName: "task",
+  args: { tasks: [] },
+  status: "done",
+  subagents: [
+    buildBatchItem("subagent-1", "review-auth", "explorer"),
+    buildBatchItem("subagent-2", "review-db"),
+  ],
+})
+
+describe("AgentSubagentBlock 批量扇出", () => {
+  afterEach(cleanup)
+
+  it("逐项渲染子代理入口，点击携带对应下标打开面板", () => {
+    const onOpen = vi.fn()
+    const toolCall = buildBatchToolCall()
+    render(<AgentSubagentBlock toolCall={toolCall} onOpen={onOpen} />)
+
+    const buttons = screen.getAllByLabelText("View subagent execution details")
+    expect(buttons).toHaveLength(2)
+    expect(buttons[0]?.textContent).toContain("review-auth")
+    expect(buttons[0]?.textContent).toContain("explorer")
+    expect(buttons[1]?.textContent).toContain("review-db")
+
+    fireEvent.click(buttons[1] as HTMLElement)
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    expect(onOpen).toHaveBeenCalledWith(toolCall, 1)
+  })
+
+  it("批量项各自渲染状态行（运行中展示内部工具）", () => {
+    const { container } = render(
+      <AgentSubagentBlock
+        toolCall={{
+          ...buildBatchToolCall(),
+          status: "running",
+          subagents: [
+            buildBatchItem("subagent-1", "review-auth", "explorer"),
+            {
+              ...buildBatchItem("subagent-2", "review-db"),
+              steps: [{ toolName: "read", args: { filePath: "/tmp/a/db.ts" }, status: "running" }],
+            },
+          ],
+        }}
+      />,
+    )
+
+    const rows = container.querySelectorAll(".agent-subagent-status-row")
+    expect(rows).toHaveLength(2)
+    expect(rows[1]?.textContent).toContain("read")
+  })
+
+  it("按单项终态标记：已完成项展示统计行，未完成项保持运行态（不等整批）", () => {
+    const { container } = render(
+      <AgentSubagentBlock
+        toolCall={{
+          ...buildBatchToolCall(),
+          status: "running",
+          subagents: [
+            {
+              ...buildBatchItem("subagent-1", "review-auth", "explorer"),
+              status: "done",
+              steps: [{ toolName: "grep", args: {}, status: "done" }],
+            },
+            {
+              ...buildBatchItem("subagent-2", "review-db"),
+              status: "running",
+              steps: [{ toolName: "read", args: { filePath: "/tmp/a/db.ts" }, status: "running" }],
+            },
+          ],
+        }}
+      />,
+    )
+
+    const rows = container.querySelectorAll(".agent-subagent-status-row")
+    expect(rows[0]?.getAttribute("data-subagent-row")).toBe("stats")
+    expect(rows[1]?.getAttribute("data-subagent-row")).toBe("tool")
+    expect(rows[1]?.textContent).toContain("read")
+  })
+
+  it("单项子代理仍按原有卡片渲染（不进入批量分支）", () => {
+    const onOpen = vi.fn()
+    render(<AgentSubagentBlock toolCall={buildToolCall("done", [])} onOpen={onOpen} />)
+
+    expect(screen.getAllByLabelText("View subagent execution details")).toHaveLength(1)
+  })
+})

@@ -20,6 +20,8 @@ export type McpServerConfig = {
   environment?: Record<string, string>
   disabled?: boolean
   timeout?: number
+  // 串行逃生阀：有状态 server（如浏览器自动化）置 true 后其全部工具独占执行。
+  serial?: boolean
 }
 
 // server 连接状态。
@@ -32,6 +34,8 @@ export type McpToolHandle = {
   client: Client
   timeout: number
   fullName: string
+  // server 级串行标记（缺省并行）。
+  serial?: boolean
 }
 
 // 默认连接初始化超时（ms）。
@@ -77,6 +81,7 @@ const readMcpServerConfig = (): Record<string, McpServerConfig> => {
           : {}),
         ...(typeof value.disabled === "boolean" ? { disabled: value.disabled } : {}),
         ...(typeof value.timeout === "number" ? { timeout: value.timeout } : {}),
+        ...(typeof value.serial === "boolean" ? { serial: value.serial } : {}),
       }
     }
     return servers
@@ -114,18 +119,19 @@ const truncateMcpOutput = (text: string): string => {
   return `${result.content}\n\n[Output truncated: Showing ${result.outputLines} of ${result.totalLines} lines (${formatSize(result.outputBytes)} / ${formatSize(result.totalBytes)}).]`
 }
 
-// MCP 工具 → AgentTool 适配：命名空间前缀、串行执行、isError 抛错、structuredContent 兜底。
+// MCP 工具 → AgentTool 适配：命名空间前缀、并发执行（server 标记 serial 时独占）、isError 抛错、structuredContent 兜底。
 export const wrapMcpTool = (
   server: string,
   def: Tool,
   client: Client,
   timeout: number,
+  serial = false,
 ): AgentTool<any> => ({
   name: mcpToolName(server, def.name),
   label: def.name,
   description: def.description ?? "",
   inputSchema: jsonSchemaToZod(def.inputSchema),
-  executionMode: "sequential",
+  executionMode: serial ? "sequential" : "parallel",
   execute: async (_toolCallId, params, signal) => {
     const result = (await client.callTool(
       { name: def.name, arguments: params },
@@ -151,6 +157,8 @@ type ServerState = {
   error?: string
   client?: Client
   timeout: number
+  // server 级串行标记（缺省并行）。
+  serial?: boolean
 }
 
 /**
@@ -277,7 +285,14 @@ export class McpManager {
           })
         }
       }
-      this.updateState(name, { server: name, status: "connected", tools, client, timeout })
+      this.updateState(name, {
+        server: name,
+        status: "connected",
+        tools,
+        client,
+        timeout,
+        ...(config.serial ? { serial: config.serial } : {}),
+      })
     } catch (error) {
       // 关闭 transport 避免残留子进程。
       void transport.close()
@@ -304,6 +319,7 @@ export class McpManager {
           client: state.client,
           timeout: state.timeout,
           fullName: mcpToolName(state.server, def.name),
+          ...(state.serial ? { serial: state.serial } : {}),
         })
       }
     }

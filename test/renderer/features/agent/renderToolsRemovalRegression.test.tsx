@@ -50,8 +50,11 @@ describe("Render Tools Removal & Question UI System Regression (Renderer)", () =
         expect(container.querySelector(".agent-execution-flow-tool-visual")).toBeNull()
         // 渲染通用工具的展示容器
         expect(container.querySelector(".agent-execution-flow-tool-generic")).not.toBeNull()
-        // 正确显示参数内容
+        // 无独立正文的通用工具：参数与结果直接内联可见，不折叠
+        const rawSection = container.querySelector(".agent-execution-flow-tool-raw-section")
+        expect(rawSection?.getAttribute("data-collapsible")).toBe("false")
         expect(screen.getByText(/"legacy payload"/)).not.toBeNull()
+        expect(screen.getByText("legacy result")).not.toBeNull()
         cleanup()
       }
     })

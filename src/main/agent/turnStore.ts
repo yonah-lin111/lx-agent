@@ -19,7 +19,7 @@ import { saveFrontDesignToDisk } from "@/services/frontDesignService"
 import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { isContextOverflowFailure } from "./compaction"
 import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
-import type { ChildCallInput } from "./tools/task"
+import type { ChildCallInput } from "./subagent/subagentRunner"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./tools/truncate"
 
 // 会话归属上下文。

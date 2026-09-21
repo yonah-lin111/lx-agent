@@ -3,7 +3,12 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { isMcpToolCall } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import { buildExecutionSteps, reuseExecutionSteps } from "@/features/agent/executionFlow"
 import type { ChatMessage, ExecutionStep } from "@/features/agent/types"
-import { type FilterKind, type FlowRenderElement, isWebSearchTool } from "../types"
+import {
+  type FilterKind,
+  type FlowRenderElement,
+  isBatchSubagentStep,
+  isWebSearchTool,
+} from "../types"
 
 type UseFlowStepsOptions = {
   messages: readonly ChatMessage[]
@@ -92,7 +97,7 @@ export const useFlowSteps = ({
       if (step.toolContent?.toolName === "question") {
         return step.toolContent.question !== undefined
       }
-      // 默认规则：全部用户 item 与 AI 回复 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；审查卡片 reviewFindings 默认展开；todowrite 工具默认展开；每个已完成 turn 的最后一个 step 默认展开；其余全部折叠
+      // 默认规则：全部用户 item 与 AI 回复 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；审查卡片 reviewFindings 默认展开；todowrite 工具默认展开；批量扇出（tasks[]）的子代理步骤默认展开；每个已完成 turn 的最后一个 step 默认展开；其余全部折叠
       if (
         step.kind === "user" ||
         step.kind === "assistant" ||
@@ -101,7 +106,8 @@ export const useFlowSteps = ({
         step.kind === "reviewFindings" ||
         step.kind === "frontDesign" ||
         step.toolContent?.toolName === "todowrite" ||
-        step.toolContent?.toolName === "wireframe"
+        step.toolContent?.toolName === "wireframe" ||
+        isBatchSubagentStep(step)
       ) {
         return true
       }

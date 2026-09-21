@@ -282,7 +282,9 @@ export const createRegistry = (
   const activeMcpNames: string[] = []
   for (const handle of mcpManager.getTools()) {
     if (mcpToolNames.includes(handle.fullName)) {
-      registry.register(wrapMcpTool(handle.server, handle.def, handle.client, handle.timeout))
+      registry.register(
+        wrapMcpTool(handle.server, handle.def, handle.client, handle.timeout, handle.serial),
+      )
       activeMcpNames.push(handle.fullName)
     }
   }

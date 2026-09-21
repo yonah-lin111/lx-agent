@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import type { QuestionRequest } from "@shared/contracts/agent"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import type { QuestionRequest, SubagentData } from "@shared/contracts/agent"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList"
@@ -100,7 +100,7 @@ describe("AgentExecutionFlowList", () => {
     expect(toolStepHeader).not.toBeNull()
     fireEvent.click(toolStepHeader!)
 
-    // 展开后应显示输入参数与执行结果区域
+    // 通用工具（search_code）无独立正文：参数与结果直接内联展示
     expect(screen.getByText("Input Arguments")).not.toBeNull()
     expect(screen.getByText("Execution Result")).not.toBeNull()
     expect(screen.getByText("found 12 files")).not.toBeNull()
@@ -895,8 +895,10 @@ describe("AgentExecutionFlowList", () => {
     // 助手文本作为 AI item 默认展开（标题与正文均出现）
     expect(screen.getAllByText("好的，即将修改代码：").length).toBeGreaterThanOrEqual(2)
 
-    // 最后一个步骤为写操作 write 步骤，turn 结束后应默认展开其执行结果详情
+    // 最后一个步骤为写操作 write 步骤，turn 结束后应默认展开；结果与参数收在底部折叠区
     expect(screen.getByText("main.ts")).not.toBeNull()
+    expect(screen.queryByText("saved successfully")).toBeNull()
+    fireEvent.click(screen.getByText(/Raw Arguments & Result|原始参数与执行结果/i))
     expect(screen.getByText("Execution Result")).not.toBeNull()
     expect(screen.getByText("saved successfully")).not.toBeNull()
   })
@@ -1369,13 +1371,16 @@ describe("AgentExecutionFlowList", () => {
     const userStep = container.querySelector('[data-step-kind="user"]')
     expect(userStep?.querySelector(".agent-execution-flow-step-footer")).toBeNull()
 
-    // 2. Assistant item 底部展示 IN 2.4k · OUT 650 · CACHE 1.2k
+    // 2. 含工具调用的回合：请求用量结算在末个工具步骤，回复 item 不重复展示
     const assistantStep = container.querySelector('[data-step-kind="assistant"]')
-    const assistantFooter = assistantStep?.querySelector(".agent-execution-flow-step-footer")
-    expect(assistantFooter).not.toBeNull()
-    expect(assistantFooter?.textContent).toContain("IN 2.4k")
-    expect(assistantFooter?.textContent).toContain("OUT 650")
-    expect(assistantFooter?.textContent).toContain("CACHE 1.2k")
+    expect(assistantStep?.querySelector(".agent-execution-flow-step-footer")).toBeNull()
+
+    const toolStep = container.querySelector('[data-step-kind="tool"]')
+    const toolFooter = toolStep?.querySelector(".agent-execution-flow-step-footer")
+    expect(toolFooter).not.toBeNull()
+    expect(toolFooter?.textContent).toContain("IN 2.4k")
+    expect(toolFooter?.textContent).toContain("OUT 650")
+    expect(toolFooter?.textContent).toContain("CACHE 1.2k")
 
     // 3. Subagent 步骤与独立步骤：包含 subagent.usage
     const subagentStep = container.querySelector('[data-step-kind="subagent"]')
@@ -2016,6 +2021,100 @@ describe("AgentExecutionFlowList", () => {
 
     // 面板重新收起
     expect(panel?.getAttribute("inert")).toBe("")
+  })
+
+  it("批量扇出子代理默认展开、标题不可点击，逐项行点击打开对应子代理面板", () => {
+    const batchSubagent = (
+      subagentId: string,
+      name: string,
+      status: "running" | "done",
+    ): SubagentData => ({
+      subagentId,
+      name,
+      description: `${name} 任务`,
+      prompt: `${name} 任务`,
+      messages: [],
+      steps: [],
+      usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15 },
+      status,
+    })
+
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "并行审查" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "task-batch-1",
+            toolName: "task",
+            args: { tasks: [] },
+            status: "done",
+            subagents: [
+              batchSubagent("subagent-batch-1", "review-auth", "done"),
+              batchSubagent("subagent-batch-2", "review-db", "running"),
+            ],
+          },
+          { kind: "text", text: "全部审查完成" },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "task-batch-1",
+            toolName: "task",
+            text: "批量执行完毕",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // 默认展开：批量逐项列表直接可见（该步骤并非 turn 收尾步骤，仅因批量扇出规则展开）
+    const subagentStep = container.querySelector('[data-step-kind="subagent"]') as HTMLElement
+    expect(subagentStep.getAttribute("data-expanded")).toBe("true")
+    expect(within(subagentStep).getByText(/review-auth/)).not.toBeNull()
+    expect(within(subagentStep).getByText(/review-db/)).not.toBeNull()
+
+    // 折叠的原始参数与结果位于并行子代理列表下方
+    const batchList = subagentStep.querySelector(".agent-execution-flow-subagent-batch")
+    const rawSection = subagentStep.querySelector(".agent-execution-flow-tool-raw-section")
+    expect(batchList).not.toBeNull()
+    expect(rawSection).not.toBeNull()
+    if (!batchList || !rawSection) throw new Error("批量列表或折叠参数区缺失")
+    expect(
+      batchList.compareDocumentPosition(rawSection) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    // 标题不可点击：没有打开面板入口，点击标题只切换折叠
+    expect(screen.queryByTestId("flow-item-subagent-open-btn")).toBeNull()
+    fireEvent.click(within(subagentStep).getAllByText("task ×2")[0])
+    expect(
+      container.querySelector('[data-step-kind="subagent"]')?.getAttribute("data-expanded"),
+    ).toBe("false")
+
+    // 重新展开后点击第二项：面板打开并展示对应子代理
+    fireEvent.click(
+      container.querySelector('[data-step-kind="subagent"] .agent-execution-flow-step-header')!,
+    )
+    const panel = container.querySelector(".agent-subagent-panel-dialog") as HTMLElement
+    expect(panel.getAttribute("inert")).toBe("")
+    fireEvent.click(screen.getByText(/review-db/))
+    expect(panel.getAttribute("inert")).toBeNull()
+    expect(within(panel).getByLabelText("Copy subagent ID: subagent-batch-2")).not.toBeNull()
   })
 
   it("渲染撤销步骤的独立分割线与步骤内容", () => {

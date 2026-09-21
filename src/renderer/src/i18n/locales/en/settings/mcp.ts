@@ -19,6 +19,7 @@ Connect external data sources, local development tools, and custom scripts to yo
 - **Command Arguments**：Arguments passed to the process (space-separated).
 - **Environment Variables**：Key-value pairs injected into the server process.
 - **Working Directory (CWD)**：Working directory (defaults to home workspace).
+- **Serial Execution**：Tool calls from this server run exclusively (parallel by default; for stateful servers).
 
 ---
 
@@ -76,6 +77,9 @@ Connect external data sources, local development tools, and custom scripts to yo
   mcpEnvironment: "Environment Variables",
   mcpAddEnvRow: "Add Variable",
   mcpTimeout: "Timeout (ms)",
+  mcpSerialExecution: "Serial execution",
+  mcpSerialExecutionHint:
+    "Tool calls from this server run exclusively instead of in parallel (for stateful servers)",
   mcpNameRequired: "Server name is required",
   mcpCommandRequired: "Executable command is required",
   mcpNameDuplicate: "Server name already exists",

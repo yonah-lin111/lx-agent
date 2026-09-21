@@ -57,6 +57,8 @@ export interface SubagentData {
   steps: SubagentStep[]
   // 聚合 token 用量。
   usage: Usage
+  // 运行状态：流式快照恒为 running；终态为 done / error / aborted（旧持久化数据缺省）。
+  status?: "running" | "done" | "error" | "aborted"
   // 最终输出超限时完整结果落盘路径。
   filePath?: string
 }
@@ -129,8 +131,10 @@ export interface ToolResultMessage {
   durationMs?: number
   // 工具执行的可视化 diff（edit/write 工具产物，供渲染与落库）。
   diff?: AgentDiff
-  // 子代理面板数据（task 工具产物，供渲染与落库）。
+  // 子代理面板数据（task 单任务模式产物，供渲染与落库）。
   subagent?: SubagentData
+  // 批量扇出子代理面板数据（task 批量模式产物，按输入顺序，供落库与后续渲染）。
+  subagents?: SubagentData[]
   // LSP 检索结果（lsp 工具产物，供渲染与落库）。
   lsp?: LspToolDetails
   // 图片查看结果（view_image 工具产物，供渲染与落库）。

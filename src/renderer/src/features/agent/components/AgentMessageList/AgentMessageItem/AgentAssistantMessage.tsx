@@ -49,7 +49,7 @@ export interface AgentAssistantMessageProps {
   onSendSuggestedQuestion?: (question: string) => void
   onEchoToInput?: (question: string) => void
   onDelete?: (messageId: string) => void
-  onOpenSubagent?: (toolCall: ToolCallBlock) => void
+  onOpenSubagent?: (toolCall: ToolCallBlock, subagentIndex?: number) => void
   readOnly?: boolean
   showScrollToBottom?: boolean
   canContinue?: boolean

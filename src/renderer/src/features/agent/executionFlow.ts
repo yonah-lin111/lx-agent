@@ -1,4 +1,4 @@
-import type { PromptAssembly } from "@shared/contracts/agent"
+import type { PromptAssembly, SubagentData, Usage } from "@shared/contracts/agent"
 import { cleanUserPrompt } from "./components/AgentMessageList/AgentMessageItem/utils"
 import { getModelDisplayName } from "./hooks/modelsStore"
 import type {
@@ -8,6 +8,19 @@ import type {
   ExecutionStepStatus,
   TokenSaverHit,
 } from "./types"
+
+// 批量子代理 token 聚合：逐项 usage 求和（并行统计展示）。
+const sumSubagentUsage = (items: SubagentData[]): Usage =>
+  items.reduce<Usage>(
+    (total, item) => ({
+      input: total.input + item.usage.input,
+      output: total.output + item.usage.output,
+      cacheRead: total.cacheRead + item.usage.cacheRead,
+      cacheWrite: total.cacheWrite + (item.usage.cacheWrite ?? 0),
+      totalTokens: total.totalTokens + item.usage.totalTokens,
+    }),
+    { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 },
+  )
 
 /**
  * 截断文本为单行预览。
@@ -329,6 +342,15 @@ export const buildExecutionSteps = (
     const hasTextBlock = message.blocks.some((b) => b.kind === "text" && Boolean(b.text.trim()))
     const toolCallBlocksCount = message.blocks.filter((b) => b.kind === "toolCall").length
     let toolCallIndexInMessage = 0
+    // 一次模型请求的用量只结算一处：有工具调用时挂到末个工具步骤，无工具调用时由回复/思考步骤承载。
+    const messageUsageTokens = message.usage
+      ? {
+          input: message.usage.input,
+          output: message.usage.output,
+          cacheRead: message.usage.cacheRead,
+          total: message.usage.totalTokens,
+        }
+      : undefined
 
     if (turn !== lastTurnForParallelBatch) {
       lastTurnForParallelBatch = turn
@@ -400,10 +422,14 @@ export const buildExecutionSteps = (
         const paired = toolResultsByCallId.get(block.toolCallId)
         const pairedResult = paired?.block
         const pairedTimestamp = paired?.timestamp
+        const batchSubagents = block.subagents ?? pairedResult?.subagents
+        const batchUsage =
+          batchSubagents && batchSubagents.length > 0 ? sumSubagentUsage(batchSubagents) : undefined
         const isSubagent =
           block.toolName === "task" ||
           block.subagent !== undefined ||
-          pairedResult?.subagent !== undefined
+          pairedResult?.subagent !== undefined ||
+          (batchSubagents !== undefined && batchSubagents.length > 0)
 
         let status: ExecutionStepStatus = "done"
         if (pairedResult?.isError || block.status === "error") {
@@ -445,19 +471,13 @@ export const buildExecutionSteps = (
         const isLastToolCallInBatch =
           toolCallBlocksCount <= 1 || toolCallIndexInMessage === toolCallBlocksCount
 
-        const toolTokens =
-          !hasTextBlock && message.usage && isLastToolCallInBatch
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined
+        const toolTokens = isLastToolCallInBatch ? messageUsageTokens : undefined
 
         if (isSubagent) {
           const subagentData = block.subagent ?? pairedResult?.subagent
-          const subagentName = subagentData?.name || block.toolName
+          const subagentName =
+            subagentData?.name ||
+            (batchSubagents ? `${block.toolName} ×${batchSubagents.length}` : block.toolName)
           steps.push({
             id: `step-${stepIndex}-subagent-${block.toolCallId}`,
             messageId: message.id,
@@ -478,12 +498,20 @@ export const buildExecutionSteps = (
                   cacheRead: subagentData.usage.cacheRead,
                   total: subagentData.usage.totalTokens,
                 }
-              : toolTokens,
+              : batchUsage
+                ? {
+                    input: batchUsage.input,
+                    output: batchUsage.output,
+                    cacheRead: batchUsage.cacheRead,
+                    total: batchUsage.totalTokens,
+                  }
+                : toolTokens,
             parentTokens: subagentData?.usage ? toolTokens : undefined,
             tokenSaverHit: tokenSaverHitByToolCallId.get(block.toolCallId),
             subagentContent: {
               name: subagentName,
-              subagent: subagentData,
+              ...(subagentData ? { subagent: subagentData } : {}),
+              ...(batchSubagents ? { subagents: batchSubagents } : {}),
             },
             toolContent: {
               toolName: block.toolName,
@@ -561,14 +589,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount === 0 ? messageUsageTokens : undefined,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           planContent: block.plan,
           assistantContent: {
@@ -613,14 +634,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount === 0 ? messageUsageTokens : undefined,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           reviewFindingsContent: block.findings,
           assistantContent: {
@@ -666,14 +680,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount === 0 ? messageUsageTokens : undefined,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           frontDesignContent: block.design,
           assistantContent: {
@@ -719,14 +726,7 @@ export const buildExecutionSteps = (
           completedAt: completed,
           durationMs: textDuration,
           model: message.model,
-          tokens: message.usage
-            ? {
-                input: message.usage.input,
-                output: message.usage.output,
-                cacheRead: message.usage.cacheRead,
-                total: message.usage.totalTokens,
-              }
-            : undefined,
+          tokens: toolCallBlocksCount === 0 ? messageUsageTokens : undefined,
           tokenSaver: message.usage ? message.tokenSaver : undefined,
           assistantContent: {
             text: block.text,

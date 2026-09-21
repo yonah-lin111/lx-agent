@@ -226,6 +226,8 @@ export interface McpServerConfig {
   environment?: Record<string, string>
   disabled?: boolean
   timeout?: number
+  // 串行执行该服务暴露的工具调用（默认并行；供有状态服务避免并发冲突）。
+  serial?: boolean
 }
 
 // MCP 设置（~/.lx/config/agent.json 的 agent.mcp 节点）。

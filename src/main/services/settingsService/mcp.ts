@@ -38,6 +38,7 @@ const normalizeMcpSettings = (raw: unknown): McpSettings => {
       ...(Object.keys(environment).length > 0 ? { environment } : {}),
       ...(typeof val.disabled === "boolean" ? { disabled: val.disabled } : {}),
       ...(typeof val.timeout === "number" && val.timeout > 0 ? { timeout: val.timeout } : {}),
+      ...(typeof val.serial === "boolean" ? { serial: val.serial } : {}),
     }
   }
 

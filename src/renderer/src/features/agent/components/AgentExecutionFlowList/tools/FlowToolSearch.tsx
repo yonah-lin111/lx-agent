@@ -1,20 +1,18 @@
-import { ExternalLink, FileText, Search } from "lucide-react"
+import { ExternalLink, Search } from "lucide-react"
 import type React from "react"
 import { useCallback } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
 import { agentApi } from "@/features/agent/api/agentApi"
 import type { ExecutionToolContent } from "@/features/agent/types"
-import { useTranslation } from "@/i18n"
-import { FlowItemExpandableText } from "../FlowItemExpandableText"
 import { formatDurationMs } from "../types"
+import { FlowToolRawSection } from "./FlowToolRawSection"
 
 export interface FlowToolSearchProps {
   content: ExecutionToolContent
 }
 
 export const FlowToolSearch = ({ content }: FlowToolSearchProps): React.JSX.Element => {
-  const { t } = useTranslation()
   const pattern =
     typeof content.args?.pattern === "string"
       ? content.args.pattern
@@ -86,29 +84,13 @@ export const FlowToolSearch = ({ content }: FlowToolSearchProps): React.JSX.Elem
         </div>
       )}
 
-      {/* 搜索纯文本输出 */}
-      {content.result !== undefined && !content.lsp && (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between text-white/45">
-            <span className="flex items-center gap-1">
-              <FileText className="h-3 w-3" /> {t("agent.toolResult")}
-            </span>
-          </div>
-          <div
-            className={`rounded p-2 ${
-              content.isError
-                ? "border border-rose-500/20 bg-rose-950/20 text-rose-200"
-                : "bg-black/40 text-white/80"
-            }`}
-          >
-            <FlowItemExpandableText
-              content={content.result}
-              fallbackText="(no matches)"
-              maxLines={3}
-            />
-          </div>
-        </div>
-      )}
+      {/* 原始参数与执行结果（默认折叠在底部） */}
+      <FlowToolRawSection
+        args={content.args}
+        result={content.result}
+        isError={content.isError}
+        toolCallId={content.toolCallId}
+      />
     </div>
   )
 }

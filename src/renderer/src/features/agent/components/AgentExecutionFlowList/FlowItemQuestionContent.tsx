@@ -39,7 +39,7 @@ const QuestionToolMeta = ({ content }: FlowItemQuestionContentProps): React.JSX.
         className="flex items-center gap-1 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] hover:text-[var(--color-theme-text,rgba(255,255,255,0.8))] transition-colors"
       >
         {showDebug ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        <span>{t("agent.todoRawDebug")}</span>
+        <span>{t("agent.toolRawDebug")}</span>
       </button>
 
       {showDebug && (

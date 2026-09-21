@@ -58,7 +58,8 @@ export const createReadTool = (
   description:
     "Read content of a file or directory. Supports line-numbered pagination (<line>: <content>) for large files or entry listings for directories. Relative paths resolve against the project root; absolute paths are supported.",
   inputSchema: readSchema,
-  executionMode: "sequential",
+  // 纯只读无副作用：与同批次的 grep/find/ls 等只读调用并发执行（分段调度）。
+  executionMode: "parallel",
   execute: async (toolCallId, params) => {
     const absolutePath = resolveToCwd(params.path, cwd)
 

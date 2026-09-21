@@ -7,7 +7,12 @@ import {
 } from "@/features/agent/hooks/agentChatStreamUtils"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import type { AgentChatCore } from "@/features/agent/hooks/useAgentChat.types"
-import { extractSubagentData, extractToolProgressText, toChatMessage } from "@/features/agent/utils"
+import {
+  extractSubagentData,
+  extractSubagentsData,
+  extractToolProgressText,
+  toChatMessage,
+} from "@/features/agent/utils"
 
 /**
  * 流式事件按帧合并（latest-wins）：
@@ -101,10 +106,12 @@ export const useAgentChatFrames = ({
       for (const [toolCallId, partialResult] of pendingTools) {
         const progress = extractToolProgressText(partialResult)
         const subagent = extractSubagentData(partialResult)
-        if (progress === undefined && subagent === undefined) continue
+        const subagents = extractSubagentsData(partialResult)
+        if (progress === undefined && subagent === undefined && subagents === undefined) continue
         patches.set(toolCallId, {
           ...(progress !== undefined ? { progress } : {}),
           ...(subagent !== undefined ? { subagent } : {}),
+          ...(subagents !== undefined ? { subagents } : {}),
         })
       }
       patchToolCallBlocks(patches)

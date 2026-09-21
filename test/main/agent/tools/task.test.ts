@@ -13,18 +13,23 @@ const EMPTY_USAGE: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, t
 
 const TEST_TOOL_SCHEMA = z.object({ path: z.string().optional() })
 
-// 脚本化的 mock streamFn：逐次返回预设助手响应，避免真实 LLM 调用。
+// 脚本化的 mock streamFn：逐次返回预设助手响应；streamHandler 存在时按上下文动态应答。
 const holder = vi.hoisted(() => ({
   streamResponses: [] as AssistantMessage[],
+  streamHandler: null as
+    | null
+    | ((context: { messages: Array<{ role: string }> }) => AssistantMessage),
   streamCalls: 0,
 }))
 
 vi.mock("@/agent/stream/aiSdkStreamFn", async () => {
   const { createAssistantMessageEventStream } = await import("@/agent/core/event-stream")
   return {
-    createAiSdkStreamFn: () => async () => {
+    createAiSdkStreamFn: () => async (_model: unknown, context: { messages: unknown[] }) => {
       holder.streamCalls += 1
-      const response = holder.streamResponses.shift()
+      const response = holder.streamHandler
+        ? holder.streamHandler(context as { messages: Array<{ role: string }> })
+        : holder.streamResponses.shift()
       if (!response) throw new Error("No more mock responses")
       const stream = createAssistantMessageEventStream()
       stream.push({ type: "start", partial: response })
@@ -69,6 +74,7 @@ const createTestTool = (options: {
   runtime?: SubagentRuntime
   settings?: SubagentSettings
   tools?: AgentTool<any>[]
+  depth?: number
   resolveModelSelection?: NonNullable<TaskToolDeps["resolveModelSelection"]>
 }): ReturnType<typeof createTaskTool> => {
   return createTaskTool({
@@ -80,10 +86,47 @@ const createTestTool = (options: {
     ...(options.pool ? { subagentPool: options.pool } : {}),
     ...(options.runtime ? { subagentRuntime: options.runtime } : {}),
     ...(options.settings ? { subagentSettings: options.settings } : {}),
+    ...(options.depth !== undefined ? { depth: options.depth } : {}),
     ...(options.resolveModelSelection
       ? { resolveModelSelection: options.resolveModelSelection }
       : {}),
   })
+}
+
+// 受控闸门工具：每个调用挂起直到 release，用于观测真实并发度与启动顺序。
+const createGateTool = (): {
+  tool: AgentTool<typeof TEST_TOOL_SCHEMA>
+  state: { started: number; active: number; maxActive: number }
+  release: () => void
+  releaseAll: () => void
+} => {
+  const pending: Array<() => void> = []
+  const state = { started: 0, active: 0, maxActive: 0 }
+  return {
+    tool: {
+      name: "gate",
+      label: "闸门",
+      description: "受控并发闸门",
+      inputSchema: TEST_TOOL_SCHEMA,
+      execute: async () => {
+        state.started += 1
+        state.active += 1
+        state.maxActive = Math.max(state.maxActive, state.active)
+        await new Promise<void>((resolve) => {
+          pending.push(() => {
+            state.active -= 1
+            resolve()
+          })
+        })
+        return { content: [{ type: "text", text: "gate ok" }] }
+      },
+    },
+    state,
+    release: () => pending.shift()?.(),
+    releaseAll: () => {
+      while (pending.length > 0) pending.shift()?.()
+    },
+  }
 }
 
 // 提取 ToolResult 中的文本。
@@ -92,6 +135,7 @@ const resultText = (result: { content: Array<{ type: string; text?: string }> })
 
 beforeEach(() => {
   holder.streamResponses.length = 0
+  holder.streamHandler = null
   holder.streamCalls = 0
 })
 
@@ -149,8 +193,9 @@ describe("task 子代理工具", () => {
       expect(subagent?.prompt).toBe("请列出当前目录的文件")
     }
 
-    // 最终结果 details.subagent 含完整上下文、内部步骤与聚合 usage。
+    // 最终结果 details.subagent 含完整上下文、内部步骤、聚合 usage 与终态标记。
     const subagent = (result.details as { subagent: SubagentData }).subagent
+    expect(subagent.status).toBe("done")
     expect(subagent.name).toBe("查询列表")
     expect(subagent.messages.some((message) => message.role === "assistant")).toBe(true)
     expect(subagent.steps).toEqual([
@@ -799,7 +844,7 @@ describe("task 子代理角色", () => {
 })
 
 describe("task 子代理并发治理", () => {
-  it("占满槽位时拒绝且不消费流，释放后可执行并在结束后归还槽位", async () => {
+  it("顶层占满槽位时排队等待，释放后自动执行并在结束后归还槽位", async () => {
     const runtime = new SubagentRuntime(1)
     const pool = new SubagentPool()
     const tool = createTestTool({ pool, runtime })
@@ -814,32 +859,273 @@ describe("task 子代理并发治理", () => {
     expect(resultText(unknown)).toContain('Unknown agent_type "ghost"')
     expect(runtime.active).toBe(1)
 
-    holder.streamResponses.push(assistant([{ type: "text", text: "不应被消费" }]))
-    const rejected = await tool.execute("call-limit-reject", {
-      name: "limited-agent",
-      description: "并发拒绝",
-      prompt: "p",
-    })
-    expect(resultText(rejected)).toBe(
-      "Concurrency limit reached: 1/1 subagents running. Reuse an existing subagent (subagent_id) or wait for one to finish before spawning more.",
-    )
+    holder.streamResponses.push(assistant([{ type: "text", text: "排队后执行" }]))
+    let settled = false
+    const queued = tool
+      .execute("call-limit-queued", {
+        name: "limited-agent",
+        description: "并发排队",
+        prompt: "p",
+      })
+      .then((result) => {
+        settled = true
+        return result
+      })
+
+    // 排队期间：不消费流、不新建子代理、不占用额外槽位。
+    expect(runtime.waiting).toBe(1)
+    await Promise.resolve()
+    expect(settled).toBe(false)
     expect(holder.streamResponses).toHaveLength(1)
     expect(pool.list()).toHaveLength(0)
+    expect(runtime.active).toBe(1)
 
-    // 释放后可再次执行（turn 正常结束路径）。
+    // 释放槽位：排队者被自动拉起并归还槽位。
     runtime.release()
-    const accepted = await tool.execute("call-limit-accept", {
-      name: "limited-agent",
-      description: "并发通过",
-      prompt: "p2",
-    })
-    expect(resultText(accepted)).toContain("不应被消费")
+    const accepted = await queued
+    expect(resultText(accepted)).toContain("排队后执行")
     expect(resultText(accepted)).toContain("[Subagent ID:")
     expect(pool.list()).toHaveLength(1)
     expect(runtime.active).toBe(0)
 
     // 槽位已在 finally 归还：可立即再次占用。
     expect(runtime.tryAcquire()).toBe(true)
+    runtime.release()
+  })
+
+  it("嵌套子代理（depth≥1）占满槽位时立即拒绝且不排队", async () => {
+    const runtime = new SubagentRuntime(1)
+    const pool = new SubagentPool()
+    const tool = createTestTool({ pool, runtime, depth: 1 })
+
+    runtime.tryAcquire()
+    holder.streamResponses.push(assistant([{ type: "text", text: "不应被消费" }]))
+    const rejected = await tool.execute("call-nested-reject", {
+      name: "nested-agent",
+      description: "嵌套拒绝",
+      prompt: "p",
+    })
+
+    expect(resultText(rejected)).toBe(
+      "Concurrency limit reached: 1/1 subagents running. Reuse an existing subagent (subagent_id) or wait for one to finish before spawning more.",
+    )
+    expect(runtime.waiting).toBe(0)
+    expect(holder.streamResponses).toHaveLength(1)
+    expect(pool.list()).toHaveLength(0)
+    runtime.release()
+  })
+})
+
+describe("task 批量扇出", () => {
+  it("tasks[] 并行扇出：并发真实发生且结果按输入顺序聚合", async () => {
+    const pool = new SubagentPool()
+    const gate = createGateTool()
+    const tool = createTestTool({ pool, tools: [gate.tool] })
+
+    holder.streamResponses.push(
+      { ...assistant([toolCallBlock("g1", "gate", {})]), stopReason: "toolUse" },
+      { ...assistant([toolCallBlock("g2", "gate", {})]), stopReason: "toolUse" },
+      { ...assistant([toolCallBlock("g3", "gate", {})]), stopReason: "toolUse" },
+      assistant([{ type: "text", text: "批量完成" }]),
+      assistant([{ type: "text", text: "批量完成" }]),
+      assistant([{ type: "text", text: "批量完成" }]),
+    )
+
+    const execution = tool.execute("parent-batch-parallel", {
+      tasks: [
+        { description: "分片一", prompt: "任务一" },
+        { description: "分片二", prompt: "任务二" },
+        { description: "分片三", prompt: "任务三" },
+      ],
+    })
+
+    // 三个子代理全部启动并同时停在闸门上：并发度为 3（非串行塌缩）。
+    await vi.waitFor(() => expect(gate.state.started).toBe(3))
+    expect(gate.state.maxActive).toBe(3)
+    gate.releaseAll()
+
+    const result = await execution
+    const text = resultText(result)
+    expect(text).toContain("[1/3] task - done")
+    expect(text).toContain("[3/3] task - done")
+
+    const details = result.details as { subagents: SubagentData[] }
+    expect(details.subagents).toHaveLength(3)
+    // 结果按输入顺序聚合（prompt 为各分片唯一标识）。
+    expect(details.subagents.map((item) => item.prompt)).toEqual(["任务一", "任务二", "任务三"])
+    expect(details.subagents.map((item) => item.description)).toEqual([
+      "分片一",
+      "分片二",
+      "分片三",
+    ])
+    expect(details.subagents.every((item) => item.subagentId)).toBe(true)
+    expect(pool.list()).toHaveLength(3)
+  })
+
+  it("单项完成即回推终态快照，最终结果为逐项终态", async () => {
+    const gate = createGateTool()
+    const tool = createTestTool({ tools: [gate.tool] })
+
+    holder.streamResponses.push(
+      { ...assistant([toolCallBlock("g1", "gate", {})]), stopReason: "toolUse" },
+      { ...assistant([toolCallBlock("g2", "gate", {})]), stopReason: "toolUse" },
+      assistant([{ type: "text", text: "完成" }]),
+      assistant([{ type: "text", text: "完成" }]),
+    )
+
+    const snapshots: SubagentData[][] = []
+    const execution = tool.execute(
+      "parent-batch-status",
+      {
+        tasks: [
+          { description: "一", prompt: "p1" },
+          { description: "二", prompt: "p2" },
+        ],
+      },
+      undefined,
+      (update) => {
+        const subagents = (update.details as { subagents?: SubagentData[] }).subagents
+        if (subagents) snapshots.push(subagents)
+      },
+    )
+
+    // 两项都启动并停在闸门：流式快照均为 running。
+    await vi.waitFor(() => expect(gate.state.started).toBe(2))
+    expect(snapshots.at(-1)?.every((item) => item.status === "running")).toBe(true)
+
+    // 释放一项：该项立即标记 done，另一项仍为 running（不等整批结束）。
+    gate.release()
+    await vi.waitFor(() =>
+      expect(snapshots.some((batch) => batch.some((item) => item.status === "done"))).toBe(true),
+    )
+    const midBatch = snapshots.at(-1) ?? []
+    expect(midBatch.some((item) => item.status === "done")).toBe(true)
+    expect(midBatch.some((item) => item.status === "running")).toBe(true)
+
+    gate.release()
+    const result = await execution
+    const details = result.details as { subagents: SubagentData[] }
+    expect(details.subagents.map((item) => item.status)).toEqual(["done", "done"])
+  })
+
+  it("批量项支持角色派发并保留角色标注", async () => {
+    const pool = new SubagentPool()
+    const tool = createTestTool({ pool })
+
+    holder.streamResponses.push(
+      assistant([{ type: "text", text: "探索完成" }]),
+      assistant([{ type: "text", text: "执行完成" }]),
+    )
+
+    const result = await tool.execute("parent-batch-role", {
+      tasks: [
+        { description: "探索", prompt: "p1", agent_type: "explorer" },
+        { description: "执行", prompt: "p2", agent_type: "worker", name: "coder" },
+      ],
+    })
+
+    const details = result.details as { subagents: SubagentData[] }
+    expect(details.subagents.map((item) => item.roleName)).toEqual(["explorer", "worker"])
+    // 展示名回退顺序：显式 name → 角色名。
+    expect(details.subagents.map((item) => item.name)).toEqual(["explorer", "coder"])
+    expect(resultText(result)).toContain("[1/2] explorer (explorer) - done")
+    expect(resultText(result)).toContain("[2/2] coder (worker) - done")
+  })
+
+  it("超过并发上限的批量项排队，随槽位释放逐个补位且并发不超上限", async () => {
+    const runtime = new SubagentRuntime(2)
+    const pool = new SubagentPool()
+    const gate = createGateTool()
+    const tool = createTestTool({ pool, runtime, tools: [gate.tool] })
+
+    // 动态应答：每个子代理首次请求发闸门调用，闸门通过后输出最终文本（与启动顺序无关）。
+    holder.streamHandler = (context) => {
+      const answered = context.messages.some((message) => message.role === "assistant")
+      return answered
+        ? assistant([{ type: "text", text: "完成" }])
+        : { ...assistant([toolCallBlock("gate-call", "gate", {})]), stopReason: "toolUse" }
+    }
+
+    const execution = tool.execute("parent-batch-queue", {
+      tasks: [
+        { description: "一", prompt: "p1" },
+        { description: "二", prompt: "p2" },
+        { description: "三", prompt: "p3" },
+        { description: "四", prompt: "p4" },
+      ],
+    })
+
+    // 只有 2 项启动，其余在排队。
+    await vi.waitFor(() => expect(gate.state.started).toBe(2))
+    expect(runtime.active).toBe(2)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(gate.state.started).toBe(2)
+
+    // 释放一个槽位：下一项补位；再释放其余，全部完成。
+    gate.release()
+    await vi.waitFor(() => expect(gate.state.started).toBe(3))
+    expect(gate.state.maxActive).toBe(2)
+    gate.release()
+    await vi.waitFor(() => expect(gate.state.started).toBe(4))
+    expect(gate.state.maxActive).toBe(2)
+    gate.releaseAll()
+
+    const result = await execution
+    const details = result.details as { subagents: SubagentData[] }
+    expect(details.subagents.map((item) => item.prompt)).toEqual(["p1", "p2", "p3", "p4"])
+    expect(runtime.active).toBe(0)
+    expect(pool.list()).toHaveLength(4)
+  })
+
+  it("批量项角色非法时整批早退，不消费槽位与流", async () => {
+    const runtime = new SubagentRuntime(2)
+    const pool = new SubagentPool()
+    const tool = createTestTool({ pool, runtime })
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "不应被消费" }]))
+    const result = await tool.execute("parent-batch-unknown", {
+      tasks: [
+        { description: "合法", prompt: "p1" },
+        { description: "非法", prompt: "p2", agent_type: "ghost" },
+      ],
+    })
+
+    expect(resultText(result)).toContain('Unknown agent_type "ghost" in tasks[1]')
+    expect(holder.streamResponses).toHaveLength(1)
+    expect(runtime.active).toBe(0)
+    expect(pool.list()).toHaveLength(0)
+  })
+
+  it("父 run 中止时排队中的批量项直接出队返回 aborted", async () => {
+    const runtime = new SubagentRuntime(1)
+    const pool = new SubagentPool()
+    const tool = createTestTool({ pool, runtime })
+
+    // 预占唯一槽位：批量项全部进入排队，随后父 run 中止。
+    runtime.tryAcquire()
+    const controller = new AbortController()
+    holder.streamResponses.push(assistant([{ type: "text", text: "不应被消费" }]))
+
+    const execution = tool.execute(
+      "parent-batch-abort",
+      {
+        tasks: [
+          { description: "一", prompt: "p1" },
+          { description: "二", prompt: "p2" },
+        ],
+      },
+      controller.signal,
+    )
+    expect(runtime.waiting).toBe(2)
+    controller.abort()
+    const result = await execution
+
+    const text = resultText(result)
+    expect(text).toContain("[1/2] task - aborted")
+    expect(text).toContain("[2/2] task - aborted")
+    expect(text).toContain("Subagent execution was aborted before start.")
+    expect(holder.streamResponses).toHaveLength(1)
+    expect(pool.list()).toHaveLength(0)
     runtime.release()
   })
 })
