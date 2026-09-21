@@ -24,34 +24,14 @@ import { settingsApi } from "../api/settingsApi"
 import { useRegisterSettingsSection } from "../hooks/settingsDraftStore"
 import { useSubagentSettings } from "../hooks/useSubagentSettings"
 import { notifySettingsChanged } from "../settingsChangeNotifier"
-import { describePermissions, SubagentPermissionsForm } from "./SubagentPermissionsForm"
+import {
+  describePermissions,
+  permissionsEqual,
+  SubagentPermissionsForm,
+} from "./SubagentPermissionsForm"
 
 // 下拉 portal 默认 zIndex 50，须高于 LxModal（999999）与 LxTooltip（999999）才不被遮挡。
 const MODAL_SELECT_Z_INDEX = 1000000
-
-// 权限等值判定：按固定分组顺序 + 排序后的白名单比较（键序与勾选顺序不影响语义）。
-const permissionsEqual = (
-  a: CapabilityPermissions | undefined,
-  b: CapabilityPermissions | undefined,
-): boolean => {
-  const canonical = (value: CapabilityPermissions | undefined): string => {
-    if (value === undefined) return "~"
-    const groups: Array<keyof CapabilityPermissions> = [
-      "tools",
-      "mcp",
-      "skills",
-      "websearch",
-      "subagents",
-    ]
-    return groups
-      .map((group) => {
-        const list = value[group]
-        return list === undefined ? "~" : `${group}:${[...list].sort().join(",")}`
-      })
-      .join("|")
-  }
-  return canonical(a) === canonical(b)
-}
 
 // 数字输入解析：空返回 null，非法返回 undefined（保持原值），越界收敛到上限。
 const parseBoundInt = (raw: string, min: number, max: number): number | null | undefined => {

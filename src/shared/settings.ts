@@ -433,6 +433,9 @@ export const SUBAGENT_WEBSEARCH_TOOL_NAMES = ["web_search", "webfetch"] as const
 // 子代理技能工具名（由 skills 权限组管理）。
 export const SUBAGENT_SKILL_TOOL_NAME = "read_skill"
 
+// 子代理派发工具名（由 subagents 权限组按 agent_type 管理）。
+export const SUBAGENT_TASK_TOOL_NAME = "task"
+
 // 子代理权限编辑器的能力目录（settings:subagents:get-capabilities）。
 export interface SubagentMcpCapability {
   name: string

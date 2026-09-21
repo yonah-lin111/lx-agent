@@ -11,8 +11,8 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 - **切换入口**：`Shift + Tab` 在 `build → plan → review → design → build` 循环；状态栏 `CollaborationModeButton` 同步展示；卡片一键采纳会定向切回 `build`。
 - **契约**：`CollaborationMode = "build" | "plan" | "review" | "design"`；历史会话中的 `"default"` 由 `normalizeCollaborationMode` 归一化为 `"build"`。
 - **提示词**：`SystemPromptManager` 的 COLLABORATION_MODE 段（order 380）按模式返回对应英文指令模板；Plan / Review 模板中明确声明「模式不因用户语气或祈使句改变」与「写入工具被禁用」。
-- **运行时门禁**：Plan / Review / Design 下 `write` / `edit` / `apply_patch` / `todowrite` / `task` / `memory` 由 `PermissionManager` 直接 deny，模型收到带模式说明的错误结果并以对应 XML 协议输出（见 permissions.md §2）。
-- **子代理白名单**：`build` 模式可经 `agent.permissions.modes.build.subagents` 收窄可派发的子代理角色（按 `task` 的 `agent_type` 判定）；其余模式的 `task` 已被硬基线整体禁用，配置该组会在保存时被剥离。
+- **运行时门禁**：Plan / Review / Design 下 `write` / `edit` / `apply_patch` / `todowrite` / `memory` 由 `PermissionManager` 直接 deny（`design` 另禁 `wireframe`），模型收到带模式说明的错误结果并以对应 XML 协议输出（见 permissions.md §2）。
+- **子代理派发**：`task` 由 `agent.permissions.modes.<mode>.subagents` 白名单控制——非 build 模式缺省仅允许内置探索子代理 `explorer`，可勾选其他或自定义角色（空数组 = 全禁）；父模式硬基线经 `parentMode` 叠加到子代理的每次工具调用，派发不能绕过只读约束。
 - **共享解析**：`utils.ts` 的 `parseTextWithProposedPlan()` 是统一标签提取器——同一段助手文本中按出现顺序识别 `<review_findings>` / `<proposed_plan>` / `<front_design>` / `<front_design_update>`，拆成结构化块与普通文本块，支持标签未闭合的流式容错与多块级联解析；结构化块同时驱动 `AgentMessageList`（聊天流卡片）与 `AgentExecutionFlowList`（执行步骤），两处复用同一卡片组件。
 
 ---
@@ -69,7 +69,7 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 3. **Performance & Bottlenecks**：意外的二次方扫描、无界内存增长、热路径阻塞操作。
 4. **Taste & Minimalism**：过度设计、死代码、多余抽象层、违背最小修改原则。
 
-审查模式严格只读：`write` / `edit` / `apply_patch` / `todowrite` / `task` / `memory` 被硬拦截（模式硬基线，见 permissions.md §2），不允许在审查中直接修复。处于 Review 模式且用户未指定审查目标时，默认审查当前未提交变更（staged / unstaged / untracked）。代码审查的唯一路径是 Review Mode，不存在 `review` 子代理角色。
+审查模式严格只读：`write` / `edit` / `apply_patch` / `todowrite` / `memory` 被硬拦截（模式硬基线，见 permissions.md §2），不允许在审查中直接修复；子代理派发缺省仅限内置只读探索子代理 `explorer`，父模式基线对子代理同样生效。处于 Review 模式且用户未指定审查目标时，默认审查当前未提交变更（staged / unstaged / untracked）。代码审查的唯一路径是 Review Mode，不存在 `review` 子代理角色。
 
 ### 3.2 输出协议
 

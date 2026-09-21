@@ -12,7 +12,9 @@ import {
   getModeBlockedTools,
   MCP_TOOL_NAMESPACE,
   normalizeCollaborationMode,
+  withModePermissionDefaults,
 } from "@shared/contracts/agent"
+import { SUBAGENT_TASK_TOOL_NAME } from "@shared/settings"
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@/agent/core/types"
 import { evaluateCommandSafety } from "@/agent/guard/commandSafetyGuard"
 import { type GuardianAssessment, guardianEvaluator } from "@/agent/guard/guardianEvaluator"
@@ -29,15 +31,21 @@ const READ_ONLY_SANDBOX_REASON =
   "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
 // 非 build 模式的写操作硬拦截 reason（模式身份约束，配置不可放开）。
 const MODE_MUTATION_REASONS: Record<Exclude<CollaborationMode, "build">, string> = {
-  plan: "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite, memory) and task subagent dispatch are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags.",
+  plan: "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite, memory) are strictly prohibited in Plan Mode. Sub-agent dispatch is limited to the configured role allow-list. Please finalize your plan using <proposed_plan> tags.",
   review:
-    "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite, memory) and task subagent dispatch are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags.",
+    "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite, memory) are strictly prohibited in Review Mode. Sub-agent dispatch is limited to the configured role allow-list. Please output structured findings using <review_findings> tags.",
   design:
-    "Action denied: Current collaboration mode is Front Design Mode. Mutating actions (write, edit, apply_patch, todowrite, memory), task subagent dispatch, and the wireframe tool are strictly prohibited in Design Mode. Deliver prototypes using <front_design> tags instead.",
+    "Action denied: Current collaboration mode is Front Design Mode. Mutating actions (write, edit, apply_patch, todowrite, memory) and the wireframe tool are strictly prohibited in Design Mode. Sub-agent dispatch is limited to the configured role allow-list. Deliver prototypes using <front_design> tags instead.",
 }
 // 模式能力权限白名单未命中 reason。
 const MODE_TOOL_NOT_ALLOWED_REASON =
   "Action denied: This tool is not allowed in the current collaboration mode by permission configuration."
+// 子代理派发未命中角色白名单 reason（附允许角色，便于模型改用合法角色）。
+const subagentNotAllowedReason = (allowed: readonly string[] | undefined): string =>
+  `Action denied: Sub-agent dispatch in the current collaboration mode is restricted by permission configuration. Allowed roles: ${allowed && allowed.length > 0 ? allowed.join(", ") : "(none)"}.`
+// 父模式基线（子代理调用）拒绝前缀：明确约束来自父会话模式而非子代理自身模式。
+const PARENT_BASELINE_PREFIX =
+  "Action denied: Sub-agent tool use also inherits the parent session's collaboration mode restrictions. "
 // 模式展示名（Guardian 拒绝文案）。
 const MODE_LABELS: Record<CollaborationMode, string> = {
   build: "Build Mode",
@@ -219,7 +227,11 @@ class PermissionManager {
   evaluate(
     toolName: string,
     args: unknown,
-    contextOptions?: { collaborationMode?: CollaborationMode; sessionId?: string },
+    contextOptions?: {
+      collaborationMode?: CollaborationMode
+      parentMode?: CollaborationMode
+      sessionId?: string
+    },
   ): "allow" | "deny" | "ask" {
     const record = isRecord(args) ? args : {}
     return this.decide(toolName, args, contextOptions, assessGuardian(toolName, record)).decision
@@ -232,7 +244,13 @@ class PermissionManager {
   private decide(
     toolName: string,
     args: unknown,
-    contextOptions: { collaborationMode?: CollaborationMode; sessionId?: string } | undefined,
+    contextOptions:
+      | {
+          collaborationMode?: CollaborationMode
+          parentMode?: CollaborationMode
+          sessionId?: string
+        }
+      | undefined,
     guardianAssessments: GuardianAssessment[],
   ): { decision: "allow" | "deny" | "ask"; reason?: string } {
     const mode = this.settings.defaultMode
@@ -240,23 +258,38 @@ class PermissionManager {
     const collaborationMode = normalizeCollaborationMode(
       contextOptions?.collaborationMode ?? this.settings.collaborationMode,
     )
+    const parentMode = contextOptions?.parentMode
     const sessionId = contextOptions?.sessionId
 
     const record = isRecord(args) ? args : {}
 
-    // 1. 协作模式硬基线：非 build 模式严禁写操作、todowrite 任务清单、task 子代理派发与 memory 写入；
-    //    design 另禁 wireframe。该基线为模式身份约束，权限配置不可放开。
-    if (collaborationMode !== "build") {
-      const modeBlockedTools = getModeBlockedTools(collaborationMode)
-      if (modeBlockedTools.has(toolName)) {
-        return { decision: "deny", reason: MODE_MUTATION_REASONS[collaborationMode] }
+    // 1. 协作模式硬基线：非 build 模式严禁写操作、todowrite 任务清单与 memory 写入；design 另禁 wireframe。
+    //    该基线为模式身份约束，权限配置不可放开；子代理调用传入 parentMode 时父模式基线同样生效。
+    for (const baselineMode of [collaborationMode, parentMode]) {
+      if (baselineMode === undefined || baselineMode === "build") continue
+      if (getModeBlockedTools(baselineMode).has(toolName)) {
+        const reason =
+          baselineMode === collaborationMode
+            ? MODE_MUTATION_REASONS[baselineMode]
+            : `${PARENT_BASELINE_PREFIX}${MODE_MUTATION_REASONS[baselineMode]}`
+        return { decision: "deny", reason }
       }
     }
 
-    // 1.1 模式能力权限白名单：四组独立判定，配置只能收紧、永不新增能力
-    const modePermissions = this.settings.modes?.[collaborationMode]
+    // 1.1 模式能力权限白名单：五组独立判定，配置只能收紧、永不新增能力
+    //     （非 build 模式的 subagents 组缺省回退探索子代理）
+    const modePermissions = withModePermissionDefaults(
+      collaborationMode,
+      this.settings.modes?.[collaborationMode],
+    )
     if (!isToolAllowedByPermissions(toolName, args, modePermissions)) {
-      return { decision: "deny", reason: MODE_TOOL_NOT_ALLOWED_REASON }
+      return {
+        decision: "deny",
+        reason:
+          toolName === SUBAGENT_TASK_TOOL_NAME
+            ? subagentNotAllowedReason(modePermissions?.subagents)
+            : MODE_TOOL_NOT_ALLOWED_REASON,
+      }
     }
 
     // 2. 只读沙箱策略 (read-only)：严禁任何写文件/编辑/修改操作
@@ -339,13 +372,18 @@ class PermissionManager {
     context: BeforeToolCallContext,
     sessionId: string | null,
     signal?: AbortSignal,
-    options?: { collaborationMode?: CollaborationMode; cwd?: string },
+    options?: {
+      collaborationMode?: CollaborationMode
+      parentMode?: CollaborationMode
+      cwd?: string
+    },
   ): Promise<BeforeToolCallResult | undefined> {
     const toolName = context.toolCall.name
     const args = context.args
     const collaborationMode = normalizeCollaborationMode(
       options?.collaborationMode ?? this.settings.collaborationMode,
     )
+    const parentMode = options?.parentMode
     const record = isRecord(args) ? args : {}
 
     // 单次 Guardian 评估：apply_patch 按目标路径逐个评估后透传给内部判定，避免重复评估。
@@ -356,6 +394,7 @@ class PermissionManager {
       args,
       {
         collaborationMode,
+        ...(parentMode !== undefined ? { parentMode } : {}),
         sessionId: sessionId ?? undefined,
       },
       guardianAssessments,

@@ -29,6 +29,30 @@ export interface SubagentPermissionsFormProps {
 // 分组键 → 权限字段名（同构）。
 const DEFAULT_GROUPS: readonly PermissionGroup[] = ["tools", "mcp", "skills", "websearch"]
 
+// 权限等值判定：按固定分组顺序 + 排序后的白名单比较（键序与勾选顺序不影响语义）。
+export const permissionsEqual = (
+  a: CapabilityPermissions | undefined,
+  b: CapabilityPermissions | undefined,
+): boolean => {
+  const canonical = (value: CapabilityPermissions | undefined): string => {
+    if (value === undefined) return "~"
+    const groups: Array<keyof CapabilityPermissions> = [
+      "tools",
+      "mcp",
+      "skills",
+      "websearch",
+      "subagents",
+    ]
+    return groups
+      .map((group) => {
+        const list = value[group]
+        return list === undefined ? "~" : `${group}:${[...list].sort().join(",")}`
+      })
+      .join("|")
+  }
+  return canonical(a) === canonical(b)
+}
+
 // 权限摘要：五组各自统计；未限制分组不展示（子代理与协作模式共用）。
 export const describePermissions = (
   permissions: CapabilityPermissions | undefined,

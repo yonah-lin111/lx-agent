@@ -15,8 +15,9 @@
 ┌─────────────────────────────────────────────────────────────┐
 │ [Gate 1: Collaboration Mode]                                │
 │   - Plan / Review / Design: write/edit/apply_patch/         │
-│     todowrite/task/memory ──► 硬拦截（模式身份约束）          │
+│     todowrite/memory ──► 硬拦截（模式身份约束）               │
 │   - Design 额外硬拦截 wireframe                              │
+│   - 子代理调用同时叠加父模式硬基线（parentMode）              │
 │   - 模式能力白名单 (agent.permissions.modes) 只能收紧         │
 └──────────────────────────┬──────────────────────────────────┘
                            │
@@ -61,16 +62,17 @@
 export type CollaborationMode = "build" | "plan" | "review" | "design"
 ```
 
-| 模式 | 写操作基线（`write`/`edit`/`apply_patch`/`memory`） | `todowrite` / `task` | 其他工具 | 输出契约 |
+| 模式 | 硬基线（`deny`，配置不可放开） | 子代理派发（`task`） | 其他工具 | 输出契约 |
 | :--- | :--- | :--- | :--- | :--- |
-| **`build`** | 按沙箱/规则/审批正常判定 | 允许 | 正常判定；可经 `modes.build` 白名单收紧 | 无 |
-| **`plan`** | **deny**（提示词引导输出 `<proposed_plan>`） | **deny** | 只读工具正常；可经白名单再收紧 | 见 modes.md §2 |
-| **`review`** | **deny**（提示词引导输出 `<review_findings>`） | **deny** | 只读工具正常；可经白名单再收紧 | 见 modes.md §3 |
-| **`design`** | **deny**；`wireframe` 亦 **deny** | **deny** | 只读工具正常；可经白名单再收紧 | `<front_design>` / `<front_design_update>`，见 modes.md §4 |
+| **`build`** | 无 | 缺省不限制；可经 `modes.build.subagents` 白名单收窄 | 正常判定；可经 `modes.build` 白名单收紧 | 无 |
+| **`plan`** | `write` / `edit` / `apply_patch` / `todowrite` / `memory` | 缺省仅 `explorer`；白名单覆盖缺省，空数组 = 全禁 | 只读工具正常；可经白名单再收紧 | 见 modes.md §2 |
+| **`review`** | 同 `plan` | 同 `plan` | 只读工具正常；可经白名单再收紧 | 见 modes.md §3 |
+| **`design`** | 同 `plan` + `wireframe` | 同 `plan` | 只读工具正常；可经白名单再收紧 | `<front_design>` / `<front_design_update>`，见 modes.md §4 |
 
 - 非 build 模式的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`MODE_MUTATION_REASONS`）；`memory` 会写 `<project>/.lx/memory/*.md`，因此同样纳入基线。
-- **模式能力白名单**（`agent.permissions.modes`）：`tools` / `mcp` / `skills` / `websearch` / `subagents` 五组，缺省 = 不限制；硬基线工具在保存时被剥离、运行时二次兜底拒绝，配置只能收紧、永不放开。
-- `subagents` 组按 `task` 的 `agent_type` 判定（批量 `tasks[]` 要求每一项都在白名单内，未携带角色视为未命中）；该组仅 `build` 模式接受配置——其余模式的 `task` 已被硬基线整体禁用，保存时剥离该组。
+- **子代理派发**：`task` 不再属于硬基线，由 `modes.<mode>.subagents` 白名单控制（按 `agent_type` 判定，批量 `tasks[]` 逐项校验，未携带角色视为未命中）。非 build 模式缺省白名单 = `["explorer"]`（内置只读探索子代理），`build` 缺省 = 不限制；显式配置覆盖缺省，显式空数组 = 该模式完全禁止派发。
+- **父模式基线穿透**：子代理按 `agent.subagents.mode`（缺省 `build`）装配提示词与门控，但父会话的硬基线会以 `parentMode` 叠加到子代理的每次工具调用上——`plan` / `review` / `design` 下派发的子代理同样不能写文件，`design` 下还不能用 `wireframe`，派发无法绕过模式约束。
+- **模式能力白名单**（`agent.permissions.modes`）：`tools` / `mcp` / `skills` / `websearch` / `subagents` 五组，缺省 = 不限制（`subagents` 在非 build 模式除外）；硬基线工具在保存时被剥离、运行时二次兜底拒绝，配置只能收紧、永不放开。
 - `design` 模式的工具级门禁与 plan/review 共享同一只读基线并额外禁用 `wireframe`（原型交付走 `<front_design>` 协议，原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
 - 模式切换：`Shift + Tab` 在 `build → plan → review → design → build` 间循环（状态栏按钮等价），或经 IPC `setCollaborationMode` 定向切换；卡片一键采纳也会切回 `build`。
 
@@ -105,8 +107,8 @@ Guardian 在工具执行前进行实时四维风险评估：
 
 ### 5.1 判定顺序（`permissionManager.evaluate()`）
 
-1. 非 build 模式硬基线：`write` / `edit` / `apply_patch` / `memory` / `todowrite` 与 `task` 子代理派发（`design` 另含 `wireframe`）→ `deny`；
-2. 模式能力白名单（`agent.permissions.modes`，五组未命中）→ `deny`（build 也可收紧）；
+1. 模式硬基线：`write` / `edit` / `apply_patch` / `memory` / `todowrite`（`design` 另含 `wireframe`）→ `deny`；子代理调用（`parentMode`）时父模式基线同样生效；
+2. 模式能力白名单（`agent.permissions.modes`，五组未命中；非 build 的 `subagents` 缺省回退 `["explorer"]`）→ `deny`（build 也可收紧；派发未命中时附允许角色清单）；
 3. `read-only` 沙箱的 `write` / `edit` / `apply_patch` → `deny`；
 4. `CommandSafetyGuard` 判定 `dangerous` 的 bash 命令 → `deny`；
 5. **Deny 规则**命中 → `deny`（最高优先级的配置规则）；
@@ -169,12 +171,13 @@ Esc 仅收起面板，请求保持挂起；决策经 IPC `permissionResponse` �
       "ask": [
         "Bash(docker *)"
       ],
-      // 协作模式能力白名单（可选；缺省 = 不限制，只能收紧）
+      // 协作模式能力白名单（可选；缺省 = 不限制，非 build 的 subagents 缺省 = ["explorer"]，只能收紧）
       "modes": {
         "build": {
           "tools": ["read", "grep", "write", "edit"],
           "subagents": ["explorer", "worker"]
         },
+        "plan": { "subagents": ["explorer", "custom-role"] },
         "review": { "tools": ["read", "grep", "lsp"], "websearch": ["web_search"] }
       }
     }
@@ -183,5 +186,5 @@ Esc 仅收起面板，请求保持挂起；决策经 IPC `permissionResponse` �
 ```
 
 - **规则形态**：`Tool(arg)`，支持 `Bash(git status*)` 前缀匹配（带命令词边界）、`Edit(src/**)` 路径 glob、`webfetch(https://example.com)` 按 URL scheme/host/port 与路径段边界匹配、`apply_patch(src/a.ts)` 按补丁目标路径匹配、MCP 全名（`mcp__server__tool`）与无参工具 `Tool()`；`rule.ts` 负责解析与匹配，非法规则忽略并告警。
-- **优先级铁律**（与 §5.1 一致）：`模式硬门禁 > read-only 沙箱 > dangerous 命令 > Deny 规则 > Guardian > 会话白名单 > 全局放行 > sensitive 命令 > Ask 规则 > Allow 规则 > acceptEdits > 默认审批`。
+- **优先级铁律**（与 §5.1 一致）：`模式硬基线（含父模式基线） > read-only 沙箱 > dangerous 命令 > Deny 规则 > Guardian > 会话白名单 > 全局放行 > sensitive 命令 > Ask 规则 > Allow 规则 > acceptEdits > 默认审批`。
 - **原子持久化**：永久允许/拒绝经 `settingsService.savePermissionSettings` 安全写入 `~/.lx/config/agent.json` 并热重载。

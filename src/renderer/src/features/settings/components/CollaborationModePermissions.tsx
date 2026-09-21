@@ -2,7 +2,7 @@ import type {
   CollaborationMode,
   PermissionSettings as PermissionSettingsConfig,
 } from "@shared/contracts/agent"
-import { getModeBlockedTools } from "@shared/contracts/agent"
+import { getModeBlockedTools, withModePermissionDefaults } from "@shared/contracts/agent"
 import type { CapabilityPermissions, SubagentCapabilityCatalog } from "@shared/settings"
 import { Edit2, Lock } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -15,15 +15,21 @@ import { settingsApi } from "../api/settingsApi"
 import {
   describePermissions,
   type PermissionGroup,
+  permissionsEqual,
   SubagentPermissionsForm,
 } from "./SubagentPermissionsForm"
 
 // 协作模式展示顺序与文案键（描述复用 agent 命名空间）。
 const MODE_ORDER: readonly CollaborationMode[] = ["build", "plan", "review", "design"]
 
-// 权限分组：子代理派发（task）仅 build 可用，其余模式的 subagents 白名单不展示（硬基线已整体禁用）。
-const BASE_PERMISSION_GROUPS: readonly PermissionGroup[] = ["tools", "mcp", "skills", "websearch"]
-const BUILD_PERMISSION_GROUPS: readonly PermissionGroup[] = [...BASE_PERMISSION_GROUPS, "subagents"]
+// 权限分组：五组（tools / mcp / skills / websearch / subagents）。
+const PERMISSION_GROUPS: readonly PermissionGroup[] = [
+  "tools",
+  "mcp",
+  "skills",
+  "websearch",
+  "subagents",
+]
 
 const MODE_LABEL_KEYS: Record<CollaborationMode, TranslationKey> = {
   build: "agent.collaborationModeBuild",
@@ -76,14 +82,20 @@ export const CollaborationModePermissions = ({
   }, [])
 
   const handleOpenEdit = (mode: CollaborationMode): void => {
-    setFormPermissions(settings.modes?.[mode])
+    // 非 build 模式的 subagents 缺省回退探索子代理：弹窗展示与门控一致的有效配置。
+    setFormPermissions(withModePermissionDefaults(mode, settings.modes?.[mode]))
     setEditingMode(mode)
   }
 
   const handleConfirm = (): void => {
     if (!editingMode) return
     const modes = { ...settings.modes }
-    if (formPermissions && Object.keys(formPermissions).length > 0) {
+    // 未改动（仍等于模式缺省，如非 build 的 explorer 缺省）时不落冗余覆盖节点。
+    const unchangedDefault = permissionsEqual(
+      formPermissions,
+      withModePermissionDefaults(editingMode, undefined),
+    )
+    if (formPermissions && !unchangedDefault) {
       modes[editingMode] = formPermissions
     } else {
       delete modes[editingMode]
@@ -97,6 +109,7 @@ export const CollaborationModePermissions = ({
 
   const renderRow = (mode: CollaborationMode): React.JSX.Element => {
     const override = settings.modes?.[mode]
+    const effective = withModePermissionDefaults(mode, override)
     const lockedTools = [...getModeBlockedTools(mode)]
     return (
       <div
@@ -130,8 +143,8 @@ export const CollaborationModePermissions = ({
         <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
           <span>{t("settings.subagentsPermissions")}:</span>{" "}
           <span className="font-mono">
-            {override
-              ? describePermissions(override, t)
+            {effective
+              ? describePermissions(effective, t)
               : t("settings.subagentsPermissionsUnlimited")}
           </span>
         </p>
@@ -179,7 +192,7 @@ export const CollaborationModePermissions = ({
             value={formPermissions}
             onChange={setFormPermissions}
             lockedItems={lockedItems}
-            groups={editingMode === "build" ? BUILD_PERMISSION_GROUPS : BASE_PERMISSION_GROUPS}
+            groups={PERMISSION_GROUPS}
           />
           <div className="mt-1 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
             <LxIconButton

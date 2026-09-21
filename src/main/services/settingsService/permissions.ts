@@ -64,11 +64,8 @@ const normalizeModePermissions = (
   if (skills !== undefined) permissions.skills = skills
   const websearch = normalizeList(raw.websearch, (name) => WEBSEARCH_TOOL_NAMES.has(name))
   if (websearch !== undefined) permissions.websearch = websearch
-  // subagents 组仅 build 模式可派发（task 在其余模式已被硬基线整体拦截），不落无效配置。
-  if (mode === "build") {
-    const subagents = normalizeList(raw.subagents, () => true)
-    if (subagents !== undefined) permissions.subagents = subagents
-  }
+  const subagents = normalizeList(raw.subagents, () => true)
+  if (subagents !== undefined) permissions.subagents = subagents
   return Object.keys(permissions).length > 0 ? permissions : undefined
 }
 

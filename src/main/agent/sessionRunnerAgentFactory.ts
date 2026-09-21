@@ -122,7 +122,7 @@ export const buildSessionAgent = (
       subagentSettings,
       subagentRuntime,
       beforeToolCall: (context, signal) =>
-        beforeToolCallWithGuard(host, context, signal, subagentMode, cwd),
+        beforeToolCallWithGuard(host, context, signal, subagentMode, cwd, host.collaborationMode),
       afterToolCall: async (context) => afterToolCallWithGuard(host, context),
       preToolUse: (context, signal) => dispatchPreToolUse(host, context, cwd, signal),
       postToolUse: (context, signal) => dispatchPostToolUse(host, context, cwd, signal),

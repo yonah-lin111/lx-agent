@@ -54,12 +54,14 @@ export const dispatchPromptHooks = async (
 }
 
 // 重复调用守卫 + 权限门控（主/子代理共用）；提醒暂存到 toolCallId，由 afterToolCall 附加。
+// parentMode 仅子代理调用传入：父会话协作模式的硬基线对派发的子代理同样生效。
 export const beforeToolCallWithGuard = (
   host: ToolHooksHost,
   context: BeforeToolCallContext,
   signal: AbortSignal | undefined,
   collaborationMode: CollaborationMode,
   cwd: string,
+  parentMode?: CollaborationMode,
 ): Promise<BeforeToolCallResult | undefined> => {
   if (host.currentSessionId) {
     const guardResult = repeatToolGuard.record(
@@ -76,6 +78,7 @@ export const beforeToolCallWithGuard = (
   }
   return permissionManager.gate(context, host.currentSessionId, signal, {
     collaborationMode,
+    ...(parentMode !== undefined ? { parentMode } : {}),
     cwd,
   })
 }

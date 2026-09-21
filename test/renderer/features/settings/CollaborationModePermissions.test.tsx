@@ -80,8 +80,8 @@ describe("CollaborationModePermissions", () => {
     const setSettings = renderComponent(baseSettings())
 
     fireEvent.click(screen.getByRole("button", { name: "Edit permissions Design Mode" }))
-    // 锁定行（7 个硬基线工具）始终可见且无勾选框。
-    expect(await screen.findAllByText("Permanently disabled")).toHaveLength(7)
+    // 锁定行（6 个硬基线工具：write/edit/apply_patch/todowrite/memory + wireframe）始终可见且无勾选框。
+    expect(await screen.findAllByText("Permanently disabled")).toHaveLength(6)
     expect(screen.queryByRole("checkbox", { name: "write" })).toBeNull()
 
     // 打开 tools 限制（预置除硬基线外的全选），取消 grep。
@@ -119,13 +119,14 @@ describe("CollaborationModePermissions", () => {
     const setSettings = renderComponent(baseSettings())
 
     fireEvent.click(screen.getByRole("button", { name: "Edit permissions Plan Mode" }))
+    // plan 缺省 subagents = explorer，两个受限组都有 Clear：首个对应 tools。
     fireEvent.click(screen.getByRole("checkbox", { name: /^Tools/ }))
-    fireEvent.click(screen.getByRole("button", { name: "Clear" }))
+    fireEvent.click(screen.getAllByRole("button", { name: "Clear" })[0])
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }))
 
     await waitFor(() => expect(setSettings).toHaveBeenCalledTimes(1))
     const next = setSettings.mock.calls[0][0] as PermissionSettingsConfig
-    expect(next.modes?.plan).toEqual({ tools: [] })
+    expect(next.modes?.plan?.tools).toEqual([])
   })
 
   it("build 弹窗展示 subagents 角色白名单卡片，确认后写入 modes.build.subagents", async () => {
@@ -150,11 +151,24 @@ describe("CollaborationModePermissions", () => {
     expect(next.modes?.build?.subagents).toEqual(["explorer", "custom-role"])
   })
 
-  it("非 build 模式弹窗不展示 subagents 组（task 已被硬基线整体禁用）", async () => {
-    renderComponent(baseSettings())
+  it("非 build 弹窗的 subagents 组缺省回退 explorer，可另行勾选其他角色", async () => {
+    const setSettings = renderComponent(baseSettings())
 
     fireEvent.click(screen.getByRole("button", { name: "Edit permissions Plan Mode" }))
-    expect(await screen.findByRole("checkbox", { name: /^Tools/ })).toBeTruthy()
-    expect(screen.queryByRole("checkbox", { name: /^Subagents/ })).toBeNull()
+    // 缺省即受限：explorer 已勾选，worker/custom-role 未勾选（目录加载后可见）。
+    expect(await screen.findByText("custom-role")).toBeTruthy()
+    expect((screen.getByRole("checkbox", { name: "explorer" }) as HTMLInputElement).checked).toBe(
+      true,
+    )
+    expect((screen.getByRole("checkbox", { name: "worker" }) as HTMLInputElement).checked).toBe(
+      false,
+    )
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "worker" }))
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }))
+
+    await waitFor(() => expect(setSettings).toHaveBeenCalledTimes(1))
+    const next = setSettings.mock.calls[0][0] as PermissionSettingsConfig
+    expect(next.modes?.plan?.subagents).toEqual(["explorer", "worker"])
   })
 })

@@ -22,6 +22,7 @@ const holder = vi.hoisted(() => ({
   capturedSystemPrompts: [] as string[],
   capturedMessages: [] as Array<Array<{ role: string; content: unknown }>>,
   gateModes: [] as Array<CollaborationMode | undefined>,
+  gateParentModes: [] as Array<CollaborationMode | undefined>,
 }))
 
 vi.mock("ai", () => ({ streamText: vi.fn() }))
@@ -137,9 +138,10 @@ vi.mock("@/agent/permissions/permissionManager", () => ({
         _ctx: unknown,
         _sessionId: string | null,
         _signal?: AbortSignal,
-        options?: { collaborationMode?: CollaborationMode },
+        options?: { collaborationMode?: CollaborationMode; parentMode?: CollaborationMode },
       ) => {
         holder.gateModes.push(options?.collaborationMode)
+        holder.gateParentModes.push(options?.parentMode)
         return undefined
       },
     ),
@@ -185,6 +187,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
     holder.capturedSystemPrompts = []
     holder.capturedMessages = []
     holder.gateModes = []
+    holder.gateParentModes = []
   })
 
   afterEach(() => {
@@ -221,6 +224,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
 
     holder.capturedSystemPrompts = []
     holder.gateModes = []
+    holder.gateParentModes = []
     // 子代理：先调用一个工具（触发子代理门禁），再输出最终结论。
     holder.streamResponses = [
       assistant([toolCallBlock("child-tool-1", "time", {})], "toolUse"),
@@ -244,6 +248,8 @@ describe("AgentRunner 子代理协作模式隔离", () => {
     // 门禁：子代理工具调用传入子代理模式 review，而非主 agent 的 plan。
     expect(holder.gateModes).toContain("review")
     expect(holder.gateModes).not.toContain("plan")
+    // 父模式基线单独传递：子代理工具调用携带 parentMode = plan（自身模式仍为 review）。
+    expect(holder.gateParentModes[holder.gateModes.indexOf("review")]).toBe("plan")
 
     expect(resultText(result)).toContain("child done")
   })
@@ -254,6 +260,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
 
     holder.capturedSystemPrompts = []
     holder.gateModes = []
+    holder.gateParentModes = []
     holder.streamResponses = [
       assistant([toolCallBlock("child-tool-2", "time", {})], "toolUse"),
       assistantText("child ok"),
@@ -274,6 +281,8 @@ describe("AgentRunner 子代理协作模式隔离", () => {
 
     expect(holder.gateModes).toContain("build")
     expect(holder.gateModes).not.toContain("plan")
+    // 子代理自身缺省 build，但父模式基线仍以 plan 传递。
+    expect(holder.gateParentModes[holder.gateModes.indexOf("build")]).toBe("plan")
 
     expect(resultText(result)).toContain("child ok")
   })

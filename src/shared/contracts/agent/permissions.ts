@@ -31,14 +31,14 @@ export interface CapabilityPermissions {
   subagents?: string[]
 }
 
-// 非 build 协作模式的硬拦截工具：写文件/编辑、任务清单、子代理派发与项目记忆写入。
+// 非 build 协作模式的硬拦截工具：写文件/编辑、任务清单与项目记忆写入。
 // 该基线是模式身份的一部分：权限配置只能在此基础上收紧，永远不可放开。
+// 注：`task` 子代理派发不在硬基线内，由 `modes.<mode>.subagents` 白名单控制（非 build 缺省仅 explorer）。
 export const MODE_BLOCKED_TOOLS: readonly string[] = [
   "write",
   "edit",
   "apply_patch",
   "todowrite",
-  "task",
   "memory",
 ]
 
@@ -59,6 +59,26 @@ const MODE_BLOCKED_TOOL_SETS: Record<CollaborationMode, ReadonlySet<string>> = {
  */
 export const getModeBlockedTools = (mode: CollaborationMode): ReadonlySet<string> =>
   MODE_BLOCKED_TOOL_SETS[mode]
+
+// 非 build 模式缺省的子代理白名单：仅内置探索子代理（只读）；build 缺省不限制。
+export const DEFAULT_MODE_SUBAGENT_ROLES: Partial<Record<CollaborationMode, readonly string[]>> = {
+  plan: ["explorer"],
+  review: ["explorer"],
+  design: ["explorer"],
+}
+
+/**
+ * 计算模式的有效能力权限：非 build 模式的 subagents 组缺省回退探索子代理（用户配置覆盖缺省）。
+ * 主进程门控与渲染层摘要共用，避免两侧对缺省值的理解分叉。
+ */
+export const withModePermissionDefaults = (
+  mode: CollaborationMode,
+  permissions?: CapabilityPermissions,
+): CapabilityPermissions | undefined => {
+  const defaults = DEFAULT_MODE_SUBAGENT_ROLES[mode]
+  if (defaults === undefined || permissions?.subagents !== undefined) return permissions
+  return { ...permissions, subagents: [...defaults] }
+}
 
 // 权限配置（~/.lx/config/agent.json 的 agent.permissions 节点）。
 export interface PermissionSettings {

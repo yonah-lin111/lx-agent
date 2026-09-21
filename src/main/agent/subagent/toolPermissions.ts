@@ -1,5 +1,9 @@
 import type { CapabilityPermissions } from "@shared/settings"
-import { SUBAGENT_SKILL_TOOL_NAME, SUBAGENT_WEBSEARCH_TOOL_NAMES } from "@shared/settings"
+import {
+  SUBAGENT_SKILL_TOOL_NAME,
+  SUBAGENT_TASK_TOOL_NAME,
+  SUBAGENT_WEBSEARCH_TOOL_NAMES,
+} from "@shared/settings"
 import type { AgentTool } from "../core/types"
 import { sanitizeMcpNameSegment } from "../mcp/mcpManager"
 
@@ -8,9 +12,6 @@ const MCP_PREFIX = "mcp__"
 
 // 联网工具名集合（与 websearch 白名单字段同源）。
 const WEBSEARCH_TOOL_NAMES: ReadonlySet<string> = new Set<string>(SUBAGENT_WEBSEARCH_TOOL_NAMES)
-
-// 子代理派发工具名（subagents 白名单按其 agent_type 参数判定）。
-const TASK_TOOL_NAME = "task"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
@@ -65,7 +66,7 @@ export const isToolAllowedByPermissions = (
     if (permissions.websearch === undefined) return true
     return permissions.websearch.includes(toolName)
   }
-  if (toolName === TASK_TOOL_NAME) {
+  if (toolName === SUBAGENT_TASK_TOOL_NAME) {
     if (permissions.subagents === undefined) return true
     return isTaskAllowedByRole(args, permissions.subagents)
   }

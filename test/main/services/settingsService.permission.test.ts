@@ -140,7 +140,7 @@ describe("settingsService 权限配置", () => {
     })
   })
 
-  it("规范化 modes.subagents：去重去空白，仅 build 模式保留（其余模式无派发能力）", () => {
+  it("规范化 modes.subagents：去重去空白，角色名不受工具目录限制", () => {
     writeConfigTree(holder.configPath, {
       agent: {
         permissions: {
@@ -158,6 +158,7 @@ describe("settingsService 权限配置", () => {
 
     expect(getPermissionSettings().modes).toEqual({
       build: { subagents: ["explorer", "worker", "custom-role"] },
+      plan: { subagents: ["explorer"] },
     })
   })
 
@@ -191,7 +192,8 @@ describe("settingsService 权限配置", () => {
       permissions: {
         modes: {
           build: { tools: ["write", "read"] },
-          review: { tools: ["read"] },
+          // task 由 subagents 白名单控制，不再作为硬基线剥离。
+          review: { tools: ["read", "task"] },
           design: { tools: ["read"] },
         },
       },

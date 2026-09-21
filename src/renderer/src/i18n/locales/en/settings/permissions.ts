@@ -72,7 +72,8 @@ Controls the **interactive approval behavior** between Agent and human user.
 
 Configure independent capability allowlists for the four collaboration modes (Build / Plan / Review / Design).
 
-- **Non-Build hard baseline**: \`write\` / \`edit\` / \`apply_patch\` / \`todowrite\` / \`task\` / \`memory\` are permanently disabled and cannot be re-enabled by configuration.
+- **Non-Build hard baseline**: \`write\` / \`edit\` / \`apply_patch\` / \`todowrite\` / \`memory\` are permanently disabled and cannot be re-enabled by configuration.
+- **Sub-agent dispatch**: \`task\` is controlled by the \`subagents\` group. Non-Build modes default to the built-in explorer sub-agent only; other or custom roles can be checked in. Sub-agent tool calls also inherit the parent mode's hard baseline.
 - **Design Mode**: additionally disables \`wireframe\` (deliver prototypes via the \`<front_design>\` protocol).
 - **Semantics**: an unrestricted group is bounded only by the hard baseline; a restricted group keeps only the checked items (none checked = group fully disabled).
 - **Effective**: applies from the next turn; hard-baseline tools are stripped from saved allowlists automatically.`,
