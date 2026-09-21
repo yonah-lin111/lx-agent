@@ -75,9 +75,8 @@ export const FlowItemSubagentContent = ({
                 key={item.subagentId ?? `${index}`}
                 className="agent-execution-flow-subagent-item flex flex-col gap-0.5 border-white/5 px-2 py-1.5 not-first:border-t"
               >
-                {/* 第一行：名称（角色）+ 状态图标 */}
-                <button
-                  type="button"
+                {/* 第一行：状态图标 + 名称（角色） */}
+                <span
                   aria-label={t("agent.viewSubagentDetails")}
                   onClick={(event) => {
                     event.stopPropagation()
@@ -85,12 +84,6 @@ export const FlowItemSubagentContent = ({
                   }}
                   className="flex w-full items-center gap-2 text-left transition-colors hover:opacity-90 focus:outline-none"
                 >
-                  <span className="min-w-0 flex-1 truncate text-blue-300">
-                    {item.name.trim() || "task"}
-                    {item.roleName && item.roleName !== item.name.trim() && (
-                      <span className="text-blue-300/60"> ({item.roleName})</span>
-                    )}
-                  </span>
                   {status === "running" ? (
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-400" />
                   ) : status === "error" ? (
@@ -98,7 +91,13 @@ export const FlowItemSubagentContent = ({
                   ) : (
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400/80" />
                   )}
-                </button>
+                  <span className="min-w-0 flex-1 truncate text-blue-300">
+                    {item.name.trim() || "task"}
+                    {item.roleName && item.roleName !== item.name.trim() && (
+                      <span className="text-blue-300/60"> ({item.roleName})</span>
+                    )}
+                  </span>
+                </span>
 
                 {/* 第二行：直角图标 + 当前内部工具（运行中）或调用统计（完成后） */}
                 <SubagentStatusRow

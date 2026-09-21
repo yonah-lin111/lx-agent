@@ -70,10 +70,12 @@ describe("FlowItemSubagentContent 批量扇出", () => {
     expect(buttons[0]?.textContent).not.toContain(" - ")
     expect(buttons[1]?.textContent?.trim().startsWith("review-db")).toBe(true)
 
-    // 第一行只保留状态图标，不再展示 token 数字。
+    // 状态图标位于第一行最左侧，其后为名称；第一行不再展示 token 数字。
     expect(buttons[0]?.textContent).not.toContain("1.2k")
     expect(buttons[0]?.querySelector(".animate-spin")).toBeNull()
     expect(buttons[1]?.querySelector(".animate-spin")).not.toBeNull()
+    expect(buttons[0]?.firstElementChild?.tagName.toLowerCase()).toBe("svg")
+    expect(buttons[0]?.lastElementChild?.textContent?.trim().startsWith("review-auth")).toBe(true)
 
     // 第三行：Token 明细（IN / OUT / CACHE）位于单项底部，仅终态展示。
     const items = container.querySelectorAll(".agent-execution-flow-subagent-item")
