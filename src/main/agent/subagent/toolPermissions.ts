@@ -44,6 +44,25 @@ const isTaskAllowedByRole = (args: unknown, allowed: string[]): boolean => {
 }
 
 /**
+ * 提取 task 调用请求的角色名（单任务 + 批量逐项去重；未携带角色的条目不出现在结果中）。
+ */
+export const requestedTaskRoles = (args: unknown): string[] => {
+  if (!isRecord(args)) return []
+  const names: string[] = []
+  const push = (value: unknown): void => {
+    if (typeof value === "string" && value.trim()) names.push(value.trim())
+  }
+  if (Array.isArray(args.tasks)) {
+    for (const item of args.tasks) {
+      if (isRecord(item)) push(item.agent_type)
+    }
+  } else {
+    push(args.agent_type)
+  }
+  return [...new Set(names)]
+}
+
+/**
  * 单次工具调用是否命中能力权限：五组独立判定，字段缺省 = 不限制。
  * 子代理工具表过滤与协作模式门控共用同一语义（永不新增能力）。
  */

@@ -39,6 +39,7 @@ export const getSubagentCapabilityCatalog = (): SubagentCapabilityCatalog => {
   const subagents = [...resolveAgentRoles(getSubagentSettings()).values()].map((role) => ({
     name: role.name,
     builtIn: role.builtIn,
+    ...(role.permissions !== undefined ? { permissions: role.permissions } : {}),
   }))
 
   return {

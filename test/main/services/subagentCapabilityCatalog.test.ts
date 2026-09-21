@@ -61,11 +61,14 @@ describe("getSubagentCapabilityCatalog", () => {
       { name: "code-review", disabled: false },
       { name: "deploy", disabled: true },
     ])
-    // 未配置用户角色时仅内置 explorer / worker（顺序固定）。
-    expect(catalog.subagents).toEqual([
-      { name: "explorer", builtIn: true },
-      { name: "worker", builtIn: true },
-    ])
+    // 未配置用户角色时仅内置 explorer / worker（顺序固定）；explorer 携带只读能力集，worker 不限制。
+    expect(catalog.subagents.map((item) => item.name)).toEqual(["explorer", "worker"])
+    expect(catalog.subagents.every((item) => item.builtIn)).toBe(true)
+    const explorer = catalog.subagents.find((item) => item.name === "explorer")
+    expect(explorer?.permissions?.tools).toContain("read")
+    expect(explorer?.permissions?.tools).not.toContain("write")
+    const worker = catalog.subagents.find((item) => item.name === "worker")
+    expect(worker?.permissions).toBeUndefined()
   })
 
   it("空环境返回空 MCP/skill 清单与完整工具全集", () => {

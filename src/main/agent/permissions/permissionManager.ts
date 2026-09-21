@@ -12,6 +12,7 @@ import {
   getModeBlockedTools,
   MCP_TOOL_NAMESPACE,
   normalizeCollaborationMode,
+  roleBlockedTools,
   withModePermissionDefaults,
 } from "@shared/contracts/agent"
 import { SUBAGENT_TASK_TOOL_NAME } from "@shared/settings"
@@ -19,9 +20,14 @@ import type { BeforeToolCallContext, BeforeToolCallResult } from "@/agent/core/t
 import { evaluateCommandSafety } from "@/agent/guard/commandSafetyGuard"
 import { type GuardianAssessment, guardianEvaluator } from "@/agent/guard/guardianEvaluator"
 import { firstPermissionDecision, hookResultMessages, hooksManager } from "@/agent/hooks"
-import { isToolAllowedByPermissions } from "@/agent/subagent/toolPermissions"
+import { type ResolvedAgentRole, resolveAgentRoles } from "@/agent/subagent/agentRoles"
+import { isToolAllowedByPermissions, requestedTaskRoles } from "@/agent/subagent/toolPermissions"
 import { parsePatch } from "@/agent/tools/applyPatchParser"
-import { getPermissionSettings, savePermissionSettings } from "@/services/settingsService"
+import {
+  getPermissionSettings,
+  getSubagentSettings,
+  savePermissionSettings,
+} from "@/services/settingsService"
 import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRule } from "./rule"
 
 // 拒绝语义的固定 reason（回灌模型的 error toolResult 文案）。
@@ -43,6 +49,9 @@ const MODE_TOOL_NOT_ALLOWED_REASON =
 // 子代理派发未命中角色白名单 reason（附允许角色，便于模型改用合法角色）。
 const subagentNotAllowedReason = (allowed: readonly string[] | undefined): string =>
   `Action denied: Sub-agent dispatch in the current collaboration mode is restricted by permission configuration. Allowed roles: ${allowed && allowed.length > 0 ? allowed.join(", ") : "(none)"}.`
+// 角色能力集含模式硬基线工具时的拒绝 reason（与 UI 的"永久禁用"锁定一致）。
+const SUBAGENT_ROLE_DISABLED_REASON =
+  "Action denied: Sub-agent role is permanently disabled in the current collaboration mode because its capability set includes blocked tools: "
 // 父模式基线（子代理调用）拒绝前缀：明确约束来自父会话模式而非子代理自身模式。
 const PARENT_BASELINE_PREFIX =
   "Action denied: Sub-agent tool use also inherits the parent session's collaboration mode restrictions. "
@@ -278,18 +287,33 @@ class PermissionManager {
 
     // 1.1 模式能力权限白名单：五组独立判定，配置只能收紧、永不新增能力
     //     （非 build 模式的 subagents 组缺省回退探索子代理）
-    const modePermissions = withModePermissionDefaults(
-      collaborationMode,
-      this.settings.modes?.[collaborationMode],
-    )
-    if (!isToolAllowedByPermissions(toolName, args, modePermissions)) {
-      return {
-        decision: "deny",
-        reason:
-          toolName === SUBAGENT_TASK_TOOL_NAME
-            ? subagentNotAllowedReason(modePermissions?.subagents)
-            : MODE_TOOL_NOT_ALLOWED_REASON,
+    //     子代理派发时父模式的角色白名单同样生效：嵌套派发不能绕过父模式约束。
+    const whitelistModes =
+      toolName === SUBAGENT_TASK_TOOL_NAME &&
+      parentMode !== undefined &&
+      parentMode !== collaborationMode
+        ? [collaborationMode, parentMode]
+        : [collaborationMode]
+    for (const whitelistMode of whitelistModes) {
+      const permissions = withModePermissionDefaults(
+        whitelistMode,
+        this.settings.modes?.[whitelistMode],
+      )
+      if (!isToolAllowedByPermissions(toolName, args, permissions)) {
+        return {
+          decision: "deny",
+          reason:
+            toolName === SUBAGENT_TASK_TOOL_NAME
+              ? subagentNotAllowedReason(permissions?.subagents)
+              : MODE_TOOL_NOT_ALLOWED_REASON,
+        }
       }
+    }
+
+    // 1.2 角色兼容性：能力集含模式硬基线工具的角色在非 build 模式永久禁用（UI 同步锁定，不可放开）
+    if (toolName === SUBAGENT_TASK_TOOL_NAME) {
+      const blockedRoles = this.inspectDispatchRoles(args, [collaborationMode, parentMode])
+      if (blockedRoles) return { decision: "deny", reason: blockedRoles }
     }
 
     // 2. 只读沙箱策略 (read-only)：严禁任何写文件/编辑/修改操作
@@ -363,6 +387,34 @@ class PermissionManager {
     }
 
     return { decision: "ask" }
+  }
+
+  /**
+   * 子代理派发角色兼容性校验：能力集与任一非 build 模式硬基线冲突的角色永久禁用。
+   * 返回拒绝 reason（列出冲突角色与工具）；全部兼容时返回 undefined。
+   */
+  private inspectDispatchRoles(
+    args: unknown,
+    dispatchModes: readonly (CollaborationMode | undefined)[],
+  ): string | undefined {
+    const baselineModes = dispatchModes.filter(
+      (mode): mode is Exclude<CollaborationMode, "build"> => mode !== undefined && mode !== "build",
+    )
+    if (baselineModes.length === 0) return undefined
+
+    const conflicts = new Map<string, string[]>()
+    let roles: Map<string, ResolvedAgentRole> | undefined
+    for (const roleName of requestedTaskRoles(args)) {
+      for (const mode of baselineModes) {
+        roles ??= resolveAgentRoles(getSubagentSettings())
+        const blocked = roleBlockedTools(roles.get(roleName)?.permissions, mode)
+        if (blocked.length > 0) conflicts.set(roleName, blocked)
+      }
+    }
+    if (conflicts.size === 0) return undefined
+
+    const detail = [...conflicts].map(([role, tools]) => `${role} (${tools.join(", ")})`).join("; ")
+    return `${SUBAGENT_ROLE_DISABLED_REASON}${detail}.`
   }
 
   /**

@@ -18,6 +18,7 @@ vi.mock("@/services/settingsService", () => ({
     holder.permissionSettings = input
     return input
   },
+  getSubagentSettings: () => ({ roles: {}, maxDepth: 1 }),
 }))
 
 import { permissionManager } from "@/agent/permissions/permissionManager"

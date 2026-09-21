@@ -450,6 +450,8 @@ export interface SubagentSkillCapability {
 export interface SubagentRoleCapability {
   name: string
   builtIn: boolean
+  // 角色解析后的能力权限（缺省 = 不限制全部工具）；协作模式据此锁定永久禁用角色。
+  permissions?: CapabilityPermissions
 }
 
 export interface SubagentCapabilityCatalog {

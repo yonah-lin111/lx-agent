@@ -20,8 +20,8 @@ export interface SubagentPermissionsFormProps {
   catalog: SubagentCapabilityCatalog | null
   value: CapabilityPermissions | undefined
   onChange: (permissions: CapabilityPermissions | undefined) => void
-  // 模式硬基线工具：永久禁用、不可勾选（仅 tools 组生效）。
-  lockedItems?: readonly string[]
+  // 各组的永久禁用条目（协作模式：tools 组为模式硬基线工具，subagents 组为能力集冲突的角色）。
+  lockedItemsByGroup?: Partial<Record<PermissionGroup, readonly string[]>>
   // 展示的分组与顺序（缺省四组；协作模式弹窗追加 subagents 组）。
   groups?: readonly PermissionGroup[]
 }
@@ -77,18 +77,27 @@ export const describePermissions = (
 
 /**
  * 渲染子代理角色能力权限编辑器：2×2 网格分组，每组「不限制 / 自定义白名单」两态，白名单为空表示该组全禁。
- * lockedItems 用于协作模式硬基线：这些工具永远排除在白名单之外。
+ * lockedItemsByGroup 用于协作模式硬基线：命中的条目永久排除在白名单之外（单独以锁定行展示）。
  */
 export const SubagentPermissionsForm = ({
   catalog,
   value,
   onChange,
-  lockedItems,
+  lockedItemsByGroup,
   groups = DEFAULT_GROUPS,
 }: SubagentPermissionsFormProps): React.JSX.Element => {
   const { t } = useTranslation()
 
-  const lockedSet = useMemo(() => new Set(lockedItems ?? []), [lockedItems])
+  const lockedSets = useMemo<Record<PermissionGroup, ReadonlySet<string>>>(
+    () => ({
+      tools: new Set(lockedItemsByGroup?.tools ?? []),
+      mcp: new Set(lockedItemsByGroup?.mcp ?? []),
+      skills: new Set(lockedItemsByGroup?.skills ?? []),
+      websearch: new Set(lockedItemsByGroup?.websearch ?? []),
+      subagents: new Set(lockedItemsByGroup?.subagents ?? []),
+    }),
+    [lockedItemsByGroup],
+  )
 
   const itemsByGroup = useMemo<Record<PermissionGroup, PermissionItem[]>>(
     () => ({
@@ -110,18 +119,17 @@ export const SubagentPermissionsForm = ({
     [catalog],
   )
 
-  // 可勾选条目：tools 组剔除模式硬基线（单独以锁定行展示）。
+  // 可勾选条目：剔除该组的永久禁用条目（单独以锁定行展示）。
   const selectableItems = useCallback(
     (group: PermissionGroup): PermissionItem[] =>
-      group === "tools"
-        ? itemsByGroup.tools.filter((item) => !lockedSet.has(item.name))
-        : itemsByGroup[group],
-    [itemsByGroup, lockedSet],
+      itemsByGroup[group].filter((item) => !lockedSets[group].has(item.name)),
+    [itemsByGroup, lockedSets],
   )
 
-  const lockedToolItems = useMemo(
-    () => itemsByGroup.tools.filter((item) => lockedSet.has(item.name)),
-    [itemsByGroup, lockedSet],
+  const lockedItemsOf = useCallback(
+    (group: PermissionGroup): PermissionItem[] =>
+      itemsByGroup[group].filter((item) => lockedSets[group].has(item.name)),
+    [itemsByGroup, lockedSets],
   )
 
   const groupLabel = useCallback(
@@ -261,12 +269,12 @@ export const SubagentPermissionsForm = ({
               )
             ) : null}
 
-            {group === "tools" && lockedToolItems.length > 0 ? (
+            {lockedItemsOf(group).length > 0 ? (
               <div className="flex flex-col gap-1">
-                {lockedToolItems.map((item) => (
+                {lockedItemsOf(group).map((item) => (
                   <div
                     key={item.name}
-                    data-locked-tool={item.name}
+                    data-locked-item={item.name}
                     className="flex items-center gap-1.5 rounded-[4px] px-1 py-0.5 opacity-70"
                   >
                     <Lock className="h-3 w-3 shrink-0 text-rose-300/80" aria-hidden />

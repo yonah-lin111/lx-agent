@@ -2,7 +2,11 @@ import type {
   CollaborationMode,
   PermissionSettings as PermissionSettingsConfig,
 } from "@shared/contracts/agent"
-import { getModeBlockedTools, withModePermissionDefaults } from "@shared/contracts/agent"
+import {
+  getModeBlockedTools,
+  roleBlockedTools,
+  withModePermissionDefaults,
+} from "@shared/contracts/agent"
 import type { CapabilityPermissions, SubagentCapabilityCatalog } from "@shared/settings"
 import { Edit2, Lock } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -81,9 +85,23 @@ export const CollaborationModePermissions = ({
       .catch((err) => console.error("[CollaborationModePermissions] Failed to load catalog:", err))
   }, [])
 
+  // 永久禁用角色：能力集与模式硬基线冲突（含未限制 tools 的角色），与主进程门控同一判定。
+  const lockedRolesOf = (mode: CollaborationMode): string[] =>
+    (catalog?.subagents ?? [])
+      .filter((role) => roleBlockedTools(role.permissions, mode).length > 0)
+      .map((role) => role.name)
+
   const handleOpenEdit = (mode: CollaborationMode): void => {
-    // 非 build 模式的 subagents 缺省回退探索子代理：弹窗展示与门控一致的有效配置。
-    setFormPermissions(withModePermissionDefaults(mode, settings.modes?.[mode]))
+    // 非 build 模式的 subagents 缺省回退探索子代理：弹窗展示与门控一致的有效配置；
+    // 永久禁用角色不进入编辑态白名单（保存时随之清理）。
+    const effective = withModePermissionDefaults(mode, settings.modes?.[mode])
+    const lockedRoles = new Set(lockedRolesOf(mode))
+    const subagents = effective?.subagents
+    setFormPermissions(
+      effective !== undefined && subagents !== undefined && lockedRoles.size > 0
+        ? { ...effective, subagents: subagents.filter((name) => !lockedRoles.has(name)) }
+        : effective,
+    )
     setEditingMode(mode)
   }
 
@@ -160,7 +178,12 @@ export const CollaborationModePermissions = ({
     )
   }
 
-  const lockedItems = editingMode ? [...getModeBlockedTools(editingMode)] : []
+  const lockedItemsByGroup = editingMode
+    ? {
+        tools: [...getModeBlockedTools(editingMode)],
+        subagents: lockedRolesOf(editingMode),
+      }
+    : undefined
 
   return (
     <div className="settings-item-card flex flex-col gap-3 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-3">
@@ -191,7 +214,7 @@ export const CollaborationModePermissions = ({
             catalog={catalog}
             value={formPermissions}
             onChange={setFormPermissions}
-            lockedItems={lockedItems}
+            lockedItemsByGroup={lockedItemsByGroup}
             groups={PERMISSION_GROUPS}
           />
           <div className="mt-1 flex items-center justify-end gap-2 border-t border-white/10 pt-3">

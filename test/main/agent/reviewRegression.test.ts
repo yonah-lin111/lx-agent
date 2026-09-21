@@ -23,6 +23,7 @@ vi.mock("@/services/settingsService", () => ({
     holder.permissionSettings = input
     return input
   },
+  getSubagentSettings: () => ({ roles: {}, maxDepth: 1 }),
 }))
 
 // hook 派发可控且不读真实配置。

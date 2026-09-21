@@ -80,6 +80,21 @@ export const withModePermissionDefaults = (
   return { ...permissions, subagents: [...defaults] }
 }
 
+/**
+ * 角色能力集与模式硬基线的冲突工具：tools 组缺省 = 不限制全部内置工具，冲突集即模式硬基线全集。
+ * 返回空数组表示该角色与模式兼容（可被该模式派发）；非空 = 该角色在此模式下永久禁用（UI 锁定 + 门控拒绝）。
+ */
+export const roleBlockedTools = (
+  permissions: CapabilityPermissions | undefined,
+  mode: CollaborationMode,
+): string[] => {
+  const blocked = getModeBlockedTools(mode)
+  if (blocked.size === 0) return []
+  const tools = permissions?.tools
+  if (tools === undefined) return [...blocked]
+  return [...new Set(tools.filter((tool) => blocked.has(tool)))]
+}
+
 // 权限配置（~/.lx/config/agent.json 的 agent.permissions 节点）。
 export interface PermissionSettings {
   defaultMode: PermissionMode

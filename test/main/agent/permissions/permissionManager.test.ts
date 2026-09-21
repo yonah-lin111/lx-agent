@@ -1,4 +1,5 @@
 import type { PermissionSettings } from "@shared/contracts/agent"
+import type { SubagentSettings } from "@shared/settings"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { BeforeToolCallContext } from "@/agent/core/types"
 
@@ -16,6 +17,8 @@ const holder = vi.hoisted(() => ({
     summary: string
     mode: PermissionSettings["defaultMode"]
   }>,
+  // 子代理角色源（task 角色兼容性门控用）：缺省无自定义角色，仅内置 explorer/worker。
+  subagentSettings: { roles: {}, maxDepth: 1 } as SubagentSettings,
 }))
 
 vi.mock("@/services/settingsService", () => ({
@@ -24,6 +27,7 @@ vi.mock("@/services/settingsService", () => ({
     holder.permissionSettings = input
     return input
   },
+  getSubagentSettings: () => holder.subagentSettings,
 }))
 
 // hooks 派发用可控 spy（不触达真实配置/子进程）；保留真实辅助函数。
@@ -68,6 +72,7 @@ const resetManager = (): void => {
   manager.requestSequence = 0
   holder.permissionSettings = { defaultMode: "default", allow: [], deny: [], ask: [] }
   holder.capturedRequests = []
+  holder.subagentSettings = { roles: {}, maxDepth: 1 }
 }
 
 // 应用权限配置并刷新解析结果。
@@ -819,21 +824,26 @@ describe("permissionManager 协作模式权限（模式策略统一表）", () =
     applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
     const plan = { collaborationMode: "plan" as const }
     const explorerTask = { description: "d", prompt: "p", agent_type: "explorer" }
-    const workerTask = { description: "d", prompt: "p", agent_type: "worker" }
-    // 缺省：explorer 放行（bypassPermissions 下 allow），其他角色与未携带角色拒绝。
+    const scoutTask = { description: "d", prompt: "p", agent_type: "scout" }
+    // 缺省：explorer 放行（bypassPermissions 下 allow），未携带角色拒绝。
     expect(permissionManager.evaluate("task", explorerTask, plan)).toBe("allow")
-    expect(permissionManager.evaluate("task", workerTask, plan)).toBe("deny")
     expect(permissionManager.evaluate("task", { description: "d", prompt: "p" }, plan)).toBe("deny")
 
-    // 显式配置：允许 worker 后放行，同时移除 explorer。
+    // 显式配置：只读自定义角色 scout 覆盖缺省白名单，explorer 随之不再放行。
+    holder.subagentSettings = {
+      roles: {
+        scout: { description: "read-only scout", permissions: { tools: ["read", "grep"] } },
+      },
+      maxDepth: 1,
+    }
     applySettings({
       defaultMode: "bypassPermissions",
       allow: [],
       deny: [],
       ask: [],
-      modes: { plan: { subagents: ["worker"] } },
+      modes: { plan: { subagents: ["scout"] } },
     })
-    expect(permissionManager.evaluate("task", workerTask, plan)).toBe("allow")
+    expect(permissionManager.evaluate("task", scoutTask, plan)).toBe("allow")
     expect(permissionManager.evaluate("task", explorerTask, plan)).toBe("deny")
 
     // 显式空数组：该模式完全禁止派发。
@@ -847,9 +857,79 @@ describe("permissionManager 协作模式权限（模式策略统一表）", () =
     expect(permissionManager.evaluate("task", explorerTask, plan)).toBe("deny")
 
     // 缺省白名单只作用于非 build：build 未配置时不限制角色。
+    expect(permissionManager.evaluate("task", scoutTask, { collaborationMode: "build" })).toBe(
+      "allow",
+    )
+  })
+
+  it("能力集含模式硬基线工具的角色在非 build 模式永久禁用（白名单列出也不放行）", () => {
+    applySettings({
+      defaultMode: "bypassPermissions",
+      allow: [],
+      deny: [],
+      ask: [],
+      // 白名单显式列出 worker：角色兼容性仍按硬基线拒绝。
+      modes: { plan: { subagents: ["explorer", "worker"] } },
+    })
+    const workerTask = { description: "d", prompt: "p", agent_type: "worker" }
+    expect(permissionManager.evaluate("task", workerTask, { collaborationMode: "plan" })).toBe(
+      "deny",
+    )
+    expect(permissionManager.evaluate("task", workerTask, { collaborationMode: "design" })).toBe(
+      "deny",
+    )
+    // build 模式硬基线为空：无限制角色不受影响。
     expect(permissionManager.evaluate("task", workerTask, { collaborationMode: "build" })).toBe(
       "allow",
     )
+  })
+
+  it("角色兼容性与父模式白名单对嵌套派发同样生效", () => {
+    applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+    const nested = { collaborationMode: "build" as const, parentMode: "plan" as const }
+    // 父为 plan：build 子代理派发 worker 被父模式缺省白名单拦下（缺省仅 explorer）。
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "worker" },
+        nested,
+      ),
+    ).toBe("deny")
+    expect(
+      permissionManager.evaluate(
+        "task",
+        { description: "d", prompt: "p", agent_type: "explorer" },
+        nested,
+      ),
+    ).toBe("allow")
+  })
+
+  it("派发拒绝 reason 区分角色白名单未命中与角色永久禁用", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const missingRole = await permissionManager.gate(
+      gateContext("task", { description: "d", prompt: "p" }),
+      "s1",
+      undefined,
+      { collaborationMode: "plan" },
+    )
+    expect(missingRole?.reason).toContain("Allowed roles: explorer.")
+
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { plan: { subagents: ["worker"] } },
+    })
+    const blockedRole = await permissionManager.gate(
+      gateContext("task", { description: "d", prompt: "p", agent_type: "worker" }),
+      "s1",
+      undefined,
+      { collaborationMode: "plan" },
+    )
+    expect(blockedRole?.reason).toContain("permanently disabled")
+    expect(blockedRole?.reason).toContain("worker")
+    expect(blockedRole?.reason).toContain("write")
   })
 
   it("父模式硬基线随子代理调用生效（parentMode），派发不绕过父模式只读约束", () => {
