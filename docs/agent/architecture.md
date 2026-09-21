@@ -102,7 +102,9 @@ src/main/agent/
 │   ├── subagentPool.ts    #   SubagentPool (会话续接、隔离生命周期)
 │   ├── agentRoles.ts      #   内置角色目录与用户角色合并解析 (explorer/worker)
 │   ├── subagentConfig.ts  #   agent.subagents 配置解析与校验
-│   └── subagentRuntime.ts #   会话级子代理并发槽位治理 (超限快返)
+│   ├── subagentRunner.ts  #   单次子代理执行内核 (Agent 创建/快照/hook/重试/输出有界化)
+│   ├── toolPermissions.ts #   角色权限 → 子代理工具集过滤 (四组求交，永不提权)
+│   └── subagentRuntime.ts #   会话级子代理并发槽位治理 (顶层 FIFO 排队 / 嵌套快返)
 ├── guard/                 # 安全防护网与死循环守卫
 │   ├── guardianEvaluator.ts   # Guardian 四维安全规则引擎
 │   ├── commandSafetyGuard.ts  # 高危 Shell 命令语法树拆解与拦截

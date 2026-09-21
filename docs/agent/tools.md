@@ -31,6 +31,8 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 }
 ```
 
+- **分段调度**：同一助手消息内的工具调用按 `executionMode` 分段执行——连续 `parallel` 调用组成一个并发段，`sequential` 工具独占一段作为屏障，段间保持消息顺序；会话级 `toolExecution: "sequential"` 仍强制整批串行。
+
 ### 1.1 契约铁律
 
 - **参数校验前置**：在进入 `execute` 前由框架统一执行 `validateToolArguments`，校验失败立即封装结构化错误 ToolResult 回灌，不触发实际执行。
@@ -61,7 +63,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | | `todowrite` | `{ todos: { content; status }[] }` | 任务清单状态机整表替换；驱动状态栏与执行面板；Plan/Review 模式下被硬拦截 |
 | **语言服务** | `lsp` | `{ operation; filePath; line?; character?; query? }` | 9 种 LSP 语义操作：`goToDefinition` / `findReferences` / `hover` / `documentSymbol` / `workspaceSymbol` / `goToImplementation` / `prepareCallHierarchy` / `incomingCalls` / `outgoingCalls`；支持懒安装 |
 | **交互与协作** | `question` | `{ questions: { question; header; options; multiple? }[] }` | 向用户发起结构化交互式提问（支持 Markdown 与选项选择） |
-| | `task` | `{ description; prompt; agent_type?; name?; subagent_id? }` | 启动独立子代理或向 `SubagentPool` 续接；角色目录注入工具描述，工具集取父激活集与角色白名单交集，模型按 `role.model → defaultModel → 父模型` 覆盖，协作模式按 `agent.subagents.mode`（缺省 `build`，不继承主 Agent）绑定提示词与门禁；并发 `maxConcurrent` 超限快返，嵌套深度 `maxDepth` 1–5（详见 runtime.md §5） |
+| | `task` | `{ description; prompt; agent_type?; name?; subagent_id? }` 或 `{ tasks: { description; prompt; agent_type?; name? }[] }` | 单任务模式启动独立子代理或向 `SubagentPool` 续接；批量模式（`tasks[]`，上限 64 项）一次扇出多个新子代理并行执行、按输入顺序回传结构化结果数组与 `details.subagents`；角色目录注入工具描述，工具集取父激活集与角色白名单交集，模型按 `role.model → defaultModel → 父模型` 覆盖，协作模式按 `agent.subagents.mode`（缺省 `build`，不继承主 Agent）绑定提示词与门禁；并发 `maxConcurrent` 顶层 FIFO 排队、嵌套 fail-fast，嵌套深度 `maxDepth` 1–5（详见 runtime.md §5） |
 | | `read_skill` | `{ name }` | 读取并加载指定 Skill 指令包的完整 Markdown 正文 |
 | **网络检索** | `web_search` | `{ query; numResults?=8; type? }` | 优先 Exa (mcp.exa.ai) 检索，Tavily (api.tavily.com) 兜底；`numResults` 上限 10 |
 | | `webfetch` | `{ url; format?=markdown; timeout?=30s }` | URL 内容抓取与 HTML 转 Markdown，内置私网/Localhost SSRF 严格阻断 |
@@ -126,6 +128,7 @@ export const PROMPT_ORDERS = {
   - 工具命名自动规整为 `sanitize(serverName)_sanitize(toolName)`（`mcp__` 命名空间），避免与内置工具冲突。
   - `jsonSchemaToZod` 动态将 JSON Schema 转换为运行时 Zod 校验器，无法无损解析的高级 Schema 降级为宽松 Record 透传。
   - 每次会话装配按能力快照中的 MCP 白名单包装注册（`wrapMcpTool`），未连接或未授权工具不进入工具集；MCP 工具始终走审批门控，不因名称进入豁免/默认放行（见 permissions.md §5.1）。
+  - **执行模式**：MCP 工具默认 `executionMode: "parallel"`（同批次并发）；有状态 server 可在 `agent.mcp.<server>` 配置 `"serial": true` 回退为 sequential（独占屏障），配置项与 `command` / `cwd` / `environment` / `disabled` / `timeout` 同级。
 
 ---
 

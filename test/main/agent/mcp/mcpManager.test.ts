@@ -15,6 +15,8 @@ const sdk = vi.hoisted(() => ({
   }>,
   // connect 注入桩：默认立即成功；测试内替换为受控 Promise。
   connectImpl: async (_client: unknown): Promise<void> => {},
+  // listTools 返回的工具定义（默认空）。
+  toolDefs: [] as Array<Record<string, unknown>>,
 }))
 
 vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
@@ -39,7 +41,7 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
 
     async listTools(): Promise<{ tools: Array<Record<string, unknown>> }> {
       this.listToolsCalls += 1
-      return { tools: [] }
+      return { tools: sdk.toolDefs }
     }
 
     setRequestHandler(): void {}
@@ -124,6 +126,22 @@ describe("wrapMcpTool 输出截断", () => {
   })
 })
 
+describe("wrapMcpTool 执行模式", () => {
+  const def = {
+    name: "read",
+    description: "",
+    inputSchema: { type: "object", properties: {} },
+  }
+
+  it("默认并行（优先并行），server 标记 serial 时独占执行", () => {
+    const client = { callTool: vi.fn() }
+    expect(wrapMcpTool("fs", def as never, client as never, 1000).executionMode).toBe("parallel")
+    expect(wrapMcpTool("fs", def as never, client as never, 1000, true).executionMode).toBe(
+      "sequential",
+    )
+  })
+})
+
 describe("McpManager 连接并发", () => {
   let tmpDir: string
   let gates: Array<() => void>
@@ -133,6 +151,7 @@ describe("McpManager 连接并发", () => {
     holder.configPath = join(tmpDir, "config.json")
     sdk.clients.length = 0
     sdk.connectImpl = async () => {}
+    sdk.toolDefs = []
     gates = []
   })
 
@@ -178,6 +197,18 @@ describe("McpManager 连接并发", () => {
     expect(manager.getStatus()).toMatchObject([{ name: "fs", status: "connected" }])
     // 旧 client 不得参与工具句柄。
     expect(manager.getTools()).toHaveLength(0)
+  })
+
+  it("serial 配置解析并传递到工具句柄", async () => {
+    sdk.toolDefs = [{ name: "stateful", description: "", inputSchema: { type: "object" } }]
+    writeConfig({ browser: { command: ["node", "server.js"], serial: true } })
+    const manager = new McpManager()
+    await manager.ensureConnected()
+
+    expect(manager.getServers().browser?.serial).toBe(true)
+    const handles = manager.getTools()
+    expect(handles).toHaveLength(1)
+    expect(handles[0]).toMatchObject({ server: "browser", serial: true })
   })
 
   it("旧 client 的 onclose 不误杀新连接", async () => {

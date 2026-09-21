@@ -129,8 +129,10 @@ export interface ToolResultMessage {
   durationMs?: number
   // 工具执行的可视化 diff（edit/write 工具产物，供渲染与落库）。
   diff?: AgentDiff
-  // 子代理面板数据（task 工具产物，供渲染与落库）。
+  // 子代理面板数据（task 单任务模式产物，供渲染与落库）。
   subagent?: SubagentData
+  // 批量扇出子代理面板数据（task 批量模式产物，按输入顺序，供落库与后续渲染）。
+  subagents?: SubagentData[]
   // LSP 检索结果（lsp 工具产物，供渲染与落库）。
   lsp?: LspToolDetails
   // 图片查看结果（view_image 工具产物，供渲染与落库）。

@@ -405,7 +405,7 @@ async function failToolCalls(
   return { messages: [...toolResults], toolResults, terminate: false }
 }
 
-// 执行一条助手消息中的工具调用。
+// 执行一条助手消息中的工具调用：分段调度（连续可并行调用并发，sequential 工具独占屏障）。
 async function executeToolCalls(
   currentContext: AgentContext,
   assistantMessage: AssistantMessage,
@@ -414,10 +414,7 @@ async function executeToolCalls(
   emit: AgentEventSink,
 ): Promise<ExecutedToolCallBatch> {
   const toolCalls = assistantMessage.content.filter((c) => c.type === "toolCall")
-  const hasSequentialToolCall = toolCalls.some(
-    (tc) => findTool(currentContext.tools, tc.name)?.executionMode === "sequential",
-  )
-  if (config.toolExecution === "sequential" || hasSequentialToolCall) {
+  if (config.toolExecution === "sequential") {
     return executeToolCallsSequential(
       currentContext,
       assistantMessage,
@@ -427,7 +424,14 @@ async function executeToolCalls(
       emit,
     )
   }
-  return executeToolCallsParallel(currentContext, assistantMessage, toolCalls, config, signal, emit)
+  return executeToolCallsSegmented(
+    currentContext,
+    assistantMessage,
+    toolCalls,
+    config,
+    signal,
+    emit,
+  )
 }
 
 type FinalizedToolCallOutcome = {
@@ -438,8 +442,6 @@ type FinalizedToolCallOutcome = {
   // 随本工具结果落位的 hook 审计/注入消息（Pre 在前、Post 在后）。
   hookMessages?: AgentMessage[]
 }
-
-type FinalizedToolCallEntry = FinalizedToolCallOutcome | (() => Promise<FinalizedToolCallOutcome>)
 
 // 顺序执行工具调用。
 async function executeToolCallsSequential(
@@ -518,8 +520,8 @@ async function executeToolCallsSequential(
   }
 }
 
-// 并行执行工具调用（预检串行，执行并发）。
-async function executeToolCallsParallel(
+// 分段执行工具调用（预检串行；连续可并行调用并发，sequential 工具独占一段作为屏障，段间保持消息顺序）。
+async function executeToolCallsSegmented(
   currentContext: AgentContext,
   assistantMessage: AssistantMessage,
   toolCalls: AgentToolCall[],
@@ -527,7 +529,14 @@ async function executeToolCallsParallel(
   signal: AbortSignal | undefined,
   emit: AgentEventSink,
 ): Promise<ExecutedToolCallBatch> {
-  const finalizedCalls: FinalizedToolCallEntry[] = []
+  type SegmentTask = () => Promise<FinalizedToolCallOutcome>
+  const segments: SegmentTask[][] = []
+  let parallelSegment: SegmentTask[] = []
+  const flushParallelSegment = (): void => {
+    if (parallelSegment.length === 0) return
+    segments.push(parallelSegment)
+    parallelSegment = []
+  }
 
   for (const toolCall of toolCalls) {
     await emit({
@@ -537,6 +546,13 @@ async function executeToolCallsParallel(
       args: toolCall.arguments,
     })
 
+    const isSequential =
+      findTool(currentContext.tools, toolCall.name)?.executionMode === "sequential"
+    // sequential 工具独占执行：先收束当前并行段，再单独成段，后续调用重新开段。
+    if (isSequential) {
+      flushParallelSegment()
+    }
+
     const preparation = await prepareToolCall(
       currentContext,
       assistantMessage,
@@ -544,6 +560,7 @@ async function executeToolCallsParallel(
       config,
       signal,
     )
+    let task: SegmentTask
     if (preparation.kind === "immediate") {
       const finalized = {
         toolCall,
@@ -552,43 +569,50 @@ async function executeToolCallsParallel(
         ...(preparation.hookMessages ? { hookMessages: preparation.hookMessages } : {}),
       } satisfies FinalizedToolCallOutcome
       await emitToolExecutionEnd(finalized, emit)
-      finalizedCalls.push(finalized)
-      if (signal?.aborted) {
-        break
+      task = async () => finalized
+    } else {
+      task = async () => {
+        const executed = await executePreparedToolCall(preparation, signal, emit)
+        const finalized = await finalizeExecutedToolCall(
+          currentContext,
+          assistantMessage,
+          preparation,
+          executed,
+          config,
+          signal,
+        )
+        attachQuestionAnswers(assistantMessage, finalized)
+        await dispatchPostToolUse(
+          currentContext,
+          assistantMessage,
+          preparation,
+          finalized,
+          config,
+          signal,
+        )
+        await emitToolExecutionEnd(finalized, emit)
+        return finalized
       }
-      continue
     }
 
-    finalizedCalls.push(async () => {
-      const executed = await executePreparedToolCall(preparation, signal, emit)
-      const finalized = await finalizeExecutedToolCall(
-        currentContext,
-        assistantMessage,
-        preparation,
-        executed,
-        config,
-        signal,
-      )
-      attachQuestionAnswers(assistantMessage, finalized)
-      await dispatchPostToolUse(
-        currentContext,
-        assistantMessage,
-        preparation,
-        finalized,
-        config,
-        signal,
-      )
-      await emitToolExecutionEnd(finalized, emit)
-      return finalized
-    })
+    if (isSequential) {
+      segments.push([task])
+    } else {
+      parallelSegment.push(task)
+    }
     if (signal?.aborted) {
       break
     }
   }
+  flushParallelSegment()
 
-  const orderedFinalizedCalls = await Promise.all(
-    finalizedCalls.map((entry) => (typeof entry === "function" ? entry() : Promise.resolve(entry))),
-  )
+  // 段间串行、段内并发；结果按消息顺序聚合。
+  const orderedFinalizedCalls: FinalizedToolCallOutcome[] = []
+  for (const segment of segments) {
+    const finalized = await Promise.all(segment.map((task) => task()))
+    orderedFinalizedCalls.push(...finalized)
+  }
+
   const toolResults: ToolResultMessage[] = []
   const emittedMessages: AgentMessage[] = []
   for (const finalized of orderedFinalizedCalls) {
@@ -925,10 +949,17 @@ const attachQuestionAnswers = (
 // 由工具执行结果构造 ToolResultMessage。
 function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResultMessage {
   const details = finalized.result.details as
-    | { diff?: AgentDiff; subagent?: SubagentData; lsp?: LspToolDetails; image?: ViewImageDetails }
+    | {
+        diff?: AgentDiff
+        subagent?: SubagentData
+        subagents?: SubagentData[]
+        lsp?: LspToolDetails
+        image?: ViewImageDetails
+      }
     | undefined
   const diff = details?.diff
   const subagent = details?.subagent
+  const subagents = details?.subagents
   const lsp = details?.lsp
   const image = details?.image
   return {
@@ -941,6 +972,7 @@ function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResul
     ...(finalized.durationMs !== undefined ? { durationMs: finalized.durationMs } : {}),
     ...(diff ? { diff } : {}),
     ...(subagent ? { subagent } : {}),
+    ...(subagents && subagents.length > 0 ? { subagents } : {}),
     ...(lsp ? { lsp } : {}),
     ...(image ? { image } : {}),
   }
