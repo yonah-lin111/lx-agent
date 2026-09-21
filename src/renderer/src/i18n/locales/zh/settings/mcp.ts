@@ -19,6 +19,7 @@ export const mcp = {
 - **命令参数**：传递给进程的参数（空格分隔）。
 - **环境变量**：注入进程的环境变量（如 API Token）。
 - **工作目录**：进程运行目录（默认继承主工作区）。
+- **串行执行**：该 Server 的工具调用独占执行（默认与其他调用并行，适合有状态服务）。
 
 ---
 
@@ -76,6 +77,8 @@ export const mcp = {
   mcpEnvironment: "环境变量",
   mcpAddEnvRow: "添加环境变量",
   mcpTimeout: "超时时间 (毫秒)",
+  mcpSerialExecution: "串行执行",
+  mcpSerialExecutionHint: "该服务的工具调用独占执行，不与其他调用并行（适合有状态服务）",
   mcpNameRequired: "服务名称不能为空",
   mcpCommandRequired: "可执行命令不能为空",
   mcpNameDuplicate: "服务名称已存在",

@@ -66,6 +66,7 @@ export const McpSettings = (): React.JSX.Element => {
   const [formEnvRows, setFormEnvRows] = useState<EnvRow[]>([])
   const [formDisabled, setFormDisabled] = useState(false)
   const [formTimeout, setFormTimeout] = useState("30000")
+  const [formSerial, setFormSerial] = useState(false)
   const [formError, setFormError] = useState("")
 
   const baselineMcpRef = useRef<string | null>(null)
@@ -147,6 +148,7 @@ export const McpSettings = (): React.JSX.Element => {
     setFormEnvRows([])
     setFormDisabled(false)
     setFormTimeout("30000")
+    setFormSerial(false)
     setFormError("")
     setModalOpen(true)
   }
@@ -166,6 +168,7 @@ export const McpSettings = (): React.JSX.Element => {
     setFormEnvRows(envRows)
     setFormDisabled(Boolean(config.disabled))
     setFormTimeout(String(config.timeout ?? 30000))
+    setFormSerial(Boolean(config.serial))
     setFormError("")
     setModalOpen(true)
   }
@@ -213,6 +216,7 @@ export const McpSettings = (): React.JSX.Element => {
       ...(Object.keys(environment).length > 0 ? { environment } : {}),
       ...(formDisabled ? { disabled: true } : {}),
       timeout,
+      ...(formSerial ? { serial: true } : {}),
     }
 
     const nextServers = { ...mcpSettings.servers }
@@ -492,6 +496,11 @@ export const McpSettings = (): React.JSX.Element => {
                             {t("settings.mcpConnecting")}
                           </LxTag>
                         )}
+                        {config.serial && (
+                          <LxTag size="small" color="purple">
+                            {t("settings.mcpSerialExecution")}
+                          </LxTag>
+                        )}
                         {toolsCount > 0 && (
                           <LxTag size="small" color="sky" prefix={<Wrench className="h-3 w-3" />}>
                             {toolsCount} {t("settings.mcpTools")}
@@ -741,6 +750,21 @@ export const McpSettings = (): React.JSX.Element => {
               value={formTimeout}
               onChange={(e) => setFormTimeout(e.target.value)}
             />
+          </div>
+
+          {/* 串行执行（默认并行；有状态服务可开启独占） */}
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center gap-1.5 cursor-pointer text-white/70">
+              <LxCheckbox
+                checked={formSerial}
+                onChange={setFormSerial}
+                aria-label={t("settings.mcpSerialExecution")}
+              />
+              <span className="font-medium">{t("settings.mcpSerialExecution")}</span>
+            </label>
+            <span className="pl-5 text-xs text-white/40">
+              {t("settings.mcpSerialExecutionHint")}
+            </span>
           </div>
 
           {/* 底部按钮栏 */}

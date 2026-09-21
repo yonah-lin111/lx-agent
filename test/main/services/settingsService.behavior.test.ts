@@ -268,7 +268,7 @@ describe("MCP 设置", () => {
     })
   })
 
-  it("cwd/environment/disabled/timeout 仅在有效时写入", () => {
+  it("cwd/environment/disabled/timeout/serial 仅在有效时写入", () => {
     writeConfig({
       agent: {
         mcp: {
@@ -278,8 +278,10 @@ describe("MCP 设置", () => {
             environment: { " API_KEY ": "v", INVALID: 2, "": "x" },
             disabled: true,
             timeout: 0,
+            serial: true,
             unknown: "dropped",
           },
+          serialOnly: { command: ["node", "s.js"], serial: false },
         },
       },
     })
@@ -291,7 +293,9 @@ describe("MCP 设置", () => {
           cwd: "/tmp/work",
           environment: { API_KEY: "v" },
           disabled: true,
+          serial: true,
         },
+        serialOnly: { command: ["node", "s.js"], serial: false },
       },
     })
   })
@@ -299,14 +303,16 @@ describe("MCP 设置", () => {
   it("保存为 agent.mcp 裸 map（无 servers 包裹），往返一致且保留 agent 其他节点", () => {
     writeConfig({ agent: { permissions: { defaultMode: "default" } } })
 
-    saveMcpSettings({ servers: { a: { command: ["npx", "x"], timeout: 30 } } })
+    saveMcpSettings({
+      servers: { a: { command: ["npx", "x"], timeout: 30, serial: true } },
+    })
 
     expect((readConfig() as { agent: Record<string, unknown> }).agent).toMatchObject({
       permissions: { defaultMode: "default" },
-      mcp: { a: { command: ["npx", "x"], timeout: 30 } },
+      mcp: { a: { command: ["npx", "x"], timeout: 30, serial: true } },
     })
     expect(getMcpSettings()).toEqual({
-      servers: { a: { command: ["npx", "x"], timeout: 30 } },
+      servers: { a: { command: ["npx", "x"], timeout: 30, serial: true } },
     })
   })
 })
