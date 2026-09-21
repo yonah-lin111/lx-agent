@@ -1,4 +1,5 @@
-import type { SubagentCapabilityCatalog, SubagentRolePermissions } from "@shared/settings"
+import type { CapabilityPermissions, SubagentCapabilityCatalog } from "@shared/settings"
+import { Lock } from "lucide-react"
 import { useCallback, useMemo } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -17,22 +18,49 @@ interface PermissionItem {
 // 子代理权限编辑器属性。
 export interface SubagentPermissionsFormProps {
   catalog: SubagentCapabilityCatalog | null
-  value: SubagentRolePermissions | undefined
-  onChange: (permissions: SubagentRolePermissions | undefined) => void
+  value: CapabilityPermissions | undefined
+  onChange: (permissions: CapabilityPermissions | undefined) => void
+  // 模式硬基线工具：永久禁用、不可勾选（仅 tools 组生效）。
+  lockedItems?: readonly string[]
 }
 
 // 分组键 → 权限字段名（同构）。
 const GROUP_KEYS: readonly PermissionGroup[] = ["tools", "mcp", "skills", "websearch"]
 
+// 权限摘要：四组各自统计；未限制分组不展示（子代理与协作模式共用）。
+export const describePermissions = (
+  permissions: CapabilityPermissions | undefined,
+  t: (key: TranslationKey) => string,
+): string => {
+  if (!permissions) return t("settings.subagentsPermissionsUnlimitedAll")
+  const parts: string[] = []
+  const groups: Array<[keyof CapabilityPermissions, TranslationKey]> = [
+    ["tools", "settings.subagentsPermissions_tools"],
+    ["mcp", "settings.subagentsPermissions_mcp"],
+    ["skills", "settings.subagentsPermissions_skills"],
+    ["websearch", "settings.subagentsPermissions_websearch"],
+  ]
+  for (const [key, labelKey] of groups) {
+    const list = permissions[key]
+    if (list === undefined) continue
+    parts.push(`${t(labelKey)}: ${list.length}`)
+  }
+  return parts.length > 0 ? parts.join(" / ") : t("settings.subagentsPermissionsUnlimitedAll")
+}
+
 /**
  * 渲染子代理角色能力权限编辑器：2×2 网格分组，每组「不限制 / 自定义白名单」两态，白名单为空表示该组全禁。
+ * lockedItems 用于协作模式硬基线：这些工具永远排除在白名单之外。
  */
 export const SubagentPermissionsForm = ({
   catalog,
   value,
   onChange,
+  lockedItems,
 }: SubagentPermissionsFormProps): React.JSX.Element => {
   const { t } = useTranslation()
+
+  const lockedSet = useMemo(() => new Set(lockedItems ?? []), [lockedItems])
 
   const itemsByGroup = useMemo<Record<PermissionGroup, PermissionItem[]>>(
     () => ({
@@ -50,6 +78,20 @@ export const SubagentPermissionsForm = ({
     [catalog],
   )
 
+  // 可勾选条目：tools 组剔除模式硬基线（单独以锁定行展示）。
+  const selectableItems = useCallback(
+    (group: PermissionGroup): PermissionItem[] =>
+      group === "tools"
+        ? itemsByGroup.tools.filter((item) => !lockedSet.has(item.name))
+        : itemsByGroup[group],
+    [itemsByGroup, lockedSet],
+  )
+
+  const lockedToolItems = useMemo(
+    () => itemsByGroup.tools.filter((item) => lockedSet.has(item.name)),
+    [itemsByGroup, lockedSet],
+  )
+
   const groupLabel = useCallback(
     (group: PermissionGroup): string =>
       t(`settings.subagentsPermissions_${group}` as TranslationKey),
@@ -61,12 +103,12 @@ export const SubagentPermissionsForm = ({
     value?.[group] !== undefined && value[group]?.length === 0
 
   const handleToggleGroup = (group: PermissionGroup, restricted: boolean): void => {
-    const next: SubagentRolePermissions = { ...value }
+    const next: CapabilityPermissions = { ...value }
     if (!restricted) {
       delete next[group]
     } else {
       // 打开限制时预置当前目录全选，避免空清单直接变成"全禁"。
-      next[group] = itemsByGroup[group].map((item) => item.name)
+      next[group] = selectableItems(group).map((item) => item.name)
     }
     onChange(Object.keys(next).length > 0 ? next : undefined)
   }
@@ -78,7 +120,7 @@ export const SubagentPermissionsForm = ({
   }
 
   const handleSelectAll = (group: PermissionGroup): void => {
-    onChange({ ...value, [group]: itemsByGroup[group].map((item) => item.name) })
+    onChange({ ...value, [group]: selectableItems(group).map((item) => item.name) })
   }
 
   const handleClearAll = (group: PermissionGroup): void => {
@@ -88,7 +130,7 @@ export const SubagentPermissionsForm = ({
   return (
     <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
       {GROUP_KEYS.map((group) => {
-        const items = itemsByGroup[group]
+        const items = selectableItems(group)
         const restricted = value?.[group] !== undefined
         const selected = value?.[group] ?? []
         const disabledAll = isGroupDisabledAll(group)
@@ -180,6 +222,26 @@ export const SubagentPermissionsForm = ({
                   ))}
                 </div>
               )
+            ) : null}
+
+            {group === "tools" && lockedToolItems.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {lockedToolItems.map((item) => (
+                  <div
+                    key={item.name}
+                    data-locked-tool={item.name}
+                    className="flex items-center gap-1.5 rounded-[4px] px-1 py-0.5 opacity-70"
+                  >
+                    <Lock className="h-3 w-3 shrink-0 text-rose-300/80" aria-hidden />
+                    <span className="truncate font-mono text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] line-through">
+                      {item.name}
+                    </span>
+                    <span className="ml-auto shrink-0 text-xs text-rose-300/80">
+                      {t("settings.subagentsPermissionsLocked")}
+                    </span>
+                  </div>
+                ))}
+              </div>
             ) : null}
           </div>
         )

@@ -1,5 +1,6 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
 import {
+  type CapabilityPermissions,
   type ModelProviderSettings,
   RESERVED_SUBAGENT_ROLE_NAMES,
   SUBAGENT_MAX_CONCURRENCY_LIMIT,
@@ -8,7 +9,6 @@ import {
   type SubagentBuiltinRoleInfo,
   type SubagentCapabilityCatalog,
   type SubagentRoleConfig,
-  type SubagentRolePermissions,
 } from "@shared/settings"
 import { AlertTriangle, Edit2, Loader2, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -19,24 +19,24 @@ import { LxModal } from "@/components/ui/LxModal"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
-import { type TranslationKey, useTranslation } from "@/i18n"
+import { useTranslation } from "@/i18n"
 import { settingsApi } from "../api/settingsApi"
 import { useRegisterSettingsSection } from "../hooks/settingsDraftStore"
 import { useSubagentSettings } from "../hooks/useSubagentSettings"
 import { notifySettingsChanged } from "../settingsChangeNotifier"
-import { SubagentPermissionsForm } from "./SubagentPermissionsForm"
+import { describePermissions, SubagentPermissionsForm } from "./SubagentPermissionsForm"
 
 // 下拉 portal 默认 zIndex 50，须高于 LxModal（999999）与 LxTooltip（999999）才不被遮挡。
 const MODAL_SELECT_Z_INDEX = 1000000
 
 // 权限等值判定：按固定分组顺序 + 排序后的白名单比较（键序与勾选顺序不影响语义）。
 const permissionsEqual = (
-  a: SubagentRolePermissions | undefined,
-  b: SubagentRolePermissions | undefined,
+  a: CapabilityPermissions | undefined,
+  b: CapabilityPermissions | undefined,
 ): boolean => {
-  const canonical = (value: SubagentRolePermissions | undefined): string => {
+  const canonical = (value: CapabilityPermissions | undefined): string => {
     if (value === undefined) return "~"
-    const groups: Array<keyof SubagentRolePermissions> = ["tools", "mcp", "skills", "websearch"]
+    const groups: Array<keyof CapabilityPermissions> = ["tools", "mcp", "skills", "websearch"]
     return groups
       .map((group) => {
         const list = value[group]
@@ -45,27 +45,6 @@ const permissionsEqual = (
       .join("|")
   }
   return canonical(a) === canonical(b)
-}
-
-// 权限摘要：四组各自统计；无限制分组不展示。
-const describePermissions = (
-  permissions: SubagentRolePermissions | undefined,
-  t: (key: TranslationKey) => string,
-): string => {
-  if (!permissions) return t("settings.subagentsPermissionsUnlimitedAll")
-  const parts: string[] = []
-  const groups: Array<[keyof SubagentRolePermissions, TranslationKey]> = [
-    ["tools", "settings.subagentsPermissions_tools"],
-    ["mcp", "settings.subagentsPermissions_mcp"],
-    ["skills", "settings.subagentsPermissions_skills"],
-    ["websearch", "settings.subagentsPermissions_websearch"],
-  ]
-  for (const [key, labelKey] of groups) {
-    const list = permissions[key]
-    if (list === undefined) continue
-    parts.push(`${t(labelKey)}: ${list.length}`)
-  }
-  return parts.length > 0 ? parts.join(" / ") : t("settings.subagentsPermissionsUnlimitedAll")
 }
 
 // 数字输入解析：空返回 null，非法返回 undefined（保持原值），越界收敛到上限。
@@ -99,7 +78,7 @@ export const SubagentSettings = (): React.JSX.Element => {
   const [formInstructions, setFormInstructions] = useState("")
   const [formModelProvider, setFormModelProvider] = useState("")
   const [formModelModel, setFormModelModel] = useState("")
-  const [formPermissions, setFormPermissions] = useState<SubagentRolePermissions | undefined>(
+  const [formPermissions, setFormPermissions] = useState<CapabilityPermissions | undefined>(
     undefined,
   )
   const [formError, setFormError] = useState("")

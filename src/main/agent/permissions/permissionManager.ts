@@ -8,11 +8,16 @@ import type {
   PermissionSettings,
   SandboxPolicy,
 } from "@shared/contracts/agent"
-import { MCP_TOOL_NAMESPACE, normalizeCollaborationMode } from "@shared/contracts/agent"
+import {
+  getModeBlockedTools,
+  MCP_TOOL_NAMESPACE,
+  normalizeCollaborationMode,
+} from "@shared/contracts/agent"
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@/agent/core/types"
 import { evaluateCommandSafety } from "@/agent/guard/commandSafetyGuard"
 import { type GuardianAssessment, guardianEvaluator } from "@/agent/guard/guardianEvaluator"
 import { firstPermissionDecision, hookResultMessages, hooksManager } from "@/agent/hooks"
+import { isToolAllowedByPermissions } from "@/agent/subagent/toolPermissions"
 import { parsePatch } from "@/agent/tools/applyPatchParser"
 import { getPermissionSettings, savePermissionSettings } from "@/services/settingsService"
 import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRule } from "./rule"
@@ -20,15 +25,27 @@ import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRul
 // 拒绝语义的固定 reason（回灌模型的 error toolResult 文案）。
 const DENY_RULE_REASON = "Action denied by permission rules."
 const USER_DENY_REASON = "Action denied by user."
-const PLAN_MODE_MUTATION_REASON =
-  "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite) and task subagent dispatch are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags."
-const REVIEW_MODE_MUTATION_REASON =
-  "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) and task subagent dispatch are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags."
 const READ_ONLY_SANDBOX_REASON =
   "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
+// 非 build 模式的写操作硬拦截 reason（模式身份约束，配置不可放开）。
+const MODE_MUTATION_REASONS: Record<Exclude<CollaborationMode, "build">, string> = {
+  plan: "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite, memory) and task subagent dispatch are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags.",
+  review:
+    "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite, memory) and task subagent dispatch are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags.",
+  design:
+    "Action denied: Current collaboration mode is Front Design Mode. Mutating actions (write, edit, apply_patch, todowrite, memory), task subagent dispatch, and the wireframe tool are strictly prohibited in Design Mode. Deliver prototypes using <front_design> tags instead.",
+}
+// 模式能力权限白名单未命中 reason。
+const MODE_TOOL_NOT_ALLOWED_REASON =
+  "Action denied: This tool is not allowed in the current collaboration mode by permission configuration."
+// 模式展示名（Guardian 拒绝文案）。
+const MODE_LABELS: Record<CollaborationMode, string> = {
+  build: "Build Mode",
+  plan: "Plan Mode",
+  review: "Review Mode",
+  design: "Design Mode",
+}
 
-// Plan / Review 模式下硬拦截的工具（含 task：禁止派发可写子代理绕过协作模式限制）。
-const PLAN_REVIEW_BLOCKED_TOOLS = new Set(["write", "edit", "apply_patch", "todowrite", "task"])
 // read-only 沙箱策略下硬拦截的工具。
 const READ_ONLY_BLOCKED_TOOLS = new Set(["write", "edit", "apply_patch"])
 // 无会话上下文（全局）时的 MCP 工具集合键。
@@ -205,23 +222,19 @@ class PermissionManager {
     contextOptions?: { collaborationMode?: CollaborationMode; sessionId?: string },
   ): "allow" | "deny" | "ask" {
     const record = isRecord(args) ? args : {}
-    return this.evaluateWithAssessments(
-      toolName,
-      args,
-      contextOptions,
-      assessGuardian(toolName, record),
-    )
+    return this.decide(toolName, args, contextOptions, assessGuardian(toolName, record)).decision
   }
 
   /**
    * 内部判定：复用调用方已计算的 Guardian 评估集，避免同一调用重复评估。
+   * 拒绝时直接携带固定 reason（gate 透传，不再二次判定原因）。
    */
-  private evaluateWithAssessments(
+  private decide(
     toolName: string,
     args: unknown,
     contextOptions: { collaborationMode?: CollaborationMode; sessionId?: string } | undefined,
     guardianAssessments: GuardianAssessment[],
-  ): "allow" | "deny" | "ask" {
+  ): { decision: "allow" | "deny" | "ask"; reason?: string } {
     const mode = this.settings.defaultMode
     const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
     const collaborationMode = normalizeCollaborationMode(
@@ -231,59 +244,75 @@ class PermissionManager {
 
     const record = isRecord(args) ? args : {}
 
-    // 1. 协作模式 (Plan / Review Mode)：严禁任何写文件/编辑/修改操作、todowrite 任务清单与 task 子代理派发
-    if (collaborationMode === "plan" || collaborationMode === "review") {
-      if (PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
-        return "deny"
+    // 1. 协作模式硬基线：非 build 模式严禁写操作、todowrite 任务清单、task 子代理派发与 memory 写入；
+    //    design 另禁 wireframe。该基线为模式身份约束，权限配置不可放开。
+    if (collaborationMode !== "build") {
+      const modeBlockedTools = getModeBlockedTools(collaborationMode)
+      if (modeBlockedTools.has(toolName)) {
+        return { decision: "deny", reason: MODE_MUTATION_REASONS[collaborationMode] }
       }
     }
 
+    // 1.1 模式能力权限白名单：四组独立判定，配置只能收紧、永不新增能力
+    const modePermissions = this.settings.modes?.[collaborationMode]
+    if (!isToolAllowedByPermissions(toolName, args, modePermissions)) {
+      return { decision: "deny", reason: MODE_TOOL_NOT_ALLOWED_REASON }
+    }
+
     // 2. 只读沙箱策略 (read-only)：严禁任何写文件/编辑/修改操作
-    if (sandboxPolicy === "read-only") {
-      if (READ_ONLY_BLOCKED_TOOLS.has(toolName)) {
-        return "deny"
-      }
+    if (sandboxPolicy === "read-only" && READ_ONLY_BLOCKED_TOOLS.has(toolName)) {
+      return { decision: "deny", reason: READ_ONLY_SANDBOX_REASON }
     }
 
     // 3. 指令安全检测：破坏性高危指令绝对阻断 (Deny)
     if (toolName === "bash" && typeof record.command === "string") {
       const safety = evaluateCommandSafety(record.command)
       if (safety.level === "dangerous") {
-        return "deny"
+        return { decision: "deny", reason: safety.reason ?? DENY_RULE_REASON }
       }
     }
 
     // 4. deny 规则绝对优先
-    if (matchRule(this.parsed.deny, toolName, args)) return "deny"
+    if (matchRule(this.parsed.deny, toolName, args)) {
+      return { decision: "deny", reason: DENY_RULE_REASON }
+    }
 
-    // 5. Guardian 风险评估：任一路径高危时 Plan/Review 硬阻断；其余模式强制升级为 ask (人工审批，
+    // 5. Guardian 风险评估：任一路径高危时非 build 模式硬阻断；build 强制升级为 ask (人工审批，
     //    即使处于 bypassPermissions 也生效；apply_patch 已按目标路径逐个评估)
     if (hasHighRisk(guardianAssessments)) {
-      if (collaborationMode === "plan" || collaborationMode === "review") {
-        return "deny"
+      if (collaborationMode !== "build") {
+        const assessment = guardianAssessments.find(
+          (item) => item.riskLevel === "critical" || item.riskLevel === "high",
+        )
+        return {
+          decision: "deny",
+          reason: `Action denied: Guardian risk detected in ${MODE_LABELS[collaborationMode]} [${assessment?.category ?? "unknown"}] - ${assessment?.rationale ?? "high risk action"}`,
+        }
       }
-      return "ask"
+      return { decision: "ask" }
     }
 
     // 6. 检查会话白名单（工具级）
     if (sessionId) {
-      if (this.sessionAllowAll.has(sessionId)) return "allow"
-      if (this.isToolAllowedInSession(sessionId, toolName)) return "allow"
+      if (this.sessionAllowAll.has(sessionId)) return { decision: "allow" }
+      if (this.isToolAllowedInSession(sessionId, toolName)) return { decision: "allow" }
     }
 
     // 7. 豁免工具与全局绕过；已注册 MCP 工具优先于豁免判定，永远走门控，不得借豁免名绕过
-    if (mode === "bypassPermissions" || sandboxPolicy === "danger-full-access") return "allow"
+    if (mode === "bypassPermissions" || sandboxPolicy === "danger-full-access") {
+      return { decision: "allow" }
+    }
     // 命名空间前缀兜底：即使会话未注册 MCP 集合（如会话切换窗口），mcp__ 工具也永远走门控
     const isMcpTool =
       toolName.startsWith(MCP_TOOL_NAMESPACE) || this.getMcpTools(sessionId).has(toolName)
-    if (!isMcpTool && EXEMPT_TOOLS.has(toolName)) return "allow"
-    if (!isMcpTool && !GATED_BUILTIN_TOOLS.has(toolName)) return "allow"
+    if (!isMcpTool && EXEMPT_TOOLS.has(toolName)) return { decision: "allow" }
+    if (!isMcpTool && !GATED_BUILTIN_TOOLS.has(toolName)) return { decision: "allow" }
 
     // 8. 敏感指令提升为 ask
     if (toolName === "bash" && typeof record.command === "string") {
       const safety = evaluateCommandSafety(record.command)
       if (safety.level === "sensitive") {
-        return "ask"
+        return { decision: "ask" }
       }
     }
 
@@ -293,14 +322,14 @@ class PermissionManager {
       : matchRule(this.parsed.allow, toolName, args)
         ? "allow"
         : null
-    if (kind) return kind
+    if (kind) return { decision: kind }
 
     // 10. acceptEdits 模式下自动放行文件修改类工具（高危路径已在第 5 步升级，不会走到这里）
     if (mode === "acceptEdits" && READ_ONLY_BLOCKED_TOOLS.has(toolName)) {
-      return "allow"
+      return { decision: "allow" }
     }
 
-    return "ask"
+    return { decision: "ask" }
   }
 
   /**
@@ -321,37 +350,8 @@ class PermissionManager {
 
     // 单次 Guardian 评估：apply_patch 按目标路径逐个评估后透传给内部判定，避免重复评估。
     const guardianAssessments = assessGuardian(toolName, record)
-    const guardianAssessment = guardianAssessments.find(
-      (assessment) => assessment.riskLevel === "critical" || assessment.riskLevel === "high",
-    )
 
-    // Plan Mode 门控硬拦截
-    if (collaborationMode === "plan") {
-      if (PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
-        return { block: true, reason: PLAN_MODE_MUTATION_REASON }
-      }
-      if (guardianAssessment) {
-        return {
-          block: true,
-          reason: `Action denied: Guardian risk detected [${guardianAssessment.category}] - ${guardianAssessment.rationale}`,
-        }
-      }
-    }
-
-    // Review Mode 门控硬拦截
-    if (collaborationMode === "review") {
-      if (PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
-        return { block: true, reason: REVIEW_MODE_MUTATION_REASON }
-      }
-      if (guardianAssessment) {
-        return {
-          block: true,
-          reason: `Action denied: Guardian risk detected in Review Mode [${guardianAssessment.category}] - ${guardianAssessment.rationale}`,
-        }
-      }
-    }
-
-    const decision = this.evaluateWithAssessments(
+    const decision = this.decide(
       toolName,
       args,
       {
@@ -360,25 +360,9 @@ class PermissionManager {
       },
       guardianAssessments,
     )
-    if (decision === "allow") return undefined
-    if (decision === "deny") {
-      const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
-      if (collaborationMode === "plan" && PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
-        return { block: true, reason: PLAN_MODE_MUTATION_REASON }
-      }
-      if (collaborationMode === "review" && PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
-        return { block: true, reason: REVIEW_MODE_MUTATION_REASON }
-      }
-      if (sandboxPolicy === "read-only" && READ_ONLY_BLOCKED_TOOLS.has(toolName)) {
-        return { block: true, reason: READ_ONLY_SANDBOX_REASON }
-      }
-      if (toolName === "bash" && typeof record.command === "string") {
-        const safety = evaluateCommandSafety(record.command)
-        if (safety.level === "dangerous" && safety.reason) {
-          return { block: true, reason: safety.reason }
-        }
-      }
-      return { block: true, reason: DENY_RULE_REASON }
+    if (decision.decision === "allow") return undefined
+    if (decision.decision === "deny") {
+      return { block: true, reason: decision.reason ?? DENY_RULE_REASON }
     }
 
     // PermissionRequest hook：仅在系统结论为 ask 且配置了 PermissionRequest hook 时异步介入；

@@ -68,7 +68,7 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 3. **Performance & Bottlenecks**：意外的二次方扫描、无界内存增长、热路径阻塞操作。
 4. **Taste & Minimalism**：过度设计、死代码、多余抽象层、违背最小修改原则。
 
-审查模式严格只读：`write` / `edit` / `apply_patch` / `todowrite` / `task` 被硬拦截，不允许在审查中直接修复。处于 Review 模式且用户未指定审查目标时，默认审查当前未提交变更（staged / unstaged / untracked）。代码审查的唯一路径是 Review Mode，不存在 `review` 子代理角色。
+审查模式严格只读：`write` / `edit` / `apply_patch` / `todowrite` / `task` / `memory` 被硬拦截（模式硬基线，见 permissions.md §2），不允许在审查中直接修复。处于 Review 模式且用户未指定审查目标时，默认审查当前未提交变更（staged / unstaged / untracked）。代码审查的唯一路径是 Review Mode，不存在 `review` 子代理角色。
 
 ### 3.2 输出协议
 
@@ -109,6 +109,8 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 ### 4.1 模式与提示词契约 (`systemPromptManager.ts`, order 380)
 
 `design` 模式下注入专用英文提示词，核心约束：
+
+- 工具级门禁：与 plan/review 共享同一只读硬基线并额外禁用 `wireframe`（见 permissions.md §2），可经 `agent.permissions.modes.design` 白名单进一步收紧。
 
 - 所有前端原型必须通过 `<front_design>` 协议输出完整 HTML；`mode="tailwindcss"`（默认）或 `mode="css"`。
 - 二次修改时提示词会收到 `<referenced_design>` 基准代码，输出必须携带 `parent_id="{referenced_id}"`，且仍输出完整可执行 HTML（不允许片段 diff）。

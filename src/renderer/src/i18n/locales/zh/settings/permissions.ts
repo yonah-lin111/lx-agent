@@ -60,6 +60,21 @@ export const permissions = {
   ruleSyntaxHint:
     "语法：ToolName(arg)。bash 为命令前缀匹配；write/edit 为路径 glob；MCP 工具为参数子串匹配。",
 
+  // Collaboration Mode Permissions
+  collaborationModePermissions: "协作模式权限 (Collaboration Mode Permissions)",
+  collaborationModePermissionsDesc:
+    "为 Build / Plan / Review / Design 四种协作模式分别配置可用能力；配置只能收紧，无法放开硬基线。",
+  collaborationModePermissionsDoc: `### 协作模式权限
+
+为四种协作模式（Build / Plan / Review / Design）独立配置能力白名单。
+
+- **非 Build 模式硬基线**：\`write\` / \`edit\` / \`apply_patch\` / \`todowrite\` / \`task\` / \`memory\` 永久禁用，权限配置无法放开。
+- **Design 模式**：在上述基线之外额外禁用 \`wireframe\`（原型交付走 \`<front_design>\` 协议）。
+- **配置语义**：每组关闭 = 不限制（仅受硬基线约束）；打开后勾选白名单，一项都不勾 = 该组全禁。
+- **生效时机**：下一轮对话生效；硬基线工具在保存时自动从白名单中剥离。`,
+  collaborationModePermissionsEdit: "编辑权限",
+  collaborationModePermissionsLockedHint: "永久禁用：{{tools}}",
+
   // Custom Commands section
   customCommandAgentInputTab: "对话命令 (AgentInput)",
   customCommandAgentMDTab: "Markdown 模板命令 (AgentMD)",

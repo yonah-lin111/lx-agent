@@ -750,7 +750,7 @@ describe("permissionManager 永久决策写回（G5）", () => {
       expect(result).toEqual({
         block: true,
         reason:
-          "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) and task subagent dispatch are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags.",
+          "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite, memory) and task subagent dispatch are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags.",
       })
     })
 
@@ -777,6 +777,168 @@ describe("permissionManager 永久决策写回（G5）", () => {
       expect(result?.block).toBe(true)
       expect(result?.reason).toContain("subagent dispatch")
     })
+  })
+})
+
+describe("permissionManager 协作模式权限（模式策略统一表）", () => {
+  beforeEach(resetManager)
+  afterEach(resetManager)
+
+  it("非 build 模式硬基线覆盖写操作/todowrite/task/memory，配置不可放开", async () => {
+    // 直接写入含硬基线工具的覆盖配置（模拟绕过 normalize 的配置），运行时仍必须拒绝。
+    applySettings({
+      defaultMode: "bypassPermissions",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { review: { tools: ["read", "write", "memory"] } },
+    })
+    for (const toolName of ["write", "edit", "apply_patch", "todowrite", "task", "memory"]) {
+      expect(permissionManager.evaluate(toolName, {}, { collaborationMode: "review" })).toBe("deny")
+      expect(permissionManager.evaluate(toolName, {}, { collaborationMode: "plan" })).toBe("deny")
+      expect(permissionManager.evaluate(toolName, {}, { collaborationMode: "design" })).toBe("deny")
+    }
+    // build 模式不受硬基线约束（bypassPermissions 放行）。
+    expect(
+      permissionManager.evaluate("write", { path: "a.ts" }, { collaborationMode: "build" }),
+    ).toBe("allow")
+    expect(permissionManager.evaluate("memory", {}, { collaborationMode: "build" })).toBe("allow")
+  })
+
+  it("design 模式额外禁用 wireframe，其余模式不受影响", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "design" })).toBe(
+      "deny",
+    )
+    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "build" })).toBe(
+      "allow",
+    )
+    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "plan" })).toBe("allow")
+    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "review" })).toBe(
+      "allow",
+    )
+  })
+
+  it("模式白名单四组独立判定：tools/mcp/skills/websearch 缺省组不限制", () => {
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: {
+        review: {
+          tools: ["read"],
+          mcp: ["codegraph"],
+          skills: ["deploy"],
+          websearch: ["web_search"],
+        },
+      },
+    })
+    expect(permissionManager.evaluate("read", {}, { collaborationMode: "review" })).toBe("allow")
+    expect(permissionManager.evaluate("grep", {}, { collaborationMode: "review" })).toBe("deny")
+    expect(permissionManager.evaluate("web_search", {}, { collaborationMode: "review" })).toBe(
+      "allow",
+    )
+    expect(permissionManager.evaluate("webfetch", {}, { collaborationMode: "review" })).toBe("deny")
+    // read_skill 按 skills 白名单判定参数 name。
+    expect(
+      permissionManager.evaluate("read_skill", { name: "deploy" }, { collaborationMode: "review" }),
+    ).toBe("allow")
+    expect(
+      permissionManager.evaluate("read_skill", { name: "other" }, { collaborationMode: "review" }),
+    ).toBe("deny")
+    // MCP 按 server 白名单判定：命中走门控（注册后 ask），未命中 deny。
+    permissionManager.setMcpTools("s1", ["mcp__codegraph__search", "mcp__other__read"])
+    expect(
+      permissionManager.evaluate(
+        "mcp__codegraph__search",
+        {},
+        { collaborationMode: "review", sessionId: "s1" },
+      ),
+    ).toBe("ask")
+    expect(
+      permissionManager.evaluate(
+        "mcp__other__read",
+        {},
+        { collaborationMode: "review", sessionId: "s1" },
+      ),
+    ).toBe("deny")
+    // 缺省组不限制：plan 模式未配置，read_skill 任意 skill 放行。
+    expect(
+      permissionManager.evaluate("read_skill", { name: "other" }, { collaborationMode: "plan" }),
+    ).toBe("allow")
+  })
+
+  it("build 模式白名单同样只能收紧（可自定义禁用工具）", () => {
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { build: { tools: ["read"] } },
+    })
+    expect(permissionManager.evaluate("read", {}, { collaborationMode: "build" })).toBe("allow")
+    expect(
+      permissionManager.evaluate("write", { path: "a.ts" }, { collaborationMode: "build" }),
+    ).toBe("deny")
+    expect(
+      permissionManager.evaluate("bash", { command: "ls" }, { collaborationMode: "build" }),
+    ).toBe("deny")
+  })
+
+  it("模式白名单优先于会话白名单与 bypass 放行", () => {
+    applySettings({
+      defaultMode: "bypassPermissions",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { review: { tools: ["read"] } },
+    })
+    permissionManager.rememberForSession("s1", "bash")
+    expect(
+      permissionManager.evaluate(
+        "bash",
+        { command: "ls" },
+        { collaborationMode: "review", sessionId: "s1" },
+      ),
+    ).toBe("deny")
+  })
+
+  it("gate 透传模式硬基线 reason 与白名单 reason", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const blocked = await permissionManager.gate(
+      gateContext("write", { path: "a.ts" }),
+      "s1",
+      undefined,
+      { collaborationMode: "design" },
+    )
+    expect(blocked?.block).toBe(true)
+    expect(blocked?.reason).toContain("Front Design Mode")
+
+    const wireframe = await permissionManager.gate(
+      gateContext("wireframe", { title: "t", layout: "x" }),
+      "s1",
+      undefined,
+      { collaborationMode: "design" },
+    )
+    expect(wireframe?.block).toBe(true)
+    expect(wireframe?.reason).toContain("wireframe")
+
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { review: { tools: ["read"] } },
+    })
+    const whitelistDenied = await permissionManager.gate(
+      gateContext("bash", { command: "ls" }),
+      "s1",
+      undefined,
+      { collaborationMode: "review" },
+    )
+    expect(whitelistDenied?.block).toBe(true)
+    expect(whitelistDenied?.reason).toContain("permission configuration")
   })
 })
 

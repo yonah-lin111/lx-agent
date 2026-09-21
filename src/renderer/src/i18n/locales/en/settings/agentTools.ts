@@ -86,6 +86,7 @@ Run user commands at key agent lifecycle points — sessions, prompt submission,
   subagentsPermissionsConnected: "Connected",
   subagentsPermissionsDisconnected: "Disconnected",
   subagentsPermissionsSkillDisabled: "Disabled",
+  subagentsPermissionsLocked: "Permanently disabled",
   subagentsPermissionsOverridden: "Overridden",
   subagentsEditPermissions: "Edit permissions",
   subagentsBuiltinLockedHint:

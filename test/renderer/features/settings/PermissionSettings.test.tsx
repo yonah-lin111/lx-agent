@@ -22,8 +22,20 @@ const baseSettings = (): PermissionSettingsConfig => ({
   ask: [],
 })
 
+// 协作模式权限卡片加载能力目录（此处仅需返回空目录）。
+const getSubagentCapabilities = vi.fn(async () => ({
+  tools: [] as string[],
+  mcp: [] as { name: string; connected: boolean }[],
+  skills: [] as { name: string; disabled: boolean }[],
+}))
+
 describe("PermissionSettings", () => {
-  beforeEach(cleanup)
+  beforeEach(() => {
+    cleanup()
+    window.api = {
+      settings: { getSubagentCapabilities },
+    } as unknown as typeof window.api
+  })
 
   it("切换权限模式触发 setSettings", () => {
     const setSettings = vi.fn()

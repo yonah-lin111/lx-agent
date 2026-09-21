@@ -64,6 +64,21 @@ Controls the **interactive approval behavior** between Agent and human user.
   ruleSyntaxHint:
     "Syntax: ToolName(arg). Bash uses prefix match; write/edit uses path glob; MCP tools use parameter substring match.",
 
+  // Collaboration Mode Permissions
+  collaborationModePermissions: "Collaboration Mode Permissions",
+  collaborationModePermissionsDesc:
+    "Configure capabilities for each collaboration mode (Build / Plan / Review / Design); configuration can only narrow the hard baseline, never widen it.",
+  collaborationModePermissionsDoc: `### Collaboration Mode Permissions
+
+Configure independent capability allowlists for the four collaboration modes (Build / Plan / Review / Design).
+
+- **Non-Build hard baseline**: \`write\` / \`edit\` / \`apply_patch\` / \`todowrite\` / \`task\` / \`memory\` are permanently disabled and cannot be re-enabled by configuration.
+- **Design Mode**: additionally disables \`wireframe\` (deliver prototypes via the \`<front_design>\` protocol).
+- **Semantics**: an unrestricted group is bounded only by the hard baseline; a restricted group keeps only the checked items (none checked = group fully disabled).
+- **Effective**: applies from the next turn; hard-baseline tools are stripped from saved allowlists automatically.`,
+  collaborationModePermissionsEdit: "Edit permissions",
+  collaborationModePermissionsLockedHint: "Permanently disabled: {{tools}}",
+
   // Custom Commands section
   customCommandAgentInputTab: "Chat Commands (AgentInput)",
   customCommandAgentMDTab: "Markdown Template Commands (AgentMD)",

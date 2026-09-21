@@ -1,4 +1,4 @@
-import type { ModelSelection, SubagentRolePermissions, SubagentSettings } from "@shared/settings"
+import type { CapabilityPermissions, ModelSelection, SubagentSettings } from "@shared/settings"
 import { RESERVED_SUBAGENT_ROLE_NAMES, SUBAGENT_ROLE_NAME_PATTERN } from "@shared/settings"
 
 // 运行时解析后的子代理角色模型。
@@ -7,12 +7,12 @@ export interface ResolvedAgentRole {
   description: string
   instructions?: string
   model?: ModelSelection
-  permissions?: SubagentRolePermissions
+  permissions?: CapabilityPermissions
   builtIn: boolean
 }
 
 // explorer 只读权限：仅只读工具 + 联网检索，禁用全部 skill 与写入/委托（未激活的工具名在装配时静默缺失，不新增能力）。
-const EXPLORER_PERMISSIONS: SubagentRolePermissions = {
+const EXPLORER_PERMISSIONS: CapabilityPermissions = {
   tools: ["read", "ls", "grep", "find", "lsp", "time"],
   websearch: ["web_search", "webfetch"],
   skills: [],
@@ -89,8 +89,8 @@ export const resolveAgentRoles = (settings: SubagentSettings): Map<string, Resol
 }
 
 // 深拷贝权限配置，避免调用方后续改动污染角色目录。
-const clonePermissions = (permissions: SubagentRolePermissions): SubagentRolePermissions => {
-  const cloned: SubagentRolePermissions = {}
+const clonePermissions = (permissions: CapabilityPermissions): CapabilityPermissions => {
+  const cloned: CapabilityPermissions = {}
   if (permissions.tools !== undefined) cloned.tools = [...permissions.tools]
   if (permissions.mcp !== undefined) cloned.mcp = [...permissions.mcp]
   if (permissions.skills !== undefined) cloned.skills = [...permissions.skills]

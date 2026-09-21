@@ -85,6 +85,7 @@ export const agentTools = {
   subagentsPermissionsConnected: "已连接",
   subagentsPermissionsDisconnected: "未连接",
   subagentsPermissionsSkillDisabled: "已禁用",
+  subagentsPermissionsLocked: "永久禁用",
   subagentsPermissionsOverridden: "已覆盖",
   subagentsEditPermissions: "编辑权限",
   subagentsBuiltinLockedHint: "内置角色的名称、描述、指令与模型由系统定义，仅可调整能力权限。",

@@ -1,8 +1,8 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
 import type {
+  CapabilityPermissions,
   ModelSelection,
   SubagentRoleConfig,
-  SubagentRolePermissions,
   SubagentSettings,
 } from "@shared/settings"
 import {
@@ -92,13 +92,13 @@ const parsePermissions = (
   raw: unknown,
   name: string,
   errors: string[],
-): SubagentRolePermissions | undefined => {
+): CapabilityPermissions | undefined => {
   if (raw === undefined) return undefined
   if (!isRecord(raw)) {
     errors.push(`角色 permissions 须为对象: ${name}`)
     return undefined
   }
-  const permissions: SubagentRolePermissions = {}
+  const permissions: CapabilityPermissions = {}
   const tools = parsePermissionList(raw.tools, `tools 权限（${name}）`, errors)
   if (tools !== undefined) permissions.tools = tools
   const mcp = parsePermissionList(raw.mcp, `mcp 权限（${name}）`, errors)
@@ -111,7 +111,7 @@ const parsePermissions = (
 }
 
 // 旧 tools 字段映射：联网名归 websearch，read_skill 归 skills（列出 = 允许全部 skill），其余为内置工具白名单。
-const legacyToolsToPermissions = (tools: string[]): SubagentRolePermissions => {
+const legacyToolsToPermissions = (tools: string[]): CapabilityPermissions => {
   const websearchNames = new Set<string>(SUBAGENT_WEBSEARCH_TOOL_NAMES)
   const builtin: string[] = []
   const web: string[] = []
@@ -121,7 +121,7 @@ const legacyToolsToPermissions = (tools: string[]): SubagentRolePermissions => {
     else if (tool === SUBAGENT_SKILL_TOOL_NAME) allowsReadSkill = true
     else builtin.push(tool)
   }
-  const permissions: SubagentRolePermissions = { tools: builtin, websearch: web }
+  const permissions: CapabilityPermissions = { tools: builtin, websearch: web }
   if (!allowsReadSkill) permissions.skills = []
   return permissions
 }
@@ -234,13 +234,13 @@ const parseMode = (raw: unknown, errors: string[]): CollaborationMode | undefine
 const parseBuiltinPermissions = (
   raw: unknown,
   errors: string[],
-): Record<string, SubagentRolePermissions> | undefined => {
+): Record<string, CapabilityPermissions> | undefined => {
   if (raw === undefined) return undefined
   if (!isRecord(raw)) {
     errors.push("builtinPermissions 须为对象，已忽略")
     return undefined
   }
-  const builtin: Record<string, SubagentRolePermissions> = {}
+  const builtin: Record<string, CapabilityPermissions> = {}
   for (const [name, value] of Object.entries(raw)) {
     if (!(BUILTIN_SUBAGENT_ROLE_NAMES as readonly string[]).includes(name)) {
       errors.push(`builtinPermissions 仅支持内置角色名，已忽略: ${name}`)
