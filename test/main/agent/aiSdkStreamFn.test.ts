@@ -758,6 +758,35 @@ describe("opencode 式思考等级参数翻译", () => {
             },
           },
         },
+        "go-p": {
+          id: "opencode-go",
+          type: "openai-compatible",
+          options: { apiKey: "sk-go", baseURL: "https://opencode.ai/zen/go/v1" },
+          models: {
+            spark: {
+              id: "muse-spark-1.3-contributor",
+              transport: "openai-responses",
+              variants: {
+                xhigh: {
+                  reasoningEffort: "xhigh",
+                  reasoningSummary: "auto",
+                  include: ["reasoning.encrypted_content"],
+                },
+              },
+            },
+            sparkDefault: {
+              id: "muse-spark-1.2-contributor",
+              transport: "openai-responses",
+              variants: {
+                medium: {
+                  reasoningEffort: "medium",
+                  reasoningSummary: "auto",
+                  include: ["reasoning.encrypted_content"],
+                },
+              },
+            },
+          },
+        },
       },
       streamIdleTimeoutMs: undefined,
     }
@@ -808,5 +837,35 @@ describe("opencode 式思考等级参数翻译", () => {
       reasoningSummary: "auto",
       include: ["reasoning.encrypted_content"],
     })
+  })
+
+  it("openai 通路不强制推理判定（chat 的 reasoning_effort 本就直传）", async () => {
+    const call = (await drainWithVariant({ provider: "openai-p", id: "grok" }, "high")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions["openai"]).not.toHaveProperty("forceReasoning")
+  })
+
+  it("responses 通路强制推理判定：第三方模型 ID 也能送出 reasoning", async () => {
+    const call = (await drainWithVariant({ provider: "go-p", id: "spark" }, "xhigh")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    // SDK 按 ID 前缀判定推理模型，muse-spark 会被误判；forceReasoning 保证
+    // reasoning: { effort, summary } 上线，否则思考流永不到达。
+    expect(call.providerOptions["openai"]).toMatchObject({
+      reasoningEffort: "xhigh",
+      reasoningSummary: "auto",
+      forceReasoning: true,
+    })
+  })
+
+  it("responses 通路无选中档位时不带推理参数（与 opencode 开箱行为一致）", async () => {
+    const call = (await drainWithVariant({ provider: "go-p", id: "sparkDefault" }, "")) as {
+      providerOptions: Record<string, Record<string, unknown>>
+    }
+
+    expect(call.providerOptions ?? {}).not.toHaveProperty("openai")
   })
 })

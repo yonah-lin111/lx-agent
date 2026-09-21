@@ -232,6 +232,10 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
                 ? { reasoningSummary: variantConfig.reasoningSummary }
                 : {}),
               ...(Array.isArray(variantConfig.include) ? { include: variantConfig.include } : {}),
+              // @ai-sdk/openai 按模型 ID 前缀判定推理模型（o1/o3/gpt-5 系），第三方 ID
+              //（如 muse-spark）会被误判，导致 reasoning 整块不上线、思考流永不到达；
+              // 用户已选档位即强制启用，仅 responses 通路需要（chat 通路 reasoning_effort 本就直传）。
+              ...(effectiveTransport === "openai-responses" ? { forceReasoning: true } : {}),
               ...variantConfig,
             }
           } else if (effectiveTransport === "google") {
