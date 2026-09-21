@@ -100,11 +100,7 @@ describe("AgentExecutionFlowList", () => {
     expect(toolStepHeader).not.toBeNull()
     fireEvent.click(toolStepHeader!)
 
-    // 工具详情：参数与结果默认折叠在底部一行
-    expect(screen.queryByText("found 12 files")).toBeNull()
-    fireEvent.click(screen.getByText(/Raw Arguments & Result|原始参数与执行结果/i))
-
-    // 展开后应显示输入参数与执行结果区域
+    // 通用工具（search_code）无独立正文：参数与结果直接内联展示
     expect(screen.getByText("Input Arguments")).not.toBeNull()
     expect(screen.getByText("Execution Result")).not.toBeNull()
     expect(screen.getByText("found 12 files")).not.toBeNull()

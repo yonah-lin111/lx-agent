@@ -14,6 +14,7 @@ export const FlowToolGeneric = ({ content }: FlowToolGenericProps): React.JSX.El
         result={content.result}
         isError={content.isError}
         toolCallId={content.toolCallId}
+        collapsible={false}
       />
     </div>
   )

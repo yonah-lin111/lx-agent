@@ -59,18 +59,20 @@ describe("FlowToolRawSection", () => {
 describe("FlowToolGeneric", () => {
   afterEach(cleanup)
 
-  it("通用工具把参数与结果统一收进底部折叠区", () => {
+  it("无独立正文的通用工具直接内联展示参数与结果，不提供折叠", () => {
     const { container } = render(
-      <FlowToolGeneric content={{ toolName: "mcp_demo", args: { q: "x" }, result: "ok" }} />,
+      <FlowToolGeneric content={{ toolName: "ls", args: { path: "src" }, result: "a.ts" }} />,
     )
 
-    expect(container.querySelector(".agent-execution-flow-tool-raw-section")).not.toBeNull()
-    expect(screen.queryByText(/"q": "x"/)).toBeNull()
+    const rawSection = container.querySelector(".agent-execution-flow-tool-raw-section")
+    expect(rawSection).not.toBeNull()
+    expect(rawSection?.getAttribute("data-collapsible")).toBe("false")
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Raw Arguments & Result|原始参数与执行结果/i }),
-    )
-    expect(screen.getByText(/"q": "x"/)).not.toBeNull()
-    expect(screen.getByText("ok")).not.toBeNull()
+    // 参数与结果直接可见，且不存在折叠开关
+    expect(screen.getByText(/"path": "src"/)).not.toBeNull()
+    expect(screen.getByText("a.ts")).not.toBeNull()
+    expect(
+      screen.queryByRole("button", { name: /Raw Arguments & Result|原始参数与执行结果/i }),
+    ).toBeNull()
   })
 })
