@@ -21,6 +21,9 @@ const holder = vi.hoisted(() => ({
   loadURLImpl: null as null | (() => Promise<void>),
   measuredHeight: 2400,
   png: Buffer.from("fake-png-bytes"),
+  // 保存对话框返回的文件路径；null 表示用户取消。
+  saveFilePath: null as string | null,
+  saveDialogCalls: [] as Array<Record<string, unknown>>,
 }))
 
 vi.mock("electron", () => {
@@ -39,7 +42,17 @@ vi.mock("electron", () => {
     }
   }
 
-  return { BrowserWindow: FakeBrowserWindow }
+  return {
+    BrowserWindow: FakeBrowserWindow,
+    dialog: {
+      showSaveDialog: vi.fn(async (options: Record<string, unknown>) => {
+        holder.saveDialogCalls.push(options)
+        return holder.saveFilePath
+          ? { canceled: false, filePath: holder.saveFilePath }
+          : { canceled: true, filePath: undefined }
+      }),
+    },
+  }
 })
 
 vi.mock("@/paths", () => ({
@@ -50,7 +63,9 @@ vi.mock("@/paths", () => ({
 import {
   buildDesignPreviewUrl,
   buildThemeInjectionScript,
+  ensurePngExtension,
   exportFrontDesignPng,
+  resolveExportTargetPath,
   resolvePreviewPngPath,
   VIEWPORT_WIDTHS,
 } from "@/services/frontDesignExportService"
@@ -72,6 +87,9 @@ describe("frontDesignExportService", () => {
     holder.loadURLImpl = null
     holder.measuredHeight = 2400
     holder.png = Buffer.from("fake-png-bytes")
+    holder.saveFilePath = join(holder.designRoot, "chosen", "shot.png")
+    holder.saveDialogCalls = []
+    mkdirSync(join(holder.designRoot, "chosen"), { recursive: true })
   })
 
   afterEach(() => {
@@ -80,7 +98,7 @@ describe("frontDesignExportService", () => {
     }
   })
 
-  it("按视口宽度与文档全高截图并写入 preview-{viewport}.png", async () => {
+  it("按视口宽度与文档全高截图并写入保存对话框选定路径", async () => {
     writeDesignEntry()
 
     const result = await exportFrontDesignPng({
@@ -91,9 +109,11 @@ describe("frontDesignExportService", () => {
     })
 
     expect(result.ok).toBe(true)
-    expect(result.path).toBe(join(designDir(), "preview-tablet.png"))
+    expect(result.path).toBe(join(holder.designRoot, "chosen", "shot.png"))
     expect(existsSync(result.path as string)).toBe(true)
     expect(readFileSync(result.path as string)).toEqual(holder.png)
+    // 对话框默认落点为设计目录下的 preview-{viewport}.png
+    expect(holder.saveDialogCalls[0]?.defaultPath).toBe(join(designDir(), "preview-tablet.png"))
 
     expect(holder.windows).toHaveLength(1)
     const win = holder.windows[0]!
@@ -173,7 +193,68 @@ describe("frontDesignExportService", () => {
 
     expect(result.ok).toBe(false)
     expect(result.error).toMatch(/Captured image is empty/)
-    expect(existsSync(join(designDir(), "preview-mobile.png"))).toBe(false)
+    expect(existsSync(join(holder.designRoot, "chosen", "shot.png"))).toBe(false)
+  })
+
+  it("用户取消保存对话框时返回 cancelled 且不创建窗口、不落盘", async () => {
+    writeDesignEntry()
+    holder.saveFilePath = null
+
+    const result = await exportFrontDesignPng({
+      sessionId: SESSION_ID,
+      designId: DESIGN_ID,
+      viewport: "desktop",
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.cancelled).toBe(true)
+    expect(result.error).toBeUndefined()
+    expect(holder.windows).toHaveLength(0)
+  })
+
+  it("显式 targetPath 跳过对话框；缺省扩展名自动补 .png", async () => {
+    writeDesignEntry()
+    mkdirSync(join(holder.designRoot, "explicit"), { recursive: true })
+    const explicit = join(holder.designRoot, "explicit", "hero")
+
+    const result = await exportFrontDesignPng({
+      sessionId: SESSION_ID,
+      designId: DESIGN_ID,
+      targetPath: explicit,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.path).toBe(`${explicit}.png`)
+    expect(holder.saveDialogCalls).toHaveLength(0)
+    expect(existsSync(`${explicit}.png`)).toBe(true)
+  })
+
+  it("记住上次导出目录，作为下次对话框默认落点", async () => {
+    writeDesignEntry()
+
+    await exportFrontDesignPng({ sessionId: SESSION_ID, designId: DESIGN_ID })
+    await exportFrontDesignPng({ sessionId: SESSION_ID, designId: DESIGN_ID, viewport: "mobile" })
+
+    expect(holder.saveDialogCalls[1]?.defaultPath).toBe(
+      join(holder.designRoot, "chosen", "preview-mobile.png"),
+    )
+  })
+
+  it("ensurePngExtension 仅补齐缺失的 .png", () => {
+    expect(ensurePngExtension("/tmp/a/b.png")).toBe("/tmp/a/b.png")
+    expect(ensurePngExtension("/tmp/a/b")).toBe("/tmp/a/b.png")
+    expect(ensurePngExtension("/tmp/a/b.PNG")).toBe("/tmp/a/b.PNG")
+  })
+
+  it("resolveExportTargetPath 对空白 targetPath 回退到保存对话框", async () => {
+    const resolved = await resolveExportTargetPath({
+      sessionId: SESSION_ID,
+      designId: DESIGN_ID,
+      targetPath: "   ",
+    })
+
+    expect(resolved).toBe(join(holder.designRoot, "chosen", "shot.png"))
+    expect(holder.saveDialogCalls).toHaveLength(1)
   })
 
   it("辅助函数：URL 编码与主题脚本按契约生成", () => {

@@ -624,7 +624,8 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       if (
         !options ||
         typeof options.sessionId !== "string" ||
-        typeof options.designId !== "string"
+        typeof options.designId !== "string" ||
+        (options.targetPath !== undefined && typeof options.targetPath !== "string")
       ) {
         return { ok: false, error: "Invalid parameters for exportDesignPng" }
       }

@@ -11,11 +11,15 @@ export interface ExportFrontDesignPngOptions {
   designId: string
   viewport?: FrontDesignViewport
   theme?: FrontDesignPreviewTheme
+  // 显式导出目标（绝对路径）；缺省时由主进程弹出系统保存对话框让用户选择。
+  targetPath?: string
 }
 
 export interface ExportFrontDesignPngResult {
   ok: boolean
   // 导出成功的 PNG 绝对路径。
   path?: string
+  // 用户在保存对话框中取消，非错误。
+  cancelled?: boolean
   error?: string
 }

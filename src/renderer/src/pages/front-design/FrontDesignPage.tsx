@@ -94,6 +94,10 @@ export const FrontDesignPage = (): React.JSX.Element => {
         viewport,
         theme: effectiveMode,
       })
+      if (result.cancelled) {
+        // 用户在系统保存对话框中取消，静默结束。
+        return
+      }
       if (result.ok && result.path) {
         successToast(t("frontDesign.exportPngSuccess", { path: result.path }))
       } else {

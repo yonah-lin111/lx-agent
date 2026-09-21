@@ -184,7 +184,7 @@ export interface FrontDesignItem {
 2. **聊天卡片**：`FrontDesignCard` 展示标题、`v{n}` 版本徽标、血缘链接、代码预览与【基于此迭代】按钮。
 3. **设计画布**：`/design` 路由的 `FrontDesignPage` 订阅 store 热更新，将 HTML 注入沙箱 Iframe（`sandbox="allow-scripts allow-same-origin"`），使用 `agentApi.compileTailwind(html)` 实时编译 Tailwind JIT；支持 Desktop / Tablet / Mobile 视口切换、刷新与复制代码。
 4. **三件套落盘**：`agentApi.saveFrontDesign` 将设计拆分为 `index.html` / `style.css` / `script.js` 写入 `~/.lx/session/{sessionId}/design/{designId}/`；`openDesignDir` 在系统文件管理器中打开。
-5. **PNG 预览图导出**：`agentApi.exportDesignPng` → main 侧 `frontDesignExportService` 创建隐藏 `BrowserWindow` 加载 `lx-design://design/{sessionId}/{designId}/index.html`，注入与画布一致的主题（`dark` 类 + `color-scheme`），按档位固定宽度（desktop 1440 / tablet 768 / mobile 375）测量文档全高（上限 12000px）后 `capturePage({ stayHidden: true })` 全页截图，写入 `preview-{viewport}.png`（同名覆盖）；sessionId/designId 经路径段消毒，失败统一返回 `{ ok: false, error }`。
+5. **PNG 预览图导出**：`agentApi.exportDesignPng` → main 侧 `frontDesignExportService` 先经系统保存对话框（`dialog.showSaveDialog`）确定落点（默认 `{designDir}/preview-{viewport}.png`，记忆上次导出目录，缺省扩展名自动补 `.png`，取消返回 `{ ok: false, cancelled: true }`），再创建隐藏 `BrowserWindow` 加载 `lx-design://design/{sessionId}/{designId}/index.html`，注入与画布一致的主题（`dark` 类 + `color-scheme`），按档位固定宽度（desktop 1440 / tablet 768 / mobile 375）测量文档全高（上限 12000px）后 `capturePage({ stayHidden: true })` 全页截图并写入所选路径；显式 `targetPath` 可跳过对话框（测试/自动化用）；sessionId/designId 经路径段消毒，失败统一返回 `{ ok: false, error }`。
 6. **左栏谱系**：`FrontDesignLeftSideBar` 按根节点聚合版本，展示原型演进历史。
 
 ### 4.4 二次修改与 `@` 设计提及

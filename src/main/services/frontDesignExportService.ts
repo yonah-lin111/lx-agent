@@ -1,13 +1,14 @@
 // 前端设计预览图导出：离屏 BrowserWindow 加载 lx-design:// 落盘产物并截取全页 PNG。
 
 import { existsSync, writeFileSync } from "node:fs"
+import { dirname, extname, join } from "node:path"
 import type {
   ExportFrontDesignPngOptions,
   ExportFrontDesignPngResult,
   FrontDesignPreviewTheme,
   FrontDesignViewport,
 } from "@shared/contracts/agent"
-import { BrowserWindow } from "electron"
+import { BrowserWindow, dialog } from "electron"
 import { getSessionDesignDir } from "../paths"
 
 // 视口档位对应的固定导出宽度（与画布预览档位一致，保证结果可复现）。
@@ -43,6 +44,39 @@ export const resolvePreviewPngPath = (
 export const buildDesignPreviewUrl = (sessionId: string, designId: string): string =>
   `lx-design://design/${encodeURIComponent(sessionId)}/${encodeURIComponent(designId)}/index.html`
 
+// 记住上次导出目录，作为下次保存对话框的默认落点。
+let lastExportDir: string | null = null
+
+/** 补齐 .png 扩展名（用户在对话框中可能省略）。 */
+export const ensurePngExtension = (targetPath: string): string =>
+  extname(targetPath).toLowerCase() === ".png" ? targetPath : `${targetPath}.png`
+
+/**
+ * 解析导出目标路径：显式 targetPath 直接使用，否则弹出系统保存对话框。
+ * 用户取消时返回 null。
+ */
+export const resolveExportTargetPath = async (
+  options: ExportFrontDesignPngOptions,
+): Promise<string | null> => {
+  const { sessionId, designId, viewport = "desktop", targetPath } = options
+  if (targetPath && targetPath.trim()) {
+    return ensurePngExtension(targetPath.trim())
+  }
+
+  const fallbackPath = resolvePreviewPngPath(sessionId, designId, viewport)
+  const result = await dialog.showSaveDialog({
+    title: "Export Preview Image",
+    defaultPath: lastExportDir ? join(lastExportDir, `preview-${viewport}.png`) : fallbackPath,
+    filters: [{ name: "PNG Image", extensions: ["png"] }],
+  })
+
+  if (result.canceled || !result.filePath) return null
+
+  const selected = ensurePngExtension(result.filePath)
+  lastExportDir = dirname(selected)
+  return selected
+}
+
 /** 与画布一致的主题注入脚本：切换 html 根节点 dark 类与 color-scheme。 */
 export const buildThemeInjectionScript = (theme: FrontDesignPreviewTheme): string =>
   [
@@ -72,6 +106,12 @@ export const exportFrontDesignPng = async (
   const htmlPath = `${getSessionDesignDir(sessionId, designId)}/index.html`
   if (!existsSync(htmlPath)) {
     return { ok: false, error: `Design entry not found: ${htmlPath}` }
+  }
+
+  // 先确定落点：用户取消时直接返回，不创建离屏窗口。
+  const pngPath = await resolveExportTargetPath(options)
+  if (!pngPath) {
+    return { ok: false, cancelled: true }
   }
 
   const width = VIEWPORT_WIDTHS[viewport]
@@ -109,7 +149,6 @@ export const exportFrontDesignPng = async (
       return { ok: false, error: "Captured image is empty" }
     }
 
-    const pngPath = resolvePreviewPngPath(sessionId, designId, viewport)
     writeFileSync(pngPath, png)
     return { ok: true, path: pngPath }
   } catch (err) {
