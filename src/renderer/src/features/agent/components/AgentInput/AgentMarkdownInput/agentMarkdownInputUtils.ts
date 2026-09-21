@@ -81,6 +81,33 @@ export const isFuzzyMatch = (query: string, keyword: string): boolean => {
   return false
 }
 
+// @ 提及面板的 Skill 种类 tag 文本。
+export const SKILL_MENTION_TAG = "skill"
+
+// @ 提及面板的 Design 种类 tag 文本。
+export const DESIGN_MENTION_TAG = "design"
+
+// @ 提及面板的 OpenClaw 种类 tag 文本。
+export const CLAW_MENTION_TAG = "claw"
+
+// 子代理内置/自定义 tag 的英文兜底（与当前语言的本地化 tag 同时匹配）。
+export const SUBAGENT_BUILTIN_TAG_FALLBACK = "agent"
+export const SUBAGENT_CUSTOM_TAG_FALLBACK = "custom"
+
+/**
+ * 归一化 tag 查询：去首尾空格并小写，中文不受影响。
+ */
+export const normalizeTagQuery = (query: string): string => query.trim().toLowerCase()
+
+/**
+ * 查询是否模糊命中 tag 文本。
+ */
+export const isKindTagMatch = (query: string, tagLabel: string): boolean => {
+  const normalizedQuery = normalizeTagQuery(query)
+  if (!normalizedQuery) return true
+  return isFuzzyMatch(normalizedQuery, tagLabel.trim().toLowerCase())
+}
+
 // 按名称、显示名、短描述与描述模糊过滤 Skill。
 export const filterSkillsByQuery = (skills: SkillItem[], query: string): SkillItem[] => {
   if (!query) return skills
@@ -93,11 +120,43 @@ export const filterSkillsByQuery = (skills: SkillItem[], query: string): SkillIt
   )
 }
 
-// @ 提及面板的 Skill 候选：空查询展示全部，仅 `skill` / `skill:` 前缀参与过滤。
+// @ 提及面板的 Skill 候选：空查询展示全部，`skill` / `skill:` 前缀按余量过滤，其余查询仅 tag 命中时整类返回。
 export const getMentionSkillCandidates = (skills: SkillItem[], query: string): SkillItem[] => {
-  if (!query) return skills
-  if (!query.startsWith("skill")) return []
-  return filterSkillsByQuery(skills, query.replace(/^skill:?/, ""))
+  const normalizedQuery = normalizeTagQuery(query)
+  if (!normalizedQuery) return skills
+  if (!normalizedQuery.startsWith(SKILL_MENTION_TAG)) {
+    return isKindTagMatch(normalizedQuery, SKILL_MENTION_TAG) ? skills : []
+  }
+  const keyword = normalizedQuery.replace(/^skill:?/, "")
+  if (!keyword) return skills
+  return filterSkillsByQuery(skills, keyword)
+}
+
+/**
+ * 子代理候选的展示 tag 是否被查询命中：同时匹配当前语言 tag 与英文兜底。
+ */
+export const isSubagentTagMatch = (
+  query: string,
+  builtIn: boolean,
+  builtInLabel: string,
+  customLabel: string,
+): boolean => {
+  const normalizedQuery = normalizeTagQuery(query)
+  if (!normalizedQuery) return true
+  const primary = (builtIn ? builtInLabel : customLabel).trim().toLowerCase()
+  const fallback = builtIn ? SUBAGENT_BUILTIN_TAG_FALLBACK : SUBAGENT_CUSTOM_TAG_FALLBACK
+  return isFuzzyMatch(normalizedQuery, primary) || isFuzzyMatch(normalizedQuery, fallback)
+}
+
+/**
+ * 读取命令的展示 tag 文本，与 AgentInputCommandPanel 的 getCommandTags 保持一致。
+ */
+export const getCommandTagLabel = (command: Pick<AgentInputCommand, "kind" | "source">): string => {
+  if (command.kind === "skill") return "Skill"
+  if (command.kind === "prompt") {
+    return command.source === "project" ? "Custom|Project" : "Custom|Global"
+  }
+  return "Builtin"
 }
 
 export const getMatchedCommands = (
@@ -138,7 +197,9 @@ export const getMatchedCommands = (
         : command.id === "session"
           ? ["session", "resume"]
           : [rawName]
-    return aliases.some((alias) => isFuzzyMatch(query, alias))
+    if (aliases.some((alias) => isFuzzyMatch(query, alias))) return true
+    // tag 文本参与过滤：与名称取并集，不匹配描述，不改变排序。
+    return isFuzzyMatch(query, getCommandTagLabel(command).toLowerCase())
   })
 }
 

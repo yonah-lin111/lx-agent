@@ -29,6 +29,8 @@ import {
   type SubagentMentionCandidate,
 } from "../../AgentInputCommandPanels"
 import {
+  CLAW_MENTION_TAG,
+  DESIGN_MENTION_TAG,
   filterSkillsByQuery,
   getMatchedCommands,
   getMentionQuery,
@@ -36,6 +38,8 @@ import {
   getSkillMentionQuery,
   HISTORY_PROMPT_COMMAND,
   isFuzzyMatch,
+  isKindTagMatch,
+  isSubagentTagMatch,
 } from "../agentMarkdownInputUtils"
 import type { AgentInputActiveMode, AgentMarkdownInputProps } from "../types"
 
@@ -467,7 +471,14 @@ export const useAgentInputPanels = ({
     // `claw` 前缀由 OpenClaw 候选优先消费，子代理不再参与。
     if (q.startsWith("claw")) return []
     if (!q) return subagentCandidates
-    if (!q.startsWith("agent")) return []
+    // 非 `agent` 前缀仅 tag 命中时整类/按项返回，不按名称混排。
+    if (!q.startsWith("agent")) {
+      const builtInLabel = t("agent.subagentMentionTag")
+      const customLabel = t("settings.subagentsCustomTag")
+      return subagentCandidates.filter((candidate) =>
+        isSubagentTagMatch(q, candidate.builtIn, builtInLabel, customLabel),
+      )
+    }
 
     const keyword = q.replace(/^agent:?/, "")
     if (!keyword) return subagentCandidates
@@ -476,7 +487,7 @@ export const useAgentInputPanels = ({
         isFuzzyMatch(keyword, candidate.name.toLowerCase()) ||
         isFuzzyMatch(keyword, candidate.description.toLowerCase()),
     )
-  }, [activeMode, value, subagentCandidates, editorViewRef])
+  }, [activeMode, value, subagentCandidates, editorViewRef, t])
 
   const matchedMentionClawAgents = useMemo<ClawMentionCandidate[]>(() => {
     if (activeMode !== "file" || clawCandidates.length === 0) return []
@@ -486,7 +497,12 @@ export const useAgentInputPanels = ({
     if (!mention) return []
 
     // `@claw:instance/agent` 与 `@claw` 前缀都用于筛选 OpenClaw 候选。
-    let q = mention.query.toLowerCase()
+    const raw = mention.query.toLowerCase()
+    // tag 模糊命中种类名时整类返回（如 `@cla`），展示 tag 为实例名亦参与匹配。
+    if (!raw.startsWith(CLAW_MENTION_TAG) && isKindTagMatch(raw, CLAW_MENTION_TAG)) {
+      return clawCandidates
+    }
+    let q = raw
     if (q.startsWith("claw")) {
       q = q.slice(4).replace(/^[:/]+/, "")
     }
@@ -497,6 +513,7 @@ export const useAgentInputPanels = ({
         isFuzzyMatch(q, candidate.name.toLowerCase()) ||
         isFuzzyMatch(q, candidate.agentId.toLowerCase()) ||
         isFuzzyMatch(q, candidate.instanceId.toLowerCase()) ||
+        isFuzzyMatch(q, candidate.instanceName.toLowerCase()) ||
         isFuzzyMatch(q, `${candidate.instanceId}/${candidate.agentId}`.toLowerCase()),
     )
   }, [activeMode, value, clawCandidates, editorViewRef])
@@ -530,6 +547,9 @@ export const useAgentInputPanels = ({
     })
 
     if (!q) return sessionDesigns
+
+    // tag 模糊命中种类名时整类返回（如 `@des`），与标题/id 取并集。
+    if (isKindTagMatch(q, DESIGN_MENTION_TAG)) return sessionDesigns
 
     return sessionDesigns.filter(
       (d) => isFuzzyMatch(q, d.title.toLowerCase()) || isFuzzyMatch(q, d.id.toLowerCase()),
