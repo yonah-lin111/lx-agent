@@ -111,10 +111,12 @@ LX Agent 定义四态协作模式：`build`（执行）、`plan`（规划）、`
 `design` 模式下注入专用英文提示词，核心约束：
 
 - 所有前端原型必须通过 `<front_design>` 协议输出完整 HTML；`mode="tailwindcss"`（默认）或 `mode="css"`。
-- **默认修改基线（`<current_design>`）**：画布有激活设计时，发送端自动注入其完整 HTML 为 `<current_design id title mode version>`；提示词规定默认输出 `parent_id="{current_design_id}"` 的修改版，仅当用户**明确要求新建**（"make a new one" 等）时才省略 `parent_id`。`mode` 属性默认沿用基线。
+- **默认修改基线（`<current_design>`）**：画布有激活设计时，发送端自动注入其完整 HTML 为 `<current_design id title mode version>`，紧随其后注入 `<design_outline>` 结构大纲；提示词规定默认修改基线而非重建，仅当用户**明确要求新建**（"make a new one" 等）时才省略 `parent_id`。`mode` 属性默认沿用基线。
+- **修改通道按影响面选择（默认局部补丁）**：局部可定位的改动（某张卡片/某个区块/某个按钮）必须走 `<front_design_update parent_id target>` 只输出目标子树；仅当改动覆盖整篇（整体换风格、骨架重排、多处无关区域、增删顶层区块）才回退 `<front_design parent_id>` 全量重写。避免"一句话改动 → 全文重生成"造成的成本与无关漂移。
+- **结构大纲（`<design_outline>`，嵌套在基线块内）**：由 `buildDesignOutline()` 从基线 HTML 现算（`body > tag:nth-child(n)` 路径选择器 + 标签/类名/文本预览，深度 4、上限 40 条），与基线严格同源，宿主保证选择器可命中；模型应**逐字复用**大纲选择器，必要时可追加一层子级步骤（如 `> summary`），无匹配节点时才自行从基线推导选择器（优先 `#id`/`[data-section]`，退化 `:nth-child()` 路径）。选择器无法解析时补丁会被丢弃。
 - **意图含糊先反问**：无法判定"新建 vs 修改"时必须先调用 `question` 工具澄清，该轮不得输出 `<front_design>`；视觉细节（配色/间距/字体）不反问，由模型自行决策。
 - 二次修改时提示词会收到 `<referenced_design>` 基准代码，输出必须携带 `parent_id="{referenced_id}"`，且仍输出完整可执行 HTML（不允许片段 diff）。显式引用优先于 `<current_design>`。
-- 定向节点修改时提示词会收到 `<global_styling_context>` 与 `<target_element>`，模型必须输出 `<front_design_update parent_id target>` 且**只输出目标节点的替换子树**；明确禁止在该场景输出 `<front_design>` 全量。
+- 定向节点修改（`@design:{id}#{selector}`）时提示词会收到 `<global_styling_context>` 与 `<target_element>`，模型必须原样使用该 `target` 输出 `<front_design_update parent_id target>` 且**只输出目标节点的替换子树**（含目标元素自身标签与属性）。
 - **布局完整性契约**：全视口单焦点页面（登录/注册/404/空状态/单卡片）必须显式水平+垂直居中（`min-h-screen flex items-center justify-center` 或 `min-height:100vh; display:flex`）；常规页面顶部对齐 + `max-w-* mx-auto` 水平约束；提示词示例本身即为居中型布局。
 - **`wireframe` 工具禁用**：design 模式下 `PermissionManager` 对 `wireframe` 硬拦截（`DESIGN_MODE_WIREFRAME_REASON`，不进入审批弹窗），提示词同步声明禁用；布局结构必须直接表达在 `<front_design>` HTML 中。
 - 工程品味约束：优先原生 `<details>` / `<dialog>` / CSS `:has()` 等原语，慎写脆弱 JS；必要脚本使用 IIFE 并规避 `DOMContentLoaded` 依赖。
@@ -195,8 +197,8 @@ export interface FrontDesignItem {
 - **发送端上下文注入（Zero Tool-Call）**：`useAgentChat.sendMessage` 经 `utils/designReferenceInjection.ts` 的 `buildDesignReferenceBlocks` 解析引用并直接注入基准代码，模型首轮即可见，无需读盘：
   - 无 `target`：注入完整 `<referenced_design id title mode>`（基准 HTML 全文）。
   - 带 `target`：调用 `extractDesignTargetContext` 做分层切片，仅注入 `<global_styling_context>`（主题、`html/body` 类名、标题）与 `<target_element selector>`（目标节点 `outerHTML`），避免携带数百行无关结构；目标未命中时降级全量注入。
-  - **隐式基线**：`design` 模式下无任何显式 `@design` 引用且画布有激活设计时，注入 `<current_design id title mode version>`（完整 HTML）作为默认修改基线；激活设计已绑定会话时要求与当前会话一致（草稿放行），跨会话不注入。显式引用存在时自动基线让位。
-  - 清洗用户气泡：`<referenced_design>` 与 `<current_design>` 块均不显示在用户消息文本中（`cleanUserPrompt`）。
+  - **隐式基线**：`design` 模式下无任何显式 `@design` 引用且画布有激活设计时，注入 `<current_design id title mode version>`（完整 HTML）（块内嵌套 `<design_outline>` 结构大纲选择器清单）作为默认修改基线；激活设计已绑定会话时要求与当前会话一致（草稿放行），跨会话不注入。显式引用存在时自动基线让位。
+  - 清洗用户气泡：`<referenced_design>` 与 `<current_design>` 块（含嵌套大纲）均不显示在用户消息文本中（`cleanUserPrompt`）。
 
 ### 4.5 画布检查器与 DOM 定向更新
 
@@ -243,6 +245,7 @@ generateElementSelector(element): { selector, description, injectedAttr? }
 | `pages/front-design/components/FrontDesignLeftSideBar.tsx` | 设计族谱与版本导航 |
 | `features/agent/hooks/frontDesignStore.ts` | 响应式单例存储与版本谱系 |
 | `features/agent/utils/designSynthesizer.ts` | DOM 切片提取、选择器生成与定向缝合纯函数 |
+| `features/agent/utils/designOutline.ts` | 基线结构大纲生成（`body > tag:nth-child(n)` 路径选择器清单），供模型选择 `<front_design_update target>` |
 | `features/agent/utils/designReferenceInjection.ts` | 显式引用与隐式 `<current_design>` 基线的上下文注入纯函数 |
 | `main/services/frontDesignExportService.ts` | 隐藏窗口全页 PNG 截图导出（视口宽度 / 主题 / 高度钳制 / 路径消毒） |
 | `shared/contracts/agent/frontDesign.ts` | 导出 IPC 契约（`ExportFrontDesignPngOptions` / `Result`） |

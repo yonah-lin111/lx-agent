@@ -871,6 +871,9 @@ describe("AgentMessageItem", () => {
   it("用户消息中自动注入的 <current_design> 基线块被 cleanUserPrompt 自动剥离", () => {
     const rawUserText = `<current_design id="design-77" title="Dashboard" mode="tailwindcss" version="3">
 <!DOCTYPE html><html><body><div id="app">Secret Baseline</div></body></html>
+<design_outline>
+- body > div:nth-child(1) — div#app "Secret Baseline"
+</design_outline>
 </current_design>
 
 把卡片间距调大一点`
@@ -884,7 +887,7 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    // 气泡中不显示 <current_design> 标签与基线源码
+    // 气泡中不显示 <current_design> 标签、嵌套大纲与基线源码
     expect(screen.queryByText(/<current_design/)).toBeNull()
     expect(screen.queryByText(/Secret Baseline/)).toBeNull()
     // 用户实际输入保留

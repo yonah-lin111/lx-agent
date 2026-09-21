@@ -371,6 +371,22 @@ describe("SystemPromptManager", () => {
         expect(assembly.rendered).toContain("take precedence over `<current_design>`")
       })
 
+      it("design 模式局部修改必须走 <front_design_update>，并优先复用大纲选择器", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("<design_outline>")
+        expect(assembly.rendered).toContain("LOCALIZED CHANGE (the common case)")
+        expect(assembly.rendered).toContain("copied VERBATIM from `<design_outline>`")
+        expect(assembly.rendered).toContain("DOCUMENT-WIDE CHANGE (exception)")
+        expect(assembly.rendered).toContain("REQUIRED channel for localized modifications")
+        expect(assembly.rendered).toContain(
+          "if the selector does not resolve, the update is discarded",
+        )
+      })
+
       it("design 模式意图含糊时要求先调用 question 工具澄清", async () => {
         const manager = createDefaultSystemPromptManager()
         const assembly = await manager.assemble({

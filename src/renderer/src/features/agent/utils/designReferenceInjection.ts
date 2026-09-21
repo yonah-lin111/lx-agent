@@ -2,6 +2,7 @@
 
 import type { CollaborationMode } from "@shared/contracts/agent"
 import { extractDesignMentions } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
+import { buildDesignOutline } from "@/features/agent/utils/designOutline"
 import { extractDesignTargetContext } from "@/features/agent/utils/designSynthesizer"
 
 // 注入候选设计的最小字段集（FrontDesignItem 的结构子集）。
@@ -56,8 +57,10 @@ export const buildDesignReferenceBlocks = (
         // 目标节点未找到时降级全量注入。
       }
 
+      const outline = buildDesignOutline(design.html)
+      const outlineBlock = outline ? `\n<design_outline>\n${outline}\n</design_outline>` : ""
       blocks.push(
-        `<referenced_design id="${design.id}" title="${title}" mode="${mode}">\n${design.html}\n</referenced_design>`,
+        `<referenced_design id="${design.id}" title="${title}" mode="${mode}">\n${design.html}${outlineBlock}\n</referenced_design>`,
       )
     }
     return blocks
@@ -72,7 +75,10 @@ export const buildDesignReferenceBlocks = (
   const title = active.title || DEFAULT_TITLE
   const mode = active.mode ?? "tailwindcss"
   const version = active.version ?? 1
+  // 结构大纲嵌套在基线块内：模型据此选择 <front_design_update> 的 target，避免自由文本修改退化为全量重写。
+  const outline = buildDesignOutline(active.html)
+  const outlineBlock = outline ? `\n<design_outline>\n${outline}\n</design_outline>` : ""
   return [
-    `<current_design id="${active.id}" title="${title}" mode="${mode}" version="${version}">\n${active.html}\n</current_design>`,
+    `<current_design id="${active.id}" title="${title}" mode="${mode}" version="${version}">\n${active.html}${outlineBlock}\n</current_design>`,
   ]
 }

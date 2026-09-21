@@ -96,10 +96,18 @@ const PROPOSED_PLAN_CLOSE_REGEX = /<\/proposed_plan>/i
 const REVIEW_FINDINGS_OPEN_REGEX = /<review_findings>/i
 const REVIEW_FINDINGS_CLOSE_REGEX = /<\/review_findings>/i
 
-const FRONT_DESIGN_OPEN_REGEX = /<front_design(?=[\s>])(?:\s+[^>]*)?>/i
+// 属性值内的 `>` 是合法字符（如 target="body > div > details:nth-child(2)"），
+// 因此开标签必须按引号配对解析，不能简单用 [^>]* 截断。
+const buildOpenTagRegex = (tagName: string): RegExp =>
+  new RegExp(
+    `<${tagName}(?=[\\s>])(?:\\s+[a-zA-Z0-9_-]+(?:\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+))?)*\\s*>`,
+    "i",
+  )
+
+const FRONT_DESIGN_OPEN_REGEX = buildOpenTagRegex("front_design")
 const FRONT_DESIGN_CLOSE_REGEX = /<\/front_design>/i
 
-const FRONT_DESIGN_UPDATE_OPEN_REGEX = /<front_design_update(?=[\s>])(?:\s+[^>]*)?>/i
+const FRONT_DESIGN_UPDATE_OPEN_REGEX = buildOpenTagRegex("front_design_update")
 const FRONT_DESIGN_UPDATE_CLOSE_REGEX = /<\/front_design_update>/i
 
 const extractFrontDesignAttributes = (

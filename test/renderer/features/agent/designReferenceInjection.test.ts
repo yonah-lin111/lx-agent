@@ -55,6 +55,34 @@ describe("buildDesignReferenceBlocks", () => {
     expect(blocks[0]).not.toContain("current_design")
   })
 
+  it("注入 <current_design> 时附带结构大纲，选择器可在基线上命中", () => {
+    const html = `<!DOCTYPE html><html><body class="min-h-screen flex items-center justify-center"><main class="w-full max-w-2xl"><div class="space-y-3"><details name="g" open><summary>第一张</summary><div class="accordion-content">A</div></details><details name="g"><summary>第二张</summary><div class="accordion-content">B</div></details></div></main></body></html>`
+
+    const blocks = buildDesignReferenceBlocks(
+      "把第二张卡片改一下",
+      makeOptions({ activeDesign: { ...activeDesign, html } }),
+    )
+
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]).toContain("<current_design")
+    expect(blocks[0]).toContain("<design_outline>")
+    expect(blocks[0]).toContain(
+      "body > main:nth-child(1) > div:nth-child(1) > details:nth-child(2) — details",
+    )
+
+    // 大纲给出的选择器必须能在同一份基线上解析
+    const selector = /^\s*- (.+?) — /m.exec(blocks[0])?.[1] as string
+    const doc = new DOMParser().parseFromString(html, "text/html")
+    expect(doc.querySelector(selector)).not.toBeNull()
+  })
+
+  it("无可用结构时不注入大纲块", () => {
+    const blocks = buildDesignReferenceBlocks("改一下", makeOptions())
+
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]).not.toContain("<design_outline>")
+  })
+
   it("非 design 模式且无显式引用时不注入任何块", () => {
     expect(buildDesignReferenceBlocks("你好", makeOptions({ collaborationMode: "build" }))).toEqual(
       [],
@@ -82,6 +110,21 @@ describe("buildDesignReferenceBlocks", () => {
 
   it("显式引用不存在时静默跳过，不产生任何注入", () => {
     expect(buildDesignReferenceBlocks("@design:none (Unknown) 改一下", makeOptions())).toEqual([])
+  })
+
+  it("无 target 的显式引用同样附带结构大纲", () => {
+    const html = `<!DOCTYPE html><html><body><main class="shell"><section id="hero">Hero</section><section id="pricing">Plans</section></main></body></html>`
+    const blocks = buildDesignReferenceBlocks(
+      "@design:design-9 (Landing) 改一下定价区",
+      makeOptions({
+        resolveDesign: () => ({ id: "design-9", title: "Landing", html, mode: "tailwindcss" }),
+      }),
+    )
+
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]).toContain('<referenced_design id="design-9"')
+    expect(blocks[0]).toContain("<design_outline>")
+    expect(blocks[0]).toContain("body > main:nth-child(1) > section:nth-child(2) — section#pricing")
   })
 
   it("带 target 的显式引用注入切片上下文而非全量页面", () => {

@@ -204,6 +204,32 @@ Done!`
     expect(blocks[2]).toEqual({ kind: "text", text: "Done!" })
   })
 
+  it("target 选择器含 `>` 路径时开标签仍完整解析（引号内 > 不截断标签）", () => {
+    const raw = `Patching card:
+<front_design_update parent_id="m5-design-0" target="body > main:nth-child(2) > div:nth-child(2) > details:nth-child(2)" title="Update Second Card">
+<details name="cluster-group" class="group"><summary>New Card</summary></details>
+</front_design_update>
+Done!`
+
+    const blocks = parseTextWithProposedPlan(raw)
+    expect(blocks.length).toBe(3)
+    expect(blocks[1].kind).toBe("frontDesign")
+
+    if (blocks[1].kind === "frontDesign") {
+      expect(blocks[1].design.isUpdate).toBe(true)
+      expect(blocks[1].design.parentId).toBe("m5-design-0")
+      expect(blocks[1].design.target).toBe(
+        "body > main:nth-child(2) > div:nth-child(2) > details:nth-child(2)",
+      )
+      expect(blocks[1].design.title).toBe("Update Second Card")
+      expect(blocks[1].design.html).toBe(
+        '<details name="cluster-group" class="group"><summary>New Card</summary></details>',
+      )
+    }
+
+    expect(blocks[2]).toEqual({ kind: "text", text: "Done!" })
+  })
+
   it("流式生成中正确捕获未闭合的 <front_design_update> 块", () => {
     const raw = `Updating header:
 <front_design_update parent_id="base-1" target="#header">
