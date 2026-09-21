@@ -204,6 +204,37 @@ Done!`
     expect(blocks[2]).toEqual({ kind: "text", text: "Done!" })
   })
 
+  it("解析 action 属性：合法动作透传，未知动作归一化为 replace", () => {
+    const appendBlocks = parseTextWithProposedPlan(
+      `<front_design_update parent_id="p-1" target="#list" action="append" title="Add">
+<div>new</div>
+</front_design_update>`,
+    )
+    expect(appendBlocks[0].kind).toBe("frontDesign")
+    if (appendBlocks[0].kind === "frontDesign") {
+      expect(appendBlocks[0].design.action).toBe("append")
+      expect(appendBlocks[0].design.target).toBe("#list")
+    }
+
+    const unknownBlocks = parseTextWithProposedPlan(
+      `<front_design_update parent_id="p-1" target="#list" action="upsert" title="Add">
+<div>new</div>
+</front_design_update>`,
+    )
+    if (unknownBlocks[0].kind === "frontDesign") {
+      expect(unknownBlocks[0].design.action).toBe("replace")
+    }
+
+    const noActionBlocks = parseTextWithProposedPlan(
+      `<front_design_update parent_id="p-1" target="#list" title="Add">
+<div>new</div>
+</front_design_update>`,
+    )
+    if (noActionBlocks[0].kind === "frontDesign") {
+      expect(noActionBlocks[0].design.action).toBe("replace")
+    }
+  })
+
   it("target 选择器含 `>` 路径时开标签仍完整解析（引号内 > 不截断标签）", () => {
     const raw = `Patching card:
 <front_design_update parent_id="m5-design-0" target="body > main:nth-child(2) > div:nth-child(2) > details:nth-child(2)" title="Update Second Card">

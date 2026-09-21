@@ -25,6 +25,80 @@ describe("designSynthesizer DOM 树定向替换与切片提取", () => {
 </body>
 </html>`
 
+  describe("synthesizeDesignUpdate 更新动作", () => {
+    it("append 把新节点追加到目标容器末尾，既有节点零改动", () => {
+      const fragment = `<section id="login-card" class="rounded-2xl border p-6"><h2>控制台登录</h2></section>`
+      const result = synthesizeDesignUpdate(sampleHtml, "body > main", fragment, "append")
+
+      expect(result.ok).toBe(true)
+      const patched = result.synthesizedHtml as string
+      expect(patched).toContain("控制台登录")
+      expect(patched).toContain("Site Title")
+      expect(patched).toContain("Welcome Home")
+      expect(patched).toContain("Old Action")
+      // 新节点位于 main 内部末尾
+      const doc = new DOMParser().parseFromString(patched, "text/html")
+      const main = doc.querySelector("main")
+      expect(main?.lastElementChild?.id).toBe("login-card")
+    })
+
+    it("prepend 把新节点插入目标容器开头", () => {
+      const fragment = `<aside id="banner">维护公告</aside>`
+      const result = synthesizeDesignUpdate(sampleHtml, "body > main", fragment, "prepend")
+
+      const doc = new DOMParser().parseFromString(result.synthesizedHtml as string, "text/html")
+      expect(doc.querySelector("main")?.firstElementChild?.id).toBe("banner")
+      expect(doc.querySelector("section[data-section=hero]")).not.toBeNull()
+    })
+
+    it("before / after 以兄弟节点方式插入", () => {
+      const before = synthesizeDesignUpdate(
+        sampleHtml,
+        "#main-header",
+        `<nav id="top-nav">Nav</nav>`,
+        "before",
+      )
+      const after = synthesizeDesignUpdate(
+        sampleHtml,
+        "#main-header",
+        `<nav id="sub-nav">Sub</nav>`,
+        "after",
+      )
+
+      const beforeDoc = new DOMParser().parseFromString(
+        before.synthesizedHtml as string,
+        "text/html",
+      )
+      const afterDoc = new DOMParser().parseFromString(after.synthesizedHtml as string, "text/html")
+      expect(beforeDoc.querySelector("body")?.firstElementChild?.id).toBe("top-nav")
+      expect(afterDoc.querySelector("body")?.children[1]?.id).toBe("sub-nav")
+      expect(afterDoc.querySelector("#main-header")).not.toBeNull()
+    })
+
+    it("根节点不支持兄弟插入，未知动作直接失败而非静默替换", () => {
+      const rootInsert = synthesizeDesignUpdate(sampleHtml, "body", `<div>x</div>`, "before")
+      expect(rootInsert.ok).toBe(false)
+
+      const unknown = synthesizeDesignUpdate(
+        sampleHtml,
+        "#cta-btn",
+        `<button id="cta-btn">x</button>`,
+        "upsert" as never,
+      )
+      expect(unknown.ok).toBe(false)
+      expect(unknown.synthesizedHtml).toBeUndefined()
+    })
+
+    it("缺省动作仍为 replace", () => {
+      const result = synthesizeDesignUpdate(
+        sampleHtml,
+        "#cta-btn",
+        `<button id="cta-btn">New</button>`,
+      )
+      expect(result.synthesizedHtml).not.toContain("Old Action")
+    })
+  })
+
   describe("synthesizeDesignUpdate", () => {
     it("精确替换目标节点并保留整体骨架与 DOCTYPE", () => {
       const fragment = `<button id="cta-btn" class="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 font-bold">New Action</button>`

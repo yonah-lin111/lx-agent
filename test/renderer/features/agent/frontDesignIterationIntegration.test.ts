@@ -356,6 +356,133 @@ Hope it looks awesome!`
     expect(updatedDesign?.html).toContain("<!DOCTYPE html>")
   })
 
+  it("接收端：action=append 在目标容器内追加新区块，既有节点与 body 布局类零改动", async () => {
+    frontDesignStore.registerDesign({
+      id: "d-append-base",
+      title: "Append Base",
+      html: `<!DOCTYPE html><html><body class="min-h-screen flex items-center justify-center"><div id="content"><h1 id="title">Old Title</h1></div></body></html>`,
+      mode: "tailwindcss",
+      sessionId: "session-append-test",
+    })
+
+    let eventHandler: any = null
+    vi.mocked(agentApi.onEvent).mockImplementation((handler: any) => {
+      eventHandler = handler
+      return () => {}
+    })
+
+    renderHook(() => useAgentChat(undefined, "tab-append-test", "session-append-test"))
+
+    await act(async () => {
+      eventHandler({
+        type: "message_start",
+        sessionId: "session-append-test",
+        tabId: "tab-append-test",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "" }],
+          stopReason: "pending",
+          timestamp: Date.now(),
+        },
+      })
+      eventHandler({
+        type: "message_end",
+        sessionId: "session-append-test",
+        tabId: "tab-append-test",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "text",
+              text: `Added the login card:
+<front_design_update id="d-append-1" parent_id="d-append-base" target="#content" action="append" title="Add Login Card">
+<section id="login-card"><h2>控制台登录</h2></section>
+</front_design_update>`,
+            },
+          ],
+          stopReason: "end_turn",
+          timestamp: Date.now(),
+        },
+      })
+    })
+
+    const design = frontDesignStore.getDesign("d-append-1")
+    expect(design).toBeDefined()
+    expect(design?.html).toContain('id="login-card"')
+    expect(design?.html).toContain('id="title"')
+    expect(design?.html).toContain("min-h-screen flex items-center justify-center")
+
+    const doc = new DOMParser().parseFromString(design?.html ?? "", "text/html")
+    expect(doc.querySelector("#content")?.lastElementChild?.id).toBe("login-card")
+    expect(doc.querySelector("#title")?.textContent).toBe("Old Title")
+  })
+
+  it("接收端：同一轮多个补丁按顺序链式累积，后一个补丁基于前一个结果", async () => {
+    frontDesignStore.registerDesign({
+      id: "d-chain-base",
+      title: "Chain Base",
+      html: `<!DOCTYPE html><html><body><div id="a"><h1 id="t1">A1</h1></div><div id="b"><h1 id="t2">B1</h1></div></body></html>`,
+      mode: "tailwindcss",
+      sessionId: "session-chain-test",
+    })
+
+    let eventHandler: any = null
+    vi.mocked(agentApi.onEvent).mockImplementation((handler: any) => {
+      eventHandler = handler
+      return () => {}
+    })
+
+    renderHook(() => useAgentChat(undefined, "tab-chain-test", "session-chain-test"))
+
+    await act(async () => {
+      eventHandler({
+        type: "message_start",
+        sessionId: "session-chain-test",
+        tabId: "tab-chain-test",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "" }],
+          stopReason: "pending",
+          timestamp: Date.now(),
+        },
+      })
+      eventHandler({
+        type: "message_end",
+        sessionId: "session-chain-test",
+        tabId: "tab-chain-test",
+        message: {
+          role: "assistant",
+          content: [
+            {
+              type: "text",
+              text: `Two localized changes:
+<front_design_update id="d-chain-1" parent_id="d-chain-base" target="#t1" title="Update A">
+<h1 id="t1">A2</h1>
+</front_design_update>
+<front_design_update id="d-chain-2" parent_id="d-chain-base" target="#t2" title="Update B">
+<h1 id="t2">B2</h1>
+</front_design_update>`,
+            },
+          ],
+          stopReason: "end_turn",
+          timestamp: Date.now(),
+        },
+      })
+    })
+
+    const first = frontDesignStore.getDesign("d-chain-1")
+    const second = frontDesignStore.getDesign("d-chain-2")
+
+    expect(first?.html).toContain("A2")
+    expect(first?.html).toContain("B1")
+    expect(first?.parentId).toBe("d-chain-base")
+
+    // 第二个补丁必须基于第一个补丁的结果，两个改动都在最终版本中
+    expect(second?.html).toContain("A2")
+    expect(second?.html).toContain("B2")
+    expect(second?.parentId).toBe("d-chain-1")
+  })
+
   it("容灾拦截：当 <front_design_update> 的 target 选择器未命中时，安全拦截并不落库破损数据", async () => {
     frontDesignStore.registerDesign({
       id: "d-safe-base",

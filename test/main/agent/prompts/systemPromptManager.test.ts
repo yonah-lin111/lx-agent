@@ -387,6 +387,24 @@ describe("SystemPromptManager", () => {
         )
       })
 
+      it("design 模式新增内容必须走 append/prepend/before/after 补丁而非重写", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("ADDING content is a localized change too")
+        expect(assembly.rendered).toContain("NEVER regenerate the document just to add something")
+        expect(assembly.rendered).toContain("`action` selects how the fragment attaches")
+        expect(assembly.rendered).toContain(
+          "`append` / `prepend`: the fragment is inserted inside the target",
+        )
+        expect(assembly.rendered).toContain(
+          "`before` / `after`: the fragment is inserted as a sibling",
+        )
+        expect(assembly.rendered).toContain("never rename the document title")
+      })
+
       it("design 模式意图含糊时要求先调用 question 工具澄清", async () => {
         const manager = createDefaultSystemPromptManager()
         const assembly = await manager.assemble({

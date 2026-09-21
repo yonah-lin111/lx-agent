@@ -2,6 +2,7 @@ import type { AgentMessage, QuestionAnswer, SubagentData } from "@shared/contrac
 import type {
   ChatBlock,
   ChatMessage,
+  FrontDesignUpdateAction,
   ReviewFindingItem,
   ReviewFindingsData,
   ReviewSeverity,
@@ -110,6 +111,16 @@ const FRONT_DESIGN_CLOSE_REGEX = /<\/front_design>/i
 const FRONT_DESIGN_UPDATE_OPEN_REGEX = buildOpenTagRegex("front_design_update")
 const FRONT_DESIGN_UPDATE_CLOSE_REGEX = /<\/front_design_update>/i
 
+const UPDATE_ACTIONS = new Set<string>(["replace", "append", "prepend", "before", "after"])
+
+// 归一化模型给出的更新动作；未知值一律退回 replace。
+const normalizeUpdateAction = (value: string | undefined): FrontDesignUpdateAction => {
+  const normalized = value?.trim().toLowerCase()
+  return normalized && UPDATE_ACTIONS.has(normalized)
+    ? (normalized as FrontDesignUpdateAction)
+    : "replace"
+}
+
 const extractFrontDesignAttributes = (
   tagStr: string,
 ): {
@@ -118,11 +129,13 @@ const extractFrontDesignAttributes = (
   parentId?: string
   mode?: "tailwindcss" | "css"
   target?: string
+  action: FrontDesignUpdateAction
 } => {
   const titleMatch = /title=["']([^"']*)["']/i.exec(tagStr)
   const idMatch = /id=["']([^"']*)["']/i.exec(tagStr)
   const parentIdMatch = /(?:parent_id|parentId)=["']([^"']*)["']/i.exec(tagStr)
   const modeMatch = /mode=["']([^"']*)["']/i.exec(tagStr)
+  const actionMatch = /action=["']([^"']*)["']/i.exec(tagStr)
   let target: string | undefined
   const bracketTargetMatch = /target=["']?(\[[^\]]+\])["']?/i.exec(tagStr)
   if (bracketTargetMatch) {
@@ -144,6 +157,7 @@ const extractFrontDesignAttributes = (
     parentId: parentIdMatch ? parentIdMatch[1].trim() : undefined,
     mode,
     target,
+    action: normalizeUpdateAction(actionMatch?.[1]),
   }
 }
 
@@ -531,6 +545,7 @@ export const parseTextWithProposedPlan = (
       parentId: parsedParentId,
       mode: parsedMode,
       target: parsedTarget,
+      action: parsedAction,
     } = extractFrontDesignAttributes(designUpdateOpenMatch[0])
     const title = parsedTitle || "Frontend Component Update"
     const designId =
@@ -565,6 +580,7 @@ export const parseTextWithProposedPlan = (
           id: designId,
           parentId: parsedParentId ?? null,
           target: parsedTarget ?? null,
+          action: parsedAction,
           isUpdate: true,
           title,
           html: htmlContent,
@@ -586,6 +602,7 @@ export const parseTextWithProposedPlan = (
           id: designId,
           parentId: parsedParentId ?? null,
           target: parsedTarget ?? null,
+          action: parsedAction,
           isUpdate: true,
           title,
           html: htmlContent,
