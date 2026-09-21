@@ -134,6 +134,14 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
         }
       }
 
+      // 空思考块不上库：无文本且无签名；带签名的空块必须保留（Anthropic 续轮校验签名）。
+      const pruneEmptyThinkingBlocks = (
+        content: AssistantMessage["content"],
+      ): AssistantMessage["content"] =>
+        content.filter(
+          (block) => block.type !== "thinking" || block.thinking.trim() !== "" || block.signature,
+        )
+
       const ensureToolCallBlock = (
         toolCallId: string,
         name: string,
@@ -402,7 +410,7 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
               const usage: Usage = toUsage(part.totalUsage)
               const finalMessage: AssistantMessage = {
                 ...partial,
-                content: blocks,
+                content: pruneEmptyThinkingBlocks(blocks),
                 usage,
                 stopReason: mapStopReason(part.finishReason),
                 timestamp: requestStartTime,
@@ -438,7 +446,7 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
         const isUserAbort = options?.signal?.aborted
         const finalMessage: AssistantMessage = {
           ...partial,
-          content: blocks,
+          content: pruneEmptyThinkingBlocks(blocks),
           stopReason: isUserAbort ? "aborted" : "error",
           errorMessage: isUserAbort
             ? "Request was aborted"
@@ -472,7 +480,7 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
         pruneEmptyTrailingTextBlock()
         const finalMessage: AssistantMessage = {
           ...partial,
-          content: blocks,
+          content: pruneEmptyThinkingBlocks(blocks),
           stopReason: isUserAbort ? "aborted" : "error",
           errorMessage: isUserAbort ? "Request was aborted" : errorMessage,
           timestamp: requestStartTime,

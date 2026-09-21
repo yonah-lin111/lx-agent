@@ -277,6 +277,8 @@ export const AgentAssistantMessage = ({
             const executionItems = group.blocks.flatMap<ExecutionItemMeta>(
               ({ block, isStreaming }, blockIndex) => {
                 if (block.kind === "thinking") {
+                  // 空思考不显示（含历史存量与流式占位块；执行流侧已同口径过滤）。
+                  if (!block.text.trim()) return []
                   return [
                     {
                       type: "thinking",

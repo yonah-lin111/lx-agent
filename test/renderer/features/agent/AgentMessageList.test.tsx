@@ -381,4 +381,48 @@ describe("AgentMessageList", () => {
     expect(screen.queryByText(/claude-3-5-sonnet/i)).toBeNull()
     expect(screen.queryByText(/Do good things/i)).toBeNull()
   })
+
+  it("空思考块不显示：无 Thought 统计、无思考节点", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "assistant-1",
+        role: "assistant",
+        blocks: [
+          { kind: "thinking", text: "   " },
+          {
+            kind: "toolCall",
+            toolCallId: "tool-1",
+            toolName: "read",
+            args: { path: "src/main.ts" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+
+    expect(screen.queryByText("Thought")).toBeNull()
+    expect(screen.queryByText("Thoughts")).toBeNull()
+    expect(screen.queryByText("Thought Process")).toBeNull()
+    // 工具调用统计不受影响。
+    expect(screen.getByText("Tool Call")).not.toBeNull()
+  })
+
+  it("有文本的思考块正常显示", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "assistant-1",
+        role: "assistant",
+        blocks: [{ kind: "thinking", text: "先读文件再动手" }],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+
+    expect(screen.getByText("Thought")).not.toBeNull()
+    expect(screen.getByText("Thought Process")).not.toBeNull()
+  })
 })

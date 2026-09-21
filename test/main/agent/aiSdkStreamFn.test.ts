@@ -355,6 +355,74 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     })
   })
 
+  it("无文本的空思考块不上库（上游未回 summary 的场景）", async () => {
+    async function* createEmptyThinkingStream() {
+      yield { type: "reasoning-start" as const }
+      yield { type: "reasoning-end" as const }
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "最终回答" }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createEmptyThinkingStream() })
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000 })
+    const stream = await streamFn(TEST_MODEL, { systemPrompt: "", messages: [] }, {})
+    for await (const _ of stream) {
+      // consume
+    }
+
+    const finalResult = await stream.result()
+    expect(finalResult.content).toEqual([
+      { type: "text", text: "最终回答", durationMs: expect.any(Number) },
+    ])
+  })
+
+  it("空白字符思考块不上库，但带签名的空块必须保留", async () => {
+    async function* createMixedStream() {
+      yield { type: "reasoning-start" as const }
+      yield { type: "reasoning-delta" as const, text: "   " }
+      yield { type: "reasoning-end" as const }
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "x" }
+      yield { type: "reasoning-start" as const }
+      yield {
+        type: "reasoning-delta" as const,
+        text: "",
+        providerMetadata: { anthropic: { signature: "sig-keep" } },
+      }
+      yield { type: "reasoning-end" as const }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createMixedStream() })
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000 })
+    const stream = await streamFn(TEST_MODEL, { systemPrompt: "", messages: [] }, {})
+    for await (const _ of stream) {
+      // consume
+    }
+
+    const finalResult = await stream.result()
+    expect(finalResult.content).toEqual([
+      { type: "text", text: "x", durationMs: expect.any(Number) },
+      {
+        type: "thinking",
+        thinking: "",
+        signature: "sig-keep",
+        durationMs: expect.any(Number),
+      },
+    ])
+  })
+
   it("thinking + tool-call 双轮：第二轮请求回传带签名的 reasoning 块", async () => {
     async function* firstRoundStream() {
       yield { type: "reasoning-start" as const }
