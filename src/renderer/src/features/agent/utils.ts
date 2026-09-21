@@ -61,7 +61,7 @@ export const parseQuestionAnswersFromText = (text: string): QuestionAnswer[] | u
   return answers.length > 0 ? answers : undefined
 }
 
-// 清洗用户输入纯文本（剥离 <skill ...> 与 <referenced_design ...> 注入块与命令前缀）。
+// 清洗用户输入纯文本（剥离 <skill ...>、<referenced_design ...> 与 <current_design ...> 注入块与命令前缀）。
 export const cleanUserPrompt = (
   rawText: string,
   options?: { isSteer?: boolean; command?: { kind?: string; name: string } },
@@ -69,6 +69,7 @@ export const cleanUserPrompt = (
   let cleaned = rawText
     .replace(/<skill\b[\s\S]*?<\/skill>\s*/gi, "")
     .replace(/<referenced_design\b[\s\S]*?(?:<\/referenced_design>|$)\s*/gi, "")
+    .replace(/<current_design\b[\s\S]*?(?:<\/current_design>|$)\s*/gi, "")
 
   if (options?.isSteer || options?.command?.name === "steer") {
     cleaned = cleaned.replace(/^\s*\/steer(?:\s+|$)/, "").trim()

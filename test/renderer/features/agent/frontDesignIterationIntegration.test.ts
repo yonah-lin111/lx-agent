@@ -87,6 +87,124 @@ describe("前端设计二次修改与提及迭代集成数据流", () => {
     const sentText = (agentApi.send as any).mock.calls[0][0]
     expect(sentText).toBe("请查看 @design:non-existent (Unknown)")
     expect(sentText).not.toContain("<referenced_design")
+    expect(sentText).not.toContain("<current_design")
+  })
+
+  it("design 模式下未显式引用时，自动注入 <current_design> 作为默认修改基线", async () => {
+    frontDesignStore.registerDesign({
+      id: "design-active",
+      title: "Active Page",
+      html: "<main>Active baseline</main>",
+      mode: "tailwindcss",
+      sessionId: "session-baseline-test",
+    })
+    frontDesignStore.setActiveDesignId("design-active")
+
+    let eventHandler: any = null
+    vi.mocked(agentApi.onEvent).mockImplementation((handler: any) => {
+      eventHandler = handler
+      return () => {}
+    })
+
+    const { result } = renderHook(() =>
+      useAgentChat(undefined, "tab-baseline-test", "session-baseline-test"),
+    )
+
+    await act(async () => {
+      eventHandler({
+        type: "collaboration_mode_changed",
+        sessionId: "session-baseline-test",
+        tabId: "tab-baseline-test",
+        mode: "design",
+      })
+    })
+
+    await act(async () => {
+      await result.current.sendMessage("把主按钮改成圆角")
+    })
+
+    expect(agentApi.send).toHaveBeenCalledTimes(1)
+    const sentText = (agentApi.send as any).mock.calls[0][0]
+    expect(sentText).toContain(
+      '<current_design id="design-active" title="Active Page" mode="tailwindcss" version="1">',
+    )
+    expect(sentText).toContain("<main>Active baseline</main>")
+    expect(sentText).toContain("</current_design>")
+    expect(sentText).not.toContain("<referenced_design")
+    expect(sentText).toContain("把主按钮改成圆角")
+  })
+
+  it("design 模式下存在显式 @design 引用时，只注入 referenced_design，自动基线让位", async () => {
+    frontDesignStore.registerDesign({
+      id: "design-active",
+      title: "Active Page",
+      html: "<main>Active baseline</main>",
+      mode: "tailwindcss",
+      sessionId: "session-explicit-test",
+    })
+    frontDesignStore.registerDesign({
+      id: "design-other",
+      title: "Other Page",
+      html: "<section>Other baseline</section>",
+      mode: "css",
+      sessionId: "session-explicit-test",
+    })
+    frontDesignStore.setActiveDesignId("design-active")
+
+    let eventHandler: any = null
+    vi.mocked(agentApi.onEvent).mockImplementation((handler: any) => {
+      eventHandler = handler
+      return () => {}
+    })
+
+    const { result } = renderHook(() =>
+      useAgentChat(undefined, "tab-explicit-test", "session-explicit-test"),
+    )
+
+    await act(async () => {
+      eventHandler({
+        type: "collaboration_mode_changed",
+        sessionId: "session-explicit-test",
+        tabId: "tab-explicit-test",
+        mode: "design",
+      })
+    })
+
+    await act(async () => {
+      await result.current.sendMessage("@design:design-other (Other Page) 改成圆角")
+    })
+
+    expect(agentApi.send).toHaveBeenCalledTimes(1)
+    const sentText = (agentApi.send as any).mock.calls[0][0]
+    expect(sentText).toContain(
+      '<referenced_design id="design-other" title="Other Page" mode="css">',
+    )
+    expect(sentText).toContain("<section>Other baseline</section>")
+    expect(sentText).not.toContain("<current_design")
+    expect(sentText).not.toContain("Active baseline")
+  })
+
+  it("build 模式下不自动注入 <current_design> 基线", async () => {
+    frontDesignStore.registerDesign({
+      id: "design-active",
+      title: "Active Page",
+      html: "<main>Active baseline</main>",
+      mode: "tailwindcss",
+      sessionId: "session-build-test",
+    })
+    frontDesignStore.setActiveDesignId("design-active")
+
+    const { result } = renderHook(() =>
+      useAgentChat(undefined, "tab-build-test", "session-build-test"),
+    )
+
+    await act(async () => {
+      await result.current.sendMessage("把主按钮改成圆角")
+    })
+
+    const sentText = (agentApi.send as any).mock.calls[0][0]
+    expect(sentText).toBe("把主按钮改成圆角")
+    expect(sentText).not.toContain("<current_design")
   })
 
   it("全链路版本派生：从 parent_id 到 store 版本聚合链条", () => {

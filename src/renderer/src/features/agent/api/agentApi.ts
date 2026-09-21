@@ -15,6 +15,8 @@ import type {
   CollaborationMode,
   CopySessionOptions,
   CopySessionResult,
+  ExportFrontDesignPngOptions,
+  ExportFrontDesignPngResult,
   ExportSessionOptions,
   ExportSessionResult,
   LspInstallResult,
@@ -60,6 +62,10 @@ export const agentApi = {
     window?.api?.agent?.openDesignDir
       ? window.api.agent.openDesignDir(sessionId, designId)
       : Promise.resolve(false),
+  exportDesignPng: (options: ExportFrontDesignPngOptions): Promise<ExportFrontDesignPngResult> =>
+    window?.api?.agent?.exportDesignPng
+      ? window.api.agent.exportDesignPng(options)
+      : Promise.resolve({ ok: false, error: "Not implemented in current environment" }),
   send: (
     text: string,
     selection?: ModelSelection,

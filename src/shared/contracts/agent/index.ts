@@ -1,6 +1,7 @@
 export * from "./agentApi"
 export * from "./diff"
 export * from "./events"
+export * from "./frontDesign"
 export * from "./hooks"
 export * from "./instructions"
 export * from "./messages"

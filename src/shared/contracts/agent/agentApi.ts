@@ -2,6 +2,7 @@
 
 import type { ModelSelection } from "@shared/settings"
 import type { AgentEvent } from "./events"
+import type { ExportFrontDesignPngOptions, ExportFrontDesignPngResult } from "./frontDesign"
 import type { InstructionFileInfo, InstructionScope, SaveInstructionInput } from "./instructions"
 import type { AgentMessage, ModelSwitchMessage, SuggestedQuestionContextMessage } from "./messages"
 import type { CollaborationMode, PermissionResponse } from "./permissions"
@@ -200,6 +201,8 @@ export interface AgentApi {
     }>
     // 打开指定前端设计本地目录
     openDesignDir: (sessionId: string, designId: string) => Promise<boolean>
+    // 导出指定前端设计的预览图（PNG，全页、按档位宽度与主题）
+    exportDesignPng: (options: ExportFrontDesignPngOptions) => Promise<ExportFrontDesignPngResult>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

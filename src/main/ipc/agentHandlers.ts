@@ -8,6 +8,7 @@ import type {
   AgentSendContext,
   AgentSendOptions,
   CopySessionOptions,
+  ExportFrontDesignPngOptions,
   ExportSessionOptions,
   McpServerStatusItem,
   PermissionResponse,
@@ -27,6 +28,7 @@ import { questionManager } from "@/agent/question/questionManager"
 import { getUserSkillDirs, skillLoader, stripFrontmatter } from "@/agent/skills/skillLoader"
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
 import { getSessionDesignDir, getStandardSkillsDir } from "@/paths"
+import { exportFrontDesignPng } from "@/services/frontDesignExportService"
 import { saveFrontDesignToDisk } from "@/services/frontDesignService"
 import { notificationService } from "@/services/notificationService"
 import { compileTailwindCss } from "@/services/tailwindCompilerService"
@@ -615,4 +617,18 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     }
     return false
   })
+
+  ipcMain.handle(
+    AGENT_CHANNELS.exportDesignPng,
+    async (_, options: ExportFrontDesignPngOptions) => {
+      if (
+        !options ||
+        typeof options.sessionId !== "string" ||
+        typeof options.designId !== "string"
+      ) {
+        return { ok: false, error: "Invalid parameters for exportDesignPng" }
+      }
+      return exportFrontDesignPng(options)
+    },
+  )
 }
