@@ -195,6 +195,25 @@ export function handleChatEvent(
     return
   }
 
+  if (state === "error" || state === "aborted") {
+    // chat.send 请求在受理时即返回，run 失败/中止只能由事件收敛；
+    // lifecycle end 只在消息仍为 streaming 时改写状态，故此处先标记 error 不会被覆盖。
+    const wasStreaming = session.isStreaming
+    const aborted = state === "aborted"
+    message.status = "error"
+    message.error =
+      (aborted ? undefined : readTrimmedString(payload.errorMessage)) ||
+      (aborted ? "Aborted" : "Run failed")
+    session.isStreaming = false
+    session.activeRunId = null
+    emitSnapshot(host, connection, session)
+    if (wasStreaming) {
+      host.runFinishedListener?.(connection, session, aborted)
+    }
+    void host.refreshStats(connection, session)
+    return
+  }
+
   if (text) {
     message.content = text
     emitSessionMessage(host, connection, session, message)

@@ -1,4 +1,4 @@
-import type { OpenClawSendMessageInput } from "@shared/contracts/openclaw"
+import type { OpenClawAttachmentFile, OpenClawSendMessageInput } from "@shared/contracts/openclaw"
 import { OPENCLAW_CHANNELS } from "@shared/ipc/openclawChannels"
 import { ipcMain, type WebContents } from "electron"
 import { notificationService } from "@/services/notificationService"
@@ -12,14 +12,36 @@ const requireString = (value: unknown, field: string): string => {
   return value.trim()
 }
 
+// 校验附件入参；文件内容不经过 IPC，仅保留路径与展示元数据。
+const parseAttachmentFiles = (value: unknown): OpenClawAttachmentFile[] | undefined => {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value)) throw new Error("INVALID_ATTACHMENT_FILES")
+  return value.map((item) => {
+    if (!item || typeof item !== "object") throw new Error("INVALID_ATTACHMENT_FILE")
+    const candidate = item as Partial<OpenClawAttachmentFile>
+    const sizeBytes =
+      typeof candidate.sizeBytes === "number" && Number.isFinite(candidate.sizeBytes)
+        ? candidate.sizeBytes
+        : undefined
+    return {
+      name: requireString(candidate.name, "ATTACHMENT_NAME"),
+      path: requireString(candidate.path, "ATTACHMENT_PATH"),
+      type: candidate.type === "text" ? "text" : "image",
+      ...(sizeBytes !== undefined ? { sizeBytes } : {}),
+    }
+  })
+}
+
 // 校验发送任务入参（IPC 输入边界）。
 const parseSendMessageInput = (value: unknown): OpenClawSendMessageInput => {
   if (!value || typeof value !== "object") throw new Error("INVALID_SEND_MESSAGE_INPUT")
   const candidate = value as Partial<OpenClawSendMessageInput>
+  const files = parseAttachmentFiles(candidate.files)
   return {
     instanceId: requireString(candidate.instanceId, "INSTANCE_ID"),
     agentId: requireString(candidate.agentId, "AGENT_ID"),
     message: requireString(candidate.message, "MESSAGE"),
+    ...(files ? { files } : {}),
   }
 }
 

@@ -43,4 +43,9 @@ export const openclaw = {
   commandClearDesc: "选择员工新建对话（& 分隔多个）",
   commandStopDesc: "中止所有运行中的任务",
   commandOfficeDesc: "切换办公区",
+  addAttachment: "添加附件",
+  attachmentFolderUnsupported: "文件夹不能作为附件",
+  attachmentImageTooLarge: "单张图片不能超过 {{size}}",
+  attachmentFileTooLarge: "单个文件不能超过 {{size}}",
+  attachmentTotalTooLarge: "附件总大小不能超过 {{size}}",
 }

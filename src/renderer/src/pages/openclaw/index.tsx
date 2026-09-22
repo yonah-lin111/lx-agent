@@ -1,4 +1,4 @@
-import type { OpenClawConnectionStatus } from "@shared/contracts/openclaw"
+import type { OpenClawAttachmentFile, OpenClawConnectionStatus } from "@shared/contracts/openclaw"
 import { Plus, RefreshCw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -43,6 +43,10 @@ const STATUS_LABEL_KEYS: Record<OpenClawConnectionStatus, TranslationKey> = {
   error: "openclaw.statusError",
 }
 
+// 仅附件发送时的占位正文：网关要求 message 非空，且该文本对远端模型可见，保持英语。
+const formatAttachmentsOnlyMessage = (count: number): string =>
+  `[attached ${count} image${count > 1 ? "s" : ""}]`
+
 /**
  * OpenClaw 页面：查看当前选中员工的会话；`/clear` 选择或新建该员工的会话。
  */
@@ -61,6 +65,7 @@ export const OpenClawPage = (): React.JSX.Element => {
   const consumePendingDispatch = useOpenClawOfficeStore((state) => state.consumePendingDispatch)
 
   const [input, setInput] = useState("")
+  const [files, setFiles] = useState<OpenClawAttachmentFile[]>([])
   const [pickerKind, setPickerKind] = useState<"office" | "session" | null>(null)
   const inputRef = useRef<OpenClawInputRef | null>(null)
 
@@ -198,7 +203,7 @@ export const OpenClawPage = (): React.JSX.Element => {
   // 发送：命令优先；`@claw` 提及或选中集合决定扇出目标。
   const handleSend = useCallback((): void => {
     const text = input.trim()
-    if (!text) return
+    if (!text && files.length === 0) return
     // 多选面板下回车直发：发送前收起面板。
     setPickerKind(null)
 
@@ -236,25 +241,49 @@ export const OpenClawPage = (): React.JSX.Element => {
     }
 
     if (!selectedInstanceId) return
-    const { body, agentIds: targets } = resolveClawDispatchTargets(text, agentIds, selectedAgentIds)
+    const { body: rawBody, agentIds: targets } = resolveClawDispatchTargets(
+      text,
+      agentIds,
+      selectedAgentIds,
+    )
     if (targets.length === 0) {
       toast.error(t("openclaw.noTarget"))
       return
     }
+    const body = rawBody || (files.length > 0 ? formatAttachmentsOnlyMessage(files.length) : "")
     if (!body) {
       toast.error(t("agent.clawTaskRequired"))
       return
     }
 
+    const pendingInput = input
+    const pendingFiles = files
     setInput("")
+    setFiles([])
     const store = useOpenClawChatStore.getState()
-    for (const agentId of targets) {
-      void store.sendMessage(selectedInstanceId, agentId, body).catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error)
-        toast.error(message || t("openclaw.sendFailed"))
-      })
-    }
-  }, [agentIds, agents, input, runCommand, selectedAgentIds, selectedInstanceId, t, toast])
+    const sends = targets.map((agentId) =>
+      store.sendMessage(
+        selectedInstanceId,
+        agentId,
+        body,
+        pendingFiles.length > 0 ? pendingFiles : undefined,
+      ),
+    )
+    void Promise.allSettled(sends).then((results) => {
+      const failures = results.filter((result) => result.status === "rejected")
+      for (const failure of failures) {
+        const reason: unknown = failure.reason
+        toast.error(
+          reason instanceof Error && reason.message ? reason.message : t("openclaw.sendFailed"),
+        )
+      }
+      // 全部目标失败（连接不可用、附件校验拒绝等）才回填输入与附件，避免部分成功后被重复发送。
+      if (failures.length === results.length) {
+        setInput((current) => (current ? current : pendingInput))
+        setFiles((current) => (current.length > 0 ? current : pendingFiles))
+      }
+    })
+  }, [agentIds, agents, files, input, runCommand, selectedAgentIds, selectedInstanceId, t, toast])
 
   const handleDeleteTurn = useCallback(
     (agentId: string, assistantMessageId: string): void => {
@@ -443,6 +472,8 @@ export const OpenClawPage = (): React.JSX.Element => {
           onToggleAgent={(agentId) => {
             selectAgent(agentId, { additive: true })
           }}
+          files={files}
+          onFilesChange={setFiles}
         />
       </div>
     </section>

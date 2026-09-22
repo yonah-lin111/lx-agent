@@ -71,6 +71,8 @@ describe("OpenClawTargetSelect & OpenClawInput UI", () => {
         onStop={onStop}
         candidates={[]}
         onCommand={vi.fn()}
+        files={[]}
+        onFilesChange={vi.fn()}
         offices={offices}
         selectedOfficeId="office-1"
         selectedAgentIds={["agent-a"]}
@@ -93,6 +95,8 @@ const baseInputProps = {
   onStop: vi.fn(),
   candidates: [],
   onCommand: vi.fn(),
+  files: [],
+  onFilesChange: vi.fn(),
 }
 
 const composePicker: OpenClawInputPicker = {
