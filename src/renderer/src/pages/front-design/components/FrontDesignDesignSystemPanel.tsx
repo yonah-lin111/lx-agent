@@ -1,4 +1,4 @@
-import { Plus, X } from "lucide-react"
+import { Plus, ScanSearch, X } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -10,6 +10,9 @@ export interface FrontDesignDesignSystemPanelProps {
   tokens: DesignSystemTokens
   onChange: (next: Partial<DesignSystemTokens>) => void
   onReset: () => void
+  // 是否可执行画布提取（无 HTML 时禁用）。
+  canExtract: boolean
+  onExtract: () => void
 }
 
 /**
@@ -19,6 +22,8 @@ export const FrontDesignDesignSystemPanel = ({
   tokens,
   onChange,
   onReset,
+  canExtract,
+  onExtract,
 }: FrontDesignDesignSystemPanelProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [draftColor, setDraftColor] = useState<string>("")
@@ -38,9 +43,21 @@ export const FrontDesignDesignSystemPanel = ({
     <div className="design-system-panel flex w-[252px] flex-col gap-2.5 p-2.5">
       {/* 标题与作用说明 */}
       <div className="flex flex-col gap-0.5">
-        <span className="text-xs font-semibold text-white/80">
-          {t("frontDesign.designSystemTitle")}
-        </span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold text-white/80">
+            {t("frontDesign.designSystemTitle")}
+          </span>
+          {/* 从当前画布计算样式提取色板 / 圆角 / 字体 */}
+          <LxIconButton
+            size="small"
+            disabled={!canExtract}
+            onClick={onExtract}
+            aria-label={t("frontDesign.designSystemExtract")}
+            title={{ content: t("frontDesign.designSystemExtract"), placement: "bottom" }}
+          >
+            <ScanSearch />
+          </LxIconButton>
+        </div>
         <span className="text-xs leading-relaxed text-white/40">
           {t("frontDesign.designSystemDesc")}
         </span>

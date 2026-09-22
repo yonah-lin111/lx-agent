@@ -52,6 +52,7 @@ export interface FrontDesignToolbarProps {
   designTokens: DesignSystemTokens
   onDesignTokensChange: (next: Partial<DesignSystemTokens>) => void
   onDesignTokensReset: () => void
+  onDesignTokensExtract: () => void
 }
 
 /**
@@ -83,6 +84,7 @@ export const FrontDesignToolbar = ({
   designTokens,
   onDesignTokensChange,
   onDesignTokensReset,
+  onDesignTokensExtract,
 }: FrontDesignToolbarProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -295,6 +297,8 @@ export const FrontDesignToolbar = ({
                 tokens={designTokens}
                 onChange={onDesignTokensChange}
                 onReset={onDesignTokensReset}
+                canExtract={hasHtml}
+                onExtract={onDesignTokensExtract}
               />
             ),
             placement: "bottom",

@@ -18,6 +18,7 @@ import { useDesignPreview } from "@/pages/front-design/hooks/useDesignPreview"
 import { useDesignTheme } from "@/pages/front-design/hooks/useDesignTheme"
 import type { ViewportMode } from "@/pages/front-design/types"
 import { pickDefaultCompareDesign } from "@/pages/front-design/utils/compareSelection"
+import { extractDesignTokens } from "@/pages/front-design/utils/tokenExtraction"
 
 /**
  * FrontDesignPage - Agent 前端设计看板。
@@ -25,7 +26,7 @@ import { pickDefaultCompareDesign } from "@/pages/front-design/utils/compareSele
  */
 export const FrontDesignPage = (): React.JSX.Element => {
   const { t } = useTranslation()
-  const { success: successToast } = useLxToast()
+  const { success: successToast, info: infoToast } = useLxToast()
   const designState = useFrontDesign()
   const designTokens = useDesignSystem()
 
@@ -157,6 +158,28 @@ export const FrontDesignPage = (): React.JSX.Element => {
     successToast(t("frontDesign.issuesPanelSentToast", { count: targets.length }))
   }, [checks, activeDesignId, title, sessionId, t, successToast])
 
+  // 令牌提取：把当前画布的真实用色 / 圆角 / 字体沉淀为设计系统令牌。
+  const handleExtractTokens = useCallback(() => {
+    const extracted = extractDesignTokens(iframeRef.current?.contentDocument)
+    const extras = (extracted.radius ? 1 : 0) + (extracted.fontFamily ? 1 : 0)
+    if (extracted.colors.length === 0 && extras === 0) {
+      infoToast(t("frontDesign.designSystemExtractEmpty"))
+      return
+    }
+    // 色板整体替换；圆角 / 字体有值才替换，否则保留原令牌。
+    designSystemStore.setTokens({
+      colors: extracted.colors,
+      radius: extracted.radius ?? designTokens.radius,
+      fontFamily: extracted.fontFamily ?? designTokens.fontFamily,
+    })
+    successToast(
+      t("frontDesign.designSystemExtractSuccess", {
+        colors: extracted.colors.length,
+        count: extras,
+      }),
+    )
+  }, [designTokens.radius, designTokens.fontFamily, t, infoToast, successToast])
+
   const viewportWidthClass = useMemo(() => {
     switch (viewport) {
       case "mobile":
@@ -202,6 +225,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
         designTokens={designTokens}
         onDesignTokensChange={designSystemStore.setTokens}
         onDesignTokensReset={designSystemStore.reset}
+        onDesignTokensExtract={handleExtractTokens}
       />
 
       <div className="flex min-h-0 min-w-0 flex-1">

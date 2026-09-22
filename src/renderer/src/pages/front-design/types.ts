@@ -52,3 +52,13 @@ export interface PreviewIssue {
   detail?: string
   count: number
 }
+
+// 从画布计算样式提取出的设计令牌候选。
+export interface ExtractedDesignTokens {
+  // 高频颜色，已归一化为 hex，按出现频次降序。
+  colors: string[]
+  // 出现频次最高的非零圆角，如 "8px"。
+  radius: string | null
+  // body 计算字体栈首项，如 "Inter"。
+  fontFamily: string | null
+}

@@ -24,7 +24,7 @@ export interface ElementStyleSummary {
 }
 
 // 零长度与关键字（auto / normal）统一视为无效值。
-const isZeroLength = (value: string): boolean => {
+export const isZeroLength = (value: string): boolean => {
   const parsed = Number.parseFloat(value)
   return !Number.isFinite(parsed) || parsed === 0
 }
