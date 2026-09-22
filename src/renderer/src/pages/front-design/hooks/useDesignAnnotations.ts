@@ -156,6 +156,13 @@ export const useDesignAnnotations = ({
     }
   }, [html, activeDesignId, isStreaming])
 
+  // 退出批注模式时解除选中态，避免残留无法清除的选中框。
+  useEffect(() => {
+    if (!isInspectorActive) {
+      layerRef.current?.clearSelection()
+    }
+  }, [isInspectorActive])
+
   // 建立批注图层并回填钉选气泡
   useEffect(() => {
     if (!canRender) return
@@ -213,13 +220,12 @@ export const useDesignAnnotations = ({
       event.preventDefault()
       event.stopPropagation()
 
-      if (target === doc.body || target === doc.documentElement) return
-
       const layer = ensureLayer()
       if (!layer) return
 
-      // 编辑器打开时，画布点击仅用于关闭编辑器，不新建批注。
-      if (layer.isEditorOpen()) {
+      // 点击画布空白：解除选中态并关闭输入框。
+      if (target === doc.body || target === doc.documentElement) {
+        layer.clearSelection()
         layer.closeEditor()
         return
       }

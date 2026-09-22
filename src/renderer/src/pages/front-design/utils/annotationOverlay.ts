@@ -48,6 +48,8 @@ export interface AnnotationLayer {
   isEditorOpen: () => boolean
   showHover: (element: HTMLElement | null) => void
   highlight: (selector: string | null) => void
+  // 解除选中态与预览态（点击画布空白时调用）。
+  clearSelection: () => void
   // 图层是否仍挂在该文档上：iframe 文档被替换或 body 被重建后必须返回 false。
   isAttachedTo: (target: Document) => boolean
   destroy: () => void
@@ -124,8 +126,14 @@ export const createAnnotationLayer = (
   let editorPositioned = false
   // 图层是否已销毁：销毁后不再观察任何元素。
   let destroyed = false
-  // 高亮框当前跟踪的元素（悬停或面板选中）。
-  let highlightTarget: Element | null = null
+  // 选中态：点击元素后常驻，直到点击空白或选中其他元素。
+  let selectionTarget: Element | null = null
+  let selectionSelector: string | null = null
+  // 悬停态：仅在无选中态时参与选中框显示。
+  let hoverTarget: Element | null = null
+  // 面板预览态（面板条目 / 气泡 hover）：优先显示，清除后回落到选中态。
+  let previewTarget: Element | null = null
+  let previewSelector: string | null = null
   // 钉选气泡与其跟踪的元素（含选择器，用于 body 重建后重新绑定）。
   let pinTargets: Array<{ pin: HTMLElement; target: Element; selector: string }> = []
   // 最近一次渲染使用的文案，供钉选气泡直接唤起编辑器复用。
@@ -173,9 +181,10 @@ export const createAnnotationLayer = (
     const anchor = reResolveTarget(activeRequest.anchor, activeRequest.selector)
     activeRequest.anchor = (anchor as HTMLElement | null) ?? null
 
-    // 锁定的高亮框跟随重新绑定后的锚点。
-    if (anchor && isHighlightLocked()) {
-      highlightTarget = anchor
+    // 编辑器打开期间选中态跟随重新绑定后的锚点。
+    if (anchor) {
+      selectionTarget = anchor
+      selectionSelector = activeRequest.selector
     }
 
     const position = anchor ? toLayerPosition(anchor) : null
@@ -214,16 +223,9 @@ export const createAnnotationLayer = (
     }
   }
 
-  // 全量重排：目标尺寸变化后统一校正高亮框、气泡与编辑器。
+  // 全量重排：目标尺寸变化后统一校正选中框、气泡与编辑器。
   const syncPositions = (): void => {
-    if (highlightTarget) {
-      const position = toLayerPosition(highlightTarget)
-      if (highlightTarget.isConnected && !isDegeneratePosition(position)) {
-        showHighlightAt(position)
-      } else {
-        highlightBox.style.display = "none"
-      }
-    }
+    renderBox()
     positionPins()
     positionEditor()
   }
@@ -241,7 +243,8 @@ export const createAnnotationLayer = (
     resizeObserver.disconnect()
 
     const targets = new Set<Element>()
-    if (highlightTarget) targets.add(highlightTarget)
+    const boxTarget = resolveBoxTarget()
+    if (boxTarget) targets.add(boxTarget)
     for (const entry of pinTargets) targets.add(entry.target)
     if (activeRequest?.anchor) targets.add(activeRequest.anchor)
     for (const target of targets) resizeObserver.observe(target)
@@ -250,25 +253,41 @@ export const createAnnotationLayer = (
     if (doc.documentElement) resizeObserver.observe(doc.documentElement)
   }
 
-  // 编辑器打开期间选中框锁定在锚点元素上，悬停与面板 hover 不再改变它。
-  const isHighlightLocked = (): boolean => Boolean(editorElement)
+  // 选中框当前应显示的目标：面板预览 > 选中态 > 悬停态。
+  const resolveBoxTarget = (): Element | null => {
+    if (previewSelector) {
+      previewTarget = reResolveTarget(previewTarget, previewSelector)
+      if (previewTarget) return previewTarget
+    }
+    if (selectionSelector) {
+      selectionTarget = reResolveTarget(selectionTarget, selectionSelector)
+      return selectionTarget
+    }
+    return hoverTarget?.isConnected ? hoverTarget : null
+  }
 
-  const setHighlightTarget = (element: Element | null): void => {
-    highlightTarget = element
-    if (!element) {
+  // 绘制选中框：无目标或无面积时隐藏（避免只剩一个边框点）。
+  const renderBox = (): void => {
+    const target = resolveBoxTarget()
+    if (!target) {
       highlightBox.style.display = "none"
-      observeTargets()
       return
     }
-
-    // 无面积元素（空标签、被折叠 / 隐藏）不画选中框，否则只剩一个边框点。
-    const position = toLayerPosition(element)
+    const position = toLayerPosition(target)
     if (isDegeneratePosition(position)) {
       highlightBox.style.display = "none"
-      observeTargets()
       return
     }
     showHighlightAt(position)
+  }
+
+  // 解除选中态与预览态，选中框随之隐藏。
+  const clearSelection = (): void => {
+    selectionTarget = null
+    selectionSelector = null
+    previewTarget = null
+    previewSelector = null
+    renderBox()
     observeTargets()
   }
 
@@ -316,8 +335,8 @@ export const createAnnotationLayer = (
     editorSizeLabel = null
     activeRequest = null
     editorPositioned = false
-    // 关闭后解除锁定，一并收起选中框。
-    setHighlightTarget(null)
+    // 选中框保持显示：仅「点击空白」或「选中其他元素」才会解除。
+    observeTargets()
   }
 
   const confirmEditor = (): void => {
@@ -472,8 +491,12 @@ export const createAnnotationLayer = (
     editorTextarea = textarea
     editorHint = hint
     editorSizeLabel = infoSize
-    // 选中框锁定在锚点元素上，输入过程中保持可见。
-    setHighlightTarget(request.anchor)
+    // 进入选中态：选中框常驻在该元素上，关闭输入框后依然保留。
+    selectionTarget = request.anchor
+    selectionSelector = request.selector
+    previewTarget = null
+    previewSelector = null
+    renderBox()
     positionEditor()
     observeTargets()
     textarea.focus()
@@ -512,9 +535,16 @@ export const createAnnotationLayer = (
       pin.style.cursor = "pointer"
       pin.style.pointerEvents = "auto"
       pin.style.userSelect = "none"
-      pin.addEventListener("mouseenter", () => showHighlightAt(toLayerPosition(target)))
+      pin.addEventListener("mouseenter", () => {
+        // 气泡悬停作为预览态：优先显示该元素，移出后回落到选中态。
+        previewSelector = annotation.selector
+        previewTarget = target
+        renderBox()
+      })
       pin.addEventListener("mouseleave", () => {
-        highlightBox.style.display = "none"
+        previewSelector = null
+        previewTarget = null
+        renderBox()
       })
       pin.addEventListener("click", (event) => {
         event.stopPropagation()
@@ -551,21 +581,19 @@ export const createAnnotationLayer = (
     closeEditor,
     isEditorOpen: (): boolean => Boolean(editorElement),
     showHover: (element: HTMLElement | null): void => {
-      if (isHighlightLocked()) return
-      if (!element || element === doc.body || element === doc.documentElement) {
-        setHighlightTarget(null)
-        return
-      }
-      setHighlightTarget(element)
+      hoverTarget =
+        !element || element === doc.body || element === doc.documentElement ? null : element
+      // 已有选中态时悬停不改变选中框。
+      if (selectionSelector) return
+      renderBox()
     },
     highlight: (selector: string | null): void => {
-      if (isHighlightLocked()) return
-      if (!selector) {
-        setHighlightTarget(null)
-        return
-      }
-      setHighlightTarget(doc.querySelector(selector))
+      previewSelector = selector
+      previewTarget = null
+      renderBox()
+      observeTargets()
     },
+    clearSelection,
     isAttachedTo: (target: Document): boolean =>
       target === doc && (doc.body?.contains(container) ?? false),
     destroy: (): void => {
@@ -573,7 +601,11 @@ export const createAnnotationLayer = (
       closeEditor()
       resizeObserver?.disconnect()
       pinTargets = []
-      highlightTarget = null
+      selectionTarget = null
+      selectionSelector = null
+      hoverTarget = null
+      previewTarget = null
+      previewSelector = null
       if (container.parentNode) container.parentNode.removeChild(container)
     },
   }

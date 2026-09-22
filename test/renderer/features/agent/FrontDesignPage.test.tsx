@@ -554,7 +554,21 @@ describe("FrontDesignPage 前端设计预览看板", () => {
 
     // 4. 匿名元素：动态挂载 data-design-id 并同步回 store，且不把批注浮层写进设计稿
     doc.body.innerHTML = "<div id='root'><p>Anonymous</p></div>"
-    fireEvent.click(doc.querySelector("p") as Element)
+    const anonTarget = doc.querySelector("p") as HTMLElement
+    // jsdom 无布局：显式给出尺寸，选中框才可见（无面积元素按设计不画框）
+    anonTarget.getBoundingClientRect = () =>
+      ({
+        left: 20,
+        top: 40,
+        width: 200,
+        height: 24,
+        right: 220,
+        bottom: 64,
+        x: 20,
+        y: 40,
+        toJSON: () => ({}),
+      }) as DOMRect
+    fireEvent.click(anonTarget)
     const anonEditor = doc.querySelector("[data-annotation-editor]")
     const anonTextarea = anonEditor?.querySelector("textarea") as HTMLTextAreaElement
     fireEvent.input(anonTextarea, { target: { value: "补充匿名元素说明" } })
@@ -565,6 +579,15 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(storedHtml).toContain("data-design-id=")
     expect(storedHtml).not.toContain("lx-design-annotation-layer")
     expect(mockNavigate).not.toHaveBeenCalled()
+
+    // 5. 选中框保持显示；点击画布空白才解除，批注条目保留
+    const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+    expect(highlight.style.display).toBe("block")
+    fireEvent.click(doc.body)
+    await act(async () => {})
+    expect(highlight.style.display).toBe("none")
+    expect(screen.getByText("补充匿名元素说明")).not.toBeNull()
+    expect(doc.querySelector("[data-annotation-editor]")).toBeNull()
 
     unregister()
   })
