@@ -9,12 +9,19 @@ export const ANNOTATION_LAYER_ID = "lx-design-annotation-layer"
 const PIN_SIZE = 18
 const EDITOR_WIDTH = 240
 const EDITOR_ESTIMATED_HEIGHT = 168
-// 画布浮层强调色（与工具栏批注按钮同色系）。
+// 悬停 / 批注标记（气泡）强调色。
 const ACCENT_COLOR = "#ec4899"
+// 选中态强调色：与悬停区分，点击元素后出现并常驻。
+const SELECTION_COLOR = "#38bdf8"
+const SELECTION_FILL = "rgba(56, 189, 248, 0.14)"
+const HOVER_FILL = "rgba(236, 72, 153, 0.12)"
 const SURFACE_COLOR = "#18181b"
 const BORDER_COLOR = "#3f3f46"
 const TEXT_COLOR = "#fafafa"
 const MUTED_COLOR = "#a1a1aa"
+
+// 选中框形态：hover = 悬停/预览（粉色瞬时），selection = 选中常驻（蓝色）。
+export type AnnotationBoxMode = "hover" | "selection"
 
 // 浮层文案，由父层 t() 注入。
 export interface AnnotationLayerLabels {
@@ -100,10 +107,11 @@ export const createAnnotationLayer = (
 
   const highlightBox = doc.createElement("div")
   highlightBox.setAttribute("data-annotation-highlight", "true")
+  highlightBox.setAttribute("data-annotation-highlight-state", "hover")
   highlightBox.style.position = "absolute"
   highlightBox.style.display = "none"
   highlightBox.style.border = `2px solid ${ACCENT_COLOR}`
-  highlightBox.style.backgroundColor = "rgba(236, 72, 153, 0.12)"
+  highlightBox.style.backgroundColor = HOVER_FILL
   highlightBox.style.borderRadius = "4px"
   highlightBox.style.boxSizing = "border-box"
   highlightBox.style.pointerEvents = "none"
@@ -243,8 +251,8 @@ export const createAnnotationLayer = (
     resizeObserver.disconnect()
 
     const targets = new Set<Element>()
-    const boxTarget = resolveBoxTarget()
-    if (boxTarget) targets.add(boxTarget)
+    const box = resolveBox()
+    if (box) targets.add(box.target)
     for (const entry of pinTargets) targets.add(entry.target)
     if (activeRequest?.anchor) targets.add(activeRequest.anchor)
     for (const target of targets) resizeObserver.observe(target)
@@ -253,31 +261,44 @@ export const createAnnotationLayer = (
     if (doc.documentElement) resizeObserver.observe(doc.documentElement)
   }
 
-  // 选中框当前应显示的目标：面板预览 > 选中态 > 悬停态。
-  const resolveBoxTarget = (): Element | null => {
+  // 选中框当前应显示的目标与形态：面板预览 > 选中态 > 悬停态。
+  const resolveBox = (): { target: Element; mode: AnnotationBoxMode } | null => {
     if (previewSelector) {
       previewTarget = reResolveTarget(previewTarget, previewSelector)
-      if (previewTarget) return previewTarget
+      if (previewTarget) return { target: previewTarget, mode: "hover" }
     }
     if (selectionSelector) {
       selectionTarget = reResolveTarget(selectionTarget, selectionSelector)
-      return selectionTarget
+      if (selectionTarget) return { target: selectionTarget, mode: "selection" }
     }
-    return hoverTarget?.isConnected ? hoverTarget : null
+    return hoverTarget?.isConnected ? { target: hoverTarget, mode: "hover" } : null
+  }
+
+  // 选中框配色：选中态用独立颜色与悬停区分。
+  const applyBoxStyle = (mode: AnnotationBoxMode): void => {
+    highlightBox.setAttribute("data-annotation-highlight-state", mode)
+    if (mode === "selection") {
+      highlightBox.style.border = `2px solid ${SELECTION_COLOR}`
+      highlightBox.style.backgroundColor = SELECTION_FILL
+      return
+    }
+    highlightBox.style.border = `2px solid ${ACCENT_COLOR}`
+    highlightBox.style.backgroundColor = HOVER_FILL
   }
 
   // 绘制选中框：无目标或无面积时隐藏（避免只剩一个边框点）。
   const renderBox = (): void => {
-    const target = resolveBoxTarget()
-    if (!target) {
+    const box = resolveBox()
+    if (!box) {
       highlightBox.style.display = "none"
       return
     }
-    const position = toLayerPosition(target)
+    const position = toLayerPosition(box.target)
     if (isDegeneratePosition(position)) {
       highlightBox.style.display = "none"
       return
     }
+    applyBoxStyle(box.mode)
     showHighlightAt(position)
   }
 
@@ -310,11 +331,11 @@ export const createAnnotationLayer = (
     button.style.borderRadius = "4px"
     button.style.border = options.icon
       ? "none"
-      : `1px solid ${options.strong ? ACCENT_COLOR : BORDER_COLOR}`
+      : `1px solid ${options.strong ? SELECTION_COLOR : BORDER_COLOR}`
     button.style.backgroundColor = options.icon
       ? "transparent"
       : options.strong
-        ? ACCENT_COLOR
+        ? SELECTION_COLOR
         : "transparent"
     button.style.color = options.strong ? "#ffffff" : MUTED_COLOR
     button.style.cursor = "pointer"
@@ -383,9 +404,9 @@ export const createAnnotationLayer = (
     info.style.padding = "1px 6px"
     info.style.fontSize = "11px"
     info.style.fontFamily = "ui-monospace, monospace"
-    info.style.color = ACCENT_COLOR
-    info.style.backgroundColor = "rgba(236, 72, 153, 0.14)"
-    info.style.border = "1px solid rgba(236, 72, 153, 0.35)"
+    info.style.color = SELECTION_COLOR
+    info.style.backgroundColor = SELECTION_FILL
+    info.style.border = "1px solid rgba(56, 189, 248, 0.35)"
     info.style.borderRadius = "4px"
 
     const infoName = doc.createElement("span")
@@ -397,7 +418,7 @@ export const createAnnotationLayer = (
 
     const infoSize = doc.createElement("span")
     infoSize.setAttribute("data-annotation-editor-size", "true")
-    infoSize.style.color = "rgba(236, 72, 153, 0.75)"
+    infoSize.style.color = "rgba(56, 189, 248, 0.8)"
     info.appendChild(infoSize)
     meta.appendChild(info)
 
@@ -421,7 +442,7 @@ export const createAnnotationLayer = (
     box.style.padding = "8px"
     box.style.boxSizing = "border-box"
     box.style.backgroundColor = SURFACE_COLOR
-    box.style.border = `1px solid ${ACCENT_COLOR}`
+    box.style.border = `1px solid ${SELECTION_COLOR}`
     box.style.borderRadius = "6px"
     box.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.35)"
 

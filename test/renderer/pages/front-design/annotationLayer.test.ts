@@ -321,10 +321,48 @@ describe("批注图层", () => {
     )
     expect(highlight.style.left).toBe("200px")
     expect(highlight.style.top).toBe("300px")
+    // 输入框同步移动到新选择的位置
+    const editor = doc.querySelector("[data-annotation-editor]") as HTMLElement
+    expect(editor.style.left).toBe("200px")
+    expect(editor.style.top).toBe("328px")
 
     // 点击空白：解除选中，选中框消失
     layer.clearSelection()
     expect(highlight.style.display).toBe("none")
+  })
+
+  it("选中框与悬停框使用不同配色", () => {
+    const { doc, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 10, top: 20, width: 100, height: 40 })
+    const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+
+    // 悬停：粉色瞬时框
+    layer.showHover(target)
+    const hoverBorder = highlight.style.border
+    expect(highlight.getAttribute("data-annotation-highlight-state")).toBe("hover")
+    expect(/ec4899|rgb\(236,\s*72,\s*153\)/i.test(hoverBorder)).toBe(true)
+
+    // 选中：独立配色 + 常驻
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+    expect(highlight.getAttribute("data-annotation-highlight-state")).toBe("selection")
+    const selectionBorder = highlight.style.border
+    expect(selectionBorder).not.toBe(hoverBorder)
+    expect(/38bdf8|rgb\(56,\s*189,\s*248\)/i.test(selectionBorder)).toBe(true)
+
+    // 关闭输入框后仍保持选中配色
+    layer.closeEditor()
+    expect(highlight.getAttribute("data-annotation-highlight-state")).toBe("selection")
+    expect(highlight.style.border).toBe(selectionBorder)
   })
 
   it("面板预览优先显示，清除后回落到选中态", () => {
