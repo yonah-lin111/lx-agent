@@ -778,7 +778,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     )
 
     return (
-      <div className="relative w-full bg-transparent p-0.5 pt-1 pb-0">
+      <div className="relative w-full bg-transparent pt-1 pb-0">
         <AgentInputCommandPanel
           isOpen={activeMode === "command"}
           position={panelPosition}

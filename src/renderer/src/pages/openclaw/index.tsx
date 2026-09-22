@@ -611,39 +611,41 @@ export const OpenClawPage = (): React.JSX.Element => {
         />
       </div>
 
-      {/* 输入区 */}
-      <div className="shrink-0 px-3 py-2">
-        <OpenClawInput
-          ref={inputRef}
-          value={input}
-          onChange={setInput}
-          onSend={handleSend}
-          onStop={() => {
-            if (!selectedInstanceId) return
-            for (const agentId of streamingAgentIds) {
-              void useOpenClawChatStore.getState().abort(selectedInstanceId, agentId)
-            }
-          }}
-          candidates={candidates}
-          onCommand={runCommand}
-          onlyCommandAvailable={onlyCommandAvailable}
-          picker={picker}
-          onPickerClose={() => setPickerKind(null)}
-          placeholder={t("openclaw.placeholder")}
-          disabled={agentIds.length === 0}
-          isStreaming={isAnyStreaming}
-          offices={offices}
-          selectedOfficeId={selectedInstanceId}
-          selectedAgentIds={selectedAgentIds}
-          onSelectOffice={(officeId) => {
-            selectOffice(officeId, instances[officeId]?.agents[0]?.id)
-          }}
-          onToggleAgent={(agentId) => {
-            selectAgent(agentId, { additive: true })
-          }}
-          files={files}
-          onFilesChange={setFiles}
-        />
+      {/* 输入区：与消息列同宽（px-4 内边距 + max-w-3xl 居中） */}
+      <div className="shrink-0 px-4 py-2">
+        <div className="mx-auto w-full max-w-3xl">
+          <OpenClawInput
+            ref={inputRef}
+            value={input}
+            onChange={setInput}
+            onSend={handleSend}
+            onStop={() => {
+              if (!selectedInstanceId) return
+              for (const agentId of streamingAgentIds) {
+                void useOpenClawChatStore.getState().abort(selectedInstanceId, agentId)
+              }
+            }}
+            candidates={candidates}
+            onCommand={runCommand}
+            onlyCommandAvailable={onlyCommandAvailable}
+            picker={picker}
+            onPickerClose={() => setPickerKind(null)}
+            placeholder={t("openclaw.placeholder")}
+            disabled={agentIds.length === 0}
+            isStreaming={isAnyStreaming}
+            offices={offices}
+            selectedOfficeId={selectedInstanceId}
+            selectedAgentIds={selectedAgentIds}
+            onSelectOffice={(officeId) => {
+              selectOffice(officeId, instances[officeId]?.agents[0]?.id)
+            }}
+            onToggleAgent={(agentId) => {
+              selectAgent(agentId, { additive: true })
+            }}
+            files={files}
+            onFilesChange={setFiles}
+          />
+        </div>
       </div>
     </section>
   )
