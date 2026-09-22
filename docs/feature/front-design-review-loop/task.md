@@ -3,6 +3,7 @@
 > 设计：`docs/feature/front-design-review-loop/design.md`
 > 工作区：`.worktrees/feat-front-design-review-loop`（分支 `feat/front-design-review-loop`，从 `dev` 切出）
 > 交付：完成后提交，再询问用户是否合并回 `dev`
+> 后续变更：阶段 1 的设计系统令牌（T1-T3）已在 `front-design-iteration-toolkit` 轮按产品决策整体移除，详见该轮 `design.md` 第 12 节。
 
 ## 阶段 0：工作区准备
 

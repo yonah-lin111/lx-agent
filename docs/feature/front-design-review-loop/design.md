@@ -326,3 +326,11 @@ notes: 卡片统一 rounded-lg border border-white/10
 3. 浮层贴左上角：0×0 元素被按退化坐标定位 → 保留原位 + 点击点兜底。
 4. 选中框消失 / 无法自由改选：单框切换语义 → 双框模型。
 5. 像素主题不生效：计算样式读取时序错误（探针提前移除）→ 挂载期间读取。
+
+## 13. 后续变更
+
+**v1.2（front-design-iteration-toolkit 轮）**：设计系统令牌（D）已按产品决策整体移除 —— 令牌编辑面板、`designSystemStore` 持久化、design 消息 `<design_system>` 注入、相关 i18n 文案与测试全部删除；批注 / 体检链路不受影响。如需恢复可从 git 历史取回（实现提交见 `docs/feature/front-design-iteration-toolkit/task.md` 执行记录）。
+
+**选中框生存期调整（同轮）**：批注确认提交后蓝色选中框随输入框一并解除（选中内容已被消费）；取消关闭（关闭按钮 / ESC）仍保留选中态。第 12 节「常驻」表述按此调整。
+
+
