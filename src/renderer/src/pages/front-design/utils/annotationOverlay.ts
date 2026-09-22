@@ -20,9 +20,6 @@ const BORDER_COLOR = "#3f3f46"
 const TEXT_COLOR = "#fafafa"
 const MUTED_COLOR = "#a1a1aa"
 
-// 选中框形态：hover = 悬停/预览（粉色瞬时），selection = 选中常驻（蓝色）。
-export type AnnotationBoxMode = "hover" | "selection"
-
 // 浮层文案，由父层 t() 注入。
 export interface AnnotationLayerLabels {
   placeholder: string
@@ -105,17 +102,27 @@ export const createAnnotationLayer = (
   container.style.pointerEvents = "none"
   container.style.zIndex = "2147483646"
 
-  const highlightBox = doc.createElement("div")
-  highlightBox.setAttribute("data-annotation-highlight", "true")
-  highlightBox.setAttribute("data-annotation-highlight-state", "hover")
-  highlightBox.style.position = "absolute"
-  highlightBox.style.display = "none"
-  highlightBox.style.border = `2px solid ${ACCENT_COLOR}`
-  highlightBox.style.backgroundColor = HOVER_FILL
-  highlightBox.style.borderRadius = "4px"
-  highlightBox.style.boxSizing = "border-box"
-  highlightBox.style.pointerEvents = "none"
-  container.appendChild(highlightBox)
+  // 双框：粉色悬停/预览框始终跟随鼠标，蓝色选中框常驻在选中元素上。
+  const createBox = (attribute: string, border: string, fill: string): HTMLElement => {
+    const box = doc.createElement("div")
+    box.setAttribute(attribute, "true")
+    box.style.position = "absolute"
+    box.style.display = "none"
+    box.style.border = border
+    box.style.backgroundColor = fill
+    box.style.borderRadius = "4px"
+    box.style.boxSizing = "border-box"
+    box.style.pointerEvents = "none"
+    container.appendChild(box)
+    return box
+  }
+
+  const hoverBox = createBox("data-annotation-hover", `2px solid ${ACCENT_COLOR}`, HOVER_FILL)
+  const selectionBox = createBox(
+    "data-annotation-highlight",
+    `2px solid ${SELECTION_COLOR}`,
+    SELECTION_FILL,
+  )
 
   const pinContainer = doc.createElement("div")
   pinContainer.setAttribute("data-annotation-pins", "true")
@@ -134,12 +141,12 @@ export const createAnnotationLayer = (
   let editorPositioned = false
   // 图层是否已销毁：销毁后不再观察任何元素。
   let destroyed = false
-  // 选中态：点击元素后常驻，直到点击空白或选中其他元素。
+  // 选中态（蓝色选中框）：点击元素后常驻，直到点击空白或选中其他元素。
   let selectionTarget: Element | null = null
   let selectionSelector: string | null = null
-  // 悬停态：仅在无选中态时参与选中框显示。
+  // 悬停态（粉色悬停框）：始终跟随鼠标。
   let hoverTarget: Element | null = null
-  // 面板预览态（面板条目 / 气泡 hover）：优先显示，清除后回落到选中态。
+  // 面板预览态（面板条目 / 气泡 hover）：复用悬停框显示。
   let previewTarget: Element | null = null
   let previewSelector: string | null = null
   // 钉选气泡与其跟踪的元素（含选择器，用于 body 重建后重新绑定）。
@@ -151,14 +158,6 @@ export const createAnnotationLayer = (
     remove: "",
     emptyHint: "",
     close: "",
-  }
-
-  const showHighlightAt = (position: LayerPosition): void => {
-    highlightBox.style.display = "block"
-    highlightBox.style.left = `${position.left}px`
-    highlightBox.style.top = `${position.top}px`
-    highlightBox.style.width = `${position.width}px`
-    highlightBox.style.height = `${position.height}px`
   }
 
   // 元素脱离文档后按选择器重新绑定；无法重绑时返回 null。
@@ -233,7 +232,7 @@ export const createAnnotationLayer = (
 
   // 全量重排：目标尺寸变化后统一校正选中框、气泡与编辑器。
   const syncPositions = (): void => {
-    renderBox()
+    renderBoxes()
     positionPins()
     positionEditor()
   }
@@ -251,8 +250,10 @@ export const createAnnotationLayer = (
     resizeObserver.disconnect()
 
     const targets = new Set<Element>()
-    const box = resolveBox()
-    if (box) targets.add(box.target)
+    const hoverBoxTarget = resolveHoverTarget()
+    if (hoverBoxTarget) targets.add(hoverBoxTarget)
+    const selectionBoxTarget = resolveSelectionTarget()
+    if (selectionBoxTarget) targets.add(selectionBoxTarget)
     for (const entry of pinTargets) targets.add(entry.target)
     if (activeRequest?.anchor) targets.add(activeRequest.anchor)
     for (const target of targets) resizeObserver.observe(target)
@@ -261,54 +262,52 @@ export const createAnnotationLayer = (
     if (doc.documentElement) resizeObserver.observe(doc.documentElement)
   }
 
-  // 选中框当前应显示的目标与形态：面板预览 > 选中态 > 悬停态。
-  const resolveBox = (): { target: Element; mode: AnnotationBoxMode } | null => {
+  // 选中框目标：点击后常驻，直到被清除或元素不可解析。
+  const resolveSelectionTarget = (): Element | null => {
+    if (!selectionSelector) return null
+    selectionTarget = reResolveTarget(selectionTarget, selectionSelector)
+    return selectionTarget
+  }
+
+  // 悬停框目标：面板 / 气泡预览优先，其次是鼠标悬停的元素。
+  const resolveHoverTarget = (): Element | null => {
     if (previewSelector) {
       previewTarget = reResolveTarget(previewTarget, previewSelector)
-      if (previewTarget) return { target: previewTarget, mode: "hover" }
+      if (previewTarget) return previewTarget
     }
-    if (selectionSelector) {
-      selectionTarget = reResolveTarget(selectionTarget, selectionSelector)
-      if (selectionTarget) return { target: selectionTarget, mode: "selection" }
-    }
-    return hoverTarget?.isConnected ? { target: hoverTarget, mode: "hover" } : null
+    return hoverTarget?.isConnected ? hoverTarget : null
   }
 
-  // 选中框配色：选中态用独立颜色与悬停区分。
-  const applyBoxStyle = (mode: AnnotationBoxMode): void => {
-    highlightBox.setAttribute("data-annotation-highlight-state", mode)
-    if (mode === "selection") {
-      highlightBox.style.border = `2px solid ${SELECTION_COLOR}`
-      highlightBox.style.backgroundColor = SELECTION_FILL
+  // 绘制单个框：无目标或无面积时隐藏（避免只剩一个边框点）。
+  const positionBox = (box: HTMLElement, target: Element | null): void => {
+    if (!target) {
+      box.style.display = "none"
       return
     }
-    highlightBox.style.border = `2px solid ${ACCENT_COLOR}`
-    highlightBox.style.backgroundColor = HOVER_FILL
-  }
-
-  // 绘制选中框：无目标或无面积时隐藏（避免只剩一个边框点）。
-  const renderBox = (): void => {
-    const box = resolveBox()
-    if (!box) {
-      highlightBox.style.display = "none"
-      return
-    }
-    const position = toLayerPosition(box.target)
+    const position = toLayerPosition(target)
     if (isDegeneratePosition(position)) {
-      highlightBox.style.display = "none"
+      box.style.display = "none"
       return
     }
-    applyBoxStyle(box.mode)
-    showHighlightAt(position)
+    box.style.display = "block"
+    box.style.left = `${position.left}px`
+    box.style.top = `${position.top}px`
+    box.style.width = `${position.width}px`
+    box.style.height = `${position.height}px`
   }
 
-  // 解除选中态与预览态，选中框随之隐藏。
+  const renderBoxes = (): void => {
+    positionBox(hoverBox, resolveHoverTarget())
+    positionBox(selectionBox, resolveSelectionTarget())
+  }
+
+  // 解除选中态与预览态，蓝色选中框随之隐藏。
   const clearSelection = (): void => {
     selectionTarget = null
     selectionSelector = null
     previewTarget = null
     previewSelector = null
-    renderBox()
+    renderBoxes()
     observeTargets()
   }
 
@@ -517,7 +516,7 @@ export const createAnnotationLayer = (
     selectionSelector = request.selector
     previewTarget = null
     previewSelector = null
-    renderBox()
+    renderBoxes()
     positionEditor()
     observeTargets()
     textarea.focus()
@@ -560,12 +559,12 @@ export const createAnnotationLayer = (
         // 气泡悬停作为预览态：优先显示该元素，移出后回落到选中态。
         previewSelector = annotation.selector
         previewTarget = target
-        renderBox()
+        renderBoxes()
       })
       pin.addEventListener("mouseleave", () => {
         previewSelector = null
         previewTarget = null
-        renderBox()
+        renderBoxes()
       })
       pin.addEventListener("click", (event) => {
         event.stopPropagation()
@@ -602,16 +601,15 @@ export const createAnnotationLayer = (
     closeEditor,
     isEditorOpen: (): boolean => Boolean(editorElement),
     showHover: (element: HTMLElement | null): void => {
+      // 悬停框始终跟手，与常驻的选中框互不干扰。
       hoverTarget =
         !element || element === doc.body || element === doc.documentElement ? null : element
-      // 已有选中态时悬停不改变选中框。
-      if (selectionSelector) return
-      renderBox()
+      renderBoxes()
     },
     highlight: (selector: string | null): void => {
       previewSelector = selector
       previewTarget = null
-      renderBox()
+      renderBoxes()
       observeTargets()
     },
     clearSelection,

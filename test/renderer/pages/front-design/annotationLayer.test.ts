@@ -235,7 +235,7 @@ describe("批注图层", () => {
     expect(callbacks.onSubmit).not.toHaveBeenCalled()
   })
 
-  it("目标尺寸变化时高亮框、气泡与输入框尺寸自适应重排", () => {
+  it("目标尺寸变化时选中框、气泡与输入框尺寸自适应重排", () => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver)
     const { doc, layer } = setup()
     const target = doc.getElementById("target") as HTMLElement
@@ -245,11 +245,20 @@ describe("批注图层", () => {
     layer.render([createAnnotation()], LABELS)
     layer.highlight("#target")
 
-    const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+    const hoverBox = doc.querySelector("[data-annotation-hover]") as HTMLElement
     const pin = doc.querySelector("[data-annotation-pin]") as HTMLElement
-    expect(highlight.style.height).toBe("40px")
+    expect(hoverBox.style.height).toBe("40px")
     expect(pin.style.top).toBe("20px")
 
+    // 容器高度变化（内容增多 / 响应式重排）后由 ResizeObserver 触发重排
+    rect = { left: 10, top: 20, width: 100, height: 260 }
+    stubRect(target, rect)
+    MockResizeObserver.instances.at(-1)?.trigger()
+
+    expect(hoverBox.style.height).toBe("260px")
+    expect(pin.style.top).toBe("20px")
+
+    // 选中后：选中框与输入框尺寸信息同步刷新
     layer.openEditor(
       {
         selector: "#target",
@@ -260,14 +269,8 @@ describe("批注图层", () => {
       },
       LABELS,
     )
-    expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("100×40")
-
-    // 容器高度变化（内容增多 / 响应式重排）后由 ResizeObserver 触发重排
-    rect = { left: 10, top: 20, width: 100, height: 260 }
-    stubRect(target, rect)
-    MockResizeObserver.instances.at(-1)?.trigger()
-
-    expect(highlight.style.height).toBe("260px")
+    const selectionBox = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+    expect(selectionBox.style.height).toBe("260px")
     expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("100×260")
   })
 
@@ -296,12 +299,18 @@ describe("批注图层", () => {
     expect(highlight.style.left).toBe("10px")
     expect(highlight.style.height).toBe("40px")
 
-    // 悬停其它元素、移出画布都不改变选中态
+    // 悬停其它元素：粉色悬停框跟手，蓝色选中框不动
     layer.showHover(other)
-    layer.showHover(null)
+    const hoverBox = doc.querySelector("[data-annotation-hover]") as HTMLElement
+    expect(hoverBox.style.display).toBe("block")
+    expect(hoverBox.style.left).toBe("200px")
     expect(highlight.style.display).toBe("block")
     expect(highlight.style.left).toBe("10px")
     expect(highlight.style.height).toBe("40px")
+
+    layer.showHover(null)
+    expect(hoverBox.style.display).toBe("none")
+    expect(highlight.style.left).toBe("10px")
 
     // 关闭输入框后选中框仍常驻
     layer.closeEditor()
@@ -331,19 +340,17 @@ describe("批注图层", () => {
     expect(highlight.style.display).toBe("none")
   })
 
-  it("选中框与悬停框使用不同配色", () => {
+  it("悬停框与选中框使用不同配色且可同时显示", () => {
     const { doc, layer } = setup()
     const target = doc.getElementById("target") as HTMLElement
     stubRect(target, { left: 10, top: 20, width: 100, height: 40 })
-    const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
 
-    // 悬停：粉色瞬时框
-    layer.showHover(target)
-    const hoverBorder = highlight.style.border
-    expect(highlight.getAttribute("data-annotation-highlight-state")).toBe("hover")
-    expect(/ec4899|rgb\(236,\s*72,\s*153\)/i.test(hoverBorder)).toBe(true)
+    const hoverBox = doc.querySelector("[data-annotation-hover]") as HTMLElement
+    const selectionBox = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+    expect(/ec4899|rgb\(236,\s*72,\s*153\)/i.test(hoverBox.style.border)).toBe(true)
+    expect(/38bdf8|rgb\(56,\s*189,\s*248\)/i.test(selectionBox.style.border)).toBe(true)
 
-    // 选中：独立配色 + 常驻
+    // 选中后用鼠标划过其他元素：两框同时显示，互不干扰
     layer.openEditor(
       {
         selector: "#target",
@@ -354,18 +361,18 @@ describe("批注图层", () => {
       },
       LABELS,
     )
-    expect(highlight.getAttribute("data-annotation-highlight-state")).toBe("selection")
-    const selectionBorder = highlight.style.border
-    expect(selectionBorder).not.toBe(hoverBorder)
-    expect(/38bdf8|rgb\(56,\s*189,\s*248\)/i.test(selectionBorder)).toBe(true)
+    layer.showHover(target)
+    expect(selectionBox.style.display).toBe("block")
+    expect(selectionBox.style.left).toBe("10px")
+    expect(hoverBox.style.display).toBe("block")
 
-    // 关闭输入框后仍保持选中配色
+    // 关闭输入框后选中框保持常驻
     layer.closeEditor()
-    expect(highlight.getAttribute("data-annotation-highlight-state")).toBe("selection")
-    expect(highlight.style.border).toBe(selectionBorder)
+    expect(selectionBox.style.display).toBe("block")
+    expect(selectionBox.style.left).toBe("10px")
   })
 
-  it("面板预览优先显示，清除后回落到选中态", () => {
+  it("面板预览显示在悬停框上，不影响选中框", () => {
     const { doc, layer } = setup(
       "<main><button id='target'>Buy</button><span id='other'>Other</span></main>",
     )
@@ -386,13 +393,17 @@ describe("批注图层", () => {
     )
     layer.closeEditor()
 
-    const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+    const hoverBox = doc.querySelector("[data-annotation-hover]") as HTMLElement
+    const selectionBox = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+
     layer.highlight("#other")
-    expect(highlight.style.left).toBe("200px")
+    expect(hoverBox.style.left).toBe("200px")
+    expect(selectionBox.style.left).toBe("10px")
 
     layer.highlight(null)
-    expect(highlight.style.left).toBe("10px")
-    expect(highlight.style.display).toBe("block")
+    expect(hoverBox.style.display).toBe("none")
+    expect(selectionBox.style.left).toBe("10px")
+    expect(selectionBox.style.display).toBe("block")
   })
 
   it("锚点脱离文档后按选择器重新绑定气泡与输入框", () => {
@@ -506,29 +517,23 @@ describe("批注图层", () => {
     expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("--")
   })
 
-  it("悬停与选中高亮按选择器切换显示，无面积元素不画框", () => {
+  it("悬停框按悬停目标切换显示，无面积元素不画框", () => {
     const { doc, layer } = setup()
     const target = doc.getElementById("target") as HTMLElement
     stubRect(target, { left: 12, top: 34, width: 80, height: 24 })
-    const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
-
-    layer.highlight("#target")
-    expect(highlight.style.display).toBe("block")
-    expect(highlight.style.left).toBe("12px")
-
-    layer.highlight("#missing")
-    expect(highlight.style.display).toBe("none")
+    const hoverBox = doc.querySelector("[data-annotation-hover]") as HTMLElement
 
     layer.showHover(target)
-    expect(highlight.style.display).toBe("block")
+    expect(hoverBox.style.display).toBe("block")
+    expect(hoverBox.style.left).toBe("12px")
 
     layer.showHover(null)
-    expect(highlight.style.display).toBe("none")
+    expect(hoverBox.style.display).toBe("none")
 
     // 空标签 / 被隐藏元素没有可框选区域
     stubRect(target, { left: 0, top: 0, width: 0, height: 0 })
     layer.showHover(target)
-    expect(highlight.style.display).toBe("none")
+    expect(hoverBox.style.display).toBe("none")
   })
 
   it("图层容器挂在 body 且不拦截指针事件", () => {
