@@ -2,26 +2,30 @@ import { readFile, stat } from "node:fs/promises"
 import {
   isOpenClawImageExtension,
   OPENCLAW_MAX_ATTACHMENT_TOTAL_BYTES,
+  OPENCLAW_MAX_FILE_BYTES,
   OPENCLAW_MAX_IMAGE_BYTES,
   type OpenClawAttachmentFile,
 } from "@shared/contracts/openclaw"
 
-// 网关 agent 请求中的附件条目（content 为 base64，服务端按内容嗅探 MIME）。
+// 网关 chat.send 请求中的附件条目（content 为 base64，服务端按内容嗅探 MIME）。
 export interface OpenClawGatewayAttachment {
-  type: "image"
+  type: "image" | "file"
   mimeType: string
   fileName: string
   content: string
   sizeBytes: number
 }
 
-const MIME_BY_EXTENSION: Record<string, string> = {
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   png: "image/png",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   webp: "image/webp",
   gif: "image/gif",
 }
+
+// 非图片文件不做 MIME 猜测：网关按内容嗅探，猜测错误只会产生无意义的 mismatch 警告。
+const DEFAULT_FILE_MIME = "application/octet-stream"
 
 export const resolveAttachmentExtension = (file: OpenClawAttachmentFile): string => {
   const normalized = file.name.trim() || file.path.trim()
@@ -59,7 +63,7 @@ const readAttachmentContent = async (
 }
 
 /**
- * 校验并读取附件：仅图片、单张 ≤ 6MB、单条总量 ≤ 16MB，任一不满足即抛错拒绝整条发送。
+ * 校验并读取附件：图片 ≤ 6MB、其他文件 ≤ 16MB、单条总量 ≤ 16MB，任一不满足即抛错拒绝整条发送。
  */
 export const resolveOpenClawAttachments = async (
   files: OpenClawAttachmentFile[] | undefined,
@@ -70,19 +74,16 @@ export const resolveOpenClawAttachments = async (
   let totalBytes = 0
   for (const file of files) {
     const extension = resolveAttachmentExtension(file)
-    if (!isOpenClawImageExtension(extension)) {
-      throw new Error(
-        `OPENCLAW_UNSUPPORTED_ATTACHMENT: ${file.name || file.path} is not a supported image`,
-      )
-    }
+    const isImage = isOpenClawImageExtension(extension)
+    const sizeLimit = isImage ? OPENCLAW_MAX_IMAGE_BYTES : OPENCLAW_MAX_FILE_BYTES
 
     const info = await stat(file.path).catch(() => null)
     if (!info || !info.isFile()) {
       throw new Error(`OPENCLAW_ATTACHMENT_MISSING: ${file.path}`)
     }
-    if (info.size > OPENCLAW_MAX_IMAGE_BYTES) {
+    if (info.size > sizeLimit) {
       throw new Error(
-        `OPENCLAW_ATTACHMENT_TOO_LARGE: ${file.name || file.path} exceeds the image size limit`,
+        `OPENCLAW_ATTACHMENT_TOO_LARGE: ${file.name || file.path} exceeds the ${isImage ? "image" : "file"} size limit`,
       )
     }
     totalBytes += info.size
@@ -93,8 +94,10 @@ export const resolveOpenClawAttachments = async (
     }
 
     resolved.push({
-      type: "image",
-      mimeType: MIME_BY_EXTENSION[extension] ?? "application/octet-stream",
+      type: isImage ? "image" : "file",
+      mimeType: isImage
+        ? (IMAGE_MIME_BY_EXTENSION[extension] ?? DEFAULT_FILE_MIME)
+        : DEFAULT_FILE_MIME,
       fileName: file.name || file.path.split(/[\\/]/).pop() || "attachment",
       content: await readAttachmentContent(file.path, info.mtimeMs, info.size),
       sizeBytes: info.size,

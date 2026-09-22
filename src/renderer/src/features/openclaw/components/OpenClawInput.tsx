@@ -7,6 +7,7 @@ import { EditorView, keymap, placeholder } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import {
   OPENCLAW_MAX_ATTACHMENT_TOTAL_BYTES,
+  OPENCLAW_MAX_FILE_BYTES,
   OPENCLAW_MAX_IMAGE_BYTES,
   type OpenClawAttachmentFile,
 } from "@shared/contracts/openclaw"
@@ -41,7 +42,7 @@ import { useTranslation } from "@/i18n"
 import { getClipboardFilesAsync } from "@/lib/clipboard"
 import {
   appendOpenClawAttachments,
-  clipboardHasAttachableImage,
+  clipboardHasAttachableFiles,
   extensionFromName,
   formatAttachmentSize,
   type OpenClawAttachmentCandidate,
@@ -208,12 +209,18 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
           filesRef.current,
           candidates,
         )
-        if (rejection === "unsupported") {
-          errorToast(t("openclaw.attachmentImageOnly"))
+        if (rejection === "folder") {
+          errorToast(t("openclaw.attachmentFolderUnsupported"))
         } else if (rejection === "image-too-large") {
           errorToast(
             t("openclaw.attachmentImageTooLarge", {
               size: formatAttachmentSize(OPENCLAW_MAX_IMAGE_BYTES),
+            }),
+          )
+        } else if (rejection === "file-too-large") {
+          errorToast(
+            t("openclaw.attachmentFileTooLarge", {
+              size: formatAttachmentSize(OPENCLAW_MAX_FILE_BYTES),
             }),
           )
         } else if (rejection === "total-too-large") {
@@ -602,14 +609,15 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
               return false
             },
             paste: (event) => {
-              // 仅当剪贴板存在白名单图片时接管：其余情况走默认文本粘贴，不吞掉粘贴动作。
-              if (!clipboardHasAttachableImage(event.clipboardData)) return false
+              // 仅当剪贴板存在文件时接管：纯文本粘贴走默认行为，不吞掉粘贴动作。
+              if (!clipboardHasAttachableFiles(event.clipboardData)) return false
               event.preventDefault()
               void getClipboardFilesAsync(event).then((found) => {
                 addAttachmentsRef.current(
                   found.map((item) => ({
                     name: item.path.split(/[\\/]/).pop() || item.path,
                     path: item.path,
+                    isFolder: item.type === "folder",
                     ...(item.size !== undefined ? { sizeBytes: item.size } : {}),
                   })),
                 )

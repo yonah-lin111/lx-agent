@@ -57,6 +57,23 @@ const chatFinalFrame = (): EventFrame =>
     },
   }) as unknown as EventFrame
 
+const chatErrorFrame = (errorMessage?: string): EventFrame =>
+  ({
+    event: "chat",
+    payload: {
+      sessionKey: "k1",
+      runId: "r1",
+      state: "error",
+      ...(errorMessage !== undefined ? { errorMessage } : {}),
+    },
+  }) as unknown as EventFrame
+
+const chatAbortedFrame = (): EventFrame =>
+  ({
+    event: "chat",
+    payload: { sessionKey: "k1", runId: "r1", state: "aborted" },
+  }) as unknown as EventFrame
+
 describe("OpenClaw run 结束回调", () => {
   it("lifecycle end 触发一次 runFinished，随后 chat final 不重复触发", () => {
     const session = createSession()
@@ -105,5 +122,47 @@ describe("OpenClaw run 结束回调", () => {
     handleEvent(host, connection, lifecycleFrame("end", false))
 
     expect(runFinishedListener).not.toHaveBeenCalled()
+  })
+
+  it("chat error 事件把 run 收敛为错误并结束流式（chat.send 受理后无请求拒绝可依赖）", () => {
+    const session = createSession()
+    const { host, runFinishedListener } = createHost(session)
+
+    handleEvent(host, connection, lifecycleFrame("start"))
+    handleEvent(host, connection, chatErrorFrame("provider refused"))
+
+    const message = session.messages[0]
+    expect(message?.status).toBe("error")
+    expect(message?.error).toBe("provider refused")
+    expect(session.isStreaming).toBe(false)
+    expect(session.activeRunId).toBeNull()
+    expect(runFinishedListener).toHaveBeenCalledTimes(1)
+    expect(runFinishedListener.mock.calls[0]?.[2]).toBe(false)
+  })
+
+  it("chat aborted 事件按中止收敛，且随后的 lifecycle end 不覆盖错误状态", () => {
+    const session = createSession()
+    const { host, runFinishedListener } = createHost(session)
+
+    handleEvent(host, connection, lifecycleFrame("start"))
+    handleEvent(host, connection, chatAbortedFrame())
+    handleEvent(host, connection, lifecycleFrame("end"))
+
+    const message = session.messages[0]
+    expect(message?.status).toBe("error")
+    expect(message?.error).toBe("Aborted")
+    expect(session.isStreaming).toBe(false)
+    expect(runFinishedListener).toHaveBeenCalledTimes(1)
+    expect(runFinishedListener.mock.calls[0]?.[2]).toBe(true)
+  })
+
+  it("chat error 未携带 errorMessage 时给出兜底文案", () => {
+    const session = createSession()
+    const { host } = createHost(session)
+
+    handleEvent(host, connection, lifecycleFrame("start"))
+    handleEvent(host, connection, chatErrorFrame())
+
+    expect(session.messages[0]?.error).toBe("Run failed")
   })
 })

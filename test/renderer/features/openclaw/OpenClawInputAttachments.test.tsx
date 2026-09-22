@@ -81,7 +81,7 @@ describe("OpenClawInput 附件", () => {
     ])
   })
 
-  it("非图片文件不进入附件回调", () => {
+  it("非图片文件按文件附件进入回调", () => {
     const onFilesChange = vi.fn()
     const { container } = renderInput({ onFilesChange })
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
@@ -90,6 +90,29 @@ describe("OpenClawInput 附件", () => {
     Object.defineProperty(input, "files", { value: createFileList([file]), configurable: true })
     fireEvent.change(input)
 
+    expect(onFilesChange).toHaveBeenCalledWith([
+      { name: "report.pdf", path: "/mock/report.pdf", type: "text", sizeBytes: 1024 },
+    ])
+  })
+
+  it("文件夹候选被拒绝且不进入回调", async () => {
+    const onFilesChange = vi.fn()
+    const { container } = renderInput({ onFilesChange })
+
+    const content = container.querySelector(".cm-content")
+    // 剪贴板文件夹：items 的目录标记使 getClipboardFilesAsync 返回 type=folder。
+    const folderFile = { name: "assets", size: 0, type: "" } as File
+    const folderData = {
+      files: [folderFile],
+      items: [{ kind: "file", type: "", webkitGetAsEntry: () => ({ isDirectory: true }) }],
+      types: [],
+      getData: () => "",
+    } as unknown as DataTransfer
+    fireEvent.paste(content as HTMLElement, { clipboardData: folderData })
+
+    await waitFor(() => {
+      expect(window.api.getPathForFile).toHaveBeenCalledWith(folderFile)
+    })
     expect(onFilesChange).not.toHaveBeenCalled()
   })
 
@@ -125,13 +148,33 @@ describe("OpenClawInput 附件", () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it("粘贴非图片文件不接管粘贴动作", () => {
+  it("粘贴非图片文件同样直接附加", async () => {
     const onFilesChange = vi.fn()
     const { container } = renderInput({ onFilesChange })
 
     const content = container.querySelector(".cm-content")
     const file = { name: "doc.pdf", size: 1024, type: "application/pdf" } as File
     fireEvent.paste(content as HTMLElement, { clipboardData: createClipboardData([file]) })
+
+    await waitFor(() => {
+      expect(onFilesChange).toHaveBeenCalledWith([
+        { name: "doc.pdf", path: "/mock/doc.pdf", type: "text", sizeBytes: 1024 },
+      ])
+    })
+  })
+
+  it("纯文本粘贴不接管粘贴动作", () => {
+    const onFilesChange = vi.fn()
+    const { container } = renderInput({ onFilesChange })
+
+    const content = container.querySelector(".cm-content")
+    const plainText = {
+      files: [],
+      items: [{ kind: "string", type: "text/plain" }],
+      types: [],
+      getData: () => "",
+    } as unknown as DataTransfer
+    fireEvent.paste(content as HTMLElement, { clipboardData: plainText })
 
     expect(onFilesChange).not.toHaveBeenCalled()
   })

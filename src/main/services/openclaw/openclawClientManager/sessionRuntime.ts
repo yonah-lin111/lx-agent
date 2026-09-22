@@ -285,16 +285,15 @@ export async function sendMessage(
 
   await ensureSubscribed(session, client)
 
+  // 网关 agent 入口拒收非图片附件（acceptNonImage=false）：带附件的消息统一走 chat.send，
+  // 无附件保持 agent。两者都是"受理即返回"，run 结束由事件流收敛。
+  const hasAttachments = attachments.length > 0
   void client
     .request(
-      "agent",
-      {
-        agentId,
-        sessionKey,
-        message,
-        ...(attachments.length > 0 ? { attachments } : {}),
-        idempotencyKey: randomUUID(),
-      },
+      hasAttachments ? "chat.send" : "agent",
+      hasAttachments
+        ? { sessionKey, agentId, message, attachments, idempotencyKey: randomUUID() }
+        : { agentId, sessionKey, message, idempotencyKey: randomUUID() },
       { timeoutMs: AGENT_RUN_TIMEOUT_MS },
     )
     .then(() => {

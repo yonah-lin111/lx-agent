@@ -14,11 +14,14 @@ export type OpenClawConnectionStatus =
 // 聊天消息角色。
 export type OpenClawChatRole = "user" | "assistant" | "system"
 
-// 附件仅支持图片：网关 agent 入口 acceptNonImage=false，非图片附件会被整条拒绝。
+// 图片扩展名白名单：命中则按图片附件下发（网关对图片有独立上限，并按内容嗅探 MIME）。
 export const OPENCLAW_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const
 
 // 单张图片上限：对齐网关 MAX_IMAGE_BYTES（6MB）。
 export const OPENCLAW_MAX_IMAGE_BYTES = 6 * 1024 * 1024
+
+// 单个非图片文件上限：网关声明 maxBytes≈18.5MB，客户端保守取 16MB。
+export const OPENCLAW_MAX_FILE_BYTES = 16 * 1024 * 1024
 
 // 单条消息附件总量上限：base64 膨胀约 1.37 倍，为 25MiB maxPayload 留出帧余量。
 export const OPENCLAW_MAX_ATTACHMENT_TOTAL_BYTES = 16 * 1024 * 1024
@@ -31,6 +34,7 @@ export const isOpenClawImageExtension = (extension: string): boolean =>
 export interface OpenClawAttachmentFile {
   name: string
   path: string
+  // text = 非图片文件附件（沿用 AgentInputFile/AgentMessageFile 的类型约定）。
   type: "image" | "text"
   // 原始字节数：渲染进程用于总量预校验与展示，主进程以 fs.stat 为准。
   sizeBytes?: number
@@ -119,7 +123,7 @@ export interface OpenClawSendMessageInput {
   instanceId: string
   agentId: string
   message: string
-  // 附件（仅图片）：主进程读取并编码为 base64 随 agent 请求下发。
+  // 附件：图片与非图片文件都由主进程读取编码；带附件时经 chat.send 下发（agent 入口拒收非图片）。
   files?: OpenClawAttachmentFile[]
 }
 

@@ -48,6 +48,19 @@ describe("OpenClaw 用户消息附件展示", () => {
     expect(images[0]?.getAttribute("src")).toBe("lx-image://local/mock/photo.png")
   })
 
+  it("非图片附件渲染文件卡片", () => {
+    renderTimeline(
+      userMessage([
+        { name: "report.pdf", path: "/mock/report.pdf", type: "text", sizeBytes: 4096 },
+      ]),
+    )
+
+    const card = document.querySelector(".agent-message-file-item")
+    expect(card).not.toBeNull()
+    expect(card?.textContent).toContain("report.pdf")
+    expect(document.querySelector('img[src^="lx-image://local"]')).toBeNull()
+  })
+
   it("无附件的用户消息不渲染附件容器", () => {
     renderTimeline(userMessage())
 

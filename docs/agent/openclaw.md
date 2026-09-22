@@ -123,6 +123,18 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
 
 按键：`↑/↓` 移动、`Enter` 选择、`Esc` 关闭/中止流式；无面板时 `Enter` 发送、`Shift+Enter` 换行。员工多选通过左栏名册或 `@claw:` 提及完成。
 
+### 5.3 附件上传
+
+- **入口**：输入框附件按钮选择文件，或在编辑器内粘贴剪贴板文件（截图经 `saveClipboardImage` 落盘后再附加）；文件夹与超限项在添加时即提示拒绝。
+- **上限**（渲染进程入口与主进程发送前共用 `@shared/contracts/openclaw` 常量）：单张图片 6MB（对齐网关 `MAX_IMAGE_BYTES`）、单个非图片文件 16MB、单条消息总量 16MB（为 25MiB `maxPayload` 预留 base64 膨胀余量）。
+- **传输**：网关 `agent` 入口 `acceptNonImage=false`，因此**带附件的消息统一走 `chat.send`**（图片与非图片都支持），无附件保持 `agent`；附件内容不经过 IPC，主进程按 `path` 读取并编码为 base64，扇出时按 `(path, mtime, size)` 缓存复用。
+- **展示**：附件随本地乐观消息展示（图片缩略图 / 文件卡片，复用 `AgentMessageFiles`）；网关历史不回传本地路径，重新水合后附件不再显示。
+- **失败收敛**：`chat.send` 受理即返回，run 失败/中止由 `chat` 事件的 `error`/`aborted` 状态收敛为错误气泡，不再依赖请求拒绝。
+
+### 5.4 提示位置
+
+输入区错误提示使用面包屑位置 `useLxToast()`（由 `HeaderSideBar` 的 `LxBreadcrumbToast` 渲染）；`useLxAgentToast()` 的 `LxAgentTopToast` 容器只挂在 AgentPage，OpenClaw 页面不可见。
+
 ## 6. 跨页任务委派
 
 主 Agent 输入框发送 `@claw:<instanceId>/<agentId> <任务>` 时：

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
   OPENCLAW_MAX_ATTACHMENT_TOTAL_BYTES,
+  OPENCLAW_MAX_FILE_BYTES,
   OPENCLAW_MAX_IMAGE_BYTES,
   type OpenClawAttachmentFile,
 } from "@shared/contracts/openclaw"
@@ -73,20 +74,51 @@ describe("OpenClaw 主进程附件解析", () => {
     ])
   })
 
-  it("非图片扩展名被拒绝", async () => {
+  it("非图片文件按 file 类型读取，MIME 交由网关嗅探", async () => {
     const path = join(workspace, "report.pdf")
-    writeFileSync(path, "pdf")
-    await expect(resolveOpenClawAttachments([attachment(path)])).rejects.toThrow(
-      /OPENCLAW_UNSUPPORTED_ATTACHMENT/,
-    )
+    writeFileSync(path, "pdf-payload")
+    const resolved = await resolveOpenClawAttachments([attachment(path)])
+
+    expect(resolved).toEqual([
+      {
+        type: "file",
+        mimeType: "application/octet-stream",
+        fileName: "report.pdf",
+        content: Buffer.from("pdf-payload").toString("base64"),
+        sizeBytes: 11,
+      },
+    ])
   })
 
-  it("单张超过 6MB 被拒绝", async () => {
+  it("单张图片超过 6MB 被拒绝", async () => {
     const path = writePng("huge.png")
     vi.mocked(stat).mockResolvedValueOnce(fakeStat(OPENCLAW_MAX_IMAGE_BYTES + 1))
 
     await expect(resolveOpenClawAttachments([attachment(path)])).rejects.toThrow(
       /OPENCLAW_ATTACHMENT_TOO_LARGE/,
+    )
+  })
+
+  it("非图片文件超过 16MB 被拒绝", async () => {
+    const path = join(workspace, "huge.zip")
+    writeFileSync(path, "zip")
+    vi.mocked(stat).mockResolvedValueOnce(fakeStat(OPENCLAW_MAX_FILE_BYTES + 1))
+
+    await expect(resolveOpenClawAttachments([attachment(path)])).rejects.toThrow(
+      /OPENCLAW_ATTACHMENT_TOO_LARGE/,
+    )
+  })
+
+  it("目录路径（isFile=false）被拒绝", async () => {
+    const path = join(workspace, "assets")
+    vi.mocked(stat).mockResolvedValueOnce({
+      isFile: () => false,
+      size: 0,
+      mtimeMs: 1,
+    } as Awaited<ReturnType<typeof stat>>)
+
+    await expect(resolveOpenClawAttachments([attachment(path)])).rejects.toThrow(
+      /OPENCLAW_ATTACHMENT_MISSING/,
     )
   })
 
