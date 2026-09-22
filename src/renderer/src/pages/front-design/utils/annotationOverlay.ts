@@ -513,7 +513,7 @@ export const createAnnotationLayer = (
     styledAnchor = null
     activeRequest = null
     editorPositioned = false
-    // 选中框保持显示：仅「点击空白」或「选中其他元素」才会解除。
+    // 取消关闭时选中框保持显示：确认提交、点击空白或选中其他元素时才解除。
     observeTargets()
   }
 
@@ -530,6 +530,8 @@ export const createAnnotationLayer = (
     }
     callbacks.onSubmit(request.selector, request.description, comment, request.isNew)
     closeEditor()
+    // 选中内容已被消费：确认后一并解除选中态，避免蓝色选中框残留在画布上。
+    clearSelection()
   }
 
   const mountEditor = (request: AnnotationEditorRequest, labels: AnnotationLayerLabels): void => {

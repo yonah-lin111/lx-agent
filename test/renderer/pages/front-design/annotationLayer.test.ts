@@ -178,6 +178,54 @@ describe("批注图层", () => {
     expect(layer.isEditorOpen()).toBe(false)
   })
 
+  it("确认提交后解除蓝色选中框（编辑既有批注同样解除）", () => {
+    const { doc, callbacks, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 10, top: 20, width: 100, height: 40 })
+
+    const selectionBox = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+
+    // 新建批注：输入框打开期间选中框常驻，确认后移除
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+    expect(selectionBox.style.display).toBe("block")
+
+    const editor = doc.querySelector("[data-annotation-editor]") as HTMLElement
+    const textarea = editor.querySelector("textarea") as HTMLTextAreaElement
+    dispatchInput(textarea, "改为高对比色")
+    dispatchClick(editor.querySelector('[data-annotation-action="confirm"]') as Element)
+
+    expect(callbacks.onSubmit).toHaveBeenCalledTimes(1)
+    expect(layer.hasSelection()).toBe(false)
+    expect(selectionBox.style.display).toBe("none")
+
+    // 编辑既有批注：确认后同样解除
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "改为高对比色",
+        isNew: false,
+        anchor: target,
+      },
+      LABELS,
+    )
+    expect(selectionBox.style.display).toBe("block")
+
+    dispatchClick(doc.querySelector('[data-annotation-action="confirm"]') as Element)
+    expect(callbacks.onSubmit).toHaveBeenCalledTimes(2)
+    expect(layer.hasSelection()).toBe(false)
+    expect(selectionBox.style.display).toBe("none")
+  })
+
   it("输入框上方展示元素信息与尺寸，支持关闭按钮退出", () => {
     const { doc, callbacks, layer } = setup()
     const target = doc.getElementById("target") as HTMLElement

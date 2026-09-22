@@ -586,11 +586,8 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(storedHtml).not.toContain("lx-design-annotation-layer")
     expect(mockNavigate).not.toHaveBeenCalled()
 
-    // 5. 选中框保持显示；点击画布空白才解除，批注条目保留
+    // 5. 确认后选中内容已被消费：蓝色选中框随之移除，批注条目保留
     const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
-    expect(highlight.style.display).toBe("block")
-    fireEvent.click(doc.body)
-    await act(async () => {})
     expect(highlight.style.display).toBe("none")
     expect(screen.getByText("补充匿名元素说明")).not.toBeNull()
     expect(doc.querySelector("[data-annotation-editor]")).toBeNull()
