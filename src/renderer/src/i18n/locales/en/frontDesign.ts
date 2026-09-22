@@ -48,11 +48,12 @@ export const frontDesign = {
   selectVersion: "Select Version",
   versionsCount: "{{count}} versions",
   inspectMode: "Visual Inspector",
-  inspectModeActive: "Inspector Active (ESC to exit)",
+  inspectModeActive: "Annotation mode active (ESC clears selection, double ESC exits)",
   inspectModeDesc:
     "Click any element in the preview to write a note, then send them all to the agent for targeted edits",
   inspectHint: "Click elements to add notes (multiple allowed), press ESC to exit",
   inspectShortcutHint: "Press Shift + Alt to toggle inspector mode",
+  inspectExitHint: "Press ESC again to exit annotation mode",
   elementSelectedToast: "Note added: {{name}}",
   updateTargetNotFound: "Target element node not found for update: {{target}}",
   elementTargetBadge: "Target",

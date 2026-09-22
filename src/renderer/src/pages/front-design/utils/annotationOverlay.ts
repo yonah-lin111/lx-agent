@@ -15,10 +15,9 @@ const ACCENT_COLOR = "#ec4899"
 const SELECTION_COLOR = "#38bdf8"
 const SELECTION_FILL = "rgba(56, 189, 248, 0.14)"
 const HOVER_FILL = "rgba(236, 72, 153, 0.12)"
-const SURFACE_COLOR = "#18181b"
-const BORDER_COLOR = "#3f3f46"
-const TEXT_COLOR = "#fafafa"
-const MUTED_COLOR = "#a1a1aa"
+// 输入框容器配色：对齐 AgentInput 底栏（bg-[#2a2a2a] + border-white/10）。
+const EDITOR_SURFACE_COLOR = "#2a2a2a"
+const EDITOR_BORDER_COLOR = "rgba(255, 255, 255, 0.1)"
 
 // 浮层文案，由父层 t() 注入。
 export interface AnnotationLayerLabels {
@@ -52,6 +51,8 @@ export interface AnnotationLayer {
   isEditorOpen: () => boolean
   showHover: (element: HTMLElement | null) => void
   highlight: (selector: string | null) => void
+  // 当前是否存在选中元素。
+  hasSelection: () => boolean
   // 解除选中态与预览态（点击画布空白时调用）。
   clearSelection: () => void
   // 图层是否仍挂在该文档上：iframe 文档被替换或 body 被重建后必须返回 false。
@@ -117,6 +118,20 @@ export const createAnnotationLayer = (
     return box
   }
 
+  // 内联样式无法覆盖 ::placeholder / :focus-within / :hover，这里注入最小作用域的样式表。
+  const styleElement = doc.createElement("style")
+  styleElement.textContent = `
+#${ANNOTATION_LAYER_ID} .lx-ann-textarea::placeholder { color: rgba(255, 255, 255, 0.35); }
+#${ANNOTATION_LAYER_ID} .lx-ann-box:focus-within { border-color: rgba(255, 255, 255, 0.2) !important; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06); }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: 9999px; background: transparent; color: rgba(255, 255, 255, 0.45); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn:hover { background: rgba(255, 255, 255, 0.1); color: #ffffff; }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn--danger { color: rgba(253, 164, 175, 0.85); }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn--danger:hover { background: rgba(244, 63, 94, 0.14); color: #fda4af; }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn--primary { background: #ffffff; color: #000000; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn--primary:hover { background: rgba(255, 255, 255, 0.9); color: #000000; }
+`
+  container.appendChild(styleElement)
+
   const hoverBox = createBox("data-annotation-hover", `2px solid ${ACCENT_COLOR}`, HOVER_FILL)
   const selectionBox = createBox(
     "data-annotation-highlight",
@@ -136,6 +151,7 @@ export const createAnnotationLayer = (
   let editorTextarea: HTMLTextAreaElement | null = null
   let editorHint: HTMLElement | null = null
   let editorSizeLabel: HTMLElement | null = null
+  let editorBox: HTMLElement | null = null
   let activeRequest: AnnotationEditorRequest | null = null
   // 编辑器是否已按有效锚点定位过：定位过之后退化只保留原位，未定位过才用点击点兜底。
   let editorPositioned = false
@@ -311,33 +327,54 @@ export const createAnnotationLayer = (
     observeTargets()
   }
 
-  const buildButton = (
-    label: string,
+  // lucide 图标 path：iframe 内无法使用 React 组件，沿用 lucide 同源 path 数据构建。
+  const ICON_PATHS = {
+    check: ["M20 6 9 17l-5-5"],
+    close: ["M18 6 6 18", "m6 6 12 12"],
+    trash: [
+      "M10 11v6",
+      "M14 11v6",
+      "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
+      "M3 6h18",
+      "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+    ],
+  } as const
+
+  const SVG_NS = "http://www.w3.org/2000/svg"
+
+  const buildIcon = (paths: readonly string[], size: number): SVGSVGElement => {
+    const svg = doc.createElementNS(SVG_NS, "svg")
+    svg.setAttribute("viewBox", "0 0 24 24")
+    svg.setAttribute("width", String(size))
+    svg.setAttribute("height", String(size))
+    svg.setAttribute("fill", "none")
+    svg.setAttribute("stroke", "currentColor")
+    svg.setAttribute("stroke-width", "2")
+    svg.setAttribute("stroke-linecap", "round")
+    svg.setAttribute("stroke-linejoin", "round")
+    for (const d of paths) {
+      const path = doc.createElementNS(SVG_NS, "path")
+      path.setAttribute("d", d)
+      svg.appendChild(path)
+    }
+    return svg
+  }
+
+  // 圆形图标按钮：对齐 AgentInput 底栏（主操作白底黑图标，次要操作幽灵态）。
+  const buildIconButton = (
     action: "remove" | "confirm" | "close",
+    iconPaths: readonly string[],
+    label: string,
+    variant: "ghost" | "danger" | "primary",
+    size: number,
     onClick: () => void,
-    options: { strong?: boolean; icon?: boolean } = {},
   ): HTMLButtonElement => {
     const button = doc.createElement("button")
     button.type = "button"
     button.setAttribute("data-annotation-action", action)
-    button.textContent = label
-    button.style.padding = options.icon ? "0" : "3px 8px"
-    button.style.width = options.icon ? "16px" : "auto"
-    button.style.height = options.icon ? "16px" : "auto"
-    button.style.lineHeight = options.icon ? "14px" : "normal"
-    button.style.fontSize = options.icon ? "14px" : "11px"
-    button.style.fontFamily = "inherit"
-    button.style.borderRadius = "4px"
-    button.style.border = options.icon
-      ? "none"
-      : `1px solid ${options.strong ? SELECTION_COLOR : BORDER_COLOR}`
-    button.style.backgroundColor = options.icon
-      ? "transparent"
-      : options.strong
-        ? SELECTION_COLOR
-        : "transparent"
-    button.style.color = options.strong ? "#ffffff" : MUTED_COLOR
-    button.style.cursor = "pointer"
+    button.setAttribute("aria-label", label)
+    button.className = `lx-ann-btn${variant === "ghost" ? "" : ` lx-ann-btn--${variant}`}`
+    button.appendChild(buildIcon(iconPaths, size))
     button.addEventListener("click", (event) => {
       event.stopPropagation()
       onClick()
@@ -353,6 +390,7 @@ export const createAnnotationLayer = (
     editorTextarea = null
     editorHint = null
     editorSizeLabel = null
+    editorBox = null
     activeRequest = null
     editorPositioned = false
     // 选中框保持显示：仅「点击空白」或「选中其他元素」才会解除。
@@ -366,7 +404,7 @@ export const createAnnotationLayer = (
 
     const comment = textarea.value.trim()
     if (!comment) {
-      textarea.style.borderColor = "#f43f5e"
+      if (editorBox) editorBox.style.borderColor = "#f43f5e"
       if (editorHint) editorHint.style.visibility = "visible"
       return
     }
@@ -385,12 +423,11 @@ export const createAnnotationLayer = (
     editor.style.pointerEvents = "auto"
     editor.style.fontFamily = "ui-sans-serif, system-ui, sans-serif"
 
-    // 输入框上方：元素基本信息（描述 + 实时尺寸）与关闭按钮。
+    // 输入框上方：元素基本信息（描述 + 实时尺寸）。
     const meta = doc.createElement("div")
     meta.setAttribute("data-annotation-editor-meta", "true")
     meta.style.display = "flex"
     meta.style.alignItems = "center"
-    meta.style.justifyContent = "space-between"
     meta.style.gap = "6px"
     meta.style.marginBottom = "4px"
 
@@ -420,49 +457,40 @@ export const createAnnotationLayer = (
     infoSize.style.color = "rgba(56, 189, 248, 0.8)"
     info.appendChild(infoSize)
     meta.appendChild(info)
-
-    const closeButton = buildButton(
-      "×",
-      "close",
-      () => {
-        closeEditor()
-      },
-      { icon: true },
-    )
-    closeButton.setAttribute("aria-label", labels.close)
-    closeButton.style.color = MUTED_COLOR
-    closeButton.style.fontSize = "14px"
-    meta.appendChild(closeButton)
     editor.appendChild(meta)
 
-    // 输入框本体。
+    // 输入框本体：对齐 AgentInput 底栏（深色圆角容器 + 无边框文本区 + 底部圆形操作按钮）。
     const box = doc.createElement("div")
     box.setAttribute("data-annotation-editor-box", "true")
-    box.style.padding = "8px"
+    box.className = "lx-ann-box"
     box.style.boxSizing = "border-box"
-    box.style.backgroundColor = SURFACE_COLOR
-    box.style.border = `1px solid ${SELECTION_COLOR}`
+    box.style.padding = "8px 10px"
+    box.style.backgroundColor = EDITOR_SURFACE_COLOR
+    box.style.border = `1px solid ${EDITOR_BORDER_COLOR}`
     box.style.borderRadius = "6px"
-    box.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.35)"
+    box.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.4)"
+    box.style.transition = "border-color 150ms ease, box-shadow 150ms ease"
 
     const textarea = doc.createElement("textarea")
+    textarea.className = "lx-ann-textarea"
     textarea.value = request.comment
     textarea.placeholder = labels.placeholder
     textarea.style.width = "100%"
-    textarea.style.height = "56px"
-    textarea.style.resize = "vertical"
+    textarea.style.height = "52px"
+    textarea.style.resize = "none"
     textarea.style.boxSizing = "border-box"
-    textarea.style.padding = "4px 6px"
+    textarea.style.padding = "0"
     textarea.style.fontSize = "12px"
+    textarea.style.lineHeight = "18px"
     textarea.style.fontFamily = "inherit"
-    textarea.style.color = TEXT_COLOR
-    textarea.style.backgroundColor = "#09090b"
-    textarea.style.border = `1px solid ${BORDER_COLOR}`
-    textarea.style.borderRadius = "4px"
+    textarea.style.color = "#fafafa"
+    textarea.style.backgroundColor = "transparent"
+    textarea.style.border = "none"
     textarea.style.outline = "none"
     box.appendChild(textarea)
 
     const hint = doc.createElement("div")
+    hint.setAttribute("data-annotation-editor-hint", "true")
     hint.textContent = labels.emptyHint
     hint.style.fontSize = "10px"
     hint.style.color = "#fb7185"
@@ -470,25 +498,34 @@ export const createAnnotationLayer = (
     hint.style.visibility = "hidden"
     box.appendChild(hint)
 
+    // 底部操作行：删除 → 关闭 → 确认。
     const actions = doc.createElement("div")
     actions.style.display = "flex"
+    actions.style.alignItems = "center"
     actions.style.justifyContent = "flex-end"
     actions.style.gap = "6px"
-    actions.style.marginTop = "6px"
+    actions.style.paddingTop = "4px"
     if (!request.isNew) {
       actions.appendChild(
-        buildButton(labels.remove, "remove", () => {
+        buildIconButton("remove", ICON_PATHS.trash, labels.remove, "danger", 14, () => {
           callbacks.onRemove(request.selector)
           closeEditor()
         }),
       )
     }
-    actions.appendChild(buildButton(labels.confirm, "confirm", confirmEditor, { strong: true }))
+    actions.appendChild(
+      buildIconButton("close", ICON_PATHS.close, labels.close, "ghost", 14, () => {
+        closeEditor()
+      }),
+    )
+    actions.appendChild(
+      buildIconButton("confirm", ICON_PATHS.check, labels.confirm, "primary", 15, confirmEditor),
+    )
     box.appendChild(actions)
     editor.appendChild(box)
 
     textarea.addEventListener("input", () => {
-      textarea.style.borderColor = BORDER_COLOR
+      box.style.borderColor = EDITOR_BORDER_COLOR
       hint.style.visibility = "hidden"
     })
     textarea.addEventListener("keydown", (event) => {
@@ -511,6 +548,7 @@ export const createAnnotationLayer = (
     editorTextarea = textarea
     editorHint = hint
     editorSizeLabel = infoSize
+    editorBox = box
     // 进入选中态：选中框常驻在该元素上，关闭输入框后依然保留。
     selectionTarget = request.anchor
     selectionSelector = request.selector
@@ -612,6 +650,7 @@ export const createAnnotationLayer = (
       renderBoxes()
       observeTargets()
     },
+    hasSelection: (): boolean => Boolean(selectionSelector),
     clearSelection,
     isAttachedTo: (target: Document): boolean =>
       target === doc && (doc.body?.contains(container) ?? false),

@@ -1,6 +1,6 @@
 import type React from "react"
 import { useCallback, useMemo, useRef, useState } from "react"
-import { useLxAgentToast } from "@/components/ui/LxToast"
+import { useLxToast } from "@/components/ui/LxToast"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { designSystemStore, useDesignSystem } from "@/features/agent/hooks/designSystemStore"
@@ -23,7 +23,7 @@ import type { ViewportMode } from "@/pages/front-design/types"
  */
 export const FrontDesignPage = (): React.JSX.Element => {
   const { t } = useTranslation()
-  const { success: successToast } = useLxAgentToast()
+  const { success: successToast } = useLxToast()
   const designState = useFrontDesign()
   const designTokens = useDesignSystem()
 

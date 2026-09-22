@@ -144,13 +144,18 @@ describe("批注图层", () => {
     const editor = doc.querySelector("[data-annotation-editor]") as HTMLElement
     expect(editor).not.toBeNull()
 
+    const box = editor.querySelector("[data-annotation-editor-box]") as HTMLElement
+    const hint = editor.querySelector("[data-annotation-editor-hint]") as HTMLElement
     const confirm = editor.querySelector('[data-annotation-action="confirm"]') as Element
     dispatchClick(confirm)
     expect(callbacks.onSubmit).not.toHaveBeenCalled()
-    expect(editor.querySelector("textarea")?.style.borderColor).toBe("rgb(244, 63, 94)")
+    expect(box.style.borderColor).toBe("rgb(244, 63, 94)")
+    expect(hint.style.visibility).toBe("visible")
 
     const textarea = editor.querySelector("textarea") as HTMLTextAreaElement
     dispatchInput(textarea, "改为高对比色")
+    expect(box.style.borderColor).toBe("rgba(255, 255, 255, 0.1)")
+    expect(hint.style.visibility).toBe("hidden")
     dispatchClick(confirm)
 
     expect(callbacks.onSubmit).toHaveBeenCalledWith(
@@ -186,9 +191,19 @@ describe("批注图层", () => {
     )
     // 基本信息在输入框上方
     expect(meta.compareDocumentPosition(box)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    // 容器样式对齐 AgentInput 底栏
+    expect(box.style.backgroundColor).toBe("rgb(42, 42, 42)")
+    expect(box.style.borderRadius).toBe("6px")
 
-    const close = meta.querySelector('[data-annotation-action="close"]') as Element
+    // 关闭按钮位于输入框底部（文本区之后），不再位于信息栏
+    expect(meta.querySelector('[data-annotation-action="close"]')).toBeNull()
+    const close = box.querySelector('[data-annotation-action="close"]') as Element
     expect(close.getAttribute("aria-label")).toBe("关闭输入框")
+    const textareaElement = box.querySelector("textarea") as Element
+    expect(textareaElement.compareDocumentPosition(close)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    // 主操作按钮为白底黑图标（对齐发送按钮）
+    const confirmButton = box.querySelector('[data-annotation-action="confirm"]') as Element
+    expect(confirmButton.className).toContain("lx-ann-btn--primary")
     dispatchClick(close)
 
     expect(layer.isEditorOpen()).toBe(false)

@@ -359,7 +359,11 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     // 按照需求：顶部中间提示已彻底移除，不应再渲染
     expect(screen.queryByText(/连续点选|Click elements/i)).toBeNull()
 
-    // 按下 ESC 键退出微调模式
+    // 单次 ESC 只提示（无选中元素时不退出）
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // 连按两次 ESC 退出批注模式
     fireEvent.keyDown(window, { key: "Escape" })
     expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
   })
@@ -388,7 +392,9 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     fireEvent.keyDown(window, { key: "Shift", shiftKey: true, altKey: true })
     expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
 
-    // 4. 通过 ESC 键退出
+    // 4. 连按两次 ESC 退出（首次为提示）
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
     fireEvent.keyDown(window, { key: "Escape" })
     expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
 
@@ -590,6 +596,59 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(doc.querySelector("[data-annotation-editor]")).toBeNull()
 
     unregister()
+  })
+
+  it("ESC 规则：编辑器优先关闭，其次解除选中，未选中时连按两次才退出批注模式", async () => {
+    frontDesignStore.registerDesign({
+      id: "d-escape-rule",
+      title: "Escape Rule",
+      html: "<div id='root'><button id='cta'>Buy</button></div>",
+    })
+
+    const { container } = render(<FrontDesignPage />)
+    const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
+    fireEvent.click(inspectBtn)
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    const doc = container.querySelector("iframe")?.contentDocument as Document
+    doc.body.innerHTML = "<div id='root'><button id='cta'>Buy</button></div>"
+    const target = doc.getElementById("cta") as HTMLElement
+    target.getBoundingClientRect = () =>
+      ({
+        left: 10,
+        top: 20,
+        width: 100,
+        height: 40,
+        right: 110,
+        bottom: 60,
+        x: 10,
+        y: 20,
+        toJSON: () => ({}),
+      }) as DOMRect
+
+    // 选中元素：生成批注输入框与蓝色选中框（jsdom 无布局，位置断言由 annotationLayer 单测覆盖）
+    fireEvent.click(target)
+    await act(async () => {})
+    expect(doc.querySelector("[data-annotation-editor]")).not.toBeNull()
+    const selectionBox = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+
+    // ESC 1：关闭输入框，仍保持选中（下一次 ESC 不会直接退出模式）
+    fireEvent.keyDown(window, { key: "Escape" })
+    await act(async () => {})
+    expect(doc.querySelector("[data-annotation-editor]")).toBeNull()
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // ESC 2：解除选中而非退出模式（若此处按“无选中”处理，ESC 3 就会立刻退出）
+    fireEvent.keyDown(window, { key: "Escape" })
+    await act(async () => {})
+    expect(selectionBox.style.display).toBe("none")
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // ESC 3：无选中，仅提示；ESC 4：连按两次才退出批注模式
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
   })
 
   it("多轮修改后（v1, v2, v3），顶部版本下拉菜单完整显示所有版本选项，并支持自由往返切换且实时更新画布 HTML", () => {

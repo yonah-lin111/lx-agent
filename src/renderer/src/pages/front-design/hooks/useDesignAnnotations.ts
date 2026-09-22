@@ -1,6 +1,6 @@
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useLxAgentToast } from "@/components/ui/LxToast"
+import { useLxToast } from "@/components/ui/LxToast"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
@@ -14,6 +14,9 @@ import {
   type AnnotationLayerLabels,
   createAnnotationLayer,
 } from "@/pages/front-design/utils/annotationOverlay"
+
+// ESC 双击退出窗口：两次 ESC 间隔在此窗口内且无选中元素时才退出批注模式。
+const DOUBLE_ESCAPE_WINDOW_MS = 500
 
 export interface UseDesignAnnotationsOptions {
   iframeRef: React.RefObject<HTMLIFrameElement | null>
@@ -57,7 +60,7 @@ export const useDesignAnnotations = ({
   isStreaming,
 }: UseDesignAnnotationsOptions): UseDesignAnnotationsResult => {
   const { t } = useTranslation()
-  const { success: successToast } = useLxAgentToast()
+  const { success: successToast, info: infoToast } = useLxToast()
 
   const [isInspectorActive, setIsInspectorActive] = useState<boolean>(false)
   const [annotations, setAnnotations] = useState<DesignAnnotation[]>([])
@@ -75,6 +78,10 @@ export const useDesignAnnotations = ({
   tRef.current = t
   const toastRef = useRef(successToast)
   toastRef.current = successToast
+  const infoToastRef = useRef(infoToast)
+  infoToastRef.current = infoToast
+  // 上一次 ESC 的按下时间：用于「双击 ESC 退出批注模式」。
+  const lastEscapeAtRef = useRef<number>(0)
 
   const canRender = Boolean(html && activeDesignId && !isStreaming)
   canRenderRef.current = canRender
@@ -114,6 +121,31 @@ export const useDesignAnnotations = ({
       ])
     })
     toastRef.current(tRef.current("frontDesign.elementSelectedToast", { name: description }))
+  }, [])
+
+  // ESC 规则：编辑器优先关闭 → 有选中元素则解除选中 → 无选中时双击 ESC 才退出批注模式。
+  const handleEscape = useCallback((): void => {
+    const layer = layerRef.current
+    if (layer?.isEditorOpen()) {
+      layer.closeEditor()
+      lastEscapeAtRef.current = 0
+      return
+    }
+    if (layer?.hasSelection()) {
+      layer.clearSelection()
+      lastEscapeAtRef.current = 0
+      return
+    }
+
+    const now = Date.now()
+    if (now - lastEscapeAtRef.current <= DOUBLE_ESCAPE_WINDOW_MS) {
+      lastEscapeAtRef.current = 0
+      setIsInspectorActive(false)
+      return
+    }
+    // 首次按下只提示，不足一次双击不退出模式。
+    lastEscapeAtRef.current = now
+    infoToastRef.current(tRef.current("frontDesign.inspectExitHint"))
   }, [])
 
   const handleRemove = useCallback((selector: string) => {
@@ -159,6 +191,7 @@ export const useDesignAnnotations = ({
   // 退出批注模式时解除选中态，避免残留无法清除的选中框。
   useEffect(() => {
     if (!isInspectorActive) {
+      lastEscapeAtRef.current = 0
       layerRef.current?.clearSelection()
     }
   }, [isInspectorActive])
@@ -274,9 +307,8 @@ export const useDesignAnnotations = ({
 
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") return
-      // 编辑器打开时由编辑器自身处理 ESC
-      if (ensureLayer()?.isEditorOpen()) return
-      setIsInspectorActive(false)
+      ensureLayer()
+      handleEscape()
     }
 
     doc.addEventListener("mousemove", handleMouseMove, true)
@@ -292,19 +324,26 @@ export const useDesignAnnotations = ({
       doc.body.style.cursor = previousCursor
       layerRef.current?.showHover(null)
     }
-  }, [isInspectorActive, canRender, runtimeEpoch, iframeRef, activeDesignId, ensureLayer])
+  }, [
+    isInspectorActive,
+    canRender,
+    runtimeEpoch,
+    iframeRef,
+    activeDesignId,
+    ensureLayer,
+    handleEscape,
+  ])
 
-  // 主窗口 ESC 退出批注模式（焦点在应用侧时同样生效）
+  // 主窗口 ESC（焦点在应用侧时同样生效）：与画布内 ESC 共用同一套规则。
   useEffect(() => {
     if (!isInspectorActive) return
     const handleWindowKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") return
-      if (layerRef.current?.isEditorOpen()) return
-      setIsInspectorActive(false)
+      handleEscape()
     }
     window.addEventListener("keydown", handleWindowKeyDown)
     return () => window.removeEventListener("keydown", handleWindowKeyDown)
-  }, [isInspectorActive])
+  }, [isInspectorActive, handleEscape])
 
   // Shift + Alt 快捷键切换批注模式（Toggle，ESC 退出）
   const handleShortcutKeyDown = useCallback((event: KeyboardEvent) => {
