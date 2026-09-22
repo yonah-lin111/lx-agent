@@ -26,6 +26,25 @@ service to trust.
 It is built for people who treat prompts as source code: drafts get planned, reviewed, executed and
 versioned in the same workspace, with an agent that can read and patch real files.
 
+## Install
+
+Grab the latest build from [Releases](https://github.com/yonah-lin111/lx-agent/releases/latest):
+
+| Platform | Asset |
+| :--- | :--- |
+| macOS (Apple Silicon) | `LX.Agent-<version>-arm64.dmg` |
+| Windows (x64) | `LX.Agent.Setup.<version>.exe` |
+
+The macOS build is ad-hoc signed and not notarized, so Gatekeeper blocks the first launch with
+*"Apple cannot verify that LX Agent is free of malware"*. Let it through once, any of these ways:
+
+- In Finder, right-click **LX Agent** → **Open** → **Open**.
+- **System Settings → Privacy & Security**, scroll to Security, click **Open Anyway**.
+- `xattr -dr com.apple.quarantine "/Applications/LX Agent.app"`
+
+It launches normally from then on. Building from source (`pnpm install && pnpm build && pnpm dist`)
+skips the prompt entirely — locally built apps carry no quarantine flag.
+
 ## Features
 
 | Area | What it does |

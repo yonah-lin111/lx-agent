@@ -21,6 +21,25 @@ LX Agent 是一个 Electron 桌面应用，让你与具备编码能力的 Agent 
 
 它面向把提示词当源码管理的人：草稿在同一个工作台里被规划、审查、执行与留档，而且 Agent 能真正读写你磁盘上的文件。
 
+## 安装
+
+从 [Releases](https://github.com/yonah-lin111/lx-agent/releases/latest) 下载最新构建：
+
+| 平台 | 产物 |
+| :--- | :--- |
+| macOS（Apple Silicon） | `LX.Agent-<版本号>-arm64.dmg` |
+| Windows（x64） | `LX.Agent.Setup.<版本号>.exe` |
+
+macOS 包为 ad-hoc 签名、未做 Apple 公证，首次打开会被 Gatekeeper 拦截并提示 *Apple 无法验证
+“LX Agent”是否包含可能危害 Mac 安全或泄漏隐私的恶意软件*。任选一种方式放行一次即可：
+
+- 访达中右键 **LX Agent** → **打开** → 再点**打开**。
+- **系统设置 → 隐私与安全性**，下拉到“安全性”点**仍要打开**。
+- `xattr -dr com.apple.quarantine "/Applications/LX Agent.app"`
+
+之后正常双击启动。从源码自建（`pnpm install && pnpm build && pnpm dist`）不触发该提示——本地构建
+的 App 不带 quarantine 标记。
+
 ## 功能
 
 | 模块 | 说明 |

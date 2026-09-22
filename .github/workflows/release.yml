@@ -61,10 +61,19 @@ jobs:
 
       # 直接发布（非 draft）：更新检查读取 /releases/latest，draft 对用户不可见。
       # 带预发布后缀的 tag 自动标记 prerelease，/releases/latest 不会返回它。
+      # --notes 会被前置到 --generate-notes 生成的更新日志之前，用于说明 macOS 首次打开步骤。
       - name: Publish release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INSTALL_NOTES: |
+            ## macOS 首次打开 / macOS first launch
+
+            macOS 包为 ad-hoc 签名、未做 Apple 公证，首次打开会被 Gatekeeper 拦截。任选一种方式放行一次：
+            访达中右键 App → 打开 → 再点“打开”；或 系统设置 → 隐私与安全性 → 仍要打开。
+
+            The macOS build is ad-hoc signed and not notarized, so Gatekeeper blocks the first launch.
+            Right-click the app → Open → Open, or use System Settings → Privacy & Security → Open Anyway.
         run: |
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
@@ -73,6 +82,6 @@ jobs:
             *-*) prerelease="--prerelease" ;;
           esac
           if ! gh release view "$tag" >/dev/null 2>&1; then
-            gh release create "$tag" --title "LX Agent $tag" --generate-notes $prerelease || true
+            gh release create "$tag" --title "LX Agent $tag" --notes "$INSTALL_NOTES" --generate-notes $prerelease || true
           fi
           gh release upload "$tag" ${{ matrix.artifacts }} --clobber
