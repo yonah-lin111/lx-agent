@@ -9,6 +9,7 @@ import type {
 } from "@shared/contracts/openclaw"
 import type { OpenClawAgentItem } from "@shared/settings"
 import { getOpenClawSettings, saveOpenClawSettings } from "@/services/settingsService"
+import { resolveOpenClawAttachments } from "./attachments"
 import { AGENT_RUN_TIMEOUT_MS, HISTORY_LIMIT, SESSION_LIST_LIMIT } from "./constants"
 import { mapAgent, mapHistoryMessages, mapSessionList, mapSessionStats } from "./payloadMappers"
 import type { AgentSession, InstanceConnection, OpenClawClientManagerHost } from "./types"
@@ -246,7 +247,9 @@ export async function sendMessage(
   host: OpenClawClientManagerHost,
   input: OpenClawSendMessageInput,
 ): Promise<void> {
-  const { instanceId, agentId, message } = input
+  const { instanceId, agentId, message, files } = input
+  // 附件校验/读取先于本地乐观消息：失败时不留不存在任务的消息。
+  const attachments = await resolveOpenClawAttachments(files)
   const connected = await host.connect(instanceId)
   if (connected.status !== "connected") {
     throw new Error(connected.error || "OpenClaw connection is not ready")
@@ -274,6 +277,7 @@ export async function sendMessage(
     content: message,
     timestamp: Date.now(),
     status: "completed",
+    ...(files && files.length > 0 ? { files: files.map((file) => ({ ...file })) } : {}),
   })
   session.isStreaming = true
   session.activeRunId = null
@@ -288,6 +292,7 @@ export async function sendMessage(
         agentId,
         sessionKey,
         message,
+        ...(attachments.length > 0 ? { attachments } : {}),
         idempotencyKey: randomUUID(),
       },
       { timeoutMs: AGENT_RUN_TIMEOUT_MS },

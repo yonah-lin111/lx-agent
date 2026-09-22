@@ -1,4 +1,5 @@
 import type {
+  OpenClawAttachmentFile,
   OpenClawChatMessage,
   OpenClawSessionEvent,
   OpenClawSessionSnapshot,
@@ -27,7 +28,12 @@ interface OpenClawChatState {
   getSession: (instanceId: string, agentId: string) => OpenClawSessionSnapshot | undefined
   connect: (instanceId: string) => Promise<void>
   loadSession: (instanceId: string, agentId: string) => Promise<void>
-  sendMessage: (instanceId: string, agentId: string, message: string) => Promise<void>
+  sendMessage: (
+    instanceId: string,
+    agentId: string,
+    message: string,
+    files?: OpenClawAttachmentFile[],
+  ) => Promise<void>
   deleteTurn: (instanceId: string, agentId: string, assistantMessageId: string) => Promise<void>
   abort: (instanceId: string, agentId: string) => Promise<void>
   createSession: (instanceId: string, agentId: string) => Promise<void>
@@ -69,8 +75,13 @@ export const useOpenClawChatStore = create<OpenClawChatState>((set, get) => ({
     }))
   },
 
-  sendMessage: async (instanceId, agentId, message) => {
-    await openclawApi.sendMessage({ instanceId, agentId, message })
+  sendMessage: async (instanceId, agentId, message, files) => {
+    await openclawApi.sendMessage({
+      instanceId,
+      agentId,
+      message,
+      ...(files && files.length > 0 ? { files } : {}),
+    })
   },
 
   deleteTurn: async (instanceId, agentId, assistantMessageId) => {

@@ -15,7 +15,13 @@ export const OpenClawMessageItem = ({
   const { t } = useTranslation()
 
   if (message.role === "user") {
-    return <OpenClawUserMessage content={message.content} targetAgents={targetAgents} />
+    return (
+      <OpenClawUserMessage
+        content={message.content}
+        targetAgents={targetAgents}
+        files={message.files}
+      />
+    )
   }
 
   if (message.role === "system") {

@@ -1,18 +1,22 @@
+import type { OpenClawAttachmentFile } from "@shared/contracts/openclaw"
 import { Check, Copy } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { AgentMessageFiles } from "@/features/agent/components/AgentMessageList"
 import { useTranslation } from "@/i18n"
 import type { ConversationAgent } from "./types"
 
 export interface OpenClawUserMessageProps {
   content: string
   targetAgents?: ConversationAgent[]
+  files?: OpenClawAttachmentFile[]
 }
 
 export const OpenClawUserMessage = ({
   content,
   targetAgents = [],
+  files = [],
 }: OpenClawUserMessageProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
@@ -46,6 +50,7 @@ export const OpenClawUserMessage = ({
           ))}
         </div>
       ) : null}
+      {files.length > 0 ? <AgentMessageFiles align="right" files={files} /> : null}
       <div
         data-user-bubble="true"
         className="openclaw-user-bubble bg-user-bubble max-w-[85%] whitespace-pre-wrap break-words rounded-[18px] rounded-br-[4px] bg-[#253347] px-3.5 py-2.5 text-[13px] leading-relaxed text-white/90 shadow-sm"

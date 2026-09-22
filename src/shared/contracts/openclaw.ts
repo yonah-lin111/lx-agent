@@ -14,6 +14,28 @@ export type OpenClawConnectionStatus =
 // 聊天消息角色。
 export type OpenClawChatRole = "user" | "assistant" | "system"
 
+// 附件仅支持图片：网关 agent 入口 acceptNonImage=false，非图片附件会被整条拒绝。
+export const OPENCLAW_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const
+
+// 单张图片上限：对齐网关 MAX_IMAGE_BYTES（6MB）。
+export const OPENCLAW_MAX_IMAGE_BYTES = 6 * 1024 * 1024
+
+// 单条消息附件总量上限：base64 膨胀约 1.37 倍，为 25MiB maxPayload 留出帧余量。
+export const OPENCLAW_MAX_ATTACHMENT_TOTAL_BYTES = 16 * 1024 * 1024
+
+// 附件扩展名是否在图片白名单内（渲染进程入口与主进程发送前共用同一判定）。
+export const isOpenClawImageExtension = (extension: string): boolean =>
+  (OPENCLAW_IMAGE_EXTENSIONS as readonly string[]).includes(extension.toLowerCase())
+
+// 随消息发送/展示的附件（不含文件内容，base64 由主进程按 path 读取）。
+export interface OpenClawAttachmentFile {
+  name: string
+  path: string
+  type: "image" | "text"
+  // 原始字节数：渲染进程用于总量预校验与展示，主进程以 fs.stat 为准。
+  sizeBytes?: number
+}
+
 // 单条消息的 token 用量（Gateway 消息自带）。
 export interface OpenClawMessageUsage {
   input?: number
@@ -37,6 +59,8 @@ export interface OpenClawChatMessage {
   modelProvider?: string
   // 该条消息的 token 用量（assistant 消息，历史水合与 run 结束回填）。
   usage?: OpenClawMessageUsage
+  // 该条消息携带的附件（仅本地乐观消息持有；网关历史不回传附件）。
+  files?: OpenClawAttachmentFile[]
 }
 
 // 会话级模型与上下文用量（Gateway sessions.describe 投影）。
@@ -95,6 +119,8 @@ export interface OpenClawSendMessageInput {
   instanceId: string
   agentId: string
   message: string
+  // 附件（仅图片）：主进程读取并编码为 base64 随 agent 请求下发。
+  files?: OpenClawAttachmentFile[]
 }
 
 // OpenClaw 领域 Preload API。

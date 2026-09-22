@@ -4,7 +4,7 @@
  */
 export const getClipboardFilesAsync = async (
   event: ClipboardEvent,
-): Promise<{ path: string; type: "folder" | "file" | "image" }[]> => {
+): Promise<{ path: string; type: "folder" | "file" | "image"; size?: number }[]> => {
   const clipboardData = event.clipboardData
   if (!clipboardData) return []
 
@@ -29,7 +29,7 @@ export const getClipboardFilesAsync = async (
         : isImage
           ? "image"
           : "file"
-      return [{ path, type: fileType }]
+      return [{ path, type: fileType, size: file.size }]
     } catch {
       return []
     }
@@ -45,7 +45,7 @@ export const getClipboardFilesAsync = async (
         const buffer = await blob.arrayBuffer()
         const savedPath = await window.api.saveClipboardImage(buffer, blob.type || "image/png")
         if (savedPath) {
-          return [{ path: savedPath, type: "image" }]
+          return [{ path: savedPath, type: "image", size: blob.size }]
         }
       } catch (err) {
         console.error("Failed to save clipboard image:", err)

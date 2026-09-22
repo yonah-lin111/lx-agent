@@ -5,13 +5,21 @@ import { languages } from "@codemirror/language-data"
 import { EditorState } from "@codemirror/state"
 import { EditorView, keymap, placeholder } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
+import {
+  OPENCLAW_MAX_ATTACHMENT_TOTAL_BYTES,
+  OPENCLAW_MAX_IMAGE_BYTES,
+  type OpenClawAttachmentFile,
+} from "@shared/contracts/openclaw"
 import { Send, Square } from "lucide-react"
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { useLxAgentToast } from "@/components/ui/LxToast"
 import {
   type AgentInputCommand,
   AgentInputCommandPanel,
+  type AgentInputFile,
   AgentInputFilePanel,
+  AgentInputFiles,
   type AgentMentionItem,
   type ClawMentionCandidate,
   getAgentPanelPosition,
@@ -30,6 +38,14 @@ import {
 } from "@/features/agent/components/AgentInput/AgentVoiceInputButton"
 import { markdownMarkerHighlight } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { useTranslation } from "@/i18n"
+import { getClipboardFilesAsync } from "@/lib/clipboard"
+import {
+  appendOpenClawAttachments,
+  clipboardHasAttachableImage,
+  extensionFromName,
+  formatAttachmentSize,
+  type OpenClawAttachmentCandidate,
+} from "../attachments"
 import { getClawMentionDeletionRange } from "../clawMention"
 import {
   getMatchedOpenClawCommands,
@@ -79,6 +95,9 @@ export interface OpenClawInputProps {
   onSelectOffice?: (officeId: string) => void
   onToggleAgent?: (agentId: string) => void
   voiceButtonRef?: React.Ref<AgentVoiceInputButtonRef>
+  // 附件（仅图片）：状态由父级持有，与发送时的下发目标共用同一份数据。
+  files: OpenClawAttachmentFile[]
+  onFilesChange: (files: OpenClawAttachmentFile[]) => void
 }
 
 type OpenClawPanelMode = "command" | "mention" | "picker" | null
@@ -114,13 +133,17 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       onSelectOffice,
       onToggleAgent,
       voiceButtonRef,
+      files,
+      onFilesChange,
     },
     ref,
   ): React.JSX.Element => {
     const { t } = useTranslation()
+    const { error: errorToast } = useLxAgentToast()
     const containerRef = useRef<HTMLDivElement>(null)
     const editorContainerRef = useRef<HTMLDivElement>(null)
     const editorViewRef = useRef<EditorView | null>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const [activeMode, setActiveMode] = useState<OpenClawPanelMode>(null)
     const [panelPosition, setPanelPosition] = useState<React.CSSProperties | null>(null)
@@ -170,6 +193,74 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     onCommandRef.current = onCommand
     const onPickerCloseRef = useRef(onPickerClose)
     onPickerCloseRef.current = onPickerClose
+
+    const filesRef = useRef(files)
+    filesRef.current = files
+    const onFilesChangeRef = useRef(onFilesChange)
+    onFilesChangeRef.current = onFilesChange
+
+    // 添加附件（文件选择器与剪贴板共用）：非图片与超限项跳过，并按首个拒绝原因提示。
+    const addAttachments = useCallback(
+      (candidates: OpenClawAttachmentCandidate[]): void => {
+        if (candidates.length === 0) return
+        const { files: nextFiles, rejection } = appendOpenClawAttachments(
+          filesRef.current,
+          candidates,
+        )
+        if (rejection === "unsupported") {
+          errorToast(t("openclaw.attachmentImageOnly"))
+        } else if (rejection === "image-too-large") {
+          errorToast(
+            t("openclaw.attachmentImageTooLarge", {
+              size: formatAttachmentSize(OPENCLAW_MAX_IMAGE_BYTES),
+            }),
+          )
+        } else if (rejection === "total-too-large") {
+          errorToast(
+            t("openclaw.attachmentTotalTooLarge", {
+              size: formatAttachmentSize(OPENCLAW_MAX_ATTACHMENT_TOTAL_BYTES),
+            }),
+          )
+        }
+        if (nextFiles.length !== filesRef.current.length) onFilesChangeRef.current(nextFiles)
+      },
+      [errorToast, t],
+    )
+    const addAttachmentsRef = useRef(addAttachments)
+    addAttachmentsRef.current = addAttachments
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>): void => {
+      const list = event.target.files
+      if (!list || list.length === 0) return
+
+      const candidates: OpenClawAttachmentCandidate[] = []
+      for (let i = 0; i < list.length; i++) {
+        const file = list.item(i)
+        if (!file) continue
+        const path = window.api.getPathForFile(file)
+        if (!path) continue
+        candidates.push({ name: file.name, path, sizeBytes: file.size })
+      }
+      addAttachmentsRef.current(candidates)
+      // 清空以便移除同一文件后可重新选择。
+      event.target.value = ""
+    }
+
+    const handleRemoveFile = (id: string): void => {
+      onFilesChange(files.filter((file) => file.path !== id))
+    }
+
+    const chipFiles: AgentInputFile[] = files.map((file) => {
+      const extension = extensionFromName(file.name).toUpperCase()
+      return {
+        id: file.path,
+        name: file.name,
+        path: file.path,
+        type: file.type,
+        ...(file.sizeBytes !== undefined ? { size: formatAttachmentSize(file.sizeBytes) } : {}),
+        ...(extension ? { extension } : {}),
+      }
+    })
 
     const getPanelAnchor = useCallback((): HTMLElement | null => containerRef.current, [])
 
@@ -509,6 +600,21 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
               }
               return false
             },
+            paste: (event) => {
+              // 仅当剪贴板存在白名单图片时接管：其余情况走默认文本粘贴，不吞掉粘贴动作。
+              if (!clipboardHasAttachableImage(event.clipboardData)) return false
+              event.preventDefault()
+              void getClipboardFilesAsync(event).then((found) => {
+                addAttachmentsRef.current(
+                  found.map((item) => ({
+                    name: item.path.split(/[\\/]/).pop() || item.path,
+                    path: item.path,
+                    ...(item.size !== undefined ? { sizeBytes: item.size } : {}),
+                  })),
+                )
+              })
+              return true
+            },
           }),
         ],
       })
@@ -609,12 +715,33 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         aria-label={t("openclaw.send")}
         title={{ content: t("openclaw.send"), placement: "top" }}
         onClick={onSend}
-        disabled={!value.trim() || disabled}
+        disabled={(!value.trim() && files.length === 0) || disabled}
         hoverBgClass="hover:bg-white/90"
         className="agent-input-action-btn agent-input-send-btn bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
       >
         <Send />
       </LxIconButton>
+    )
+
+    const addButton = (
+      <>
+        <input
+          type="file"
+          multiple
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <LxIconButton
+          shape="circle"
+          preset="add"
+          aria-label={t("openclaw.addAttachment")}
+          title={{ content: t("openclaw.addAttachment"), placement: "top" }}
+          className="agent-input-add-btn"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled}
+        />
+      </>
     )
 
     return (
@@ -643,6 +770,8 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
           onSelect={(item) => picker?.onPick(item.id)}
         />
 
+        <AgentInputFiles files={chipFiles} onRemove={handleRemoveFile} />
+
         <div
           ref={containerRef}
           className={`agent-input-container relative flex flex-col justify-between rounded-[6px] border bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow] duration-150 focus-within:border-white/20 focus-within:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] ${
@@ -669,6 +798,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
                 onRecordingStateChange={setVoiceRecordingState}
                 disabled={disabled}
               />
+              {addButton}
               {offices.length > 0 && onSelectOffice && onToggleAgent && (
                 <OpenClawTargetSelect
                   offices={offices}
