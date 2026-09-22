@@ -160,15 +160,18 @@ window.__lxPreviewErrors: RawPreviewError[]  // 上限 50 条，超出丢最旧
 
 ### 6.2 批注评审（A）
 
-1. 工具栏 `MousePointerClick` 按钮（或 Shift+Alt）开启批注模式，画布底/右出现批注坞。
-2. 悬停元素：沿用现有粉色高亮浮层 + 尺寸角标。
-3. 点击元素：`generateElementSelector` 生成选择器；若动态注入了 `data-design-id`，则把改写后的 HTML 刷回 `frontDesignStore`（沿用现有行为，保证 mention 能命中）。
-4. 元素旁弹出批注输入浮层（画布内）：Enter 确认 / Esc 取消 / 点空白取消。
-5. 确认后：元素左上角钉编号 pin（①②③ 圆形气泡），批注坞新增一条。
-6. pin 点击 = 打开同一浮层做编辑（含删除）；坞内条目支持编辑与删除；坞内条目 hover = 画布高亮对应元素。
+1. 工具栏 `MousePointerClick` 按钮（或 Shift+Alt）开启批注模式，画布右侧出现批注坞。
+2. **双框模型**：粉色悬停框（`data-annotation-hover`）始终跟随鼠标；蓝色选中框（`data-annotation-highlight`）在点击后常驻，只有「点击画布空白 / 选中其他元素 / 退出批注模式」才改变。两者可同时显示，互不干扰。
+3. 悬停只负责指示；点击元素由 `generateElementSelector` 生成选择器；若动态注入了 `data-design-id`，则把改写后的 HTML 刷回 `frontDesignStore`（沿用现有行为，保证 mention 能命中）。
+4. 点击即在元素旁弹出输入框：上方为元素信息栏（描述 + 实时尺寸），下方为 AgentInput 风格输入框（Enter 确认 / Shift+Enter 换行 / Esc 关闭）；关闭按钮位于输入框底部操作行。
+5. 确认后：元素左上角钉编号 pin（圆形气泡），批注坞新增一条；选中框保持常驻。
+6. pin 点击 = 打开同一输入框做编辑（含删除）；坞内条目支持编辑与删除；坞内条目 / 气泡 hover 走悬停框预览，移出后回落到选中框。
 7. 底部「发送全部 (n)」；条目级「发送」只回流该条。发送后仅清空已发送条目，批注模式保持开启。
+8. **ESC 分级规则**：编辑器打开时关闭编辑器 → 有选中元素时解除选中 → 无选中元素时首次按下仅 toast 提示，**连按两次（500ms 内）**才退出批注模式。
 
-浮层与 pin 的 DOM 注入 iframe 文档（document 坐标绝对定位，滚动天然跟随），实现集中在 `utils/annotationOverlay.ts`；文案由父层 `t()` 拼入注入字符串，配色沿用现有 inspector 粉色（`#ec4899`）——这是预览浮层而非应用 UI，无法使用应用 CSS Token（与现有 inspector 浮层一致），此点在代码注释中说明。
+浮层与 pin 的 DOM 注入 iframe 文档（document 坐标绝对定位，滚动天然跟随），实现集中在 `utils/annotationOverlay.ts`；位置由 `ResizeObserver` 驱动自适应（目标尺寸变化、body 重建按选择器重绑、退化尺寸保留原位、首帧退化用点击点兜底）；文案由父层 `t()` 拼入注入字符串。
+
+浮层外观（输入框 / 信息栏 / 按钮）取自应用当前主题：`utils/annotationEditorTheme.ts` 用离屏探针读取 `AgentInput` 底栏与裸按钮在**当前主题下的真实计算样式**（像素主题即自动获得直角、2px 黑描边、马赛克底纹、浮雕与主题字体），主题切换时通过 `applyTheme` 重建浮层样式表。选中框 / 悬停框 / 气泡的语义色仍是画布常量（粉色悬停、蓝色选中），因为它们是标注语义而非应用 UI。
 
 ### 6.3 画布体检（B + C）
 
@@ -280,6 +283,8 @@ notes: 卡片统一 rounded-lg border border-white/10
 | `test/renderer/pages/front-design/issueFormat.test.ts` | `A11yFinding` → 文案与指令（zh/en 两套 key 存在且无缺键） |
 | `test/renderer/features/agent/designReviewComposer.test.ts` | mention 消息格式、无选择器降级、批注/体检两类头行、选择器含空格时不进 mention 走降级、空列表返回空串 |
 | `test/renderer/features/agent/designSystemInjection.test.ts` | 令牌非空 + design 模式才注入、排在设计块之前、空令牌/非 design 模式不注入、notes 换行折行 |
+| `test/renderer/pages/front-design/annotationLayer.test.ts` | 图层归属判定（跨文档 / body 重建必须重建）、气泡与编号、信息栏与底部关闭按钮、空内容校验、Enter/Esc、双框并存与配色、预览回落、锚点重绑、退化尺寸不跳左上角、ResizeObserver 重排、销毁清理 |
+| `test/renderer/pages/front-design/annotationEditorTheme.test.ts` | 像素主题映射（直角/描边/底纹/浮雕/字体/按钮）、默认主题逐项回退、透明底色兜底、探针必须在读取期间仍挂载 |
 
 - 验证命令：`pnpm test`（受影响文件）→ `pnpm typecheck` → `pnpm lint`（biome）。
 - 未纳入单测（iframe 交互编排、pin 浮层、面板组件交互）通过 `docs/feature/front-design-review-loop/task.md` 的手工验收清单确认；不额外引入 jsdom iframe 测试脚手架。
@@ -294,3 +299,30 @@ notes: 卡片统一 rounded-lg border border-white/10
 | 轮询开销 | 1s 轮询读数组 | 数组上限 50 条、仅页面挂载且有 iframe 时运行；成本可忽略 |
 | 生成中审计噪音 | 流式过程中 DOM 不稳定 | 流式期间跳过审计与错误展示，面板显示「生成中」 |
 | 令牌注入放大 token 消耗 | 每条 design 消息头部多一个块 | 令牌为空不注入；字段长度钳制；实际增量 < 200 token |
+| 探针耦合 AgentInput 类名 | 浮层外观以 `.agent-input-container` 为参考钩子，改名会让主题读取静默回退默认值 | 回退值即默认主题观感，不会报错；类名变更时同步更新 `annotationEditorTheme.ts` |
+| 计算样式是活动对象 | 探针脱离文档后 `getComputedStyle` 取值会变为空串（真实浏览器行为，jsdom 桩不可见），曾导致像素主题完全不生效 | 已改为探针挂载期间读取全部字段，`finally` 清理；新增「读取期间探针必须在文档内」回归用例 |
+| 前台无法覆盖全部主题组合 | 主题 × 面板 × 双框组合多，自动化只覆盖样式映射与状态机 | 交付后由使用者在默认 / 像素两套主题下手工验收 |
+
+## 12. 交付后细化记录（v1.1）
+
+初版交付后按试用反馈迭代，最终语义以本节为准：
+
+| 项 | 初版 | 最终 |
+| :--- | :--- | :--- |
+| 点选后选中框 | 点击即插 mention 到聊天框（旧 Inspector） | 点击写批注 → 输入框 + 常驻蓝色选中框 |
+| 选中框数量 | 单框切换配色 | 粉色悬停框 + 蓝色选中框双框并存 |
+| 选中框生存期 | 关闭输入框即消失 | 常驻；点空白 / 改选 / 退出模式才解除 |
+| ESC | 单次退出批注模式 | 编辑器 → 选中 → 双击退出模式（首次 toast 提示） |
+| 输入框外观 | 自绘深色卡片，字号/圆角/描边硬编码 | 对齐 AgentInput 底栏，外观取自当前应用主题（像素主题自动换肤） |
+| 关闭按钮位置 | 信息栏右侧（顶部） | 输入框底部操作行 |
+| 标记自适应 | 无 | ResizeObserver 重排（高亮框 / 气泡 / 输入框 + 尺寸文案） |
+| 退化与失效兜底 | 无（会贴左上角） | 保留原位 / 按选择器重绑 / 点击点兜底 |
+| Toast 方位 | agent-top（设计页无该容器，实际看不到） | breadcrumb（由 HeaderSideBar 统一渲染） |
+
+修复清单（均已含回归用例）：
+
+1. 僵尸图层：`isAttached()` 只校验自身闭包文档，srcDoc 加载替换文档后仍判定可用 → 改为 `isAttachedTo(target)` 同时校验文档与挂载。
+2. 标记不自适应：容器高度变化时标记不跟随 → ResizeObserver + body 重建重绑。
+3. 浮层贴左上角：0×0 元素被按退化坐标定位 → 保留原位 + 点击点兜底。
+4. 选中框消失 / 无法自由改选：单框切换语义 → 双框模型。
+5. 像素主题不生效：计算样式读取时序错误（探针提前移除）→ 挂载期间读取。
