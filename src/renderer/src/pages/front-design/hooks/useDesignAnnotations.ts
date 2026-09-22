@@ -83,9 +83,9 @@ export const useDesignAnnotations = ({
     () => ({
       placeholder: t("frontDesign.reviewPlaceholder"),
       confirm: t("frontDesign.reviewConfirm"),
-      cancel: t("frontDesign.reviewCancel"),
       remove: t("frontDesign.reviewDelete"),
       emptyHint: t("frontDesign.reviewEmptyComment"),
+      close: t("frontDesign.reviewClose"),
     }),
     [t],
   )
@@ -130,6 +130,9 @@ export const useDesignAnnotations = ({
     const existing = layerRef.current
     if (existing?.isAttachedTo(doc)) return existing
 
+    // 旧图层连同其 ResizeObserver 一并销毁，避免继续观察已废弃文档。
+    existing?.destroy()
+
     const layer = createAnnotationLayer(doc, {
       onSubmit: (selector, description, comment) => handleSubmit(selector, description, comment),
       onRemove: (selector) => handleRemove(selector),
@@ -137,6 +140,14 @@ export const useDesignAnnotations = ({
     layerRef.current = layer
     return layer
   }, [iframeRef, handleSubmit, handleRemove])
+
+  // 页面卸载时销毁图层，释放 ResizeObserver。
+  useEffect(() => {
+    return () => {
+      layerRef.current?.destroy()
+      layerRef.current = null
+    }
+  }, [])
 
   // 画布清空、无激活设计或 Agent 流式生成时自动退出批注模式
   useEffect(() => {

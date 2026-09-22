@@ -1,12 +1,49 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import type { DesignAnnotation } from "@/pages/front-design/types"
 import {
   ANNOTATION_LAYER_ID,
   type AnnotationLayerLabels,
   createAnnotationLayer,
 } from "@/pages/front-design/utils/annotationOverlay"
+
+// ResizeObserver 桩：记录实例并允许手动触发回调。
+class MockResizeObserver {
+  static instances: MockResizeObserver[] = []
+
+  callback: () => void
+  observed = new Set<Element>()
+
+  constructor(callback: () => void) {
+    this.callback = callback
+    MockResizeObserver.instances.push(this)
+  }
+
+  observe(target: Element): void {
+    this.observed.add(target)
+  }
+
+  unobserve(target: Element): void {
+    this.observed.delete(target)
+  }
+
+  disconnect(): void {
+    this.observed.clear()
+  }
+
+  trigger(): void {
+    this.callback()
+  }
+}
+
+const LABELS: AnnotationLayerLabels = {
+  placeholder: "写下修改意见",
+  confirm: "确认",
+  remove: "删除",
+  emptyHint: "批注内容不能为空",
+  close: "关闭输入框",
+}
 
 // 合成文档没有 defaultView，无法走 testing-library 的 fireEvent，直接派发原生事件。
 const dispatchClick = (element: Element): void => {
@@ -22,18 +59,25 @@ const dispatchInput = (textarea: HTMLTextAreaElement, value: string): void => {
   textarea.dispatchEvent(new Event("input", { bubbles: true }))
 }
 
-const LABELS: AnnotationLayerLabels = {
-  placeholder: "写下修改意见",
-  confirm: "确认",
-  cancel: "取消",
-  remove: "删除",
-  emptyHint: "批注内容不能为空",
-}
-
 const createDoc = (body: string): Document => {
   const doc = document.implementation.createHTMLDocument("preview")
   doc.body.innerHTML = body
   return doc
+}
+
+const stubRect = (
+  element: Element,
+  rect: { left: number; top: number; width: number; height: number },
+): void => {
+  element.getBoundingClientRect = () =>
+    ({
+      ...rect,
+      right: rect.left + rect.width,
+      bottom: rect.top + rect.height,
+      x: rect.left,
+      y: rect.top,
+      toJSON: () => rect,
+    }) as DOMRect
 }
 
 const createAnnotation = (overrides: Partial<DesignAnnotation> = {}): DesignAnnotation => ({
@@ -54,6 +98,11 @@ const setup = (body = "<main><button id='target'>Buy</button></main>") => {
 }
 
 describe("批注图层", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    MockResizeObserver.instances = []
+  })
+
   it("图层归属判定：仅在同一文档且仍在 body 内时才可复用", () => {
     const { doc, layer } = setup()
     const otherDoc = createDoc("<main></main>")
@@ -114,6 +163,39 @@ describe("批注图层", () => {
     expect(layer.isEditorOpen()).toBe(false)
   })
 
+  it("输入框上方展示元素信息与尺寸，支持关闭按钮退出", () => {
+    const { doc, callbacks, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 24, top: 40, width: 120, height: 36 })
+
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "草稿",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+
+    const meta = doc.querySelector("[data-annotation-editor-meta]") as HTMLElement
+    const box = doc.querySelector("[data-annotation-editor-box]") as HTMLElement
+    expect(meta.querySelector("[data-annotation-editor-info]")?.textContent).toBe(
+      "button#target120×36",
+    )
+    // 基本信息在输入框上方
+    expect(meta.compareDocumentPosition(box)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+
+    const close = meta.querySelector('[data-annotation-action="close"]') as Element
+    expect(close.getAttribute("aria-label")).toBe("关闭输入框")
+    dispatchClick(close)
+
+    expect(layer.isEditorOpen()).toBe(false)
+    expect(doc.querySelector("[data-annotation-editor]")).toBeNull()
+    expect(callbacks.onSubmit).not.toHaveBeenCalled()
+  })
+
   it("Enter 确认、 ESC 取消，编辑态提供删除", () => {
     const { doc, callbacks, layer } = setup()
     const target = doc.getElementById("target") as HTMLElement
@@ -153,6 +235,42 @@ describe("批注图层", () => {
     expect(callbacks.onSubmit).not.toHaveBeenCalled()
   })
 
+  it("目标尺寸变化时高亮框、气泡与输入框尺寸自适应重排", () => {
+    vi.stubGlobal("ResizeObserver", MockResizeObserver)
+    const { doc, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    let rect = { left: 10, top: 20, width: 100, height: 40 }
+    stubRect(target, rect)
+
+    layer.render([createAnnotation()], LABELS)
+    layer.highlight("#target")
+
+    const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+    const pin = doc.querySelector("[data-annotation-pin]") as HTMLElement
+    expect(highlight.style.height).toBe("40px")
+    expect(pin.style.top).toBe("20px")
+
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+    expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("100×40")
+
+    // 容器高度变化（内容增多 / 响应式重排）后由 ResizeObserver 触发重排
+    rect = { left: 10, top: 20, width: 100, height: 260 }
+    stubRect(target, rect)
+    MockResizeObserver.instances.at(-1)?.trigger()
+
+    expect(highlight.style.height).toBe("260px")
+    expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("100×260")
+  })
+
   it("悬停与选中高亮按选择器切换显示", () => {
     const { doc, layer } = setup()
     const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
@@ -176,5 +294,19 @@ describe("批注图层", () => {
     expect(container).not.toBeNull()
     expect(container.parentElement).toBe(doc.body)
     expect(container.style.pointerEvents).toBe("none")
+  })
+
+  it("销毁后断开关联并移除容器", () => {
+    vi.stubGlobal("ResizeObserver", MockResizeObserver)
+    const { doc, layer } = setup()
+    layer.render([createAnnotation()], LABELS)
+
+    const observer = MockResizeObserver.instances.at(-1)
+    expect(observer?.observed.size).toBeGreaterThan(0)
+
+    layer.destroy()
+
+    expect(observer?.observed.size).toBe(0)
+    expect(doc.getElementById(ANNOTATION_LAYER_ID)).toBeNull()
   })
 })

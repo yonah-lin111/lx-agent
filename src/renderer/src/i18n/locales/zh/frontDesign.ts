@@ -62,7 +62,7 @@ export const frontDesign = {
   reviewClear: "清空批注",
   reviewPlaceholder: "写下修改意见，Enter 确认",
   reviewConfirm: "确认",
-  reviewCancel: "取消",
+  reviewClose: "关闭输入框",
   reviewEmptyComment: "批注内容不能为空",
   reviewSentToast: "已发送 {{count}} 条批注给 Agent",
   reviewMessageHeader: "按以下批注修改（共 {{count}} 处）：",

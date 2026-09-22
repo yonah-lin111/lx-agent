@@ -8,7 +8,7 @@ export const ANNOTATION_LAYER_ID = "lx-design-annotation-layer"
 
 const PIN_SIZE = 18
 const EDITOR_WIDTH = 240
-const EDITOR_ESTIMATED_HEIGHT = 148
+const EDITOR_ESTIMATED_HEIGHT = 168
 // 画布浮层强调色（与工具栏批注按钮同色系）。
 const ACCENT_COLOR = "#ec4899"
 const SURFACE_COLOR = "#18181b"
@@ -20,9 +20,9 @@ const MUTED_COLOR = "#a1a1aa"
 export interface AnnotationLayerLabels {
   placeholder: string
   confirm: string
-  cancel: string
   remove: string
   emptyHint: string
+  close: string
 }
 
 export interface AnnotationEditorRequest {
@@ -48,6 +48,7 @@ export interface AnnotationLayer {
   highlight: (selector: string | null) => void
   // 图层是否仍挂在该文档上：iframe 文档被替换或 body 被重建后必须返回 false。
   isAttachedTo: (target: Document) => boolean
+  destroy: () => void
 }
 
 interface LayerPosition {
@@ -57,8 +58,11 @@ interface LayerPosition {
   height: number
 }
 
+type ResizeObserverCtor = new (callback: () => void) => ResizeObserver
+
 /**
- * 创建批注图层：容器挂载在 body，钉选气泡与编辑器按文档坐标绝对定位，滚动天然跟随。
+ * 创建批注图层：容器挂载在 body，钉选气泡与编辑器按文档坐标绝对定位，滚动天然跟随；
+ * 目标元素尺寸变化（内容增高、响应式重排）通过 ResizeObserver 实时重排标记与编辑器。
  */
 export const createAnnotationLayer = (
   doc: Document,
@@ -108,24 +112,21 @@ export const createAnnotationLayer = (
   let editorElement: HTMLElement | null = null
   let editorTextarea: HTMLTextAreaElement | null = null
   let editorHint: HTMLElement | null = null
+  let editorSizeLabel: HTMLElement | null = null
   let activeRequest: AnnotationEditorRequest | null = null
+  // 图层是否已销毁：销毁后不再观察任何元素。
+  let destroyed = false
+  // 高亮框当前跟踪的元素（悬停或面板选中）。
+  let highlightTarget: Element | null = null
+  // 钉选气泡与其跟踪的元素。
+  let pinTargets: Array<{ pin: HTMLElement; target: Element }> = []
   // 最近一次渲染使用的文案，供钉选气泡直接唤起编辑器复用。
   let currentLabels: AnnotationLayerLabels = {
     placeholder: "",
     confirm: "",
-    cancel: "",
     remove: "",
     emptyHint: "",
-  }
-
-  const closeEditor = (): void => {
-    if (editorElement?.parentNode) {
-      editorElement.parentNode.removeChild(editorElement)
-    }
-    editorElement = null
-    editorTextarea = null
-    editorHint = null
-    activeRequest = null
+    close: "",
   }
 
   const showHighlightAt = (position: LayerPosition): void => {
@@ -136,22 +137,109 @@ export const createAnnotationLayer = (
     highlightBox.style.height = `${position.height}px`
   }
 
+  const positionPins = (): void => {
+    for (const { pin, target } of pinTargets) {
+      const position = toLayerPosition(target)
+      pin.style.left = `${position.left}px`
+      pin.style.top = `${position.top}px`
+    }
+  }
+
+  // 编辑器跟随锚点元素，元信息中的尺寸同步刷新。
+  const positionEditor = (): void => {
+    if (!editorElement || !activeRequest) return
+
+    // body 被重建后原锚点已脱离文档：按选择器重新定位，避免尺寸信息与位置失效。
+    if (activeRequest.anchor && !activeRequest.anchor.isConnected) {
+      const refreshed = doc.querySelector(activeRequest.selector)
+      if (refreshed instanceof HTMLElement) {
+        activeRequest.anchor = refreshed
+      }
+    }
+
+    const anchor = activeRequest.anchor
+    if (!anchor) return
+
+    const position = toLayerPosition(anchor)
+    if (editorSizeLabel) {
+      editorSizeLabel.textContent = `${Math.round(position.width)}×${Math.round(position.height)}`
+    }
+
+    const viewportHeight = doc.documentElement.clientHeight || 0
+    const editorTop =
+      position.top + position.height + 8 + EDITOR_ESTIMATED_HEIGHT > viewportHeight
+        ? Math.max(8, position.top - EDITOR_ESTIMATED_HEIGHT - 8)
+        : position.top + position.height + 8
+    const viewportWidth = doc.documentElement.clientWidth || 0
+    editorElement.style.left = `${Math.min(position.left, Math.max(0, viewportWidth - EDITOR_WIDTH - 8))}px`
+    editorElement.style.top = `${editorTop}px`
+  }
+
+  // 全量重排：目标尺寸变化后统一校正高亮框、气泡与编辑器。
+  const syncPositions = (): void => {
+    if (highlightTarget) showHighlightAt(toLayerPosition(highlightTarget))
+    positionPins()
+    positionEditor()
+  }
+
+  const ResizeObserverImpl: ResizeObserverCtor | undefined =
+    (doc.defaultView as unknown as { ResizeObserver?: ResizeObserverCtor } | null)
+      ?.ResizeObserver ??
+    (globalThis as unknown as { ResizeObserver?: ResizeObserverCtor }).ResizeObserver
+
+  const resizeObserver = ResizeObserverImpl ? new ResizeObserverImpl(() => syncPositions()) : null
+
+  // 观察当前所有被标记的元素与文档根节点，尺寸变化时触发重排。
+  const observeTargets = (): void => {
+    if (!resizeObserver || destroyed) return
+    resizeObserver.disconnect()
+
+    const targets = new Set<Element>()
+    if (highlightTarget) targets.add(highlightTarget)
+    for (const entry of pinTargets) targets.add(entry.target)
+    if (activeRequest?.anchor) targets.add(activeRequest.anchor)
+    for (const target of targets) resizeObserver.observe(target)
+
+    if (doc.body) resizeObserver.observe(doc.body)
+    if (doc.documentElement) resizeObserver.observe(doc.documentElement)
+  }
+
+  const setHighlightTarget = (element: Element | null): void => {
+    highlightTarget = element
+    if (!element) {
+      highlightBox.style.display = "none"
+      observeTargets()
+      return
+    }
+    showHighlightAt(toLayerPosition(element))
+    observeTargets()
+  }
+
   const buildButton = (
     label: string,
-    action: "remove" | "cancel" | "confirm",
+    action: "remove" | "confirm" | "close",
     onClick: () => void,
-    options: { strong?: boolean } = {},
+    options: { strong?: boolean; icon?: boolean } = {},
   ): HTMLButtonElement => {
     const button = doc.createElement("button")
     button.type = "button"
     button.setAttribute("data-annotation-action", action)
     button.textContent = label
-    button.style.padding = "3px 8px"
-    button.style.fontSize = "11px"
+    button.style.padding = options.icon ? "0" : "3px 8px"
+    button.style.width = options.icon ? "16px" : "auto"
+    button.style.height = options.icon ? "16px" : "auto"
+    button.style.lineHeight = options.icon ? "14px" : "normal"
+    button.style.fontSize = options.icon ? "14px" : "11px"
     button.style.fontFamily = "inherit"
     button.style.borderRadius = "4px"
-    button.style.border = `1px solid ${options.strong ? ACCENT_COLOR : BORDER_COLOR}`
-    button.style.backgroundColor = options.strong ? ACCENT_COLOR : "transparent"
+    button.style.border = options.icon
+      ? "none"
+      : `1px solid ${options.strong ? ACCENT_COLOR : BORDER_COLOR}`
+    button.style.backgroundColor = options.icon
+      ? "transparent"
+      : options.strong
+        ? ACCENT_COLOR
+        : "transparent"
     button.style.color = options.strong ? "#ffffff" : MUTED_COLOR
     button.style.cursor = "pointer"
     button.addEventListener("click", (event) => {
@@ -159,6 +247,18 @@ export const createAnnotationLayer = (
       onClick()
     })
     return button
+  }
+
+  const closeEditor = (): void => {
+    if (editorElement?.parentNode) {
+      editorElement.parentNode.removeChild(editorElement)
+    }
+    editorElement = null
+    editorTextarea = null
+    editorHint = null
+    editorSizeLabel = null
+    activeRequest = null
+    observeTargets()
   }
 
   const confirmEditor = (): void => {
@@ -184,25 +284,68 @@ export const createAnnotationLayer = (
     editor.setAttribute("data-annotation-editor", "true")
     editor.style.position = "absolute"
     editor.style.width = `${EDITOR_WIDTH}px`
-    editor.style.padding = "8px"
-    editor.style.boxSizing = "border-box"
-    editor.style.backgroundColor = SURFACE_COLOR
-    editor.style.border = `1px solid ${ACCENT_COLOR}`
-    editor.style.borderRadius = "6px"
-    editor.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.35)"
     editor.style.pointerEvents = "auto"
     editor.style.fontFamily = "ui-sans-serif, system-ui, sans-serif"
 
-    const title = doc.createElement("div")
-    title.textContent = request.description || request.selector
-    title.style.fontSize = "11px"
-    title.style.fontFamily = "ui-monospace, monospace"
-    title.style.color = ACCENT_COLOR
-    title.style.marginBottom = "6px"
-    title.style.overflow = "hidden"
-    title.style.textOverflow = "ellipsis"
-    title.style.whiteSpace = "nowrap"
-    editor.appendChild(title)
+    // 输入框上方：元素基本信息（描述 + 实时尺寸）与关闭按钮。
+    const meta = doc.createElement("div")
+    meta.setAttribute("data-annotation-editor-meta", "true")
+    meta.style.display = "flex"
+    meta.style.alignItems = "center"
+    meta.style.justifyContent = "space-between"
+    meta.style.gap = "6px"
+    meta.style.marginBottom = "4px"
+
+    const info = doc.createElement("span")
+    info.setAttribute("data-annotation-editor-info", "true")
+    info.style.display = "flex"
+    info.style.alignItems = "center"
+    info.style.gap = "4px"
+    info.style.minWidth = "0"
+    info.style.padding = "1px 6px"
+    info.style.fontSize = "11px"
+    info.style.fontFamily = "ui-monospace, monospace"
+    info.style.color = ACCENT_COLOR
+    info.style.backgroundColor = "rgba(236, 72, 153, 0.14)"
+    info.style.border = "1px solid rgba(236, 72, 153, 0.35)"
+    info.style.borderRadius = "4px"
+
+    const infoName = doc.createElement("span")
+    infoName.textContent = request.description || request.selector
+    infoName.style.overflow = "hidden"
+    infoName.style.textOverflow = "ellipsis"
+    infoName.style.whiteSpace = "nowrap"
+    info.appendChild(infoName)
+
+    const infoSize = doc.createElement("span")
+    infoSize.setAttribute("data-annotation-editor-size", "true")
+    infoSize.style.color = "rgba(236, 72, 153, 0.75)"
+    info.appendChild(infoSize)
+    meta.appendChild(info)
+
+    const closeButton = buildButton(
+      "×",
+      "close",
+      () => {
+        closeEditor()
+      },
+      { icon: true },
+    )
+    closeButton.setAttribute("aria-label", labels.close)
+    closeButton.style.color = MUTED_COLOR
+    closeButton.style.fontSize = "14px"
+    meta.appendChild(closeButton)
+    editor.appendChild(meta)
+
+    // 输入框本体。
+    const box = doc.createElement("div")
+    box.setAttribute("data-annotation-editor-box", "true")
+    box.style.padding = "8px"
+    box.style.boxSizing = "border-box"
+    box.style.backgroundColor = SURFACE_COLOR
+    box.style.border = `1px solid ${ACCENT_COLOR}`
+    box.style.borderRadius = "6px"
+    box.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.35)"
 
     const textarea = doc.createElement("textarea")
     textarea.value = request.comment
@@ -219,7 +362,7 @@ export const createAnnotationLayer = (
     textarea.style.border = `1px solid ${BORDER_COLOR}`
     textarea.style.borderRadius = "4px"
     textarea.style.outline = "none"
-    editor.appendChild(textarea)
+    box.appendChild(textarea)
 
     const hint = doc.createElement("div")
     hint.textContent = labels.emptyHint
@@ -227,7 +370,7 @@ export const createAnnotationLayer = (
     hint.style.color = "#fb7185"
     hint.style.marginTop = "4px"
     hint.style.visibility = "hidden"
-    editor.appendChild(hint)
+    box.appendChild(hint)
 
     const actions = doc.createElement("div")
     actions.style.display = "flex"
@@ -242,9 +385,9 @@ export const createAnnotationLayer = (
         }),
       )
     }
-    actions.appendChild(buildButton(labels.cancel, "cancel", closeEditor))
     actions.appendChild(buildButton(labels.confirm, "confirm", confirmEditor, { strong: true }))
-    editor.appendChild(actions)
+    box.appendChild(actions)
+    editor.appendChild(box)
 
     textarea.addEventListener("input", () => {
       textarea.style.borderColor = BORDER_COLOR
@@ -265,20 +408,13 @@ export const createAnnotationLayer = (
     })
     editor.addEventListener("click", (event) => event.stopPropagation())
 
-    const anchor = request.anchor
-    const position = anchor ? toLayerPosition(anchor) : { left: 24, top: 24, width: 0, height: 0 }
-    const viewportHeight = doc.documentElement.clientHeight || 0
-    const editorTop =
-      position.top + position.height + 8 + EDITOR_ESTIMATED_HEIGHT > viewportHeight
-        ? Math.max(8, position.top - EDITOR_ESTIMATED_HEIGHT - 8)
-        : position.top + position.height + 8
-    editor.style.left = `${Math.min(position.left, Math.max(0, (doc.documentElement.clientWidth || 0) - EDITOR_WIDTH - 8))}px`
-    editor.style.top = `${editorTop}px`
-
     container.appendChild(editor)
     editorElement = editor
     editorTextarea = textarea
     editorHint = hint
+    editorSizeLabel = infoSize
+    positionEditor()
+    observeTargets()
     textarea.focus()
     textarea.setSelectionRange(textarea.value.length, textarea.value.length)
   }
@@ -286,6 +422,8 @@ export const createAnnotationLayer = (
   const renderPins = (annotations: DesignAnnotation[], labels: AnnotationLayerLabels): void => {
     currentLabels = labels
     pinContainer.textContent = ""
+    pinTargets = []
+
     for (const annotation of annotations) {
       const target = doc.querySelector(annotation.selector)
       if (!target) continue
@@ -313,7 +451,7 @@ export const createAnnotationLayer = (
       pin.style.cursor = "pointer"
       pin.style.pointerEvents = "auto"
       pin.style.userSelect = "none"
-      pin.addEventListener("mouseenter", () => showHighlightAt(position))
+      pin.addEventListener("mouseenter", () => showHighlightAt(toLayerPosition(target)))
       pin.addEventListener("mouseleave", () => {
         highlightBox.style.display = "none"
       })
@@ -330,8 +468,12 @@ export const createAnnotationLayer = (
           currentLabels,
         )
       })
+
       pinContainer.appendChild(pin)
+      pinTargets.push({ pin, target })
     }
+
+    observeTargets()
   }
 
   if (doc.body) doc.body.appendChild(container)
@@ -341,30 +483,34 @@ export const createAnnotationLayer = (
       renderPins(annotations, labels)
     },
     openEditor: (request: AnnotationEditorRequest, labels: AnnotationLayerLabels): void => {
+      currentLabels = labels
       mountEditor(request, labels)
     },
     closeEditor,
     isEditorOpen: (): boolean => Boolean(editorElement),
     showHover: (element: HTMLElement | null): void => {
       if (!element || element === doc.body || element === doc.documentElement) {
-        highlightBox.style.display = "none"
+        setHighlightTarget(null)
         return
       }
-      showHighlightAt(toLayerPosition(element))
+      setHighlightTarget(element)
     },
     highlight: (selector: string | null): void => {
       if (!selector) {
-        highlightBox.style.display = "none"
+        setHighlightTarget(null)
         return
       }
-      const target = doc.querySelector(selector)
-      if (!target) {
-        highlightBox.style.display = "none"
-        return
-      }
-      showHighlightAt(toLayerPosition(target))
+      setHighlightTarget(doc.querySelector(selector))
     },
     isAttachedTo: (target: Document): boolean =>
       target === doc && (doc.body?.contains(container) ?? false),
+    destroy: (): void => {
+      destroyed = true
+      closeEditor()
+      resizeObserver?.disconnect()
+      pinTargets = []
+      highlightTarget = null
+      if (container.parentNode) container.parentNode.removeChild(container)
+    },
   }
 }

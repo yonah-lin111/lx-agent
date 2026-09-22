@@ -65,7 +65,7 @@ export const frontDesign = {
   reviewClear: "Clear notes",
   reviewPlaceholder: "Describe the change, Enter to confirm",
   reviewConfirm: "Confirm",
-  reviewCancel: "Cancel",
+  reviewClose: "Close the editor",
   reviewEmptyComment: "Note cannot be empty",
   reviewSentToast: "Sent {{count}} review notes to the agent",
   reviewMessageHeader: "Apply the following review notes ({{count}} items):",
