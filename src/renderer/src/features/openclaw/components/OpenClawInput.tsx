@@ -13,7 +13,7 @@ import {
 import { Send, Square } from "lucide-react"
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { useLxAgentToast } from "@/components/ui/LxToast"
+import { useLxToast } from "@/components/ui/LxToast"
 import {
   type AgentInputCommand,
   AgentInputCommandPanel,
@@ -139,7 +139,8 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     ref,
   ): React.JSX.Element => {
     const { t } = useTranslation()
-    const { error: errorToast } = useLxAgentToast()
+    // 面包屑位置提示（HeaderSideBar 渲染）：agent-top 的容器只挂在 AgentPage，OpenClaw 页面不可见。
+    const { error: errorToast } = useLxToast()
     const containerRef = useRef<HTMLDivElement>(null)
     const editorContainerRef = useRef<HTMLDivElement>(null)
     const editorViewRef = useRef<EditorView | null>(null)
