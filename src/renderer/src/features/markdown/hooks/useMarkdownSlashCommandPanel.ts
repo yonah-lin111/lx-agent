@@ -3,6 +3,7 @@ import type { RefObject } from "react"
 import { useRef, useState } from "react"
 import {
   createMarkdownTemplateId,
+  injectCustomTemplateBlockIds,
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import type { MarkdownSlashCommand } from "@/features/markdown/commands/markdownSlashCommands"
@@ -222,18 +223,19 @@ export const useMarkdownSlashCommandPanel = ({
       return
     }
 
-    // 自定义模板命令：直接将 content 插入光标行，若包含占位符则默认选中首个占位符。
+    // 自定义模板命令：补全内容中 &&& / +++ supple 结束行的块 id 后插入光标行，若包含占位符则默认选中首个占位符。
     if (command.kind === "customTemplate") {
-      const placeholderRange = getTemplatePlaceholderSelectionRange(command.content)
+      const content = injectCustomTemplateBlockIds(command.content)
+      const placeholderRange = getTemplatePlaceholderSelectionRange(content)
       const selection = placeholderRange
         ? {
             anchor: panel.line.from + placeholderRange.start,
             head: panel.line.from + placeholderRange.end,
           }
-        : { anchor: panel.line.from + command.cursorOffset }
+        : { anchor: panel.line.from + content.length }
 
       view.dispatch({
-        changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
+        changes: { from: panel.line.from, to: panel.line.to, insert: content },
         selection,
       })
       view.focus()

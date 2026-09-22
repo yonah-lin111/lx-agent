@@ -102,7 +102,6 @@ export const permissions = {
   customCommandScopeGlobal: "全局可用 (文档正文及模板块内)",
   customCommandScopeTemplateOnly: "仅模板块内 (&&& 内)",
   customCommandContent: "命令模板内容",
-  customCommandContentPlaceholder: "在此输入 Markdown 模板或 Prompt 内容...",
   customCommandNameRequired: "命令名称不能为空",
   customCommandProjectPathRequired: "项目级命令必须选择有效项目",
   customCommandSaveSuccess: "自定义命令保存成功",
@@ -125,4 +124,8 @@ export const permissions = {
   customCommandMDScopeTitle: "作用域说明",
   customCommandMDGlobalScopeDesc: "在文档正文和 &&& 模板块内均可唤起并插入",
   customCommandMDTemplateScopeDesc: "仅在 &&& 模板块内部可用（如补充需求等子模板）",
+  customCommandMDBlocksTitle: "支持的模板块语法",
+  customCommandMDTemplateBlockDesc: "文档模板块，插入时自动补全唯一 id",
+  customCommandMDSuppleBlockDesc: "补充需求子块（复制父模板时整块剔除）",
+  customCommandMDLogBlockDesc: "执行记录子块（复制父模板时保留内容）",
 }

@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
-import type { CustomCommandDetailItem } from "@shared/contracts/customCommand"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { EditorView } from "@codemirror/view"
+import type {
+  CustomCommandDetailItem,
+  ListCustomCommandsInput,
+  SaveCustomCommandInput,
+} from "@shared/contracts/customCommand"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CustomCommandSettings } from "@/features/settings/components/CustomCommandSettings"
 import { useSettingsDraftStore } from "@/features/settings/hooks/settingsDraftStore"
@@ -17,7 +22,24 @@ vi.stubGlobal(
   },
 )
 
-const listCommands = vi.fn<() => Promise<CustomCommandDetailItem[]>>()
+// jsdom 未实现 Range 几何 API；CodeMirror 6 测量依赖。
+const rangeRect = {
+  left: 10,
+  right: 10,
+  top: 5,
+  bottom: 25,
+  width: 0,
+  height: 20,
+  x: 10,
+  y: 5,
+  toJSON: () => ({}),
+} as DOMRect
+Range.prototype.getClientRects = () => [rangeRect] as unknown as DOMRectList
+Range.prototype.getBoundingClientRect = () => rangeRect
+
+const listCommands =
+  vi.fn<(input?: ListCustomCommandsInput) => Promise<CustomCommandDetailItem[]>>()
+const saveCommand = vi.fn()
 
 const loadedCommands = (): CustomCommandDetailItem[] => [
   {
@@ -38,6 +60,18 @@ const loadedCommands = (): CustomCommandDetailItem[] => [
   },
 ]
 
+const mdCommands = (): CustomCommandDetailItem[] => [
+  {
+    name: "md-alpha",
+    type: "agentMD",
+    scope: "user",
+    filePath: "/tmp/md-alpha.md",
+    description: "MD Alpha",
+    content: "&&& mdAlpha\n## 内容\n&&& mdAlpha --end",
+    mdScope: "global",
+  },
+]
+
 const renderComponent = (): ReturnType<typeof render> =>
   render(
     <I18nProvider>
@@ -49,9 +83,24 @@ beforeEach(() => {
   cleanup()
   vi.clearAllMocks()
   useSettingsDraftStore.getState().setActiveSection("custom-commands")
-  listCommands.mockResolvedValue(loadedCommands())
+  listCommands.mockImplementation(async (input) =>
+    input?.type === "agentMD" ? mdCommands() : loadedCommands(),
+  )
+  saveCommand.mockImplementation(async (input: SaveCustomCommandInput) => ({
+    ok: true,
+    item: {
+      name: input.name,
+      type: input.type,
+      scope: input.scope,
+      filePath: "/tmp/saved.md",
+      description: input.description,
+      content: input.content,
+      argumentHint: input.argumentHint,
+      mdScope: input.mdScope,
+    },
+  }))
   window.api = {
-    customCommand: { list: listCommands },
+    customCommand: { list: listCommands, save: saveCommand },
     project: { projects: { list: async () => [] } },
     settings: { getUiSettings: async () => ({ locale: "en" as const }) },
   } as unknown as typeof window.api
@@ -84,5 +133,36 @@ describe("CustomCommandSettings 命令行", () => {
     fireEvent.keyDown(alphaRow, { key: "Enter" })
 
     expect(await screen.findByDisplayValue("alpha")).toBeTruthy()
+  })
+
+  it("agentMD 命令使用 Markdown 编辑器，编辑内容后保存为最新模板内容", async () => {
+    renderComponent()
+    await screen.findByText("alpha")
+
+    fireEvent.click(screen.getByText("Markdown Template Commands (AgentMD)"))
+    await screen.findByText("md-alpha")
+
+    fireEvent.click(screen.getByText("md-alpha").closest('[role="button"]') as Element)
+
+    await waitFor(() => {
+      const cm = document.querySelector(".cm-content") as HTMLElement | null
+      const view = cm ? EditorView.findFromDOM(cm) : null
+      expect(view?.state.doc.toString()).toBe("&&& mdAlpha\n## 内容\n&&& mdAlpha --end")
+    })
+
+    const nextContent = "&&& mdAlpha\n## 新内容\n+++ supple --end\n&&& mdAlpha --end"
+    const cm = document.querySelector(".cm-content") as HTMLElement
+    const view = EditorView.findFromDOM(cm)!
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: nextContent } })
+
+    await waitFor(() => expect(useSettingsDraftStore.getState().isDirty).toBe(true))
+
+    await useSettingsDraftStore.getState().save()
+
+    expect(saveCommand).toHaveBeenCalledTimes(1)
+    expect(saveCommand.mock.calls[0][0]).toMatchObject({
+      type: "agentMD",
+      content: nextContent,
+    })
   })
 })

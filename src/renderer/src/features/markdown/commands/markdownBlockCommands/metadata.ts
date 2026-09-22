@@ -121,6 +121,40 @@ export const setMarkdownTemplateWorktree = (lineText: string, branch: string | n
 export const createMarkdownTemplateId = (): string => crypto.randomUUID().replaceAll("-", "")
 
 /**
+ * 为自定义模板内容补全块 id（插入时调用）：
+ * - `&&& <command> --end` 结束行注入 `{id:...}`，多个模板块各自独立；
+ * - `+++ supple(--Template) --end` 结束行注入 `{id:...}`；
+ * - `+++ log(--Template) --end` 不注入（log 结束行正则不接受 id 元数据）；
+ * 已有 id 的结束行保持不变，id 始终写在 `{wt:...}` 之前；开始行与正文行不受影响。
+ */
+export const injectCustomTemplateBlockIds = (content: string): string =>
+  content
+    .split("\n")
+    .map((line) => {
+      const templateEnd = parseMarkdownTemplateEndLine(line)
+      if (templateEnd) {
+        if (templateEnd.id) return line
+        const commandPart = templateEnd.command ? ` ${templateEnd.command}` : ""
+        const endFlagPart = templateEnd.endFlag ? ` ${templateEnd.endFlag}` : ""
+        const statusPart = templateEnd.status
+          ? (MARKDOWN_TEMPLATE_STATUS_SUFFIX[templateEnd.status] ?? "")
+          : ""
+        const wtPart = templateEnd.wt ? ` {wt:${templateEnd.wt}}` : ""
+        return `${templateEnd.indent}${templateEnd.marker}${commandPart}${endFlagPart}${statusPart} {id:${createMarkdownTemplateId()}}${wtPart}`
+      }
+
+      const suppleEnd = parseMarkdownSuppleEndLine(line)
+      if (suppleEnd) {
+        if (suppleEnd.id) return line
+        const wtPart = suppleEnd.wt ? ` {wt:${suppleEnd.wt}}` : ""
+        return `${suppleEnd.indent}+++ ${suppleEnd.command} --end {id:${createMarkdownTemplateId()}}${wtPart}`
+      }
+
+      return line
+    })
+    .join("\n")
+
+/**
  * 扫描文本中全部模板块及补充块结束行上的 id 源码范围，供编辑器只读保护使用。
  */
 export const getMarkdownTemplateIdRanges = (text: string): { from: number; to: number }[] => {

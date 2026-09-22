@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
+import { LxMarkdownEditor } from "@/components/ui/LxMarkdown/LxMarkdownEditor"
 import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
@@ -296,6 +297,9 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     await loadCommands(result.item.name)
   }
 
+  // 内容编辑器重挂载标识：切换命令/草稿/作用域时重建编辑器，避免 undo 历史跨命令串扰。
+  const editorKey = `${draftKey}:${isEditingDraft ? "draft" : (selectedCommandName ?? "empty")}`
+
   // 切换分类或作用域
   const handleTabChange = (val: string): void => {
     setActiveTab(val as CustomCommandType)
@@ -387,6 +391,11 @@ ${t("settings.customCommandAgentMDHelpDesc")}
 #### ${t("settings.customCommandMDScopeTitle")}
 - **Global**: ${t("settings.customCommandMDGlobalScopeDesc")}
 - **Template**: ${t("settings.customCommandMDTemplateScopeDesc")}
+
+#### ${t("settings.customCommandMDBlocksTitle")}
+- \`&&& <command> ... &&& <command> --end\`: ${t("settings.customCommandMDTemplateBlockDesc")}
+- \`+++ supple --start/--end\`: ${t("settings.customCommandMDSuppleBlockDesc")}
+- \`+++ log --start/--end\`: ${t("settings.customCommandMDLogBlockDesc")}
 `
 
   return (
@@ -600,7 +609,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
         </div>
 
         {/* 右侧表单编辑区 */}
-        <div className="settings-item-card flex min-h-0 flex-1 flex-col rounded-[6px] border border-white/8 bg-white/[0.02] p-3 overflow-y-auto custom-scrollbar">
+        <div className="settings-item-card flex min-h-0 flex-1 flex-col rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
           {!selectedCommandName && !isEditingDraft && commands.length === 0 && !hasDraft ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-white/40">
               <p>{t("settings.customCommandsEmptyTip")}</p>
@@ -616,7 +625,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
               </LxIconButton>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
               <div className="flex items-center justify-between border-b border-white/8 pb-2">
                 <h3 className="text-sm font-medium text-white flex items-center gap-2">
                   <span>
@@ -726,23 +735,21 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                     </label>
                   </>
                 )}
+              </div>
 
-                <label className="grid gap-1 text-xs text-white/60 @[500px]:col-span-2">
-                  <span className="flex items-center gap-1">
-                    {t("settings.customCommandContent")}
-                    <span className="text-rose-400">*</span>
-                  </span>
-                  <LxInput
-                    multiline
-                    rows={12}
-                    className="font-mono text-xs"
-                    placeholder={t("settings.customCommandContentPlaceholder")}
-                    value={formData.content}
-                    onChange={(e) =>
-                      handleFormChange((prev) => ({ ...prev, content: e.target.value }))
-                    }
+              {/* 内容编辑区：Markdown 编辑器撑满剩余高度 */}
+              <div className="flex min-h-0 flex-1 flex-col gap-1">
+                <span className="flex items-center gap-1 text-xs text-white/60">
+                  {t("settings.customCommandContent")}
+                  <span className="text-rose-400">*</span>
+                </span>
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <LxMarkdownEditor
+                    key={editorKey}
+                    initialContent={formData.content}
+                    onChange={(content) => handleFormChange((prev) => ({ ...prev, content }))}
                   />
-                </label>
+                </div>
               </div>
             </div>
           )}

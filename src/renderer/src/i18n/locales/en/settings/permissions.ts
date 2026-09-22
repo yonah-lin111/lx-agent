@@ -107,7 +107,6 @@ Configure independent capability allowlists for the four collaboration modes (Bu
   customCommandScopeGlobal: "Global (Document body & inside template blocks)",
   customCommandScopeTemplateOnly: "Template Only (inside &&& blocks)",
   customCommandContent: "Template Content",
-  customCommandContentPlaceholder: "Enter Markdown template or Prompt content here...",
   customCommandNameRequired: "Command name is required",
   customCommandProjectPathRequired: "Project-scoped commands require selecting a valid project",
   customCommandSaveSuccess: "Custom command saved successfully",
@@ -132,4 +131,10 @@ Configure independent capability allowlists for the four collaboration modes (Bu
     "Can be invoked both in normal text and inside &&& template blocks",
   customCommandMDTemplateScopeDesc:
     "Only available inside &&& template blocks (e.g. nested sub-templates)",
+  customCommandMDBlocksTitle: "Supported Template Blocks",
+  customCommandMDTemplateBlockDesc: "Document template block; a unique id is injected on insert",
+  customCommandMDSuppleBlockDesc:
+    "Supplementary requirements sub-block (excluded when copying the parent template)",
+  customCommandMDLogBlockDesc:
+    "Execution log sub-block (content kept when copying the parent template)",
 }

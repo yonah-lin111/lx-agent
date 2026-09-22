@@ -35,6 +35,7 @@ export {
   getMarkdownTemplateStatuses,
   getMarkdownTemplateWorktree,
   getMarkdownTemplateWtRanges,
+  injectCustomTemplateBlockIds,
   MARKDOWN_TEMPLATE_STATUS_LABELS,
   MARKDOWN_TEMPLATE_STATUS_SUFFIX,
   parseMarkdownSuppleEndLine,

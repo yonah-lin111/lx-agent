@@ -16,6 +16,7 @@ import {
   getMarkdownTemplateStatuses,
   getMarkdownTemplateWorktree,
   getMarkdownTemplateWtRanges,
+  injectCustomTemplateBlockIds,
   isInsideMarkdownCodeFence,
   isInsideMarkdownLogBlock,
   isInsideMarkdownTemplateBlock,
@@ -276,6 +277,82 @@ describe("模板块 id", () => {
       { from: endLineId, to: endLineId + `{id:${id}}`.length },
       { from: todoLineId, to: todoLineId + "{id:11111111111111111111111111111111}".length },
     ])
+  })
+})
+
+describe("自定义模板块 id 注入", () => {
+  const idPattern = /\{id:[0-9a-f]{32}\}/g
+
+  it("为 &&& 模板块结束行注入 id，开始行与正文不受影响", () => {
+    const result = injectCustomTemplateBlockIds(
+      ["&&& reviewTemplate", "## 内容", "&&& reviewTemplate --end"].join("\n"),
+    )
+    const lines = result.split("\n")
+
+    expect(lines[0]).toBe("&&& reviewTemplate")
+    expect(lines[1]).toBe("## 内容")
+    expect(lines[2]).toMatch(/^&&& reviewTemplate --end \{id:[0-9a-f]{32}\}$/)
+  })
+
+  it("多个模板块各自注入独立 id", () => {
+    const result = injectCustomTemplateBlockIds(
+      [
+        "&&& firstTemplate",
+        "&&& firstTemplate --end",
+        "&&& secondTemplate",
+        "&&& secondTemplate --end",
+      ].join("\n"),
+    )
+    const ids = result.match(idPattern) ?? []
+
+    expect(ids).toHaveLength(2)
+    expect(ids[0]).not.toBe(ids[1])
+  })
+
+  it("旧格式 &&& 结束行同样注入 id", () => {
+    expect(injectCustomTemplateBlockIds("&&& --end")).toMatch(/^&&& --end \{id:[0-9a-f]{32}\}$/)
+  })
+
+  it("已有 id 的结束行保持不变", () => {
+    const line = "&&& reviewTemplate --end {id:0123456789abcdef0123456789abcdef}"
+    expect(injectCustomTemplateBlockIds(line)).toBe(line)
+  })
+
+  it("id 注入在 {wt:...} 之前并保留结束行状态标记", () => {
+    const result = injectCustomTemplateBlockIds("&&& reviewTemplate --end done {wt:dev}")
+    expect(result).toMatch(/^&&& reviewTemplate --end done \{id:[0-9a-f]{32}\} \{wt:dev\}$/)
+  })
+
+  it("为 +++ supple 结束行注入 id，两种命令名与缩进均保留", () => {
+    expect(injectCustomTemplateBlockIds("+++ supple --end")).toMatch(
+      /^\+\+\+ supple --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("  +++ suppleTemplate --end")).toMatch(
+      /^ {2}\+\+\+ suppleTemplate --end \{id:[0-9a-f]{32}\}$/,
+    )
+  })
+
+  it("+++ log 结束行不注入 id", () => {
+    expect(injectCustomTemplateBlockIds("+++ log --end")).toBe("+++ log --end")
+    expect(injectCustomTemplateBlockIds("+++ logTemplate --end")).toBe("+++ logTemplate --end")
+  })
+
+  it("完整自定义模板：&&& 与 supple 注入、log 保持原样", () => {
+    const content = [
+      "&&& reviewTemplate",
+      "## 检查项",
+      "+++ supple --start",
+      "补充说明",
+      "+++ supple --end",
+      "+++ log --start",
+      "执行记录",
+      "+++ log --end",
+      "&&& reviewTemplate --end",
+    ].join("\n")
+    const result = injectCustomTemplateBlockIds(content)
+
+    expect(result).toContain("+++ log --end\n&&& reviewTemplate --end {id:")
+    expect(result.match(idPattern)).toHaveLength(2)
   })
 })
 
