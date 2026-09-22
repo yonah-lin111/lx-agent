@@ -94,6 +94,23 @@ describe("批注输入框主题读取", () => {
     expect(theme.buttonShadow).toContain("3px 3px 0px 0px")
   })
 
+  it("探针在读取期间必须仍在文档内（脱离文档后计算样式为空）", () => {
+    const probeAttached: boolean[] = []
+    vi.spyOn(window, "getComputedStyle").mockImplementation((element: Element) => {
+      if (element === document.documentElement) return createRootStyle({})
+      probeAttached.push(document.body.contains(element))
+      return createProbeStyle({})
+    })
+
+    readAnnotationEditorTheme()
+
+    // 输入框探针与按钮探针都在仍挂载时被读取
+    expect(probeAttached).toEqual([true, true])
+    // 读取完成后探针被清理
+    expect(document.body.querySelector(".agent-input-container")).toBeNull()
+    expect(document.body.querySelector("button")).toBeNull()
+  })
+
   it("默认主题：无边框探针回退到 1px 描边与圆角按钮", () => {
     vi.spyOn(window, "getComputedStyle")
       .mockReturnValueOnce(createRootStyle({}))

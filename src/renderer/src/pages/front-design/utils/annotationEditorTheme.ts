@@ -59,14 +59,8 @@ const readToken = (style: CSSStyleDeclaration | null, name: string, fallback: st
   return value || fallback
 }
 
-// 离屏探针：用真实主题类名渲染不可见节点，取其计算样式。
-// 探针基础样式即默认主题观感，主题内带 !important 的规则（像素主题）会自动覆盖。
-const readProbeStyle = (
-  className: string,
-  tagName: "div" | "button",
-): CSSStyleDeclaration | null => {
-  if (typeof document === "undefined" || !document.body) return null
-
+// 离屏探针：用真实主题类名渲染不可见节点。基础样式即默认主题观感，主题内带 !important 的规则（像素主题）会自动覆盖。
+const mountProbe = (className: string, tagName: "div" | "button"): HTMLElement => {
   const probe = document.createElement(tagName)
   if (className) probe.className = className
   probe.setAttribute("aria-hidden", "true")
@@ -82,48 +76,50 @@ const readProbeStyle = (
     probe.style.backgroundColor = FALLBACK_EDITOR_THEME.backgroundColor
   }
   document.body.appendChild(probe)
-
-  const style = window.getComputedStyle(probe)
-  probe.remove()
-  return style
+  return probe
 }
 
 /**
  * 读取当前应用主题的批注输入框样式：缺失或取不到时逐项回退默认值。
+ * 计算样式必须在探针仍挂载时读取（脱离文档后 getComputedStyle 会返回空值）。
  */
 export const readAnnotationEditorTheme = (): AnnotationEditorTheme => {
+  if (typeof document === "undefined" || !document.body) return { ...FALLBACK_EDITOR_THEME }
+
+  let boxProbe: HTMLElement | null = null
+  let buttonProbe: HTMLElement | null = null
+
   try {
-    if (typeof document === "undefined") return { ...FALLBACK_EDITOR_THEME }
-
     const rootStyle = window.getComputedStyle(document.documentElement)
-    const boxStyle = readProbeStyle("agent-input-container", "div")
-    const buttonStyle = readProbeStyle("", "button")
+    boxProbe = mountProbe("agent-input-container", "div")
+    const boxStyle = window.getComputedStyle(boxProbe)
+    buttonProbe = mountProbe("", "button")
+    const buttonStyle = window.getComputedStyle(buttonProbe)
 
-    const backgroundImage =
-      !boxStyle || boxStyle.backgroundImage === "none" ? "" : boxStyle.backgroundImage
-    const boxShadow = !boxStyle || boxStyle.boxShadow === "none" ? "" : boxStyle.boxShadow
-    // 探针无边框（border-width 0）视为该主题未定义输入框边框。
-    const borderWidth = boxStyle?.borderTopWidth || FALLBACK_EDITOR_THEME.borderWidth
-    const hasButtonBorder =
-      Boolean(buttonStyle?.borderTopWidth) && buttonStyle?.borderTopWidth !== "0px"
+    const backgroundImage = boxStyle.backgroundImage === "none" ? "" : boxStyle.backgroundImage
+    const boxShadow = boxStyle.boxShadow === "none" ? "" : boxStyle.boxShadow
+    const borderWidth = boxStyle.borderTopWidth || FALLBACK_EDITOR_THEME.borderWidth
+    const borderRadius = boxStyle.borderTopLeftRadius || FALLBACK_EDITOR_THEME.borderRadius
+    // 直角主题（像素主题 --theme-radius-base: 0px）下按钮继承输入框的硬边描边。
+    const isSquareTheme = borderRadius === "0px"
+    const buttonShadow = buttonStyle.boxShadow === "none" ? "" : buttonStyle.boxShadow
 
     return {
       borderWidth: borderWidth === "0px" ? FALLBACK_EDITOR_THEME.borderWidth : borderWidth,
-      borderStyle: boxStyle?.borderTopStyle || FALLBACK_EDITOR_THEME.borderStyle,
-      borderColor: boxStyle?.borderTopColor || FALLBACK_EDITOR_THEME.borderColor,
+      borderStyle: boxStyle.borderTopStyle || FALLBACK_EDITOR_THEME.borderStyle,
+      borderColor: boxStyle.borderTopColor || FALLBACK_EDITOR_THEME.borderColor,
       borderColorStrong: readToken(
         rootStyle,
         "--color-theme-border-strong",
         FALLBACK_EDITOR_THEME.borderColorStrong,
       ),
-      // 直角主题（如像素主题 --theme-radius-base: 0px）下输入框与按钮都保持硬边。
-      borderRadius: boxStyle?.borderTopLeftRadius || FALLBACK_EDITOR_THEME.borderRadius,
-      backgroundColor: isTransparent(boxStyle?.backgroundColor ?? "")
+      borderRadius,
+      backgroundColor: isTransparent(boxStyle.backgroundColor)
         ? FALLBACK_EDITOR_THEME.backgroundColor
-        : (boxStyle?.backgroundColor as string),
+        : boxStyle.backgroundColor,
       backgroundImage,
-      backgroundRepeat: boxStyle?.backgroundRepeat || FALLBACK_EDITOR_THEME.backgroundRepeat,
-      imageRendering: boxStyle?.imageRendering || FALLBACK_EDITOR_THEME.imageRendering,
+      backgroundRepeat: boxStyle.backgroundRepeat || FALLBACK_EDITOR_THEME.backgroundRepeat,
+      imageRendering: boxStyle.imageRendering || FALLBACK_EDITOR_THEME.imageRendering,
       boxShadow: boxShadow || FALLBACK_EDITOR_THEME.boxShadow,
       fontFamily: rootStyle.fontFamily || FALLBACK_EDITOR_THEME.fontFamily,
       chipFontFamily: readToken(
@@ -131,7 +127,7 @@ export const readAnnotationEditorTheme = (): AnnotationEditorTheme => {
         "--theme-font-family",
         FALLBACK_EDITOR_THEME.chipFontFamily,
       ),
-      color: boxStyle?.color || FALLBACK_EDITOR_THEME.color,
+      color: boxStyle.color || FALLBACK_EDITOR_THEME.color,
       mutedColor: readToken(
         rootStyle,
         "--color-theme-text-muted",
@@ -142,19 +138,17 @@ export const readAnnotationEditorTheme = (): AnnotationEditorTheme => {
         "--color-theme-text-subtle",
         FALLBACK_EDITOR_THEME.placeholderColor,
       ),
-      buttonBorderWidth: hasButtonBorder ? (buttonStyle?.borderTopWidth as string) : "0px",
-      buttonBorderColor: hasButtonBorder
-        ? (buttonStyle?.borderTopColor as string)
+      buttonBorderWidth: isSquareTheme ? borderWidth : "0px",
+      buttonBorderColor: isSquareTheme
+        ? boxStyle.borderTopColor || FALLBACK_EDITOR_THEME.borderColor
         : FALLBACK_EDITOR_THEME.buttonBorderColor,
-      buttonRadius:
-        boxStyle?.borderTopLeftRadius === "0px" ? "0px" : FALLBACK_EDITOR_THEME.buttonRadius,
-      buttonShadow: boxShadow
-        ? buttonStyle?.boxShadow === "none"
-          ? FALLBACK_EDITOR_THEME.buttonShadow
-          : (buttonStyle?.boxShadow as string)
-        : FALLBACK_EDITOR_THEME.buttonShadow,
+      buttonRadius: isSquareTheme ? "0px" : FALLBACK_EDITOR_THEME.buttonRadius,
+      buttonShadow: buttonShadow || FALLBACK_EDITOR_THEME.buttonShadow,
     }
   } catch {
     return { ...FALLBACK_EDITOR_THEME }
+  } finally {
+    boxProbe?.remove()
+    buttonProbe?.remove()
   }
 }
