@@ -113,6 +113,8 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
 
 仅实现 OpenClaw 需要的三种面板：`/` 命令、当前办公区内的 `@claw` 提及、`/office` 选择面板；本地会话专属面板（model / worktree / project / session / skill / design / 文件提及）不接入。
 
+输入框底部为 `OpenClawTargetSelect`（当前办公区员工多选）：只列员工、不切换办公区，按钮按未选中 / 单个 / 多个显示「选择员工」/ 员工名 / `N 名员工`；办公区切换由左栏办公区列表或 `/office` 面板负责。
+
 ### 5.2 内置命令
 
 | 命令 | 行为 |
@@ -122,7 +124,7 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
 | `/stop` | 中止当前办公区内所有流式任务 |
 | `/office` | 打开办公区切换面板 |
 
-按键：`↑/↓` 移动、`Enter` 选择、`Esc` 关闭/中止流式；无面板时 `Enter` 发送、`Shift+Enter` 换行。文本派生的二级面板（`/clear`、`/only`）按 `Esc` 会连同派生文本一并丢弃；`/only` 仅在消息列表出现 ≥ 2 名员工时可见。员工多选通过左栏名册或 `@claw:` 提及完成；消息列表筛选不影响派发目标，顶栏提供筛选 chips 与恢复按钮。
+按键：`↑/↓` 移动、`Enter` 选择、`Esc` 关闭/中止流式；无面板时 `Enter` 发送、`Shift+Enter` 换行。文本派生的二级面板（`/clear`、`/only`）按 `Esc` 会连同派生文本一并丢弃；`/only` 仅在消息列表出现 ≥ 2 名员工时可见。员工多选通过左栏名册、输入框员工选择器或 `@claw:` 提及完成；消息列表筛选不影响派发目标，顶栏提供筛选 chips 与恢复按钮；`/openclaw` 路由的面包屑追加当前办公区名（实例缺失时不显示）。
 
 ### 5.3 附件上传
 
