@@ -19,12 +19,13 @@ const instance = {
 
 vi.mock("@/features/openclaw", () => ({
   accentHexForIndex: (): string => "#ffffff",
+  filterOfficeTimeline: (timeline: unknown[]): unknown[] => timeline,
   OpenClawInput: (): null => null,
   OpenClawMessageList: (): null => null,
   parseOpenClawCommand: (): null => null,
   resolveClawDispatchTargets: () => ({ body: "", agentIds: [] }),
-  splitClearAgentNames: (): string[] => [],
-  toggleClearAgentName: (current: string): string => current,
+  splitCommandAgentNames: (): string[] => [],
+  toggleCommandAgentName: (current: string): string => current,
   useOpenClawChatStore: {
     getState: () => ({ connect, sendMessage }),
   },
@@ -46,6 +47,7 @@ describe("OpenClawPage 跨页 @claw 派发", () => {
       selectedInstanceId: null,
       selectedAgentIds: [],
       activeAgentId: null,
+      onlyAgentIds: null,
       pendingDispatch: null,
     })
   })

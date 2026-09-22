@@ -30,8 +30,8 @@ import {
   agentHighlightStyle,
 } from "@/features/agent/components/AgentInput/AgentMarkdownInput/AgentMarkdownInputTheme"
 import {
+  filterClawMentionCandidates,
   getMentionQuery,
-  isFuzzyMatch,
 } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import {
   AgentVoiceInputButton,
@@ -84,6 +84,8 @@ export interface OpenClawInputProps {
   // 仅可提及当前办公区内的 Agent。
   candidates: ClawMentionCandidate[]
   onCommand: (commandId: OpenClawCommandId) => void
+  // `/only` 命令是否可见（由页面按消息列表中的员工数计算）。
+  onlyCommandAvailable?: boolean
   picker?: OpenClawInputPicker | null
   onPickerClose?: () => void
   placeholder?: string
@@ -103,13 +105,6 @@ export interface OpenClawInputProps {
 
 type OpenClawPanelMode = "command" | "mention" | "picker" | null
 
-// 归一化 `@` 提及查询：`@claw:instance/agent` 与 `@claw` 前缀都用于筛选 OpenClaw 候选。
-const normalizeClawQuery = (query: string): string | null => {
-  const raw = query.toLowerCase()
-  if (raw && !raw.startsWith("claw")) return null
-  return raw ? raw.slice(4).replace(/^[:/]+/, "") : ""
-}
-
 /**
  * OpenClawInput - 布局与样式完全对齐 AgentInput 的输入框容器组件，
  * 内嵌 Markdown 编辑器、命令与提及面板，底部集成语音识别按钮、OpenClaw/Agent 复合选择器与发送按钮。
@@ -123,6 +118,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       onStop,
       candidates,
       onCommand,
+      onlyCommandAvailable,
       picker = null,
       onPickerClose,
       placeholder: placeholderText,
@@ -193,6 +189,8 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     onStopRef.current = onStop
     const onCommandRef = useRef(onCommand)
     onCommandRef.current = onCommand
+    const onlyCommandAvailableRef = useRef(onlyCommandAvailable)
+    onlyCommandAvailableRef.current = onlyCommandAvailable
     const onPickerCloseRef = useRef(onPickerClose)
     onPickerCloseRef.current = onPickerClose
 
@@ -317,7 +315,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         // office/execute 等显式面板由父级控制；文本绑定的面板失配时在同一事务回落。
         if (activePicker && !activePicker.commandId) return
 
-        const commands = getMatchedOpenClawCommands(docText, t)
+        const commands = getMatchedOpenClawCommands(docText, t, onlyCommandAvailableRef.current)
         if (commands.length > 0) {
           setActiveMode("command")
           setCommandIndex(0)
@@ -329,23 +327,15 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
 
         const mention = getMentionQuery(docText, cursor)
         if (mention) {
-          const query = normalizeClawQuery(mention.query)
-          if (query !== null) {
-            const matched = stateRef.current.candidates.filter(
-              (candidate) =>
-                !query ||
-                isFuzzyMatch(query, candidate.name.toLowerCase()) ||
-                isFuzzyMatch(query, candidate.agentId.toLowerCase()) ||
-                isFuzzyMatch(query, `${candidate.instanceId}/${candidate.agentId}`.toLowerCase()),
-            )
-            if (matched.length > 0) {
-              setActiveMode("mention")
-              setMentionIndex(0)
-              setMentionItems(matched.map((claw) => ({ kind: "claw", claw })))
-              setMatchedCommands([])
-              updatePanelPosition("file")
-              return
-            }
+          // 与 AgentInput 共用同一 tag/前缀/字段过滤规则（含 `@cla` 整类返回）。
+          const matched = filterClawMentionCandidates(stateRef.current.candidates, mention.query)
+          if (matched.length > 0) {
+            setActiveMode("mention")
+            setMentionIndex(0)
+            setMentionItems(matched.map((claw) => ({ kind: "claw", claw })))
+            setMatchedCommands([])
+            updatePanelPosition("file")
+            return
           }
         }
 
@@ -367,6 +357,14 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         setActiveMode((current) => (current === "picker" ? null : current))
       }
     }, [pickerKey, updatePanelPosition])
+
+    // `/only` 可见性变化时按当前文本刷新已打开的命令面板（不依赖输入变化）。
+    const canOnly = onlyCommandAvailable ?? true
+    useEffect(() => {
+      const view = editorViewRef.current
+      if (!view) return
+      syncPanelsRef.current(view.state.doc.toString(), view.state.selection.main.head)
+    }, [canOnly])
 
     const applyCommand = useCallback((command: AgentInputCommand): void => {
       const commandId = command.id as OpenClawCommandId
@@ -478,8 +476,19 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         {
           key: "Escape",
           run: () => {
-            if (stateRef.current.activeMode) {
-              if (stateRef.current.activeMode === "picker") onPickerCloseRef.current?.()
+            const { activeMode: mode, picker: activePicker } = stateRef.current
+            if (mode) {
+              if (mode === "picker") onPickerCloseRef.current?.()
+              // 文本派生的二级面板（/clear、/only）：取消面板即丢弃派生文本，避免残留命令再次拉起面板。
+              if (mode === "picker" && activePicker?.commandId) {
+                const view = editorViewRef.current
+                const docLength = view?.state.doc.length ?? 0
+                if (view && docLength > 0) {
+                  view.dispatch({ changes: { from: 0, to: docLength, insert: "" } })
+                } else {
+                  onChangeRef.current("")
+                }
+              }
               setActiveMode(null)
               setMatchedCommands([])
               setMentionItems([])
@@ -754,7 +763,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     )
 
     return (
-      <div className="relative w-full bg-transparent p-0.5 pt-1 pb-0">
+      <div className="relative w-full bg-transparent pt-1 pb-0">
         <AgentInputCommandPanel
           isOpen={activeMode === "command"}
           position={panelPosition}

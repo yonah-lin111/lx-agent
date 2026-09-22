@@ -78,6 +78,22 @@ export const mergeOfficeTimeline = (
 }
 
 /**
+ * 按员工筛选时间线（仅视图层）：
+ * - `null` 表示不筛选，原样返回同一引用，避免下游 effect 被无用新数组触发；
+ * - 扇出的用户消息以 targetAgentIds 判定，与选中集合有交集即保留，且不裁剪展示的目标名单。
+ */
+export const filterOfficeTimeline = (
+  timeline: readonly OfficeTimelineMessage[],
+  onlyAgentIds: readonly string[] | null,
+): OfficeTimelineMessage[] => {
+  if (!onlyAgentIds || onlyAgentIds.length === 0) return timeline as OfficeTimelineMessage[]
+  const onlySet = new Set(onlyAgentIds)
+  return timeline.filter((item) =>
+    (item.targetAgentIds ?? [item.agentId]).some((agentId) => onlySet.has(agentId)),
+  )
+}
+
+/**
  * 聚合当前办公区内所有 Agent 的会话：
  * - 进入办公区时并发连接实例并为每个 Agent 加载会话快照（员工状态需要全量在线）；
  * - 合并所有 Agent 的消息为单一时间线（仅视觉合并，底层会话仍相互隔离）。

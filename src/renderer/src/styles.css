@@ -41,6 +41,8 @@
   --agent-input-command-menu-max-height: 30vh;
   /* Agent 输入框面板：@ 文件提及。 */
   --agent-input-file-menu-max-height: 30vh;
+  /* 精细滚动条宽度：scrollbar-gutter:stable 预留槽与滚动条本体同宽，布局对齐需引用同一值。 */
+  --lx-scrollbar-size: 6px;
 }
 
 body {
@@ -99,8 +101,8 @@ select {
 /* 全局与局部精细滚动条样式：仅在 hover 具体滚动容器时显示，移出即隐 */
 ::-webkit-scrollbar,
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: var(--lx-scrollbar-size);
+  height: var(--lx-scrollbar-size);
 }
 
 ::-webkit-scrollbar-track,

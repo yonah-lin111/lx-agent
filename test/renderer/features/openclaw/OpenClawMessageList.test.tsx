@@ -44,6 +44,16 @@ describe("OpenClawMessageList & OpenClawMessageItem", () => {
     expect(screen.getByText("No message yet. Pick a coworker and send a task.")).not.toBeNull()
   })
 
+  it("筛选态下无匹配消息展示专属空态", () => {
+    render(<OpenClawMessageList timeline={[]} agents={agents} isFiltered />)
+
+    expect(
+      screen.getByText(
+        "No messages under the current filter. Use the restore button above to show all.",
+      ),
+    ).not.toBeNull()
+  })
+
   it("跨 Agent 交错渲染并标注来源员工与头像首字母", () => {
     const timeline: OfficeTimelineMessage[] = [
       { agentId: "lily", message: user("u1", "帮我看看登录逻辑", 100) },
@@ -110,7 +120,7 @@ describe("OpenClawMessageList & OpenClawMessageItem", () => {
     expect(screen.queryByText(/coworker/)).toBeNull()
   })
 
-  it("消息头部展示该条消息记录的模型名，且不渲染上下文统计", () => {
+  it("AI 消息始终展示模型名：未记录时沿用同一 Agent 最近一条记录", () => {
     const timeline: OfficeTimelineMessage[] = [
       { agentId: "lily", message: user("u1", "assign", 100) },
       {
@@ -126,10 +136,51 @@ describe("OpenClawMessageList & OpenClawMessageItem", () => {
 
     render(<OpenClawMessageList timeline={timeline} agents={agents} />)
 
-    // 仅记录了模型的消息展示模型名，未记录的消息不渲染。
-    expect(screen.getByText("gpt-5.2")).not.toBeNull()
+    // 首条记录了模型，后续未记录的消息回退沿用，故两条都展示模型名。
+    expect(screen.getAllByText("gpt-5.2")).toHaveLength(2)
     expect(screen.getByText("no-model-reply")).not.toBeNull()
     expect(screen.queryByText(/^\d+%$/)).toBeNull()
+  })
+
+  it("模型回退按 Agent 隔离", () => {
+    const timeline: OfficeTimelineMessage[] = [
+      { agentId: "lily", message: assistant("a1", "lily-reply", 100, { model: "gpt-5.2" }) },
+      { agentId: "amy", message: assistant("a2", "amy-reply", 200) },
+    ]
+
+    render(<OpenClawMessageList timeline={timeline} agents={agents} />)
+
+    expect(screen.getAllByText("gpt-5.2")).toHaveLength(1)
+  })
+
+  it("整个时间线都没有模型记录时回退到会话当前模型", () => {
+    const agentsWithSessionModel = [
+      { agentId: "lily", name: "Lily", accent: "#ff6b6b", model: "claude-sonnet-4" },
+      { agentId: "amy", name: "Amy", accent: "#6bcf7f" },
+    ]
+    const timeline: OfficeTimelineMessage[] = [
+      { agentId: "lily", message: assistant("a1", "lily-reply", 100) },
+      { agentId: "amy", message: assistant("a2", "amy-reply", 200) },
+    ]
+
+    render(<OpenClawMessageList timeline={timeline} agents={agentsWithSessionModel} />)
+
+    // 有会话模型的 Agent 回退展示，无会话模型的 Agent 不展示。
+    expect(screen.getAllByText("claude-sonnet-4")).toHaveLength(1)
+  })
+
+  it("消息自带模型优先于会话模型回退", () => {
+    const agentsWithSessionModel = [
+      { agentId: "lily", name: "Lily", accent: "#ff6b6b", model: "fallback-model" },
+    ]
+    const timeline: OfficeTimelineMessage[] = [
+      { agentId: "lily", message: assistant("a1", "reply", 100, { model: "gpt-5.2" }) },
+    ]
+
+    render(<OpenClawMessageList timeline={timeline} agents={agentsWithSessionModel} />)
+
+    expect(screen.getByText("gpt-5.2")).not.toBeNull()
+    expect(screen.queryByText("fallback-model")).toBeNull()
   })
 
   it("用户发送新消息后平滑滚动到底部", () => {

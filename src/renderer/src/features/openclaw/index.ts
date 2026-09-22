@@ -36,6 +36,7 @@ export { useOfficeAgentStats } from "./hooks/useOfficeAgentStats"
 export { useOfficeAgentStatuses } from "./hooks/useOfficeAgentStatuses"
 export { useOpenClawConfig } from "./hooks/useOpenClawConfig"
 export {
+  filterOfficeTimeline,
   mergeOfficeTimeline,
   type OfficeAgentSession,
   type OfficeTimelineMessage,
@@ -51,7 +52,8 @@ export {
   keepsCommandText,
   type OpenClawCommandId,
   parseOpenClawCommand,
-  splitClearAgentNames,
-  toggleClearAgentName,
+  splitCommandAgentNames,
+  toggleAllCommandAgentNames,
+  toggleCommandAgentName,
 } from "./openclawCommands"
 export { type OpenClawPendingDispatch, useOpenClawOfficeStore } from "./openclawOfficeStore"

@@ -13,6 +13,8 @@ const NEAR_BOTTOM_THRESHOLD = 150
 export interface OpenClawMessageListProps {
   timeline: OfficeTimelineMessage[]
   agents: ConversationAgent[]
+  // 时间线是否处于 only 筛选态（决定空态文案）。
+  isFiltered?: boolean
   // 删除某轮问答（云端 rewind），仅在每条会话最后一条非流式 AI 消息上提供入口。
   onDeleteTurn?: (agentId: string, messageId: string) => void
 }
@@ -23,6 +25,7 @@ export interface OpenClawMessageListProps {
 export const OpenClawMessageList = ({
   timeline,
   agents,
+  isFiltered = false,
   onDeleteTurn,
 }: OpenClawMessageListProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -51,6 +54,21 @@ export const OpenClawMessageList = ({
   const contentSignal = `${timeline.length}:${lastMessage?.message.content.length ?? 0}`
 
   const agentMap = useMemo(() => new Map(agents.map((agent) => [agent.agentId, agent])), [agents])
+
+  // AI 消息的模型名回退：消息自带优先 → 同一 Agent 最近一条已记录模型 → 会话当前模型。
+  // 网关通常只给会话首条 AI 消息带 model，前向填充保证同一轮后续消息展示一致。
+  const modelByMessageId = useMemo(() => {
+    const lastKnownByAgent = new Map<string, string>()
+    const resolved = new Map<string, string>()
+    for (const item of timeline) {
+      const { agentId, message } = item
+      if (message.model) lastKnownByAgent.set(agentId, message.model)
+      if (message.role !== "assistant") continue
+      const model = message.model ?? lastKnownByAgent.get(agentId) ?? agentMap.get(agentId)?.model
+      if (model) resolved.set(message.id, model)
+    }
+    return resolved
+  }, [agentMap, timeline])
 
   // 切换办公区/员工集合时重置为吸底。
   useEffect(() => {
@@ -109,7 +127,9 @@ export const OpenClawMessageList = ({
   if (timeline.length === 0) {
     return (
       <div className="flex h-full w-full items-center justify-center p-4">
-        <p className="text-xs text-white/45">{t("openclaw.conversationEmpty")}</p>
+        <p className="text-xs text-white/45">
+          {isFiltered ? t("openclaw.conversationFilteredEmpty") : t("openclaw.conversationEmpty")}
+        </p>
       </div>
     )
   }
@@ -139,6 +159,7 @@ export const OpenClawMessageList = ({
                 agent={agent}
                 targetAgents={targetAgents}
                 isStreaming={message.status === "streaming"}
+                model={modelByMessageId.get(message.id)}
                 onDelete={
                   onDeleteTurn && deletableAssistantIds.has(message.id)
                     ? (messageId) => onDeleteTurn(agentId, messageId)
