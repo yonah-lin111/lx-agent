@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { DesignAnnotation } from "@/pages/front-design/types"
+import { FALLBACK_EDITOR_THEME } from "@/pages/front-design/utils/annotationEditorTheme"
 import {
   ANNOTATION_LAYER_ID,
   type AnnotationLayerLabels,
@@ -149,12 +150,12 @@ describe("批注图层", () => {
     const confirm = editor.querySelector('[data-annotation-action="confirm"]') as Element
     dispatchClick(confirm)
     expect(callbacks.onSubmit).not.toHaveBeenCalled()
-    expect(box.style.borderColor).toBe("rgb(244, 63, 94)")
+    expect(box.classList.contains("lx-ann-box--invalid")).toBe(true)
     expect(hint.style.visibility).toBe("visible")
 
     const textarea = editor.querySelector("textarea") as HTMLTextAreaElement
     dispatchInput(textarea, "改为高对比色")
-    expect(box.style.borderColor).toBe("rgba(255, 255, 255, 0.1)")
+    expect(box.classList.contains("lx-ann-box--invalid")).toBe(false)
     expect(hint.style.visibility).toBe("hidden")
     dispatchClick(confirm)
 
@@ -191,9 +192,12 @@ describe("批注图层", () => {
     )
     // 基本信息在输入框上方
     expect(meta.compareDocumentPosition(box)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    // 容器样式对齐 AgentInput 底栏
-    expect(box.style.backgroundColor).toBe("rgb(42, 42, 42)")
-    expect(box.style.borderRadius).toBe("6px")
+    // 容器样式对齐 AgentInput 底栏（主题值集中在注入样式表中）
+    const styleText = (doc.querySelector("#lx-design-annotation-layer style") as HTMLStyleElement)
+      ?.textContent
+    expect(box.className).toBe("lx-ann-box")
+    expect(styleText).toContain("background-color: #2a2a2a")
+    expect(styleText).toContain("border-radius: 6px")
 
     // 关闭按钮位于输入框底部（文本区之后），不再位于信息栏
     expect(meta.querySelector('[data-annotation-action="close"]')).toBeNull()
@@ -530,6 +534,35 @@ describe("批注图层", () => {
     expect(editor.style.left).toBe("320px")
     expect(editor.style.top).toBe("180px")
     expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("--")
+  })
+
+  it("输入框样式随主题变化：像素主题直角+浮雕+马赛克，切回默认主题恢复", () => {
+    const doc = createDoc("<main><button id='target'>Buy</button></main>")
+    const callbacks = { onSubmit: vi.fn(), onRemove: vi.fn() }
+    const layer = createAnnotationLayer(doc, callbacks, {
+      ...FALLBACK_EDITOR_THEME,
+      borderWidth: "2px",
+      borderColor: "rgb(0, 0, 0)",
+      borderRadius: "0px",
+      backgroundColor: "rgb(34, 34, 50)",
+      backgroundImage: "url(mosaic.svg)",
+      imageRendering: "pixelated",
+      buttonBorderWidth: "2px",
+      buttonBorderColor: "rgb(0, 0, 0)",
+      buttonRadius: "0px",
+    })
+
+    const styleElement = doc.querySelector("#lx-design-annotation-layer style") as HTMLStyleElement
+    const pixelStyle = styleElement.textContent ?? ""
+    expect(pixelStyle).toContain("border-radius: 0px")
+    expect(pixelStyle).toContain("background-image: url(mosaic.svg)")
+    expect(pixelStyle).toContain("image-rendering: pixelated")
+    expect(pixelStyle).toContain("border: 2px solid rgb(0, 0, 0)")
+
+    layer.applyTheme(FALLBACK_EDITOR_THEME)
+    const defaultStyle = styleElement.textContent ?? ""
+    expect(defaultStyle).toContain("border-radius: 6px")
+    expect(defaultStyle).not.toContain("background-image")
   })
 
   it("悬停框按悬停目标切换显示，无面积元素不画框", () => {

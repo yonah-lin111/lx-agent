@@ -2,6 +2,10 @@
 // 浮层属于预览沙箱的一部分，无法使用应用 CSS Token（与 sandbox guard 同级），配色沿用画布强调色常量。
 
 import type { DesignAnnotation } from "@/pages/front-design/types"
+import {
+  type AnnotationEditorTheme,
+  FALLBACK_EDITOR_THEME,
+} from "@/pages/front-design/utils/annotationEditorTheme"
 
 // 批注图层容器 id：useDesignPreview 在增量更新 body 时会保留该节点。
 export const ANNOTATION_LAYER_ID = "lx-design-annotation-layer"
@@ -15,9 +19,6 @@ const ACCENT_COLOR = "#ec4899"
 const SELECTION_COLOR = "#38bdf8"
 const SELECTION_FILL = "rgba(56, 189, 248, 0.14)"
 const HOVER_FILL = "rgba(236, 72, 153, 0.12)"
-// 输入框容器配色：对齐 AgentInput 底栏（bg-[#2a2a2a] + border-white/10）。
-const EDITOR_SURFACE_COLOR = "#2a2a2a"
-const EDITOR_BORDER_COLOR = "rgba(255, 255, 255, 0.1)"
 
 // 浮层文案，由父层 t() 注入。
 export interface AnnotationLayerLabels {
@@ -55,6 +56,8 @@ export interface AnnotationLayer {
   hasSelection: () => boolean
   // 解除选中态与预览态（点击画布空白时调用）。
   clearSelection: () => void
+  // 应用主题变化时刷新浮层样式。
+  applyTheme: (theme: AnnotationEditorTheme) => void
   // 图层是否仍挂在该文档上：iframe 文档被替换或 body 被重建后必须返回 false。
   isAttachedTo: (target: Document) => boolean
   destroy: () => void
@@ -73,6 +76,27 @@ type ResizeObserverCtor = new (callback: () => void) => ResizeObserver
 const isDegeneratePosition = (position: LayerPosition): boolean =>
   position.width <= 0 && position.height <= 0
 
+// 生成浮层样式表：输入框几何与配色全部取自应用主题（像素主题下自动获得直角/浮雕/马赛克底纹）。
+const buildEditorStyle = (theme: AnnotationEditorTheme): string => `
+#${ANNOTATION_LAYER_ID} .lx-ann-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+#${ANNOTATION_LAYER_ID} .lx-ann-info { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 1px 6px; font-family: ${theme.chipFontFamily}; color: ${SELECTION_COLOR}; background-color: ${SELECTION_FILL}; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: ${theme.borderRadius}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-size { color: rgba(56, 189, 248, 0.8); }
+#${ANNOTATION_LAYER_ID} .lx-ann-box { box-sizing: border-box; padding: 8px 10px; border: ${theme.borderWidth} ${theme.borderStyle} ${theme.borderColor}; border-radius: ${theme.borderRadius}; background-color: ${theme.backgroundColor}; font-family: ${theme.fontFamily}; box-shadow: ${theme.boxShadow}; transition: border-color 150ms ease, box-shadow 150ms ease; }
+${theme.backgroundImage ? `#${ANNOTATION_LAYER_ID} .lx-ann-box { background-image: ${theme.backgroundImage}; background-repeat: ${theme.backgroundRepeat}; image-rendering: ${theme.imageRendering}; }` : ""}
+#${ANNOTATION_LAYER_ID} .lx-ann-box:focus-within { border-color: ${theme.borderColorStrong}; box-shadow: ${theme.boxShadow}, 0 0 0 1px rgba(255, 255, 255, 0.06); }
+#${ANNOTATION_LAYER_ID} .lx-ann-box--invalid { border-color: #f43f5e !important; }
+#${ANNOTATION_LAYER_ID} .lx-ann-textarea { width: 100%; height: 52px; resize: none; box-sizing: border-box; padding: 0; border: none; outline: none; background: transparent; color: ${theme.color}; font-family: inherit; }
+#${ANNOTATION_LAYER_ID} .lx-ann-textarea::placeholder { color: ${theme.placeholderColor}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-hint { margin-top: 4px; color: #fb7185; }
+#${ANNOTATION_LAYER_ID} .lx-ann-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding-top: 4px; }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: ${theme.buttonBorderWidth} solid ${theme.buttonBorderColor}; border-radius: ${theme.buttonRadius}; background: transparent; color: ${theme.mutedColor}; cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn:hover { background: rgba(255, 255, 255, 0.1); color: ${theme.color}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn--danger { color: #fda4af; }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn--danger:hover { background: rgba(244, 63, 94, 0.14); color: #fb7185; }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn--primary { background-color: #ffffff; color: #000000; box-shadow: ${theme.buttonShadow}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-btn--primary:hover { background-color: rgba(255, 255, 255, 0.9); color: #000000; }
+`
+
 /**
  * 创建批注图层：容器挂载在 body，钉选气泡与编辑器按文档坐标绝对定位，滚动天然跟随；
  * 目标元素尺寸变化（内容增高、响应式重排）通过 ResizeObserver 实时重排标记与编辑器。
@@ -80,6 +104,7 @@ const isDegeneratePosition = (position: LayerPosition): boolean =>
 export const createAnnotationLayer = (
   doc: Document,
   callbacks: AnnotationLayerCallbacks,
+  theme: AnnotationEditorTheme = FALLBACK_EDITOR_THEME,
 ): AnnotationLayer => {
   // 文档坐标换算：body 外边距在预览中被强制归零，absolute 定位原点即文档原点。
   const toLayerPosition = (element: Element): LayerPosition => {
@@ -118,18 +143,13 @@ export const createAnnotationLayer = (
     return box
   }
 
-  // 内联样式无法覆盖 ::placeholder / :focus-within / :hover，这里注入最小作用域的样式表。
+  // 浮层样式表：内联样式无法覆盖 ::placeholder / :focus-within / :hover，且主题值需要整体替换。
   const styleElement = doc.createElement("style")
-  styleElement.textContent = `
-#${ANNOTATION_LAYER_ID} .lx-ann-textarea::placeholder { color: rgba(255, 255, 255, 0.35); }
-#${ANNOTATION_LAYER_ID} .lx-ann-box:focus-within { border-color: rgba(255, 255, 255, 0.2) !important; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06); }
-#${ANNOTATION_LAYER_ID} .lx-ann-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: 9999px; background: transparent; color: rgba(255, 255, 255, 0.45); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
-#${ANNOTATION_LAYER_ID} .lx-ann-btn:hover { background: rgba(255, 255, 255, 0.1); color: #ffffff; }
-#${ANNOTATION_LAYER_ID} .lx-ann-btn--danger { color: rgba(253, 164, 175, 0.85); }
-#${ANNOTATION_LAYER_ID} .lx-ann-btn--danger:hover { background: rgba(244, 63, 94, 0.14); color: #fda4af; }
-#${ANNOTATION_LAYER_ID} .lx-ann-btn--primary { background: #ffffff; color: #000000; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
-#${ANNOTATION_LAYER_ID} .lx-ann-btn--primary:hover { background: rgba(255, 255, 255, 0.9); color: #000000; }
-`
+  const applyThemeStyles = (): void => {
+    styleElement.textContent = buildEditorStyle(currentTheme)
+  }
+  let currentTheme = theme
+  applyThemeStyles()
   container.appendChild(styleElement)
 
   const hoverBox = createBox("data-annotation-hover", `2px solid ${ACCENT_COLOR}`, HOVER_FILL)
@@ -404,7 +424,7 @@ export const createAnnotationLayer = (
 
     const comment = textarea.value.trim()
     if (!comment) {
-      if (editorBox) editorBox.style.borderColor = "#f43f5e"
+      editorBox?.classList.add("lx-ann-box--invalid")
       if (editorHint) editorHint.style.visibility = "visible"
       return
     }
@@ -426,24 +446,12 @@ export const createAnnotationLayer = (
     // 输入框上方：元素基本信息（描述 + 实时尺寸）。
     const meta = doc.createElement("div")
     meta.setAttribute("data-annotation-editor-meta", "true")
-    meta.style.display = "flex"
-    meta.style.alignItems = "center"
-    meta.style.gap = "6px"
-    meta.style.marginBottom = "4px"
+    meta.className = "lx-ann-meta"
 
     const info = doc.createElement("span")
     info.setAttribute("data-annotation-editor-info", "true")
-    info.style.display = "flex"
-    info.style.alignItems = "center"
-    info.style.gap = "4px"
-    info.style.minWidth = "0"
-    info.style.padding = "1px 6px"
+    info.className = "lx-ann-info"
     info.style.fontSize = "11px"
-    info.style.fontFamily = "ui-monospace, monospace"
-    info.style.color = SELECTION_COLOR
-    info.style.backgroundColor = SELECTION_FILL
-    info.style.border = "1px solid rgba(56, 189, 248, 0.35)"
-    info.style.borderRadius = "4px"
 
     const infoName = doc.createElement("span")
     infoName.textContent = request.description || request.selector
@@ -454,7 +462,7 @@ export const createAnnotationLayer = (
 
     const infoSize = doc.createElement("span")
     infoSize.setAttribute("data-annotation-editor-size", "true")
-    infoSize.style.color = "rgba(56, 189, 248, 0.8)"
+    infoSize.className = "lx-ann-size"
     info.appendChild(infoSize)
     meta.appendChild(info)
     editor.appendChild(meta)
@@ -463,48 +471,26 @@ export const createAnnotationLayer = (
     const box = doc.createElement("div")
     box.setAttribute("data-annotation-editor-box", "true")
     box.className = "lx-ann-box"
-    box.style.boxSizing = "border-box"
-    box.style.padding = "8px 10px"
-    box.style.backgroundColor = EDITOR_SURFACE_COLOR
-    box.style.border = `1px solid ${EDITOR_BORDER_COLOR}`
-    box.style.borderRadius = "6px"
-    box.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.4)"
-    box.style.transition = "border-color 150ms ease, box-shadow 150ms ease"
 
     const textarea = doc.createElement("textarea")
     textarea.className = "lx-ann-textarea"
     textarea.value = request.comment
     textarea.placeholder = labels.placeholder
-    textarea.style.width = "100%"
-    textarea.style.height = "52px"
-    textarea.style.resize = "none"
-    textarea.style.boxSizing = "border-box"
-    textarea.style.padding = "0"
     textarea.style.fontSize = "12px"
     textarea.style.lineHeight = "18px"
-    textarea.style.fontFamily = "inherit"
-    textarea.style.color = "#fafafa"
-    textarea.style.backgroundColor = "transparent"
-    textarea.style.border = "none"
-    textarea.style.outline = "none"
     box.appendChild(textarea)
 
     const hint = doc.createElement("div")
     hint.setAttribute("data-annotation-editor-hint", "true")
-    hint.textContent = labels.emptyHint
+    hint.className = "lx-ann-hint"
     hint.style.fontSize = "10px"
-    hint.style.color = "#fb7185"
-    hint.style.marginTop = "4px"
+    hint.textContent = labels.emptyHint
     hint.style.visibility = "hidden"
     box.appendChild(hint)
 
     // 底部操作行：删除 → 关闭 → 确认。
     const actions = doc.createElement("div")
-    actions.style.display = "flex"
-    actions.style.alignItems = "center"
-    actions.style.justifyContent = "flex-end"
-    actions.style.gap = "6px"
-    actions.style.paddingTop = "4px"
+    actions.className = "lx-ann-actions"
     if (!request.isNew) {
       actions.appendChild(
         buildIconButton("remove", ICON_PATHS.trash, labels.remove, "danger", 14, () => {
@@ -525,7 +511,7 @@ export const createAnnotationLayer = (
     editor.appendChild(box)
 
     textarea.addEventListener("input", () => {
-      box.style.borderColor = EDITOR_BORDER_COLOR
+      box.classList.remove("lx-ann-box--invalid")
       hint.style.visibility = "hidden"
     })
     textarea.addEventListener("keydown", (event) => {
@@ -652,6 +638,10 @@ export const createAnnotationLayer = (
     },
     hasSelection: (): boolean => Boolean(selectionSelector),
     clearSelection,
+    applyTheme: (next: AnnotationEditorTheme): void => {
+      currentTheme = next
+      applyThemeStyles()
+    },
     isAttachedTo: (target: Document): boolean =>
       target === doc && (doc.body?.contains(container) ?? false),
     destroy: (): void => {

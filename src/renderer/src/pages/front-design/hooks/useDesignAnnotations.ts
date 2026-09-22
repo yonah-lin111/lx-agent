@@ -8,12 +8,14 @@ import { buildAnnotationReviewMessage } from "@/features/agent/utils/designRevie
 import { generateElementSelector } from "@/features/agent/utils/designSynthesizer"
 import { useTranslation } from "@/i18n"
 import type { DesignAnnotation } from "@/pages/front-design/types"
+import { readAnnotationEditorTheme } from "@/pages/front-design/utils/annotationEditorTheme"
 import {
   ANNOTATION_LAYER_ID,
   type AnnotationLayer,
   type AnnotationLayerLabels,
   createAnnotationLayer,
 } from "@/pages/front-design/utils/annotationOverlay"
+import { useAppThemeValue } from "@/stores/themeStore"
 
 // ESC 双击退出窗口：两次 ESC 间隔在此窗口内且无选中元素时才退出批注模式。
 const DOUBLE_ESCAPE_WINDOW_MS = 500
@@ -61,6 +63,11 @@ export const useDesignAnnotations = ({
 }: UseDesignAnnotationsOptions): UseDesignAnnotationsResult => {
   const { t } = useTranslation()
   const { success: successToast, info: infoToast } = useLxToast()
+  const appTheme = useAppThemeValue()
+  // 浮层样式取自应用主题（像素主题下自动直角/浮雕/马赛克底纹）。
+  const editorTheme = useMemo(() => readAnnotationEditorTheme(), [appTheme])
+  const editorThemeRef = useRef(editorTheme)
+  editorThemeRef.current = editorTheme
 
   const [isInspectorActive, setIsInspectorActive] = useState<boolean>(false)
   const [annotations, setAnnotations] = useState<DesignAnnotation[]>([])
@@ -165,13 +172,22 @@ export const useDesignAnnotations = ({
     // 旧图层连同其 ResizeObserver 一并销毁，避免继续观察已废弃文档。
     existing?.destroy()
 
-    const layer = createAnnotationLayer(doc, {
-      onSubmit: (selector, description, comment) => handleSubmit(selector, description, comment),
-      onRemove: (selector) => handleRemove(selector),
-    })
+    const layer = createAnnotationLayer(
+      doc,
+      {
+        onSubmit: (selector, description, comment) => handleSubmit(selector, description, comment),
+        onRemove: (selector) => handleRemove(selector),
+      },
+      editorThemeRef.current,
+    )
     layerRef.current = layer
     return layer
   }, [iframeRef, handleSubmit, handleRemove])
+
+  // 应用主题切换后刷新浮层样式（含已打开的输入框）。
+  useEffect(() => {
+    layerRef.current?.applyTheme(editorTheme)
+  }, [editorTheme])
 
   // 页面卸载时销毁图层，释放 ResizeObserver。
   useEffect(() => {
