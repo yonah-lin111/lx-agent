@@ -2,8 +2,6 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
-import { designSystemStore } from "@/features/agent/hooks/designSystemStore"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import { FrontDesignPage } from "@/pages/front-design/FrontDesignPage"
 
@@ -22,16 +20,10 @@ vi.mock("@/components/ui/LxTooltip", () => {
   }
 })
 
-// 画布计算样式在 jsdom 中不可靠：提取逻辑单测覆盖，这里只验证页面接线。
-vi.mock("@/pages/front-design/utils/tokenExtraction", () => ({
-  extractDesignTokens: vi.fn(() => ({ colors: ["#111827"], radius: "8px", fontFamily: "Inter" })),
-}))
-
-describe("FrontDesignPage 迭代工具包接线", () => {
+describe("FrontDesignPage 版本对照接线", () => {
   beforeEach(() => {
     cleanup()
     frontDesignStore.clear()
-    designSystemStore.reset()
     localStorage.clear()
     vi.restoreAllMocks()
   })
@@ -39,7 +31,6 @@ describe("FrontDesignPage 迭代工具包接线", () => {
   afterEach(() => {
     cleanup()
     frontDesignStore.clear()
-    designSystemStore.reset()
     localStorage.clear()
   })
 
@@ -89,44 +80,5 @@ describe("FrontDesignPage 迭代工具包接线", () => {
     render(<FrontDesignPage />)
     const compareButton = screen.getByRole("button", { name: /版本对照|Version compare/ })
     expect((compareButton as HTMLButtonElement).disabled).toBe(true)
-  })
-
-  it("从画布提取后写入设计系统令牌", () => {
-    frontDesignStore.registerDesign({
-      id: "d1",
-      title: "Dashboard",
-      html: "<div>Dashboard</div>",
-      mode: "css",
-      updatedAt: 1,
-    })
-
-    render(<FrontDesignPage />)
-    fireEvent.click(screen.getByRole("button", { name: /从画布提取|Extract from canvas/ }))
-
-    expect(designSystemStore.getTokens()).toEqual({
-      colors: ["#111827"],
-      radius: "8px",
-      fontFamily: "Inter",
-      notes: "",
-    })
-  })
-
-  it("快捷迭代动作编译为 design mention 并插入输入框", () => {
-    frontDesignStore.registerDesign({
-      id: "d1",
-      title: "Dashboard",
-      html: "<div>Dashboard</div>",
-      mode: "css",
-      updatedAt: 1,
-    })
-    const insertSpy = vi.spyOn(agentTabStore, "insertPromptToActiveTab").mockReturnValue(true)
-
-    render(<FrontDesignPage />)
-    fireEvent.click(screen.getByText(/补齐状态|Complete states/))
-
-    expect(insertSpy).toHaveBeenCalledTimes(1)
-    const message = insertSpy.mock.calls[0][0]
-    expect(message).toContain("@design:d1 (Dashboard)")
-    expect(message).toMatch(/空态|[Ee]mpty/i)
   })
 })

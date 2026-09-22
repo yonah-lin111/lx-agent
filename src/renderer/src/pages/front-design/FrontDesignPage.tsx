@@ -3,14 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
-import { designSystemStore, useDesignSystem } from "@/features/agent/hooks/designSystemStore"
 import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
-import {
-  buildIssueReviewMessage,
-  buildIterateMessage,
-  type DesignIterateActionId,
-} from "@/features/agent/utils/designReviewComposer"
-import { type TranslationKey, useTranslation } from "@/i18n"
+import { buildIssueReviewMessage } from "@/features/agent/utils/designReviewComposer"
+import { useTranslation } from "@/i18n"
 import { FrontDesignAnnotationsPanel } from "@/pages/front-design/components/FrontDesignAnnotationsPanel"
 import { FrontDesignCanvas } from "@/pages/front-design/components/FrontDesignCanvas"
 import { FrontDesignComparePane } from "@/pages/front-design/components/FrontDesignComparePane"
@@ -22,26 +17,15 @@ import { useDesignPreview } from "@/pages/front-design/hooks/useDesignPreview"
 import { useDesignTheme } from "@/pages/front-design/hooks/useDesignTheme"
 import type { ViewportMode } from "@/pages/front-design/types"
 import { pickDefaultCompareDesign } from "@/pages/front-design/utils/compareSelection"
-import { extractDesignTokens } from "@/pages/front-design/utils/tokenExtraction"
-
-// 快捷迭代动作对应的指令文案键。
-const ITERATE_INSTRUCTION_KEYS: Record<DesignIterateActionId, TranslationKey> = {
-  states: "frontDesign.iterateInstructionStates",
-  responsive: "frontDesign.iterateInstructionResponsive",
-  dark: "frontDesign.iterateInstructionDark",
-  micro: "frontDesign.iterateInstructionMicro",
-  variant: "frontDesign.iterateInstructionVariant",
-}
 
 /**
  * FrontDesignPage - Agent 前端设计看板。
- * 聚焦渲染激活的前端原型，提供版本切换、视口预设、画布批注评审、体检回流与设计系统令牌约束。
+ * 聚焦渲染激活的前端原型，提供版本切换、版本对照、视口预设、画布批注评审与体检回流。
  */
 export const FrontDesignPage = (): React.JSX.Element => {
   const { t } = useTranslation()
-  const { success: successToast, info: infoToast } = useLxToast()
+  const { success: successToast } = useLxToast()
   const designState = useFrontDesign()
-  const designTokens = useDesignSystem()
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
@@ -171,57 +155,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
     successToast(t("frontDesign.issuesPanelSentToast", { count: targets.length }))
   }, [checks, activeDesignId, title, sessionId, t, successToast])
 
-  // 快捷迭代：编译动作指令并插入输入框（沿用评审回流的 design 模式与目标 Tab 解析）。
-  const handleIterateAction = useCallback(
-    (action: DesignIterateActionId) => {
-      if (!activeDesignId || !html || isStreaming) return
-
-      const message = buildIterateMessage({
-        designId: activeDesignId,
-        title,
-        instruction: t(ITERATE_INSTRUCTION_KEYS[action]),
-      })
-      if (!message) return
-
-      let targetTabId = agentTabStore.getActiveTabId()
-      if (sessionId) {
-        const targetTab = agentTabStore.findTabBySessionId(sessionId)
-        if (targetTab) {
-          targetTabId = targetTab.id
-        }
-      }
-
-      void agentApi
-        .setCollaborationMode("design", sessionId ?? undefined, targetTabId)
-        .catch(() => {})
-      agentTabStore.insertPromptToActiveTab(message)
-      successToast(t("frontDesign.iterateInsertedToast"))
-    },
-    [activeDesignId, html, isStreaming, title, sessionId, t, successToast],
-  )
-
-  // 令牌提取：把当前画布的真实用色 / 圆角 / 字体沉淀为设计系统令牌。
-  const handleExtractTokens = useCallback(() => {
-    const extracted = extractDesignTokens(iframeRef.current?.contentDocument)
-    const extras = (extracted.radius ? 1 : 0) + (extracted.fontFamily ? 1 : 0)
-    if (extracted.colors.length === 0 && extras === 0) {
-      infoToast(t("frontDesign.designSystemExtractEmpty"))
-      return
-    }
-    // 色板整体替换；圆角 / 字体有值才替换，否则保留原令牌。
-    designSystemStore.setTokens({
-      colors: extracted.colors,
-      radius: extracted.radius ?? designTokens.radius,
-      fontFamily: extracted.fontFamily ?? designTokens.fontFamily,
-    })
-    successToast(
-      t("frontDesign.designSystemExtractSuccess", {
-        colors: extracted.colors.length,
-        count: extras,
-      }),
-    )
-  }, [designTokens.radius, designTokens.fontFamily, t, infoToast, successToast])
-
   const viewportWidthClass = useMemo(() => {
     switch (viewport) {
       case "mobile":
@@ -258,17 +191,12 @@ export const FrontDesignPage = (): React.JSX.Element => {
         compareOpen={Boolean(compareDesign)}
         canCompare={canCompare}
         onToggleCompare={handleToggleCompare}
-        onIterateAction={handleIterateAction}
         sessionId={sessionId}
         onOpenDesignDir={handleOpenDesignDirectory}
         onCopy={handleCopy}
         copied={copied}
         pageTheme={pageTheme}
         onSelectTheme={setPageTheme}
-        designTokens={designTokens}
-        onDesignTokensChange={designSystemStore.setTokens}
-        onDesignTokensReset={designSystemStore.reset}
-        onDesignTokensExtract={handleExtractTokens}
       />
 
       <div className="flex min-h-0 min-w-0 flex-1">

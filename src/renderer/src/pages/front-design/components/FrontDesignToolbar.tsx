@@ -11,8 +11,6 @@ import {
   Palette,
   RefreshCw,
   Smartphone,
-  Sparkles,
-  SwatchBook,
   Tablet,
 } from "lucide-react"
 import type React from "react"
@@ -20,12 +18,8 @@ import { useMemo } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import type { DesignSystemTokens } from "@/features/agent/hooks/designSystemStore"
 import type { FrontDesignItem } from "@/features/agent/hooks/frontDesignStore"
-import type { DesignIterateActionId } from "@/features/agent/utils/designReviewComposer"
 import { useTranslation } from "@/i18n"
-import { FrontDesignDesignSystemPanel } from "@/pages/front-design/components/FrontDesignDesignSystemPanel"
-import { FrontDesignIteratePanel } from "@/pages/front-design/components/FrontDesignIteratePanel"
 import type { FrontDesignPageTheme } from "@/pages/front-design/hooks/useDesignTheme"
 import type { ViewportMode } from "@/pages/front-design/types"
 
@@ -46,21 +40,16 @@ export interface FrontDesignToolbarProps {
   compareOpen: boolean
   canCompare: boolean
   onToggleCompare: () => void
-  onIterateAction: (action: DesignIterateActionId) => void
   sessionId: string | null
   onOpenDesignDir: () => void
   onCopy: () => void
   copied: boolean
   pageTheme: FrontDesignPageTheme
   onSelectTheme: (theme: FrontDesignPageTheme) => void
-  designTokens: DesignSystemTokens
-  onDesignTokensChange: (next: Partial<DesignSystemTokens>) => void
-  onDesignTokensReset: () => void
-  onDesignTokensExtract: () => void
 }
 
 /**
- * FrontDesignToolbar - 设计画布顶部工具栏：版本切换、视口预设、Inspector、主题与复制。
+ * FrontDesignToolbar - 设计画布顶部工具栏：版本切换、版本对照、视口预设、Inspector、主题与复制。
  */
 export const FrontDesignToolbar = ({
   mode,
@@ -79,17 +68,12 @@ export const FrontDesignToolbar = ({
   compareOpen,
   canCompare,
   onToggleCompare,
-  onIterateAction,
   sessionId,
   onOpenDesignDir,
   onCopy,
   copied,
   pageTheme,
   onSelectTheme,
-  designTokens,
-  onDesignTokensChange,
-  onDesignTokensReset,
-  onDesignTokensExtract,
 }: FrontDesignToolbarProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -289,55 +273,6 @@ export const FrontDesignToolbar = ({
             <FolderOpen />
           </LxIconButton>
         )}
-
-        {/* 快捷迭代：常用下一步动作一键编译为 design 消息 */}
-        {activeDesignId && hasHtml && (
-          <LxTooltip
-            hover={{
-              content: t("frontDesign.iterateTitle"),
-              placement: "bottom",
-            }}
-            click={{
-              content: (
-                <FrontDesignIteratePanel disabled={isStreaming} onAction={onIterateAction} />
-              ),
-              placement: "bottom",
-              closeOnContentClick: true,
-            }}
-          >
-            <LxIconButton
-              size="small"
-              disabled={isStreaming}
-              aria-label={t("frontDesign.iterateTitle")}
-            >
-              <Sparkles />
-            </LxIconButton>
-          </LxTooltip>
-        )}
-
-        {/* 设计系统令牌（design 模式下随消息注入 Agent） */}
-        <LxTooltip
-          hover={{
-            content: t("frontDesign.designSystemTitle"),
-            placement: "bottom",
-          }}
-          click={{
-            content: (
-              <FrontDesignDesignSystemPanel
-                tokens={designTokens}
-                onChange={onDesignTokensChange}
-                onReset={onDesignTokensReset}
-                canExtract={hasHtml}
-                onExtract={onDesignTokensExtract}
-              />
-            ),
-            placement: "bottom",
-          }}
-        >
-          <LxIconButton aria-label={t("frontDesign.designSystemTitle")} size="small">
-            <SwatchBook />
-          </LxIconButton>
-        </LxTooltip>
 
         {/* 设计页面主题切换（复刻 HeaderSideBar Palette 图标风格） */}
         <LxTooltip
