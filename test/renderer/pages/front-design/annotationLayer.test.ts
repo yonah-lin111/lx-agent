@@ -44,6 +44,15 @@ const LABELS: AnnotationLayerLabels = {
   remove: "删除",
   emptyHint: "批注内容不能为空",
   close: "关闭输入框",
+  styleLabels: {
+    padding: "内边距",
+    margin: "外边距",
+    font: "字体",
+    color: "文字色",
+    background: "背景色",
+    radius: "圆角",
+    border: "边框",
+  },
 }
 
 // 合成文档没有 defaultView，无法走 testing-library 的 fireEvent，直接派发原生事件。
@@ -213,6 +222,66 @@ describe("批注图层", () => {
     expect(layer.isEditorOpen()).toBe(false)
     expect(doc.querySelector("[data-annotation-editor]")).toBeNull()
     expect(callbacks.onSubmit).not.toHaveBeenCalled()
+  })
+
+  it("批注编辑器展示元素样式摘要，空值行跳过且色块与颜色值同源", () => {
+    const { doc, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 24, top: 40, width: 120, height: 36 })
+
+    // 合成文档没有 defaultView：注入仅提供计算样式的假视图。
+    const fakeStyle = {
+      paddingTop: "8px",
+      paddingRight: "16px",
+      paddingBottom: "8px",
+      paddingLeft: "16px",
+      marginTop: "0px",
+      marginRight: "0px",
+      marginBottom: "0px",
+      marginLeft: "0px",
+      fontSize: "14px",
+      lineHeight: "20px",
+      fontWeight: "700",
+      color: "rgb(17, 24, 39)",
+      backgroundColor: "rgba(0, 0, 0, 0)",
+      borderTopWidth: "1px",
+      borderTopStyle: "solid",
+      borderTopColor: "rgb(229, 231, 235)",
+      borderTopLeftRadius: "8px",
+    }
+    Object.defineProperty(doc, "defaultView", {
+      value: { getComputedStyle: () => fakeStyle },
+      configurable: true,
+    })
+
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+
+    const editor = doc.querySelector("[data-annotation-editor]") as HTMLElement
+    const block = editor.querySelector("[data-annotation-editor-styles]") as HTMLElement
+    expect(block).not.toBeNull()
+
+    const labels = Array.from(block.querySelectorAll(".lx-ann-style-label")).map(
+      (node) => node.textContent,
+    )
+    const values = Array.from(block.querySelectorAll(".lx-ann-style-value")).map(
+      (node) => node.textContent,
+    )
+    expect(labels).toEqual(["内边距", "字体", "文字色", "圆角", "边框"])
+    expect(values).toEqual(["8px 16px", "14px/20px 700", "#111827", "8px", "1px solid #e5e7eb"])
+    // 背景透明被跳过；色块只挂在颜色行上且与显示值同源
+    expect(labels).not.toContain("背景色")
+    expect(labels).not.toContain("外边距")
+    const swatch = block.querySelector(".lx-ann-style-swatch") as HTMLElement
+    expect(swatch.style.backgroundColor).toBe("rgb(17, 24, 39)")
   })
 
   it("Enter 确认、 ESC 取消，编辑态提供删除", () => {

@@ -90,6 +90,14 @@ export const compositeColor = (foreground: RgbaColor, background: RgbaColor): Rg
 }
 
 /**
+ * 归一化为 `#rrggbb`（丢弃 alpha 分量，半透明色请保留原值展示）。
+ */
+export const formatHexColor = (color: RgbaColor): string =>
+  `#${[color.r, color.g, color.b]
+    .map((channel) => clampChannel(channel).toString(16).padStart(2, "0"))
+    .join("")}`
+
+/**
  * 相对亮度（WCAG 2.1 定义）。
  */
 export const relativeLuminance = (color: RgbaColor): number => {
