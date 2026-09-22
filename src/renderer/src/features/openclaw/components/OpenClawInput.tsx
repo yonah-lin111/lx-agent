@@ -55,7 +55,7 @@ import {
   parseOpenClawCommand,
 } from "../openclawCommands"
 import { type OpenClawPickerItem, OpenClawPickerPanel } from "./OpenClawPickerPanel"
-import { type OpenClawTargetOffice, OpenClawTargetSelect } from "./OpenClawTargetSelect"
+import { type OpenClawTargetAgent, OpenClawTargetSelect } from "./OpenClawTargetSelect"
 
 export interface OpenClawInputRef {
   focus: () => void
@@ -91,11 +91,9 @@ export interface OpenClawInputProps {
   placeholder?: string
   disabled?: boolean
   isStreaming?: boolean
-  // 办公区与员工选择器
-  offices?: OpenClawTargetOffice[]
-  selectedOfficeId?: string | null
+  // 当前办公区的员工多选选择器（办公区切换由左栏与 `/office` 面板负责）
+  agents?: OpenClawTargetAgent[]
   selectedAgentIds?: string[]
-  onSelectOffice?: (officeId: string) => void
   onToggleAgent?: (agentId: string) => void
   voiceButtonRef?: React.Ref<AgentVoiceInputButtonRef>
   // 附件（仅图片）：状态由父级持有，与发送时的下发目标共用同一份数据。
@@ -124,10 +122,8 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       placeholder: placeholderText,
       disabled = false,
       isStreaming = false,
-      offices = [],
-      selectedOfficeId = null,
+      agents = [],
       selectedAgentIds = [],
-      onSelectOffice,
       onToggleAgent,
       voiceButtonRef,
       files,
@@ -817,12 +813,10 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
                 disabled={disabled}
               />
               {addButton}
-              {offices.length > 0 && onSelectOffice && onToggleAgent && (
+              {agents.length > 0 && onToggleAgent && (
                 <OpenClawTargetSelect
-                  offices={offices}
-                  selectedOfficeId={selectedOfficeId}
+                  agents={agents}
                   selectedAgentIds={selectedAgentIds}
-                  onSelectOffice={onSelectOffice}
                   onToggleAgent={onToggleAgent}
                   disabled={disabled}
                 />

@@ -10,6 +10,7 @@ import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxBreadcrumbToast, useLxBreadcrumbToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { OpenClawBreadcrumb } from "@/features/openclaw"
 import { ProjectRecentItemsTags } from "@/features/project/components/ProjectRecentItemsTags"
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
 import { HeaderSchedulePanel } from "@/features/schedule"
@@ -240,6 +241,8 @@ export const HeaderSideBar = ({
                     </LxTag>
                   </span>
                 ))}
+                {/* 当前办公区（仅 OpenClaw 路由挂载，避免其它页面加载 OpenClaw 配置） */}
+                {pathname === PAGE_ROUTES.openclaw ? <OpenClawBreadcrumb /> : null}
               </div>
             )}
           </div>

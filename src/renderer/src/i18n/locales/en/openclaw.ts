@@ -43,6 +43,7 @@ export const openclaw = {
   contextCapacity: "Context capacity: {{total}} tokens",
   officePickerTitle: "Switch office",
   agentPickerTitle: "Select coworkers",
+  agentCountLabel: "{{count}} agents",
   targetLabel: "Targets:",
   gatewayUnreachable:
     "Cannot reach OpenClaw Gateway host. Please check the gateway URL, port, and network connectivity.",

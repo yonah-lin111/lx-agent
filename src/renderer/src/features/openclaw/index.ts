@@ -11,6 +11,7 @@ export {
   stripClawMentions,
 } from "./clawMention"
 export { OFFICE_STATUS_DOT_CLASS, OFFICE_STATUS_LABEL_KEY } from "./components/agentStatusView"
+export { OpenClawBreadcrumb } from "./components/OpenClawBreadcrumb"
 export {
   type ConversationAgent,
   OpenClawConversationView,
@@ -29,7 +30,7 @@ export {
 } from "./components/OpenClawMessageList"
 export { type OpenClawPickerItem, OpenClawPickerPanel } from "./components/OpenClawPickerPanel"
 export {
-  type OpenClawTargetOffice,
+  type OpenClawTargetAgent,
   OpenClawTargetSelect,
 } from "./components/OpenClawTargetSelect"
 export { useOfficeAgentStats } from "./hooks/useOfficeAgentStats"
