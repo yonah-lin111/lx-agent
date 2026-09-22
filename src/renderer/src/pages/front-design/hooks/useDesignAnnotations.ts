@@ -122,13 +122,13 @@ export const useDesignAnnotations = ({
     )
   }, [])
 
-  // 图层懒重建：iframe 文档被替换或重写后旧图层会脱离文档，需在新文档上重建。
+  // 图层懒重建：iframe 文档被替换或 body 被重写后旧图层会脱离预览，必须在当前文档上重建。
   const ensureLayer = useCallback((): AnnotationLayer | null => {
     const doc = iframeRef.current?.contentDocument
     if (!doc?.body) return null
 
     const existing = layerRef.current
-    if (existing?.isAttached()) return existing
+    if (existing?.isAttachedTo(doc)) return existing
 
     const layer = createAnnotationLayer(doc, {
       onSubmit: (selector, description, comment) => handleSubmit(selector, description, comment),
@@ -163,9 +163,19 @@ export const useDesignAnnotations = ({
     const doc = iframeRef.current?.contentDocument
     if (!doc?.body) return
 
+    // 十字光标提示批注模式生效；设计稿内容更新会重置 body 内联样式，故在移动中自愈。
+    const previousCursor = doc.body.style.cursor
+    const ensureCursor = (): void => {
+      if (doc.body.style.cursor !== "crosshair") {
+        doc.body.style.cursor = "crosshair"
+      }
+    }
+    ensureCursor()
+
     const handleMouseMove = (event: MouseEvent): void => {
       const layer = ensureLayer()
       if (!layer) return
+      ensureCursor()
 
       const target = event.target as HTMLElement | null
       if (
@@ -251,6 +261,7 @@ export const useDesignAnnotations = ({
       doc.removeEventListener("mouseleave", handleMouseLeave, true)
       doc.removeEventListener("click", handleClick, true)
       doc.removeEventListener("keydown", handleKeyDown, true)
+      doc.body.style.cursor = previousCursor
       layerRef.current?.showHover(null)
     }
   }, [isInspectorActive, canRender, runtimeEpoch, iframeRef, activeDesignId, ensureLayer])

@@ -46,8 +46,8 @@ export interface AnnotationLayer {
   isEditorOpen: () => boolean
   showHover: (element: HTMLElement | null) => void
   highlight: (selector: string | null) => void
-  // 图层是否仍挂在当前文档（文档重建后需重新创建）。
-  isAttached: () => boolean
+  // 图层是否仍挂在该文档上：iframe 文档被替换或 body 被重建后必须返回 false。
+  isAttachedTo: (target: Document) => boolean
 }
 
 interface LayerPosition {
@@ -364,6 +364,7 @@ export const createAnnotationLayer = (
       }
       showHighlightAt(toLayerPosition(target))
     },
-    isAttached: (): boolean => doc.body?.contains(container) ?? false,
+    isAttachedTo: (target: Document): boolean =>
+      target === doc && (doc.body?.contains(container) ?? false),
   }
 }
