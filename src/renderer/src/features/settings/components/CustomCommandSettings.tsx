@@ -4,17 +4,18 @@ import type {
   CustomCommandType,
 } from "@shared/contracts/customCommand"
 import type { Project } from "@shared/project"
-import { Folder, Globe, Plus, Trash2 } from "lucide-react"
+import { Folder, Globe, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMarkdownEditor } from "@/components/ui/LxMarkdown/LxMarkdownEditor"
+import { LxMenu } from "@/components/ui/LxMenu"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
-import { LxTooltip } from "@/components/ui/LxTooltip"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectApi } from "@/features/project/api/projectApi"
 import { customCommandApi } from "@/features/settings/api/customCommandApi"
@@ -55,6 +56,16 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   const [isEditingDraft, setIsEditingDraft] = useState(false)
   const [formData, setFormData] = useState<CustomCommandFormState>(DEFAULT_FORM)
   const [isLoading, setIsLoading] = useState(false)
+  // 命令行右键菜单状态：坐标、滚动关闭锚点与目标命令。
+  const [menuState, setMenuState] = useState<{
+    commandName: string
+    x: number
+    y: number
+    anchor: HTMLElement | null
+  } | null>(null)
+  const [isConfirmingMenuDelete, setIsConfirmingMenuDelete] = useState(false)
+  // 命令元数据字段默认折叠，由右栏头部按钮展开；新建草稿时自动展开。
+  const [isMetaExpanded, setIsMetaExpanded] = useState(false)
 
   // 1. 初始化拉取项目列表（仅包含有效 filesystem path 的项目）
   useEffect(() => {
@@ -375,6 +386,28 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     }
   }
 
+  // 右键菜单在切换目标或关闭时重置二次确认态。
+  useEffect(() => {
+    setIsConfirmingMenuDelete(false)
+  }, [menuState])
+
+  // 新建草稿必须展开字段表单，避免看不到命令名称等必填项。
+  useEffect(() => {
+    if (isEditingDraft) setIsMetaExpanded(true)
+  }, [isEditingDraft])
+
+  // 右键菜单删除：首次点击进入确认态，二次点击执行删除。
+  const handleMenuDelete = (): void => {
+    if (!menuState) return
+    if (!isConfirmingMenuDelete) {
+      setIsConfirmingMenuDelete(true)
+      return
+    }
+    const name = menuState.commandName
+    setMenuState(null)
+    void handleDelete(name)
+  }
+
   const agentInputInfoDoc = `### ${t("settings.customCommandAgentInputHelpTitle")}
 ${t("settings.customCommandAgentInputHelpDesc")}
 
@@ -395,7 +428,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
 #### ${t("settings.customCommandMDBlocksTitle")}
 - \`&&& <command> ... &&& <command> --end\`: ${t("settings.customCommandMDTemplateBlockDesc")}
 - \`+++ supple --start/--end\`: ${t("settings.customCommandMDSuppleBlockDesc")}
-- \`+++ log --start/--end\`: ${t("settings.customCommandMDLogBlockDesc")}
+- \`%%% log --start/--end\`: ${t("settings.customCommandMDLogBlockDesc")}
 `
 
   return (
@@ -487,7 +520,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
       </div>
 
       {/* 主体两栏布局：左侧命令列表，右侧编辑面板 */}
-      <div className="grid min-h-0 flex-1 gap-3 @[600px]:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="custom-scrollbar grid min-h-0 flex-1 gap-3 overflow-y-auto @[560px]:overflow-hidden @[560px]:grid-cols-[220px_minmax(0,1fr)]">
         {/* 左侧列表 */}
         <div className="settings-item-card flex min-h-0 flex-col rounded-[6px] border border-white/8 bg-white/[0.02]">
           <div className="flex items-center justify-between border-b border-white/8 p-2">
@@ -561,7 +594,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                       key={cmd.name}
                       size="small"
                       level={2}
-                      className={`group w-full justify-between ${
+                      className={`w-full justify-between ${
                         isSelected
                           ? "bg-white/10 text-white font-medium"
                           : "text-white/70 hover:text-white"
@@ -569,6 +602,15 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                       onClick={() => {
                         setIsEditingDraft(false)
                         setSelectedCommandName(cmd.name)
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault()
+                        setMenuState({
+                          commandName: cmd.name,
+                          x: event.clientX,
+                          y: event.clientY,
+                          anchor: event.currentTarget as HTMLElement,
+                        })
                       }}
                     >
                       <div className="flex min-w-0 items-center gap-1.5">
@@ -580,25 +622,6 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                             className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
                           />
                         )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <LxTooltip
-                          title={t("common.delete")}
-                          content={t("settings.confirmDeleteCustomCommand", { name: cmd.name })}
-                          onConfirm={() => void handleDelete(cmd.name)}
-                          placement="top"
-                        >
-                          <LxIconButton
-                            variant="ghost"
-                            showHoverBg={false}
-                            hoverTextClass="hover:text-rose-400"
-                            aria-label={t("common.delete")}
-                            className="opacity-0 group-hover:opacity-100"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 />
-                          </LxIconButton>
-                        </LxTooltip>
                       </div>
                     </LxNavItem>
                   )
@@ -627,8 +650,8 @@ ${t("settings.customCommandAgentMDHelpDesc")}
           ) : (
             <div className="flex min-h-0 flex-1 flex-col gap-3">
               <div className="flex items-center justify-between border-b border-white/8 pb-2">
-                <h3 className="text-sm font-medium text-white flex items-center gap-2">
-                  <span>
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-white">
+                  <span className="truncate">
                     {isEditingDraft
                       ? t("settings.createCustomCommandTitle")
                       : t("settings.editCustomCommandTitle", {
@@ -636,86 +659,58 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                         })}
                   </span>
                   {isDirty && (
-                    <span aria-label="Unsaved" className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    <span
+                      aria-label="Unsaved"
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+                    />
                   )}
                 </h3>
+                <LxIconButton
+                  aria-label={t("settings.customCommandMetaExpand")}
+                  title={{
+                    content: isMetaExpanded
+                      ? t("settings.customCommandMetaCollapse")
+                      : t("settings.customCommandMetaExpand"),
+                    placement: "bottom",
+                  }}
+                  highlighted={isMetaExpanded}
+                  onClick={() => setIsMetaExpanded((prev) => !prev)}
+                >
+                  <SlidersHorizontal />
+                </LxIconButton>
               </div>
 
-              {/* 字段输入区 */}
-              <div className="grid gap-3 @[500px]:grid-cols-2">
-                <label className="grid gap-1 text-xs text-white/60">
-                  <span className="flex items-center gap-1">
-                    {t("settings.customCommandName")}
-                    <span className="text-rose-400">*</span>
-                  </span>
-                  <LxInput
-                    placeholder="e.g. reviewCode"
-                    prefix={<span className="text-white/40 font-mono">/</span>}
-                    value={formData.name}
-                    onChange={(e) =>
-                      handleFormChange((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                  />
-                </label>
-
-                <label className="grid gap-1 text-xs text-white/60">
-                  <span>{t("settings.customCommandDescription")}</span>
-                  <LxInput
-                    placeholder={t("settings.customCommandDescriptionPlaceholder")}
-                    value={formData.description}
-                    onChange={(e) =>
-                      handleFormChange((prev) => ({ ...prev, description: e.target.value }))
-                    }
-                  />
-                </label>
-
-                {activeTab === "agentInput" ? (
-                  <label className="grid gap-1 text-xs text-white/60 @[500px]:col-span-2">
+              {/* 字段输入区：默认折叠，由头部按钮展开 */}
+              {isMetaExpanded && (
+                <div className="grid shrink-0 gap-3 border-b border-white/8 pb-3 @[500px]:grid-cols-2">
+                  <label className="grid gap-1 text-xs text-white/60">
                     <span className="flex items-center gap-1">
-                      {t("settings.customCommandArgumentHint")}
-                      <LxInfoTooltip
-                        markdown={`\`argument-hint\`: ${t("settings.customCommandArgumentHintHelp")}`}
-                      />
+                      {t("settings.customCommandName")}
+                      <span className="text-rose-400">*</span>
                     </span>
                     <LxInput
-                      placeholder="e.g. [feature] [branch]"
-                      value={formData.argumentHint}
+                      placeholder="e.g. reviewCode"
+                      prefix={<span className="text-white/40 font-mono">/</span>}
+                      value={formData.name}
                       onChange={(e) =>
-                        handleFormChange((prev) => ({
-                          ...prev,
-                          argumentHint: e.target.value,
-                        }))
+                        handleFormChange((prev) => ({ ...prev, name: e.target.value }))
                       }
                     />
                   </label>
-                ) : (
-                  <>
-                    <label className="grid gap-1 text-xs text-white/60">
-                      <span className="flex items-center gap-1">
-                        {t("settings.customCommandMDScope")}
-                        <LxInfoTooltip
-                          markdown={`**global**: ${t("settings.customCommandMDGlobalScopeDesc")}\n\n**template**: ${t("settings.customCommandMDTemplateScopeDesc")}`}
-                        />
-                      </span>
-                      <LxSelect
-                        value={formData.mdScope}
-                        options={[
-                          { value: "global", label: t("settings.customCommandScopeGlobal") },
-                          {
-                            value: "template",
-                            label: t("settings.customCommandScopeTemplateOnly"),
-                          },
-                        ]}
-                        onChange={(val) =>
-                          handleFormChange((prev) => ({
-                            ...prev,
-                            mdScope: val as "global" | "template",
-                          }))
-                        }
-                      />
-                    </label>
 
-                    <label className="grid gap-1 text-xs text-white/60">
+                  <label className="grid gap-1 text-xs text-white/60">
+                    <span>{t("settings.customCommandDescription")}</span>
+                    <LxInput
+                      placeholder={t("settings.customCommandDescriptionPlaceholder")}
+                      value={formData.description}
+                      onChange={(e) =>
+                        handleFormChange((prev) => ({ ...prev, description: e.target.value }))
+                      }
+                    />
+                  </label>
+
+                  {activeTab === "agentInput" ? (
+                    <label className="grid gap-1 text-xs text-white/60 @[500px]:col-span-2">
                       <span className="flex items-center gap-1">
                         {t("settings.customCommandArgumentHint")}
                         <LxInfoTooltip
@@ -733,9 +728,55 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                         }
                       />
                     </label>
-                  </>
-                )}
-              </div>
+                  ) : (
+                    <>
+                      <label className="grid gap-1 text-xs text-white/60">
+                        <span className="flex items-center gap-1">
+                          {t("settings.customCommandMDScope")}
+                          <LxInfoTooltip
+                            markdown={`**global**: ${t("settings.customCommandMDGlobalScopeDesc")}\n\n**template**: ${t("settings.customCommandMDTemplateScopeDesc")}`}
+                          />
+                        </span>
+                        <LxSelect
+                          value={formData.mdScope}
+                          options={[
+                            { value: "global", label: t("settings.customCommandScopeGlobal") },
+                            {
+                              value: "template",
+                              label: t("settings.customCommandScopeTemplateOnly"),
+                            },
+                          ]}
+                          onChange={(val) =>
+                            handleFormChange((prev) => ({
+                              ...prev,
+                              mdScope: val as "global" | "template",
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label className="grid gap-1 text-xs text-white/60">
+                        <span className="flex items-center gap-1">
+                          {t("settings.customCommandArgumentHint")}
+                          <LxInfoTooltip
+                            markdown={`\`argument-hint\`: ${t("settings.customCommandArgumentHintHelp")}`}
+                          />
+                        </span>
+                        <LxInput
+                          placeholder="e.g. [feature] [branch]"
+                          value={formData.argumentHint}
+                          onChange={(e) =>
+                            handleFormChange((prev) => ({
+                              ...prev,
+                              argumentHint: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* 内容编辑区：Markdown 编辑器撑满剩余高度 */}
               <div className="flex min-h-0 flex-1 flex-col gap-1">
@@ -755,6 +796,30 @@ ${t("settings.customCommandAgentMDHelpDesc")}
           )}
         </div>
       </div>
+
+      <LxMenu
+        ariaLabel={t("settings.customCommandMenu", { name: menuState?.commandName ?? "" })}
+        anchor={menuState?.anchor ?? null}
+        isOpen={menuState !== null}
+        x={menuState?.x ?? 0}
+        y={menuState?.y ?? 0}
+        onClose={() => setMenuState(null)}
+      >
+        <LxMenuItem
+          active={isConfirmingMenuDelete}
+          danger
+          leading={
+            <Trash2
+              className={`h-3.5 w-3.5 ${isConfirmingMenuDelete ? "text-white" : "text-rose-400/80"}`}
+            />
+          }
+          onClick={handleMenuDelete}
+        >
+          {isConfirmingMenuDelete
+            ? t("settings.customCommandConfirmDelete")
+            : t("settings.customCommandDelete")}
+        </LxMenuItem>
+      </LxMenu>
     </div>
   )
 }

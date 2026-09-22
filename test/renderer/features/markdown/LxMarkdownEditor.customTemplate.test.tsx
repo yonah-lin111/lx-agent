@@ -38,9 +38,9 @@ const CUSTOM_TEMPLATE_CONTENT = [
   "+++ supple --start",
   "补充说明",
   "+++ supple --end",
-  "+++ log --start",
+  "%%% log --start",
   "执行记录",
-  "+++ log --end",
+  "%%% log --end",
   "&&& reviewTemplate --end",
 ].join("\n")
 
@@ -113,7 +113,7 @@ describe("LxMarkdownEditor 自定义模板命令插入", () => {
 
     const doc = view.state.doc.toString()
     expect(doc).toMatch(/^\+\+\+ supple --end \{id:[0-9a-f]{32}\}$/m)
-    expect(doc).toContain("+++ log --end\n&&& reviewTemplate --end {id:")
+    expect(doc).toContain("%%% log --end\n&&& reviewTemplate --end {id:")
     expect(doc.match(/\{id:[0-9a-f]{32}\}/g)).toHaveLength(2)
     // 开始行与正文保持原样，未被注入 id。
     expect(doc).toContain("&&& reviewTemplate\n## 检查项")

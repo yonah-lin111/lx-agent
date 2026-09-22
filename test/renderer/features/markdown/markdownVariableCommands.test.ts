@@ -258,16 +258,16 @@ $$$ varTemplate --end`
       expect(cleaned).toContain("自定义内容")
     })
 
-    it("固定 @content 块与 +++ 子块原样保留", () => {
+    it("固定 @content 块与 +++ / %%% 子块原样保留", () => {
       const block = `$$$ varTemplate --start 「title: 变量」
 @content:
   - @src/foo.ts
   - @[refer-folder](src/bar)
 unfilled: ""
-+++ logTemplate --start
+%%% logTemplate --start
 - Records:
   - var
-+++ logTemplate --end
+%%% logTemplate --end
 $$$ varTemplate --end`
 
       const cleaned = cleanVarBlockItems(block)
@@ -275,9 +275,9 @@ $$$ varTemplate --end`
       expect(cleaned).toContain("  - @src/foo.ts")
       expect(cleaned).toContain("  - @[refer-folder](src/bar)")
       expect(cleaned).not.toContain('unfilled: ""')
-      expect(cleaned).toContain("+++ logTemplate --start")
+      expect(cleaned).toContain("%%% logTemplate --start")
       expect(cleaned).toContain("  - var")
-      expect(cleaned).toContain("+++ logTemplate --end")
+      expect(cleaned).toContain("%%% logTemplate --end")
     })
   })
 

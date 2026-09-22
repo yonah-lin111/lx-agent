@@ -172,15 +172,15 @@ describe("markdownRenderer", () => {
     )
   })
 
-  it("stripMarkdownSubblockFences 仅移除 +++ 标记行并保留内部正文内容", () => {
+  it("stripMarkdownSubblockFences 仅移除 +++ / %%% 标记行并保留内部正文内容", () => {
     const input = [
       "- 位置: src/a.ts",
       "+++ suppleTemplate --start",
       "- 补充内容 1",
       "+++ suppleTemplate --end",
-      "+++ logTemplate --start",
+      "%%% logTemplate --start",
       "- 运行日志 1",
-      "+++ logTemplate --end",
+      "%%% logTemplate --end",
       "- 要求: 具体要求",
     ].join("\n")
 
@@ -207,9 +207,9 @@ describe("markdownRenderer", () => {
       "+++ suppleTemplate --start",
       "- 补充项: 内部信息",
       "+++ suppleTemplate --end",
-      "+++ logTemplate --start",
+      "%%% logTemplate --start",
       "- 日志项: 排查记录",
-      "+++ logTemplate --end",
+      "%%% logTemplate --end",
       "- 描述: 任务描述",
     ].join("\n")
     const html = markdownRenderer.render(`&&& addTemplate\n${content}\n&&&`)
@@ -218,7 +218,7 @@ describe("markdownRenderer", () => {
     expect(html).toContain(`data-template-content="${encodeURIComponent(expectedCopied)}"`)
     expect(html).not.toContain(encodeURIComponent("内部信息"))
     expect(html).not.toContain(encodeURIComponent("+++ suppleTemplate --start"))
-    expect(html).not.toContain(encodeURIComponent("+++ logTemplate --start"))
+    expect(html).not.toContain(encodeURIComponent("%%% logTemplate --start"))
   })
 
   it("渲染模板块支持新语法 --start 与 --end 边界标记", () => {

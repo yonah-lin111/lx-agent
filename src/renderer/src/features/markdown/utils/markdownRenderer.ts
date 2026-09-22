@@ -112,7 +112,7 @@ const isTemplateListItemLine = (line: string): RegExpMatchArray | null =>
 
 /**
  * 移除模板块内容中未填写的列表项及空占位子项。
- * preserveSuppleBlocks: 为 true 时，若遇到 +++ ... +++ 补充块，则内部内容原样保留，不进行列表项清理。
+ * preserveSuppleBlocks: 为 true 时，若遇到 +++ / %%% 子块，则内部内容原样保留，不进行列表项清理。
  */
 export const stripEmptyTemplateItems = (content: string, preserveSuppleBlocks = false): string => {
   const lines = content.split("\n")
@@ -219,7 +219,7 @@ export const stripMarkdownSubblocks = (content: string): string => {
 /**
  * 提取父级模版块用于复制的内容：
  * - 排除所有 supple 补充块及其内部内容；
- * - 保留直接位于该块内部的 log 补充块内容，但剔除 +++ log 起止标记行。
+ * - 保留直接位于该块内部的 log 日志块内容，但剔除 %%% log 起止标记行。
  */
 export const extractParentTemplateCopyContent = (content: string): string => {
   const lines = content.split("\n")
@@ -248,7 +248,7 @@ export const extractParentTemplateCopyContent = (content: string): string => {
 }
 
 /**
- * 移除文本中所有子块（如 supple / log）的 +++ 标记行，但完整保留内部子块正文。
+ * 移除文本中所有子块（如 supple / log）的 +++ / %%% 标记行，但完整保留内部子块正文。
  */
 export const stripMarkdownSubblockFences = (content: string): string => {
   const lines = content.split("\n")

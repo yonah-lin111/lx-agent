@@ -444,13 +444,13 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
     it("ActionWidget 的 onCleanTemplate 回调正确清除日志块 (logBlock) 中未填写的项", () => {
       const doc = [
-        "+++ logTemplate --start",
+        "%%% logTemplate --start",
         "## 运行日志",
         "",
         "- 时间: 2026-09-06",
         "- 阶段: ",
         "- 结论: ",
-        "+++ logTemplate --end",
+        "%%% logTemplate --end",
       ].join("\n")
 
       const { view, plugin } = createTestView(doc)
@@ -472,11 +472,11 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
       expect(view.state.doc.toString()).toBe(
         [
-          "+++ logTemplate --start",
+          "%%% logTemplate --start",
           "## 运行日志",
           "",
           "- 时间: 2026-09-06",
-          "+++ logTemplate --end",
+          "%%% logTemplate --end",
         ].join("\n"),
       )
     })

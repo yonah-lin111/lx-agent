@@ -1,5 +1,6 @@
 import {
   MARKDOWN_LOG_END_RE,
+  MARKDOWN_LOG_MARKER_RE,
   MARKDOWN_LOG_START_RE,
   MARKDOWN_SUPPLE_END_RE,
   MARKDOWN_SUPPLE_START_RE,
@@ -152,7 +153,7 @@ export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
   return false
 }
 
-// 处理日志块（+++ log ... +++）的标记与折叠交互。
+// 处理日志块（%%% log ... %%%；兼容旧版 +++）的标记与折叠交互。
 export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
   if (MARKDOWN_LOG_START_RE.test(ctx.line)) {
     const startLine = ctx.i
@@ -172,9 +173,9 @@ export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
       currentLogTextLines.push(subLine)
     }
 
-    const markerStart = ctx.line.indexOf("+++")
+    const markerStart = ctx.line.search(MARKDOWN_LOG_MARKER_RE)
     ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
-    const commandMatch = ctx.line.match(/\+\+\+\s+(logTemplate|log)\s+(--start)/)
+    const commandMatch = ctx.line.match(/(?:%%%|\+\+\+)\s+(logTemplate|log)\s+(--start)/)
     if (commandMatch && commandMatch.index !== undefined) {
       const commandStart = ctx.line.indexOf(commandMatch[1], markerStart + 3)
       if (commandStart !== -1) {
@@ -222,9 +223,9 @@ export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
   }
 
   if (ctx.isInsideLogBlock && MARKDOWN_LOG_END_RE.test(ctx.line)) {
-    const markerStart = ctx.line.indexOf("+++")
+    const markerStart = ctx.line.search(MARKDOWN_LOG_MARKER_RE)
     ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
-    const endCommandMatch = ctx.line.match(/\+\+\+\s+(logTemplate|log)\s+(--end)/)
+    const endCommandMatch = ctx.line.match(/(?:%%%|\+\+\+)\s+(logTemplate|log)\s+(--end)/)
     if (endCommandMatch && endCommandMatch.index !== undefined) {
       const commandStart = ctx.line.indexOf(endCommandMatch[1], markerStart + 3)
       if (commandStart !== -1) {

@@ -18,6 +18,7 @@ export {
   isMarkdownTemplateEndLine,
   isMarkdownTemplateStartLine,
   MARKDOWN_LOG_END_RE,
+  MARKDOWN_LOG_MARKER_RE,
   MARKDOWN_LOG_START_RE,
   MARKDOWN_SUPPLE_END_RE,
   MARKDOWN_SUPPLE_START_RE,

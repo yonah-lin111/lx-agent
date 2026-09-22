@@ -155,7 +155,7 @@ export const markdown = {
     "+++ suppleTemplate --end",
   ].join("\n"),
   templateLogContent: [
-    "+++ logTemplate --start",
+    "%%% logTemplate --start",
     "## Execution Log",
     "",
     "- Time: ",
@@ -163,7 +163,7 @@ export const markdown = {
     "- Records: ",
     "  - ",
     "- Conclusion: ",
-    "+++ logTemplate --end",
+    "%%% logTemplate --end",
   ].join("\n"),
   templateVarContent: [
     "$$$ varTemplate --start 「title: 」",

@@ -85,6 +85,7 @@ export const parseYamlVariableContent = (rawYaml: string): MarkdownVariableEntry
       trimmed.startsWith("#") ||
       trimmed.startsWith("//") ||
       trimmed.startsWith("+++") ||
+      trimmed.startsWith("%%%") ||
       trimmed.startsWith("---")
     )
       continue
@@ -99,7 +100,7 @@ export const parseYamlVariableContent = (rawYaml: string): MarkdownVariableEntry
     const key = line.slice(0, colonIndex).trim()
     let rawVal = line.slice(colonIndex + 1).trim()
 
-    if (!key || /^[#\-]/.test(key) || key.startsWith("+++")) continue
+    if (!key || /^[#\-]/.test(key) || key.startsWith("+++") || key.startsWith("%%%")) continue
 
     flushCurrent()
 
@@ -229,7 +230,7 @@ export const getVariableTag = (name: string): string => {
 /**
  * 清理 $$$ 模板块内部未修改的条目（橡皮擦功能）：
  * 移除值为空（""、空 """）或仍保留默认占位符 "var" 的条目。
- * @content 固定内容块与 +++ 子块（补充/日志等）原样保留。
+ * @content 固定内容块与 +++ / %%% 子块（补充/日志等）原样保留。
  */
 export const cleanVarBlockItems = (blockContent: string): string => {
   const lines = blockContent.split(/\r?\n/)
@@ -240,7 +241,7 @@ export const cleanVarBlockItems = (blockContent: string): string => {
   while (idx < lines.length) {
     const line = lines[idx]
 
-    if (!inSubblock && /^\s*\+\+\+.*--start\s*$/.test(line)) {
+    if (!inSubblock && /^\s*(?:%%%|\+\+\+).*--start\s*$/.test(line)) {
       inSubblock = true
       preservedLines.push(line)
       idx++
@@ -248,7 +249,7 @@ export const cleanVarBlockItems = (blockContent: string): string => {
     }
 
     if (inSubblock) {
-      if (/^\s*\+\+\+.*--end\s*$/.test(line)) {
+      if (/^\s*(?:%%%|\+\+\+).*--end\s*$/.test(line)) {
         inSubblock = false
       }
       preservedLines.push(line)

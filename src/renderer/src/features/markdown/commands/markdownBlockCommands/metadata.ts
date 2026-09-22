@@ -47,7 +47,7 @@ export const setMarkdownSuppleWorktree = (lineText: string, branch: string | nul
   return `${parsed.indent}+++ ${parsed.command} --end${idPart}${wtPart}`
 }
 
-// log 补充块结束行：+++ logTemplate --end 或 +++ log --end。
+// log 日志块结束行：%%% logTemplate --end 或 %%% log --end（兼容旧版 +++）。
 
 /**
  * 更新模板块开始行的「title: 」字段：已有则替换内容，缺失则在行尾补插。
@@ -124,7 +124,7 @@ export const createMarkdownTemplateId = (): string => crypto.randomUUID().replac
  * 为自定义模板内容补全块 id（插入时调用）：
  * - `&&& <command> --end` 结束行注入 `{id:...}`，多个模板块各自独立；
  * - `+++ supple(--Template) --end` 结束行注入 `{id:...}`；
- * - `+++ log(--Template) --end` 不注入（log 结束行正则不接受 id 元数据）；
+ * - `%%% log(--Template) --end` 不注入（log 结束行正则不接受 id 元数据）；
  * 已有 id 的结束行保持不变，id 始终写在 `{wt:...}` 之前；开始行与正文行不受影响。
  */
 export const injectCustomTemplateBlockIds = (content: string): string =>

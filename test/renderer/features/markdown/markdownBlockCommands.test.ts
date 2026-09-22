@@ -64,6 +64,10 @@ describe("Markdown 块命令", () => {
     expect(
       isInsideMarkdownLogBlock("+++ logTemplate --start\n- log 1\n+++ logTemplate --end\n"),
     ).toBe(false)
+    expect(isInsideMarkdownLogBlock("%%% logTemplate --start\n- log 1\n")).toBe(true)
+    expect(
+      isInsideMarkdownLogBlock("%%% logTemplate --start\n- log 1\n%%% logTemplate --end\n"),
+    ).toBe(false)
   })
 
   it("解析模板块结束行的源码状态", () => {
@@ -332,7 +336,9 @@ describe("自定义模板块 id 注入", () => {
     )
   })
 
-  it("+++ log 结束行不注入 id", () => {
+  it("%%% log 结束行不注入 id，旧版 +++ log 同样保持原样", () => {
+    expect(injectCustomTemplateBlockIds("%%% log --end")).toBe("%%% log --end")
+    expect(injectCustomTemplateBlockIds("%%% logTemplate --end")).toBe("%%% logTemplate --end")
     expect(injectCustomTemplateBlockIds("+++ log --end")).toBe("+++ log --end")
     expect(injectCustomTemplateBlockIds("+++ logTemplate --end")).toBe("+++ logTemplate --end")
   })
@@ -344,14 +350,14 @@ describe("自定义模板块 id 注入", () => {
       "+++ supple --start",
       "补充说明",
       "+++ supple --end",
-      "+++ log --start",
+      "%%% log --start",
       "执行记录",
-      "+++ log --end",
+      "%%% log --end",
       "&&& reviewTemplate --end",
     ].join("\n")
     const result = injectCustomTemplateBlockIds(content)
 
-    expect(result).toContain("+++ log --end\n&&& reviewTemplate --end {id:")
+    expect(result).toContain("%%% log --end\n&&& reviewTemplate --end {id:")
     expect(result.match(idPattern)).toHaveLength(2)
   })
 })
@@ -458,13 +464,13 @@ describe("模板块工作区绑定 {wt:}", () => {
       expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe("- 需求: 任务 1\n- 位置: src/app.ts")
     })
 
-    it("&&& 模版块中包含 logTemplate 时，复制 &&& 块与 log 内容，并移除 +++ log 起止标记", () => {
+    it("&&& 模版块中包含 logTemplate 时，复制 &&& 块与 log 内容，并移除 %%% log 起止标记", () => {
       const doc = [
         "&&& addTemplate --start",
         "- 需求: 任务 1",
-        "+++ logTemplate --start",
+        "%%% logTemplate --start",
         "- 日志: 排查信息",
-        "+++ logTemplate --end",
+        "%%% logTemplate --end",
         "- 结果: 成功",
         "&&& addTemplate --end",
       ].join("\n")
@@ -511,9 +517,9 @@ describe("模板块工作区绑定 {wt:}", () => {
       const doc = [
         "&&& addTemplate --start",
         "- 需求: 任务 1",
-        "+++ logTemplate --start",
+        "%%% logTemplate --start",
         "- 日志: 错误日志",
-        "+++ logTemplate --end",
+        "%%% logTemplate --end",
         "&&& addTemplate --end",
       ].join("\n")
 
@@ -527,9 +533,9 @@ describe("模板块工作区绑定 {wt:}", () => {
         "- 需求: 任务 1",
         "+++ suppleTemplate --start",
         "- 补充: 需求 A",
-        "+++ logTemplate --start",
+        "%%% logTemplate --start",
         "- 日志: 嵌套在 supple 中的日志",
-        "+++ logTemplate --end",
+        "%%% logTemplate --end",
         "- 补充: 需求 B",
         "+++ suppleTemplate --end",
         "&&& addTemplate --end",
@@ -573,10 +579,24 @@ describe("模板块工作区绑定 {wt:}", () => {
     })
 
     it("顶层孤独的 logTemplate（无父模版块）不能单独复制，返回 null", () => {
-      const doc = ["+++ logTemplate --start", "- 独立日志", "+++ logTemplate --end"].join("\n")
+      const doc = ["%%% logTemplate --start", "- 独立日志", "%%% logTemplate --end"].join("\n")
 
       const pos = doc.indexOf("- 独立日志")
       expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBeNull()
+    })
+
+    it("旧版 +++ logTemplate 块仍按 log 语义处理（兼容读取）", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "- 需求: 任务 1",
+        "+++ logTemplate --start",
+        "- 日志: 旧版标记",
+        "+++ logTemplate --end",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const pos = doc.indexOf("- 需求: 任务 1")
+      expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe("- 需求: 任务 1\n- 日志: 旧版标记")
     })
   })
 

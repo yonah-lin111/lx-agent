@@ -40,6 +40,7 @@ Range.prototype.getBoundingClientRect = () => rangeRect
 const listCommands =
   vi.fn<(input?: ListCustomCommandsInput) => Promise<CustomCommandDetailItem[]>>()
 const saveCommand = vi.fn()
+const deleteCommand = vi.fn()
 
 const loadedCommands = (): CustomCommandDetailItem[] => [
   {
@@ -99,8 +100,9 @@ beforeEach(() => {
       mdScope: input.mdScope,
     },
   }))
+  deleteCommand.mockResolvedValue({ ok: true })
   window.api = {
-    customCommand: { list: listCommands, save: saveCommand },
+    customCommand: { list: listCommands, save: saveCommand, delete: deleteCommand },
     project: { projects: { list: async () => [] } },
     settings: { getUiSettings: async () => ({ locale: "en" as const }) },
   } as unknown as typeof window.api
@@ -110,6 +112,9 @@ describe("CustomCommandSettings 命令行", () => {
   it("以 role=button 暴露并支持点击切换选中后同步表单", async () => {
     renderComponent()
     await screen.findByText("alpha")
+
+    // 元数据字段默认折叠，展开后校验表单与选中命令同步。
+    fireEvent.click(screen.getByLabelText("Edit Details"))
     await screen.findByDisplayValue("alpha")
 
     const betaRow = screen.getByText("beta").closest('[role="button"]')
@@ -126,6 +131,9 @@ describe("CustomCommandSettings 命令行", () => {
     renderComponent()
     await screen.findByText("alpha")
 
+    fireEvent.click(screen.getByLabelText("Edit Details"))
+    await screen.findByDisplayValue("alpha")
+
     const alphaRow = screen.getByText("alpha").closest('[role="button"]') as Element
     fireEvent.click(screen.getByText("beta").closest('[role="button"]') as Element)
     await screen.findByDisplayValue("beta")
@@ -133,6 +141,23 @@ describe("CustomCommandSettings 命令行", () => {
     fireEvent.keyDown(alphaRow, { key: "Enter" })
 
     expect(await screen.findByDisplayValue("alpha")).toBeTruthy()
+  })
+
+  it("右键命令弹出删除菜单，二次点击确认后调用删除接口", async () => {
+    renderComponent()
+    await screen.findByText("alpha")
+
+    fireEvent.contextMenu(screen.getByText("alpha").closest('[role="button"]') as Element)
+
+    fireEvent.click(await screen.findByText("Delete Command"))
+    // 第一次点击进入确认态，不触发删除。
+    expect(deleteCommand).not.toHaveBeenCalled()
+
+    fireEvent.click(await screen.findByText("Confirm Delete"))
+
+    await waitFor(() =>
+      expect(deleteCommand).toHaveBeenCalledWith(expect.objectContaining({ name: "alpha" })),
+    )
   })
 
   it("agentMD 命令使用 Markdown 编辑器，编辑内容后保存为最新模板内容", async () => {

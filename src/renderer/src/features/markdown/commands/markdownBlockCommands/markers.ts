@@ -72,12 +72,15 @@ export const MARKDOWN_TEMPLATE_COMMENT_RE = /^\s*\/\//
 // supple 补充块开始行：+++ suppleTemplate --start 或 +++ supple --start。
 export const MARKDOWN_SUPPLE_START_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--start\s*$/
 
-// log 补充块开始行：+++ logTemplate --start 或 +++ log --start。
-export const MARKDOWN_LOG_START_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--start\s*$/
+// log 日志块开始行：%%% logTemplate --start 或 %%% log --start；兼容读取旧版 +++ 标记。
+export const MARKDOWN_LOG_START_RE = /^\s*(?:%%%|\+\+\+)\s+(?:logTemplate|log)\s+--start\s*$/
 
 // supple 补充块结束行：+++ suppleTemplate --end 或 +++ supple --end，可选携带 {id:...} 与 {wt:...}。
 export const MARKDOWN_SUPPLE_END_RE =
   /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--end(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
+
+// log 日志块标记定位：新 %%% 与旧版 +++ 兼容，供编辑器装饰计算标记范围。
+export const MARKDOWN_LOG_MARKER_RE = /%%%|\+\+\+/
 
 // 变量模板块开始行：$$$ varTemplate [--start] [「title: 标题」]。
 export const MARKDOWN_VAR_TEMPLATE_START_RE =
@@ -86,7 +89,8 @@ export const MARKDOWN_VAR_TEMPLATE_START_RE =
 // 变量模板块结束行：$$$ [varTemplate --end | --end]。
 export const MARKDOWN_VAR_TEMPLATE_END_RE = /^\s*\$\$\$(?:\s+(?:varTemplate)\s+--end|\s+--end)?\s*$/
 
-export const MARKDOWN_LOG_END_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--end\s*$/
+// log 日志块结束行：%%% logTemplate --end 或 %%% log --end；兼容读取旧版 +++ 标记。
+export const MARKDOWN_LOG_END_RE = /^\s*(?:%%%|\+\+\+)\s+(?:logTemplate|log)\s+--end\s*$/
 
 /**
  * 判断指定文本末尾是否处于未闭合的 log 日志块内。
@@ -206,11 +210,11 @@ export const isMarkdownSuppleStartLine = (line: string): boolean =>
 export const isMarkdownSuppleEndLine = (line: string): boolean => MARKDOWN_SUPPLE_END_RE.test(line)
 
 /**
- * 判断一行是否为 log 补充块开始标记（+++ logTemplate --start 或 +++ log --start）。
+ * 判断一行是否为 log 日志块开始标记（%%% logTemplate --start 或 %%% log --start，兼容旧版 +++）。
  */
 export const isMarkdownLogStartLine = (line: string): boolean => MARKDOWN_LOG_START_RE.test(line)
 
 /**
- * 判断一行是否为 log 补充块结束标记（+++ logTemplate --end 或 +++ log --end）。
+ * 判断一行是否为 log 日志块结束标记（%%% logTemplate --end 或 %%% log --end，兼容旧版 +++）。
  */
 export const isMarkdownLogEndLine = (line: string): boolean => MARKDOWN_LOG_END_RE.test(line)
