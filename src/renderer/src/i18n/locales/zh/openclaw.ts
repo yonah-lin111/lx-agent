@@ -49,7 +49,7 @@ export const openclaw = {
   commandStopDesc: "中止所有运行中的任务",
   commandOfficeDesc: "切换办公区",
   commandOnlyDesc: "只显示选中员工的消息",
-  commandAllDesc: "恢复显示全部员工消息",
+  pickerAllAgents: "全部员工",
   addAttachment: "添加附件",
   attachmentFolderUnsupported: "文件夹不能作为附件",
   attachmentImageTooLarge: "单张图片不能超过 {{size}}",

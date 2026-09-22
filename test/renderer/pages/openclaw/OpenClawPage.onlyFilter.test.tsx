@@ -1,43 +1,31 @@
 // @vitest-environment jsdom
 
-import type { OpenClawChatMessage } from "@shared/contracts/openclaw"
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import type React from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { OfficeTimelineMessage } from "@/features/openclaw/hooks/useOpenClawOffice"
 import { useOpenClawOfficeStore } from "@/features/openclaw/openclawOfficeStore"
 import { OpenClawPage } from "@/pages/openclaw"
 
-// vi.mock 工厂先于模块执行，可变员工名册必须由 vi.hoisted 创建。
-const hoisted = vi.hoisted(() => ({
-  agents: [
-    { id: "amy", name: "Amy" },
-    { id: "lily", name: "Lily" },
-  ],
-}))
-
-const timeline: OfficeTimelineMessage[] = [
-  {
-    agentId: "amy",
-    message: {
-      id: "a1",
-      role: "assistant",
-      content: "amy-reply",
-      timestamp: 1,
-      status: "completed",
-    } satisfies OpenClawChatMessage,
-  },
-  {
-    agentId: "lily",
-    message: {
-      id: "l1",
-      role: "assistant",
-      content: "lily-reply",
-      timestamp: 2,
-      status: "completed",
-    } satisfies OpenClawChatMessage,
-  },
-]
+// vi.mock 工厂先于模块执行，可变名册与时间线必须由 vi.hoisted 创建。
+const hoisted = vi.hoisted(() => {
+  const message = (
+    id: string,
+    agentId: string,
+    content: string,
+    timestamp: number,
+  ): { agentId: string; message: Record<string, unknown> } => ({
+    agentId,
+    message: { id, role: "assistant", content, timestamp, status: "completed" },
+  })
+  return {
+    agents: [
+      { id: "amy", name: "Amy" },
+      { id: "lily", name: "Lily" },
+    ],
+    message,
+    timeline: [message("a1", "amy", "amy-reply", 1), message("l1", "lily", "lily-reply", 2)],
+  }
+})
 
 // 页面级接线测试用桩输入框：暴露 onCommand / picker 回调，真实输入框交互由 OpenClawInput 用例覆盖。
 interface StubPickerItem {
@@ -54,8 +42,7 @@ interface StubInputProps {
   value: string
   onChange: (value: string) => void
   onSend: () => void
-  onCommand: (commandId: string) => void
-  commandCapabilities?: { canOnly: boolean; canRestore: boolean }
+  onlyCommandAvailable?: boolean
   picker?: StubPicker | null
 }
 
@@ -76,26 +63,25 @@ vi.mock("@/features/openclaw", async (importOriginal) => {
       const instance = buildInstance()
       return { instances: { local: instance }, enabledInstances: [{ id: "local", instance }] }
     },
-    useOpenClawOffice: () => ({ sessions: [], timeline, isAnyStreaming: false }),
+    useOpenClawOffice: () => ({ sessions: [], timeline: hoisted.timeline, isAnyStreaming: false }),
     OpenClawInput: ({
       value,
       onChange,
       onSend,
-      onCommand,
-      commandCapabilities,
+      onlyCommandAvailable,
       picker,
     }: StubInputProps): React.JSX.Element => (
       <div>
         <span data-testid="input-value">{value}</span>
-        <span data-testid="can-restore">{String(commandCapabilities?.canRestore)}</span>
+        <span data-testid="only-command-available">{String(onlyCommandAvailable)}</span>
         <button data-testid="type-only" onClick={() => onChange("/only")}>
           type-only
         </button>
+        <button data-testid="type-clear" onClick={() => onChange("/clear")}>
+          type-clear
+        </button>
         <button data-testid="send" onClick={onSend}>
           send
-        </button>
-        <button data-testid="run-all" onClick={() => onCommand("all")}>
-          run-all
         </button>
         {picker?.items.map((item) => (
           <button
@@ -116,16 +102,23 @@ vi.mock("@/features/settings", () => ({ notifySettingsChanged: vi.fn() }))
 const restoreButton = (): HTMLButtonElement =>
   screen.getByRole("button", { name: "Show all messages" }) as HTMLButtonElement
 
+const pick = (id: string): void => {
+  fireEvent.click(screen.getByTestId(`pick-${id}`))
+}
+
 describe("OpenClawPage /only 员工筛选", () => {
   beforeEach(() => {
     hoisted.agents.splice(
       0,
       hoisted.agents.length,
       { id: "amy", name: "Amy" },
-      {
-        id: "lily",
-        name: "Lily",
-      },
+      { id: "lily", name: "Lily" },
+    )
+    hoisted.timeline.splice(
+      0,
+      hoisted.timeline.length,
+      hoisted.message("a1", "amy", "amy-reply", 1),
+      hoisted.message("l1", "lily", "lily-reply", 2),
     )
     useOpenClawOfficeStore.setState({
       selectedInstanceId: null,
@@ -148,26 +141,42 @@ describe("OpenClawPage /only 员工筛选", () => {
     expect(restoreButton().disabled).toBe(true)
 
     fireEvent.click(screen.getByTestId("type-only"))
-    fireEvent.click(await screen.findByTestId("pick-amy"))
+    pick("amy")
 
     await waitFor(() => {
       expect(screen.queryByText("lily-reply")).toBeNull()
     })
     expect(screen.getByText("amy-reply")).not.toBeNull()
     expect(useOpenClawOfficeStore.getState().onlyAgentIds).toEqual(["amy"])
-    expect(screen.getByTestId("can-restore")).not.toBeNull()
     expect(restoreButton().disabled).toBe(false)
     expect(screen.getByText("Only:")).not.toBeNull()
+  })
+
+  it("面板「全部员工」行清除筛选并恢复全量列表", async () => {
+    render(<OpenClawPage />)
+
+    fireEvent.click(screen.getByTestId("type-only"))
+    expect(await screen.findByTestId("pick-__all__")).not.toBeNull()
+    pick("lily")
+    await waitFor(() => expect(useOpenClawOfficeStore.getState().onlyAgentIds).toEqual(["lily"]))
+
+    pick("__all__")
+
+    await waitFor(() => {
+      expect(useOpenClawOfficeStore.getState().onlyAgentIds).toBeNull()
+    })
+    expect(screen.getByText("amy-reply")).not.toBeNull()
+    expect(restoreButton().disabled).toBe(true)
   })
 
   it("再次切换同一员工即退出筛选并恢复全量列表", async () => {
     render(<OpenClawPage />)
 
     fireEvent.click(screen.getByTestId("type-only"))
-    fireEvent.click(await screen.findByTestId("pick-amy"))
+    pick("amy")
     await waitFor(() => expect(useOpenClawOfficeStore.getState().onlyAgentIds).toEqual(["amy"]))
 
-    fireEvent.click(screen.getByTestId("pick-amy"))
+    pick("amy")
 
     await waitFor(() => {
       expect(useOpenClawOfficeStore.getState().onlyAgentIds).toBeNull()
@@ -180,7 +189,7 @@ describe("OpenClawPage /only 员工筛选", () => {
     render(<OpenClawPage />)
 
     fireEvent.click(screen.getByTestId("type-only"))
-    fireEvent.click(await screen.findByTestId("pick-lily"))
+    pick("lily")
     await waitFor(() => expect(useOpenClawOfficeStore.getState().onlyAgentIds).toEqual(["lily"]))
 
     const chipStrip = screen.getByText("Only:").parentElement as HTMLElement
@@ -197,7 +206,7 @@ describe("OpenClawPage /only 员工筛选", () => {
     render(<OpenClawPage />)
 
     fireEvent.click(screen.getByTestId("type-only"))
-    fireEvent.click(await screen.findByTestId("pick-amy"))
+    pick("amy")
     await waitFor(() => expect(useOpenClawOfficeStore.getState().onlyAgentIds).toEqual(["amy"]))
 
     fireEvent.click(restoreButton())
@@ -208,19 +217,32 @@ describe("OpenClawPage /only 员工筛选", () => {
     expect(screen.getByText("lily-reply")).not.toBeNull()
   })
 
-  it("/all 命令恢复全部员工消息", async () => {
+  it("/clear 面板「全部员工」行全选并在再次选择时清空参数", async () => {
     render(<OpenClawPage />)
 
-    fireEvent.click(screen.getByTestId("type-only"))
-    fireEvent.click(await screen.findByTestId("pick-amy"))
-    await waitFor(() => expect(useOpenClawOfficeStore.getState().onlyAgentIds).toEqual(["amy"]))
+    fireEvent.click(screen.getByTestId("type-clear"))
+    expect(await screen.findByTestId("pick-__all__")).not.toBeNull()
+    expect(screen.getByTestId("input-value").textContent).toBe("/clear")
 
-    fireEvent.click(screen.getByTestId("run-all"))
+    pick("__all__")
+    expect(screen.getByTestId("input-value").textContent).toBe("/clear Amy & Lily")
 
-    await waitFor(() => {
-      expect(useOpenClawOfficeStore.getState().onlyAgentIds).toBeNull()
-    })
-    expect(screen.getByText("lily-reply")).not.toBeNull()
+    pick("__all__")
+    expect(screen.getByTestId("input-value").textContent).toBe("/clear")
+  })
+
+  it("时间线不足两名员工时 /only 命令不可用", async () => {
+    hoisted.timeline.splice(1)
+
+    render(<OpenClawPage />)
+
+    expect(screen.getByTestId("only-command-available").textContent).toBe("false")
+  })
+
+  it("时间线出现多名员工时 /only 命令可用", () => {
+    render(<OpenClawPage />)
+
+    expect(screen.getByTestId("only-command-available").textContent).toBe("true")
   })
 
   it("切换到未启用办公区时筛选被重置", async () => {

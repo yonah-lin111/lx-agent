@@ -50,10 +50,10 @@ export {
 export {
   getMatchedOpenClawCommands,
   keepsCommandText,
-  type OpenClawCommandCapabilities,
   type OpenClawCommandId,
   parseOpenClawCommand,
   splitCommandAgentNames,
+  toggleAllCommandAgentNames,
   toggleCommandAgentName,
 } from "./openclawCommands"
 export { type OpenClawPendingDispatch, useOpenClawOfficeStore } from "./openclawOfficeStore"

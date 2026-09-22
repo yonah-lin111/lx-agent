@@ -228,39 +228,21 @@ describe("OpenClawInput 命令面板交互（对齐 AgentInput）", () => {
     expect(onChange).toHaveBeenLastCalledWith("/clear")
   })
 
-  it("commandCapabilities 收窄命令列表：/only 需多员工、/all 仅筛选态", async () => {
+  it("onlyCommandAvailable 控制 /only 命令的可见性", async () => {
     const { rerender } = render(
-      <OpenClawInput
-        {...baseInputProps}
-        value=""
-        picker={null}
-        commandCapabilities={{ canOnly: true, canRestore: false }}
-      />,
+      <OpenClawInput {...baseInputProps} value="" picker={null} onlyCommandAvailable />,
     )
 
-    rerender(
-      <OpenClawInput
-        {...baseInputProps}
-        value="/"
-        picker={null}
-        commandCapabilities={{ canOnly: true, canRestore: false }}
-      />,
-    )
+    rerender(<OpenClawInput {...baseInputProps} value="/" picker={null} onlyCommandAvailable />)
     expect(await screen.findByText("/only")).not.toBeNull()
-    expect(screen.queryByText("/all")).toBeNull()
 
     rerender(
-      <OpenClawInput
-        {...baseInputProps}
-        value="/"
-        picker={null}
-        commandCapabilities={{ canOnly: false, canRestore: true }}
-      />,
+      <OpenClawInput {...baseInputProps} value="/" picker={null} onlyCommandAvailable={false} />,
     )
     await waitFor(() => {
       expect(screen.queryByText("/only")).toBeNull()
     })
-    expect(await screen.findByText("/all")).not.toBeNull()
+    expect(screen.queryByText("/all")).toBeNull()
   })
 
   it("Esc 取消文本派生的二级面板并清空命令文本", async () => {

@@ -51,7 +51,7 @@ export const openclaw = {
   commandStopDesc: "Stop all running tasks",
   commandOfficeDesc: "Switch office",
   commandOnlyDesc: "Show only selected coworkers' messages",
-  commandAllDesc: "Show all coworkers' messages",
+  pickerAllAgents: "All coworkers",
   addAttachment: "Add attachment",
   attachmentFolderUnsupported: "Folders cannot be attached",
   attachmentImageTooLarge: "A single image cannot exceed {{size}}",

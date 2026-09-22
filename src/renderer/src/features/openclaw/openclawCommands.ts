@@ -3,7 +3,7 @@ import { isFuzzyMatch } from "@/features/agent/components/AgentInput/AgentMarkdo
 import type { TranslationKey } from "@/i18n"
 
 // OpenClaw 输入框支持的内置命令。
-export type OpenClawCommandId = "clear" | "stop" | "office" | "only" | "all"
+export type OpenClawCommandId = "clear" | "stop" | "office" | "only"
 
 interface OpenClawCommandSpec {
   id: OpenClawCommandId
@@ -18,44 +18,29 @@ export const OPENCLAW_COMMANDS: readonly OpenClawCommandSpec[] = [
   { id: "stop", name: "/stop", descKey: "openclaw.commandStopDesc" },
   { id: "office", name: "/office", descKey: "openclaw.commandOfficeDesc" },
   { id: "only", name: "/only", descKey: "openclaw.commandOnlyDesc", keepText: true },
-  { id: "all", name: "/all", descKey: "openclaw.commandAllDesc" },
 ]
 
 // 判断命令应用时是否保留输入文本（支持追加参数）。
 export const keepsCommandText = (commandId: OpenClawCommandId): boolean =>
   OPENCLAW_COMMANDS.some((command) => command.id === commandId && command.keepText === true)
 
-// 命令可见性：由页面状态决定（`/only` 需要多名员工才有意义，`/all` 只在筛选态可用）。
-export interface OpenClawCommandCapabilities {
-  canOnly: boolean
-  canRestore: boolean
-}
-
-// 缺省全部可见：未传 capabilities 的调用方保持既有行为。
-const DEFAULT_CAPABILITIES: OpenClawCommandCapabilities = { canOnly: true, canRestore: true }
-
-const isCommandAvailable = (
-  commandId: OpenClawCommandId,
-  capabilities: OpenClawCommandCapabilities,
-): boolean => {
-  if (commandId === "only") return capabilities.canOnly
-  if (commandId === "all") return capabilities.canRestore
-  return true
-}
+const commandNameOf = (commandId: OpenClawCommandId): string =>
+  OPENCLAW_COMMANDS.find((command) => command.id === commandId)?.name ?? `/${commandId}`
 
 /**
  * 匹配 OpenClaw 命令面板候选（仅 `/` 开头且无空格时触发）。
+ * `canOnly` 由页面按消息列表中的员工数决定：`/only` 需要多个候选才有意义。
  */
 export const getMatchedOpenClawCommands = (
   value: string,
   t: (key: TranslationKey) => string,
-  capabilities: OpenClawCommandCapabilities = DEFAULT_CAPABILITIES,
+  canOnly = true,
 ): AgentInputCommand[] => {
   if (!value.startsWith("/") || /\s/.test(value)) return []
   const query = value.slice(1).toLowerCase()
   return OPENCLAW_COMMANDS.filter(
     (command) =>
-      isCommandAvailable(command.id, capabilities) &&
+      (canOnly || command.id !== "only") &&
       (isFuzzyMatch(query, command.name.slice(1)) ||
         isFuzzyMatch(query, t(command.descKey).toLowerCase())),
   ).map((command) => ({
@@ -108,7 +93,28 @@ export const toggleCommandAgentName = (
   const next = exists
     ? names.filter((item) => item.toLowerCase() !== lowerName)
     : [...names, name.trim()].filter((item) => item.length > 0)
-  const commandName =
-    OPENCLAW_COMMANDS.find((item) => item.id === commandId)?.name ?? `/${commandId}`
+  const commandName = commandNameOf(commandId)
   return next.length === 0 ? commandName : `${commandName} ${next.join(" & ")}`
+}
+
+/**
+ * 面板「全部员工」开关：候选名称全在参数中时清空参数，否则一次性全选。
+ * 员工名按去重后的顺序写入，保证文本稳定可读。
+ */
+export const toggleAllCommandAgentNames = (
+  current: string,
+  commandId: OpenClawCommandId,
+  names: readonly string[],
+): string => {
+  const command = parseOpenClawCommand(current)
+  const currentNames = command?.id === commandId ? splitCommandAgentNames(command.args) : []
+  const candidates = [
+    ...new Set(names.map((name) => name.trim()).filter((name) => name.length > 0)),
+  ]
+  const commandName = commandNameOf(commandId)
+  if (candidates.length === 0) return commandName
+  const allSelected = candidates.every((name) =>
+    currentNames.some((item) => item.toLowerCase() === name.toLowerCase()),
+  )
+  return allSelected ? commandName : `${commandName} ${candidates.join(" & ")}`
 }

@@ -18,6 +18,7 @@ import {
   parseOpenClawCommand,
   resolveClawDispatchTargets,
   splitCommandAgentNames,
+  toggleAllCommandAgentNames,
   toggleCommandAgentName,
   useOpenClawChatStore,
   useOpenClawConfig,
@@ -48,6 +49,9 @@ const STATUS_LABEL_KEYS: Record<OpenClawConnectionStatus, TranslationKey> = {
 // 仅附件发送时的占位正文：网关要求 message 非空，且该文本对远端模型可见，保持英语。
 const formatAttachmentsOnlyMessage = (count: number): string =>
   `[attached ${count} image${count > 1 ? "s" : ""}]`
+
+// 面板「全部员工」行的保留 id，与员工 id 命名空间隔离。
+const PICKER_ALL_ID = "__all__"
 
 /**
  * OpenClaw 页面：查看当前选中员工的会话；`/clear` 选择或新建该员工的会话。
@@ -88,10 +92,22 @@ export const OpenClawPage = (): React.JSX.Element => {
     [onlyAgentIds, timeline],
   )
 
-  const commandCapabilities = useMemo(
-    () => ({ canOnly: agents.length > 1, canRestore: onlyAgentIds !== null }),
-    [agents.length, onlyAgentIds],
+  // 面板候选：只列消息列表中出现过的员工（含扇出目标），未产生消息的员工不进候选。
+  const timelineAgentIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const item of timeline) {
+      ids.add(item.agentId)
+      for (const agentId of item.targetAgentIds ?? []) ids.add(agentId)
+    }
+    return ids
+  }, [timeline])
+
+  const timelineAgents = useMemo(
+    () => agents.filter((agent) => timelineAgentIds.has(agent.id)),
+    [agents, timelineAgentIds],
   )
+
+  const onlyCommandAvailable = timelineAgents.length > 1
 
   const activeAgent = useMemo(
     () => agents.find((agent) => agent.id === activeAgentId),
@@ -238,13 +254,9 @@ export const OpenClawPage = (): React.JSX.Element => {
         case "office":
           setPickerKind("office")
           break
-        case "all":
-          // 命令仅在筛选态可见；重复执行幂等。
-          setOnlyAgentIds(null)
-          break
       }
     },
-    [selectedInstanceId, sessions, setOnlyAgentIds],
+    [selectedInstanceId, sessions],
   )
 
   // 发送：命令优先；`@claw` 提及或选中集合决定扇出目标。
@@ -380,14 +392,27 @@ export const OpenClawPage = (): React.JSX.Element => {
         emptyText: t("openclaw.noAgents"),
         // 多选：空格切换即实时过滤，回车收尾（应用并清空输入）。
         multiSelect: true,
-        items: agents.map((agent) => ({
-          id: agent.id,
-          label: agent.name,
-          hint: agent.id,
-          selected: onlyNameSet.has(agent.name.toLowerCase()),
-        })),
+        items: [
+          {
+            id: PICKER_ALL_ID,
+            label: t("openclaw.pickerAllAgents"),
+            // 勾选态由「无筛选」派生：选中即显示全部。
+            selected: onlyAgentIds === null,
+          },
+          ...timelineAgents.map((agent) => ({
+            id: agent.id,
+            label: agent.name,
+            hint: agent.id,
+            selected: onlyNameSet.has(agent.name.toLowerCase()),
+          })),
+        ],
         onPick: (id) => {
-          const agent = agents.find((item) => item.id === id)
+          if (id === PICKER_ALL_ID) {
+            setInput("/only")
+            applyOnlyFilter("")
+            return
+          }
+          const agent = timelineAgents.find((item) => item.id === id)
           if (!agent) return
           const nextInput = toggleCommandAgentName(input, "only", agent.name)
           setInput(nextInput)
@@ -399,6 +424,9 @@ export const OpenClawPage = (): React.JSX.Element => {
       const clearNameSet = new Set(
         splitCommandAgentNames(parsed.args).map((name) => name.toLowerCase()),
       )
+      const allClearSelected =
+        timelineAgents.length > 0 &&
+        timelineAgents.every((agent) => clearNameSet.has(agent.name.toLowerCase()))
       return {
         key: "session:compose",
         commandId: "clear",
@@ -406,14 +434,31 @@ export const OpenClawPage = (): React.JSX.Element => {
         emptyText: t("openclaw.noAgents"),
         // 多选：空格切换员工，回车发送 `/clear` 命令。
         multiSelect: true,
-        items: agents.map((agent) => ({
-          id: agent.id,
-          label: agent.name,
-          hint: agent.id,
-          selected: clearNameSet.has(agent.name.toLowerCase()),
-        })),
+        items: [
+          {
+            id: PICKER_ALL_ID,
+            label: t("openclaw.pickerAllAgents"),
+            selected: allClearSelected,
+          },
+          ...timelineAgents.map((agent) => ({
+            id: agent.id,
+            label: agent.name,
+            hint: agent.id,
+            selected: clearNameSet.has(agent.name.toLowerCase()),
+          })),
+        ],
         onPick: (id) => {
-          const agent = agents.find((item) => item.id === id)
+          if (id === PICKER_ALL_ID) {
+            setInput((current) =>
+              toggleAllCommandAgentNames(
+                current,
+                "clear",
+                timelineAgents.map((agent) => agent.name),
+              ),
+            )
+            return
+          }
+          const agent = timelineAgents.find((item) => item.id === id)
           if (!agent) return
           setInput((current) => toggleCommandAgentName(current, "clear", agent.name))
         },
@@ -473,11 +518,13 @@ export const OpenClawPage = (): React.JSX.Element => {
     enabledInstances,
     input,
     instances,
+    onlyAgentIds,
     pickerKind,
     selectAgent,
     selectOffice,
     selectedInstanceId,
     t,
+    timelineAgents,
     toast,
   ])
 
@@ -579,7 +626,7 @@ export const OpenClawPage = (): React.JSX.Element => {
           }}
           candidates={candidates}
           onCommand={runCommand}
-          commandCapabilities={commandCapabilities}
+          onlyCommandAvailable={onlyCommandAvailable}
           picker={picker}
           onPickerClose={() => setPickerKind(null)}
           placeholder={t("openclaw.placeholder")}
