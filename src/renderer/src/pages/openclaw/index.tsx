@@ -147,14 +147,28 @@ export const OpenClawPage = (): React.JSX.Element => {
     [agents, selectedInstanceId, currentInstance],
   )
 
+  // 会话级当前模型：作为消息自身未记录模型时的展示兜底。
+  const sessionModelByAgent = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const session of sessions) {
+      const model = session.snapshot?.stats?.model
+      if (model) map.set(session.agentId, model)
+    }
+    return map
+  }, [sessions])
+
   const conversationAgents = useMemo<ConversationAgent[]>(
     () =>
-      agents.map((agent, index) => ({
-        agentId: agent.id,
-        name: agent.name,
-        accent: accentHexForIndex(index),
-      })),
-    [agents],
+      agents.map((agent, index) => {
+        const model = sessionModelByAgent.get(agent.id)
+        return {
+          agentId: agent.id,
+          name: agent.name,
+          accent: accentHexForIndex(index),
+          ...(model ? { model } : {}),
+        }
+      }),
+    [agents, sessionModelByAgent],
   )
 
   // 构建用于输入框选择器的办公区与员工列表

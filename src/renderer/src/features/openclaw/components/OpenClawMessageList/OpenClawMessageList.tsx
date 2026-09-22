@@ -55,6 +55,21 @@ export const OpenClawMessageList = ({
 
   const agentMap = useMemo(() => new Map(agents.map((agent) => [agent.agentId, agent])), [agents])
 
+  // AI 消息的模型名回退：消息自带优先 → 同一 Agent 最近一条已记录模型 → 会话当前模型。
+  // 网关通常只给会话首条 AI 消息带 model，前向填充保证同一轮后续消息展示一致。
+  const modelByMessageId = useMemo(() => {
+    const lastKnownByAgent = new Map<string, string>()
+    const resolved = new Map<string, string>()
+    for (const item of timeline) {
+      const { agentId, message } = item
+      if (message.model) lastKnownByAgent.set(agentId, message.model)
+      if (message.role !== "assistant") continue
+      const model = message.model ?? lastKnownByAgent.get(agentId) ?? agentMap.get(agentId)?.model
+      if (model) resolved.set(message.id, model)
+    }
+    return resolved
+  }, [agentMap, timeline])
+
   // 切换办公区/员工集合时重置为吸底。
   useEffect(() => {
     stickToBottomRef.current = true
@@ -144,6 +159,7 @@ export const OpenClawMessageList = ({
                 agent={agent}
                 targetAgents={targetAgents}
                 isStreaming={message.status === "streaming"}
+                model={modelByMessageId.get(message.id)}
                 onDelete={
                   onDeleteTurn && deletableAssistantIds.has(message.id)
                     ? (messageId) => onDeleteTurn(agentId, messageId)
