@@ -435,12 +435,12 @@ ${t("settings.customCommandAgentMDHelpDesc")}
     <div className="@container flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
       {/* 顶部分类 Tab 与作用域切换栏 */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-3">
-        <div className="flex items-center gap-2">
-          <div className="custom-command-tab-group flex items-center gap-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="custom-command-tab-group flex flex-wrap items-center gap-1">
             <button
               type="button"
               data-active={activeTab === "agentInput"}
-              className={`flex h-7 items-center rounded-[6px] px-3 text-xs transition-colors ${
+              className={`flex h-7 items-center whitespace-nowrap rounded-[6px] px-3 text-xs transition-colors ${
                 activeTab === "agentInput"
                   ? "bg-white/10 text-white font-medium shadow-xs"
                   : "text-white/60 hover:text-white"
@@ -452,7 +452,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
             <button
               type="button"
               data-active={activeTab === "agentMD"}
-              className={`flex h-7 items-center rounded-[6px] px-3 text-xs transition-colors ${
+              className={`flex h-7 items-center whitespace-nowrap rounded-[6px] px-3 text-xs transition-colors ${
                 activeTab === "agentMD"
                   ? "bg-white/10 text-white font-medium shadow-xs"
                   : "text-white/60 hover:text-white"
@@ -468,9 +468,9 @@ ${t("settings.customCommandAgentMDHelpDesc")}
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {selectedScope === "project" && (
-            <div className="w-[180px]">
+            <div className="w-[180px] max-w-full">
               <LxSelect
                 value={selectedProjectId}
                 options={projects.map((p) => ({
@@ -488,11 +488,11 @@ ${t("settings.customCommandAgentMDHelpDesc")}
             </div>
           )}
 
-          <div className="custom-command-tab-group flex items-center gap-1">
+          <div className="custom-command-tab-group flex flex-wrap items-center gap-1">
             <button
               type="button"
               data-active={selectedScope === "user"}
-              className={`flex h-7 items-center gap-1.5 rounded-[6px] px-2.5 text-xs transition-colors ${
+              className={`flex h-7 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-xs transition-colors ${
                 selectedScope === "user"
                   ? "bg-white/10 text-white font-medium shadow-xs"
                   : "text-white/60 hover:text-white"
@@ -505,7 +505,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
             <button
               type="button"
               data-active={selectedScope === "project"}
-              className={`flex h-7 items-center gap-1.5 rounded-[6px] px-2.5 text-xs transition-colors ${
+              className={`flex h-7 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-xs transition-colors ${
                 selectedScope === "project"
                   ? "bg-white/10 text-white font-medium shadow-xs"
                   : "text-white/60 hover:text-white"
@@ -784,7 +784,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                   {t("settings.customCommandContent")}
                   <span className="text-rose-400">*</span>
                 </span>
-                <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex min-h-[240px] flex-1 flex-col @[560px]:min-h-0">
                   <LxMarkdownEditor
                     key={editorKey}
                     initialContent={formData.content}
