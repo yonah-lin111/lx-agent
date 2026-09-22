@@ -300,3 +300,55 @@ describe("OpenClawInput 命令面板交互（对齐 AgentInput）", () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 })
+
+const clawCandidates = [
+  { instanceId: "local", agentId: "lily", name: "Lily", instanceName: "研发中心" },
+  { instanceId: "local", agentId: "amy", name: "Amy", instanceName: "研发中心" },
+]
+
+describe("OpenClawInput @claw 提及模糊匹配（对齐 AgentInput）", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("@cla 模糊命中 tag 后整类展示候选", async () => {
+    const { rerender } = render(
+      <OpenClawInput {...baseInputProps} value="" picker={null} candidates={clawCandidates} />,
+    )
+
+    rerender(
+      <OpenClawInput {...baseInputProps} value="@cla" picker={null} candidates={clawCandidates} />,
+    )
+
+    expect(await screen.findByText("Lily")).not.toBeNull()
+    expect(screen.getByText("Amy")).not.toBeNull()
+  })
+
+  it("无 claw 前缀时按员工名过滤", async () => {
+    const { rerender } = render(
+      <OpenClawInput {...baseInputProps} value="" picker={null} candidates={clawCandidates} />,
+    )
+
+    rerender(
+      <OpenClawInput {...baseInputProps} value="@amy" picker={null} candidates={clawCandidates} />,
+    )
+
+    expect(await screen.findByText("Amy")).not.toBeNull()
+    expect(screen.queryByText("Lily")).toBeNull()
+  })
+
+  it("未知查询不展示提及面板", async () => {
+    const { rerender } = render(
+      <OpenClawInput {...baseInputProps} value="" picker={null} candidates={clawCandidates} />,
+    )
+
+    rerender(
+      <OpenClawInput {...baseInputProps} value="@xyz" picker={null} candidates={clawCandidates} />,
+    )
+
+    await waitFor(() => {
+      expect(screen.queryByText("Lily")).toBeNull()
+    })
+    expect(screen.queryByText("Amy")).toBeNull()
+  })
+})

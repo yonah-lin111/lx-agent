@@ -1,6 +1,6 @@
 import type { PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
 import type { TranslationKey } from "@/i18n"
-import type { AgentInputCommand } from "../AgentInputCommandPanels"
+import type { AgentInputCommand, ClawMentionCandidate } from "../AgentInputCommandPanels"
 
 // 历史提示词命令名（二级面板入口）。
 export const HISTORY_PROMPT_COMMAND = "/historyPrompt"
@@ -93,6 +93,35 @@ export const CLAW_MENTION_TAG = "claw"
 // 子代理内置/自定义 tag 的英文兜底（与当前语言的本地化 tag 同时匹配）。
 export const SUBAGENT_BUILTIN_TAG_FALLBACK = "agent"
 export const SUBAGENT_CUSTOM_TAG_FALLBACK = "custom"
+
+/**
+ * `@claw` 提及候选过滤（AgentInput 与 OpenClaw 输入框共用同一规则）：
+ * - tag 模糊命中种类名时整类返回（如 `@cla`）；
+ * - `claw:` / `claw/` 前缀裁掉后按员工名、agentId、实例 id/名与 `instanceId/agentId` 过滤；
+ * - 其余查询直接按上述字段过滤。
+ */
+export const filterClawMentionCandidates = (
+  candidates: readonly ClawMentionCandidate[],
+  query: string,
+): readonly ClawMentionCandidate[] => {
+  const raw = query.toLowerCase()
+  if (!raw.startsWith(CLAW_MENTION_TAG) && isKindTagMatch(raw, CLAW_MENTION_TAG)) {
+    return candidates
+  }
+  let keyword = raw
+  if (keyword.startsWith(CLAW_MENTION_TAG)) {
+    keyword = keyword.slice(CLAW_MENTION_TAG.length).replace(/^[:/]+/, "")
+  }
+  if (!keyword) return candidates
+  return candidates.filter(
+    (candidate) =>
+      isFuzzyMatch(keyword, candidate.name.toLowerCase()) ||
+      isFuzzyMatch(keyword, candidate.agentId.toLowerCase()) ||
+      isFuzzyMatch(keyword, candidate.instanceId.toLowerCase()) ||
+      isFuzzyMatch(keyword, candidate.instanceName.toLowerCase()) ||
+      isFuzzyMatch(keyword, `${candidate.instanceId}/${candidate.agentId}`.toLowerCase()),
+  )
+}
 
 /**
  * 归一化 tag 查询：去首尾空格并小写，中文不受影响。

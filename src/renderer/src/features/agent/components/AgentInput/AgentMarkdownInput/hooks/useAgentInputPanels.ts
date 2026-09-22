@@ -29,8 +29,8 @@ import {
   type SubagentMentionCandidate,
 } from "../../AgentInputCommandPanels"
 import {
-  CLAW_MENTION_TAG,
   DESIGN_MENTION_TAG,
+  filterClawMentionCandidates,
   filterSkillsByQuery,
   getMatchedCommands,
   getMentionQuery,
@@ -495,27 +495,8 @@ export const useAgentInputPanels = ({
     const cursor = view?.state.selection.main.head ?? value.length
     const mention = getMentionQuery(value, cursor)
     if (!mention) return []
-
-    // `@claw:instance/agent` 与 `@claw` 前缀都用于筛选 OpenClaw 候选。
-    const raw = mention.query.toLowerCase()
-    // tag 模糊命中种类名时整类返回（如 `@cla`），展示 tag 为实例名亦参与匹配。
-    if (!raw.startsWith(CLAW_MENTION_TAG) && isKindTagMatch(raw, CLAW_MENTION_TAG)) {
-      return clawCandidates
-    }
-    let q = raw
-    if (q.startsWith("claw")) {
-      q = q.slice(4).replace(/^[:/]+/, "")
-    }
-    if (!q) return clawCandidates
-
-    return clawCandidates.filter(
-      (candidate) =>
-        isFuzzyMatch(q, candidate.name.toLowerCase()) ||
-        isFuzzyMatch(q, candidate.agentId.toLowerCase()) ||
-        isFuzzyMatch(q, candidate.instanceId.toLowerCase()) ||
-        isFuzzyMatch(q, candidate.instanceName.toLowerCase()) ||
-        isFuzzyMatch(q, `${candidate.instanceId}/${candidate.agentId}`.toLowerCase()),
-    )
+    // tag 模糊命中与 `claw:` 前缀裁剪规则由共享纯函数实现，OpenClaw 输入框复用同一份。
+    return [...filterClawMentionCandidates(clawCandidates, mention.query)]
   }, [activeMode, value, clawCandidates, editorViewRef])
 
   const matchedMentionSkills = useMemo(() => {

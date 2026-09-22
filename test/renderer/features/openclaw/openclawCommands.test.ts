@@ -50,6 +50,27 @@ describe("getMatchedOpenClawCommands 命令可见性", () => {
   })
 })
 
+describe("getMatchedOpenClawCommands 模糊规则（对齐 AgentInput）", () => {
+  it("tag「Builtin」参与匹配：拼写缺字母仍召回整类", () => {
+    expect(getMatchedOpenClawCommands("/bltin", t)).toHaveLength(OPENCLAW_COMMANDS.length)
+    expect(getMatchedOpenClawCommands("/BLTIN", t)).toHaveLength(OPENCLAW_COMMANDS.length)
+  })
+
+  it("/clear 接受 new 别名", () => {
+    expect(getMatchedOpenClawCommands("/new", t).map((command) => command.name)).toEqual(["/clear"])
+  })
+
+  it("本地化描述不参与匹配", () => {
+    const zhT = ((key: string): string =>
+      key === "openclaw.commandClearDesc" ? "选择员工新建对话" : key) as never
+
+    expect(getMatchedOpenClawCommands("/选择", zhT)).toHaveLength(0)
+    expect(getMatchedOpenClawCommands("/cl", zhT).map((command) => command.name)).toContain(
+      "/clear",
+    )
+  })
+})
+
 describe("parseOpenClawCommand", () => {
   it("解析精确命令与大小写", () => {
     expect(parseOpenClawCommand("/clear")).toEqual({ id: "clear", args: "" })

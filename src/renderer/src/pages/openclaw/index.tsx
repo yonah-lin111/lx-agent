@@ -611,8 +611,8 @@ export const OpenClawPage = (): React.JSX.Element => {
         />
       </div>
 
-      {/* 输入区：与消息列同宽（px-4 内边距 + max-w-3xl 居中） */}
-      <div className="shrink-0 px-4 py-2">
+      {/* 输入区：与消息列同宽（左侧 px-4，右侧额外预留消息列的滚动条占位） */}
+      <div className="shrink-0 py-2 pl-4 pr-[calc(1rem_+_var(--lx-scrollbar-size))]">
         <div className="mx-auto w-full max-w-3xl">
           <OpenClawInput
             ref={inputRef}

@@ -30,8 +30,8 @@ import {
   agentHighlightStyle,
 } from "@/features/agent/components/AgentInput/AgentMarkdownInput/AgentMarkdownInputTheme"
 import {
+  filterClawMentionCandidates,
   getMentionQuery,
-  isFuzzyMatch,
 } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import {
   AgentVoiceInputButton,
@@ -104,13 +104,6 @@ export interface OpenClawInputProps {
 }
 
 type OpenClawPanelMode = "command" | "mention" | "picker" | null
-
-// 归一化 `@` 提及查询：`@claw:instance/agent` 与 `@claw` 前缀都用于筛选 OpenClaw 候选。
-const normalizeClawQuery = (query: string): string | null => {
-  const raw = query.toLowerCase()
-  if (raw && !raw.startsWith("claw")) return null
-  return raw ? raw.slice(4).replace(/^[:/]+/, "") : ""
-}
 
 /**
  * OpenClawInput - 布局与样式完全对齐 AgentInput 的输入框容器组件，
@@ -334,23 +327,15 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
 
         const mention = getMentionQuery(docText, cursor)
         if (mention) {
-          const query = normalizeClawQuery(mention.query)
-          if (query !== null) {
-            const matched = stateRef.current.candidates.filter(
-              (candidate) =>
-                !query ||
-                isFuzzyMatch(query, candidate.name.toLowerCase()) ||
-                isFuzzyMatch(query, candidate.agentId.toLowerCase()) ||
-                isFuzzyMatch(query, `${candidate.instanceId}/${candidate.agentId}`.toLowerCase()),
-            )
-            if (matched.length > 0) {
-              setActiveMode("mention")
-              setMentionIndex(0)
-              setMentionItems(matched.map((claw) => ({ kind: "claw", claw })))
-              setMatchedCommands([])
-              updatePanelPosition("file")
-              return
-            }
+          // 与 AgentInput 共用同一 tag/前缀/字段过滤规则（含 `@cla` 整类返回）。
+          const matched = filterClawMentionCandidates(stateRef.current.candidates, mention.query)
+          if (matched.length > 0) {
+            setActiveMode("mention")
+            setMentionIndex(0)
+            setMentionItems(matched.map((claw) => ({ kind: "claw", claw })))
+            setMatchedCommands([])
+            updatePanelPosition("file")
+            return
           }
         }
 

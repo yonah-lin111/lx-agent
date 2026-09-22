@@ -1,5 +1,8 @@
 import type { AgentInputCommand } from "@/features/agent/components/AgentInput"
-import { isFuzzyMatch } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
+import {
+  getCommandTagLabel,
+  isFuzzyMatch,
+} from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import type { TranslationKey } from "@/i18n"
 
 // OpenClaw 输入框支持的内置命令。
@@ -27,6 +30,23 @@ export const keepsCommandText = (commandId: OpenClawCommandId): boolean =>
 const commandNameOf = (commandId: OpenClawCommandId): string =>
   OPENCLAW_COMMANDS.find((command) => command.id === commandId)?.name ?? `/${commandId}`
 
+// `/clear` 同时接受 `new` 别名（对齐 AgentInput 的 getMatchedCommands）。
+const COMMAND_NAME_ALIASES: Partial<Record<OpenClawCommandId, readonly string[]>> = {
+  clear: ["clear", "new"],
+}
+
+// 全部命令均为 builtin：tag 文本参与过滤（与 AgentInput 的 tag 通道一致）。
+const COMMAND_TAG_KEYWORD = getCommandTagLabel({ kind: "builtin" }).toLowerCase()
+
+const isCommandMatched = (query: string, command: OpenClawCommandSpec): boolean => {
+  const rawName = command.name.replace(/^\//, "").toLowerCase()
+  const aliases = COMMAND_NAME_ALIASES[command.id] ?? [rawName]
+  // 名称/别名与 tag 取并集；本地化描述不参与匹配（对齐 AgentInput）。
+  return (
+    aliases.some((alias) => isFuzzyMatch(query, alias)) || isFuzzyMatch(query, COMMAND_TAG_KEYWORD)
+  )
+}
+
 /**
  * 匹配 OpenClaw 命令面板候选（仅 `/` 开头且无空格时触发）。
  * `canOnly` 由页面按消息列表中的员工数决定：`/only` 需要多个候选才有意义。
@@ -39,10 +59,7 @@ export const getMatchedOpenClawCommands = (
   if (!value.startsWith("/") || /\s/.test(value)) return []
   const query = value.slice(1).toLowerCase()
   return OPENCLAW_COMMANDS.filter(
-    (command) =>
-      (canOnly || command.id !== "only") &&
-      (isFuzzyMatch(query, command.name.slice(1)) ||
-        isFuzzyMatch(query, t(command.descKey).toLowerCase())),
+    (command) => (canOnly || command.id !== "only") && isCommandMatched(query, command),
   ).map((command) => ({
     id: command.id,
     name: command.name,
