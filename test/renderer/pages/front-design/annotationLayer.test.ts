@@ -204,7 +204,11 @@ describe("批注图层", () => {
     // 容器样式对齐 AgentInput 底栏（主题值集中在注入样式表中）
     const styleText = (doc.querySelector("#lx-design-annotation-layer style") as HTMLStyleElement)
       ?.textContent
-    expect(box.className).toBe("lx-ann-box")
+    expect(box.className).toContain("lx-ann-box")
+    // 信息条、样式摘要与输入框共用同一实体表面（实心主题底色，避免被设计稿穿透）
+    const infoChip = meta.querySelector("[data-annotation-editor-info]") as HTMLElement
+    expect(infoChip.classList.contains("lx-ann-surface")).toBe(true)
+    expect(box.classList.contains("lx-ann-surface")).toBe(true)
     expect(styleText).toContain("background-color: #2a2a2a")
     expect(styleText).toContain("border-radius: 6px")
 
@@ -268,6 +272,7 @@ describe("批注图层", () => {
     const editor = doc.querySelector("[data-annotation-editor]") as HTMLElement
     const block = editor.querySelector("[data-annotation-editor-styles]") as HTMLElement
     expect(block).not.toBeNull()
+    expect(block.classList.contains("lx-ann-surface")).toBe(true)
 
     const labels = Array.from(block.querySelectorAll(".lx-ann-style-label")).map(
       (node) => node.textContent,

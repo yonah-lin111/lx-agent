@@ -81,17 +81,19 @@ const isDegeneratePosition = (position: LayerPosition): boolean =>
   position.width <= 0 && position.height <= 0
 
 // 生成浮层样式表：输入框几何与配色全部取自应用主题（像素主题下自动获得直角/浮雕/马赛克底纹）。
+// 信息条与样式摘要复用同一实体表面（lx-ann-surface），避免半透明底色被设计稿内容穿透导致不可读。
 const buildEditorStyle = (theme: AnnotationEditorTheme): string => `
+#${ANNOTATION_LAYER_ID} .lx-ann-surface { box-sizing: border-box; border: ${theme.borderWidth} ${theme.borderStyle} ${theme.borderColor}; border-radius: ${theme.borderRadius}; background-color: ${theme.backgroundColor}; font-family: ${theme.fontFamily}; box-shadow: ${theme.boxShadow}; }
+${theme.backgroundImage ? `#${ANNOTATION_LAYER_ID} .lx-ann-surface { background-image: ${theme.backgroundImage}; background-repeat: ${theme.backgroundRepeat}; image-rendering: ${theme.imageRendering}; }` : ""}
 #${ANNOTATION_LAYER_ID} .lx-ann-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-#${ANNOTATION_LAYER_ID} .lx-ann-info { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 1px 6px; font-family: ${theme.chipFontFamily}; color: ${SELECTION_COLOR}; background-color: ${SELECTION_FILL}; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: ${theme.borderRadius}; }
-#${ANNOTATION_LAYER_ID} .lx-ann-size { color: rgba(56, 189, 248, 0.8); }
-#${ANNOTATION_LAYER_ID} .lx-ann-styles { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; padding: 4px 6px; border: 1px solid rgba(56, 189, 248, 0.18); border-radius: ${theme.borderRadius}; background-color: rgba(0, 0, 0, 0.28); }
-#${ANNOTATION_LAYER_ID} .lx-ann-style-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
-#${ANNOTATION_LAYER_ID} .lx-ann-style-label { flex-shrink: 0; width: 40px; color: ${theme.mutedColor}; }
-#${ANNOTATION_LAYER_ID} .lx-ann-style-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${theme.color}; font-family: ${theme.chipFontFamily}; }
-#${ANNOTATION_LAYER_ID} .lx-ann-style-swatch { flex-shrink: 0; width: 9px; height: 9px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 2px; }
-#${ANNOTATION_LAYER_ID} .lx-ann-box { box-sizing: border-box; padding: 8px 10px; border: ${theme.borderWidth} ${theme.borderStyle} ${theme.borderColor}; border-radius: ${theme.borderRadius}; background-color: ${theme.backgroundColor}; font-family: ${theme.fontFamily}; box-shadow: ${theme.boxShadow}; transition: border-color 150ms ease, box-shadow 150ms ease; }
-${theme.backgroundImage ? `#${ANNOTATION_LAYER_ID} .lx-ann-box { background-image: ${theme.backgroundImage}; background-repeat: ${theme.backgroundRepeat}; image-rendering: ${theme.imageRendering}; }` : ""}
+#${ANNOTATION_LAYER_ID} .lx-ann-info { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 6px; font-family: ${theme.chipFontFamily}; color: ${theme.color}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-size { color: ${theme.mutedColor}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-styles { display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 100%; overflow: hidden; margin-bottom: 4px; padding: 4px 6px; }
+#${ANNOTATION_LAYER_ID} .lx-ann-style-row { display: flex; align-items: center; gap: 4px; width: 100%; min-width: 0; }
+#${ANNOTATION_LAYER_ID} .lx-ann-style-label { flex: 0 1 auto; min-width: 34px; color: ${theme.mutedColor}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-style-value { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${theme.color}; font-family: ${theme.chipFontFamily}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-style-swatch { flex-shrink: 0; width: 9px; height: 9px; border: 1px solid ${theme.borderColor}; border-radius: 2px; }
+#${ANNOTATION_LAYER_ID} .lx-ann-box { padding: 8px 10px; transition: border-color 150ms ease, box-shadow 150ms ease; }
 #${ANNOTATION_LAYER_ID} .lx-ann-box:focus-within { border-color: ${theme.borderColorStrong}; box-shadow: ${theme.boxShadow}, 0 0 0 1px rgba(255, 255, 255, 0.06); }
 #${ANNOTATION_LAYER_ID} .lx-ann-box--invalid { border-color: #f43f5e !important; }
 #${ANNOTATION_LAYER_ID} .lx-ann-textarea { width: 100%; height: 52px; resize: none; box-sizing: border-box; padding: 0; border: none; outline: none; background: transparent; color: ${theme.color}; font-family: inherit; }
@@ -452,8 +454,8 @@ export const createAnnotationLayer = (
 
     const block = doc.createElement("div")
     block.setAttribute("data-annotation-editor-styles", "true")
-    block.className = "lx-ann-styles"
-    block.style.fontSize = "10px"
+    block.className = "lx-ann-styles lx-ann-surface"
+    block.style.fontSize = "11px"
 
     for (const key of rows) {
       const row = doc.createElement("div")
@@ -548,7 +550,7 @@ export const createAnnotationLayer = (
 
     const info = doc.createElement("span")
     info.setAttribute("data-annotation-editor-info", "true")
-    info.className = "lx-ann-info"
+    info.className = "lx-ann-info lx-ann-surface"
     info.style.fontSize = "11px"
 
     const infoName = doc.createElement("span")
@@ -568,7 +570,7 @@ export const createAnnotationLayer = (
     // 输入框本体：对齐 AgentInput 底栏（深色圆角容器 + 无边框文本区 + 底部圆形操作按钮）。
     const box = doc.createElement("div")
     box.setAttribute("data-annotation-editor-box", "true")
-    box.className = "lx-ann-box"
+    box.className = "lx-ann-box lx-ann-surface"
 
     const textarea = doc.createElement("textarea")
     textarea.className = "lx-ann-textarea"
