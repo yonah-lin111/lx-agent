@@ -271,6 +271,43 @@ describe("批注图层", () => {
     expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("100×260")
   })
 
+  it("选中元素后选中框保持显示，直到关闭输入框", () => {
+    const { doc, layer } = setup(
+      "<main><button id='target'>Buy</button><span id='other'>Other</span></main>",
+    )
+    const target = doc.getElementById("target") as HTMLElement
+    const other = doc.getElementById("other") as HTMLElement
+    stubRect(target, { left: 10, top: 20, width: 100, height: 40 })
+    stubRect(other, { left: 200, top: 300, width: 50, height: 20 })
+
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+
+    const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+    expect(highlight.style.display).toBe("block")
+    expect(highlight.style.left).toBe("10px")
+    expect(highlight.style.height).toBe("40px")
+
+    // 悬停其它元素、移出画布或面板 hover 都不改变已锁定的选中框
+    layer.showHover(other)
+    layer.showHover(null)
+    layer.highlight("#other")
+    expect(highlight.style.display).toBe("block")
+    expect(highlight.style.left).toBe("10px")
+    expect(highlight.style.height).toBe("40px")
+
+    layer.closeEditor()
+    expect(highlight.style.display).toBe("none")
+  })
+
   it("悬停与选中高亮按选择器切换显示", () => {
     const { doc, layer } = setup()
     const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement

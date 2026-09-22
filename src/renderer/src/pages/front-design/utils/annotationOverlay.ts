@@ -204,6 +204,9 @@ export const createAnnotationLayer = (
     if (doc.documentElement) resizeObserver.observe(doc.documentElement)
   }
 
+  // 编辑器打开期间选中框锁定在锚点元素上，悬停与面板 hover 不再改变它。
+  const isHighlightLocked = (): boolean => Boolean(editorElement)
+
   const setHighlightTarget = (element: Element | null): void => {
     highlightTarget = element
     if (!element) {
@@ -258,7 +261,8 @@ export const createAnnotationLayer = (
     editorHint = null
     editorSizeLabel = null
     activeRequest = null
-    observeTargets()
+    // 关闭后解除锁定，一并收起选中框。
+    setHighlightTarget(null)
   }
 
   const confirmEditor = (): void => {
@@ -413,6 +417,8 @@ export const createAnnotationLayer = (
     editorTextarea = textarea
     editorHint = hint
     editorSizeLabel = infoSize
+    // 选中框锁定在锚点元素上，输入过程中保持可见。
+    setHighlightTarget(request.anchor)
     positionEditor()
     observeTargets()
     textarea.focus()
@@ -489,6 +495,7 @@ export const createAnnotationLayer = (
     closeEditor,
     isEditorOpen: (): boolean => Boolean(editorElement),
     showHover: (element: HTMLElement | null): void => {
+      if (isHighlightLocked()) return
       if (!element || element === doc.body || element === doc.documentElement) {
         setHighlightTarget(null)
         return
@@ -496,6 +503,7 @@ export const createAnnotationLayer = (
       setHighlightTarget(element)
     },
     highlight: (selector: string | null): void => {
+      if (isHighlightLocked()) return
       if (!selector) {
         setHighlightTarget(null)
         return
