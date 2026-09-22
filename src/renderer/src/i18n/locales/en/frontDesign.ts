@@ -115,4 +115,37 @@ export const frontDesign = {
   designSystemNotesPlaceholder: "e.g. cards use rounded-lg border, no gradients",
   designSystemReset: "Clear tokens",
   designSystemEmpty: "No tokens configured",
+  designSystemExtract: "Extract from canvas",
+  designSystemExtractEmpty: "No usable tokens found",
+  designSystemExtractSuccess: "Extracted {{colors}} colors and {{count}} style tokens",
+  compareTitle: "Version compare",
+  compareToggle: "Toggle version compare",
+  compareNeedTwo: "At least two versions are required to compare",
+  compareSelectVersion: "Select compare version",
+  compareClose: "Close compare",
+  iterateTitle: "Quick iterate",
+  iterateHint: "Compose an iteration instruction into the input, editable before sending",
+  iterateStates: "Complete states",
+  iterateResponsive: "Mobile adaptation",
+  iterateDark: "Dark mode",
+  iterateMicro: "Micro-interactions",
+  iterateVariant: "Generate variant",
+  iterateInstructionStates:
+    "Add empty, loading, error and success states while keeping the current design system and layout style",
+  iterateInstructionResponsive:
+    "Adapt the layout and navigation for mobile (375px width) while keeping the current design system and visual style",
+  iterateInstructionDark:
+    "Add a dark mode palette while keeping the current layout and hierarchy, with accessible text and background contrast",
+  iterateInstructionMicro:
+    "Add hover, focus and transition micro-interactions to interactive elements, keeping them subtle and natural",
+  iterateInstructionVariant:
+    "Generate a variant with a different layout or visual direction based on the current design for side-by-side comparison",
+  iterateInsertedToast: "Iteration instruction inserted",
+  inspectStylePadding: "Padding",
+  inspectStyleMargin: "Margin",
+  inspectStyleFont: "Font",
+  inspectStyleColor: "Text color",
+  inspectStyleBackground: "Background",
+  inspectStyleRadius: "Radius",
+  inspectStyleBorder: "Border",
 }

@@ -1,6 +1,7 @@
 import {
   Check,
   ChevronDown,
+  Columns2,
   Copy,
   Eraser,
   FolderOpen,
@@ -39,6 +40,9 @@ export interface FrontDesignToolbarProps {
   isStreaming: boolean
   isInspectorActive: boolean
   onToggleInspector: () => void
+  compareOpen: boolean
+  canCompare: boolean
+  onToggleCompare: () => void
   sessionId: string | null
   onOpenDesignDir: () => void
   onCopy: () => void
@@ -67,6 +71,9 @@ export const FrontDesignToolbar = ({
   isStreaming,
   isInspectorActive,
   onToggleInspector,
+  compareOpen,
+  canCompare,
+  onToggleCompare,
   sessionId,
   onOpenDesignDir,
   onCopy,
@@ -180,6 +187,25 @@ export const FrontDesignToolbar = ({
         >
           <RefreshCw />
         </LxIconButton>
+
+        {/* 版本对照：同族另一版本并排只读预览 */}
+        {activeDesignId && hasHtml && (
+          <LxIconButton
+            size="small"
+            disabled={!canCompare}
+            highlighted={compareOpen}
+            onClick={onToggleCompare}
+            aria-label={t("frontDesign.compareTitle")}
+            title={{
+              content: canCompare
+                ? t("frontDesign.compareToggle")
+                : t("frontDesign.compareNeedTwo"),
+              placement: "bottom",
+            }}
+          >
+            <Columns2 />
+          </LxIconButton>
+        )}
       </div>
 
       {/* 中间：视口预设切换（桌面 / 平板 / 移动） */}
