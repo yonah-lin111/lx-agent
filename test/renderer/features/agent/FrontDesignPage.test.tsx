@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
@@ -50,8 +50,11 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(container.querySelector(".front-design-empty-title")).not.toBeNull()
     expect(container.querySelector(".front-design-empty-desc")).not.toBeNull()
     expect(container.querySelector("iframe")).toBeNull()
-    // 不应存在任何搜索框或地址输入框
-    expect(screen.queryByRole("textbox")).toBeNull()
+    // 不应存在任何搜索框或地址输入框（测试桩 Tooltip 常驻展开令牌面板，需排除其对应用 UI 的输入框）
+    const pageLevelTextboxes = screen
+      .queryAllByRole("textbox")
+      .filter((element) => !element.closest('[data-testid="tooltip-click-content"]'))
+    expect(pageLevelTextboxes).toHaveLength(0)
   })
 
   it("Desktop 模式下有 HTML 内容时 main 区域为 p-0 且预览容器无边框与圆角贴边", () => {
@@ -356,7 +359,11 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     // 按照需求：顶部中间提示已彻底移除，不应再渲染
     expect(screen.queryByText(/连续点选|Click elements/i)).toBeNull()
 
-    // 按下 ESC 键退出微调模式
+    // 单次 ESC 只提示（无选中元素时不退出）
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // 连按两次 ESC 退出批注模式
     fireEvent.keyDown(window, { key: "Escape" })
     expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
   })
@@ -385,7 +392,9 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     fireEvent.keyDown(window, { key: "Shift", shiftKey: true, altKey: true })
     expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
 
-    // 4. 通过 ESC 键退出
+    // 4. 连按两次 ESC 退出（首次为提示）
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
     fireEvent.keyDown(window, { key: "Escape" })
     expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
 
@@ -496,7 +505,7 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(iframe?.getAttribute("srcdoc")).toBe(initialSrcDoc)
   })
 
-  it("点选模式下点击元素自动注入定向锚点 @design:id#target 到活动 Tab 且不发生路由跳转，支持连续点选", async () => {
+  it("批注模式下点选元素写入批注清单，发送后注入 @design 定向锚点且不发生路由跳转", async () => {
     mockNavigate.mockClear()
     const activeTabId = agentTabStore.getActiveTabId()
     let injectedPrompt = ""
@@ -505,62 +514,141 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     })
 
     frontDesignStore.registerDesign({
-      id: "d-inspect-click",
+      id: "d-annotate-click",
       title: "Pricing Page",
-      html: "<div id='root'><section data-section='pricing'><button id='buy-now'>Buy</button><span class='title'>Plan A</span></section></div>",
+      html: "<div id='root'><section data-section='pricing'><button id='buy-now'>Buy</button></section></div>",
     })
 
     const { container } = render(<FrontDesignPage />)
 
-    // 激活 Inspector
+    // 激活批注模式
     const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
     fireEvent.click(inspectBtn)
 
     const iframe = container.querySelector("iframe")
     expect(iframe).not.toBeNull()
-
-    // 在 iframe 文档中构造测试目标元素
     const doc = iframe?.contentDocument
     expect(doc).not.toBeNull()
-    if (doc) {
-      doc.body.innerHTML =
-        "<div id='root'><section data-section='pricing'><button id='buy-now'>Buy</button><span id='plan-title' class='title'>Plan A</span></section></div>"
-      const targetBtn = doc.getElementById("buy-now")!
-      const targetSpan = doc.getElementById("plan-title")!
+    if (!doc) return
 
-      // 触发点击目标元素 1
-      fireEvent.click(targetBtn)
-      await Promise.resolve()
-      await Promise.resolve()
+    // 当前环境不加载 srcDoc，手工构造画布 DOM
+    doc.body.innerHTML =
+      "<div id='root'><section data-section='pricing'><button id='buy-now'>Buy</button><span id='plan-title' class='title'>Plan A</span></section></div>"
 
-      // 校验生成了带 #buy-now 的定向锚点 Token，且绝不跳转到首页
-      expect(injectedPrompt).toContain("@design:d-inspect-click#buy-now (button#buy-now) ")
-      expect(mockNavigate).not.toHaveBeenCalled()
+    // 1. 点击元素 → 画布内弹出批注输入浮层
+    fireEvent.click(doc.getElementById("buy-now") as Element)
+    const editor = doc.querySelector("[data-annotation-editor]")
+    expect(editor).not.toBeNull()
 
-      // 触发点击目标元素 2（连续点选追加）
-      fireEvent.click(targetSpan)
-      await Promise.resolve()
-      await Promise.resolve()
+    // 2. 写入批注并确认 → 批注坞出现条目，画布钉上编号气泡
+    const textarea = editor?.querySelector("textarea") as HTMLTextAreaElement
+    fireEvent.input(textarea, { target: { value: "改为高对比色" } })
+    fireEvent.click(editor?.querySelector('[data-annotation-action="confirm"]') as Element)
+    await act(async () => {})
 
-      // 校验两个 Token 均已注入，Inspector 状态未退出且仍无跳转
-      expect(injectedPrompt).toContain("@design:d-inspect-click#plan-title (span#plan-title) ")
-      expect(mockNavigate).not.toHaveBeenCalled()
+    expect(screen.getByText("改为高对比色")).not.toBeNull()
+    expect(doc.querySelector("[data-annotation-pin]")?.textContent).toBe("1")
 
-      // 触发点击目标元素 3（无 ID 的匿名元素，应动态挂载 data-design-id 并同步回 store）
-      const targetP = doc.createElement("p")
-      targetP.textContent = "Anonymous paragraph"
-      doc.body.appendChild(targetP)
+    // 3. 发送全部 → 聊天输入框注入定向锚点，且不发生路由跳转
+    fireEvent.click(screen.getByRole("button", { name: /发送全部|Send all/i }))
+    await act(async () => {})
 
-      fireEvent.click(targetP)
-      await Promise.resolve()
-      await Promise.resolve()
+    expect(injectedPrompt).toContain(
+      "@design:d-annotate-click#buy-now (button#buy-now) 改为高对比色",
+    )
+    expect(mockNavigate).not.toHaveBeenCalled()
 
-      expect(injectedPrompt).toContain("@design:d-inspect-click#[data-design-id=")
-      expect(frontDesignStore.getState().html).toContain("data-design-id=")
-      expect(mockNavigate).not.toHaveBeenCalled()
-    }
+    // 4. 匿名元素：动态挂载 data-design-id 并同步回 store，且不把批注浮层写进设计稿
+    doc.body.innerHTML = "<div id='root'><p>Anonymous</p></div>"
+    const anonTarget = doc.querySelector("p") as HTMLElement
+    // jsdom 无布局：显式给出尺寸，选中框才可见（无面积元素按设计不画框）
+    anonTarget.getBoundingClientRect = () =>
+      ({
+        left: 20,
+        top: 40,
+        width: 200,
+        height: 24,
+        right: 220,
+        bottom: 64,
+        x: 20,
+        y: 40,
+        toJSON: () => ({}),
+      }) as DOMRect
+    fireEvent.click(anonTarget)
+    const anonEditor = doc.querySelector("[data-annotation-editor]")
+    const anonTextarea = anonEditor?.querySelector("textarea") as HTMLTextAreaElement
+    fireEvent.input(anonTextarea, { target: { value: "补充匿名元素说明" } })
+    fireEvent.click(anonEditor?.querySelector('[data-annotation-action="confirm"]') as Element)
+    await act(async () => {})
+
+    const storedHtml = frontDesignStore.getState().html
+    expect(storedHtml).toContain("data-design-id=")
+    expect(storedHtml).not.toContain("lx-design-annotation-layer")
+    expect(mockNavigate).not.toHaveBeenCalled()
+
+    // 5. 选中框保持显示；点击画布空白才解除，批注条目保留
+    const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+    expect(highlight.style.display).toBe("block")
+    fireEvent.click(doc.body)
+    await act(async () => {})
+    expect(highlight.style.display).toBe("none")
+    expect(screen.getByText("补充匿名元素说明")).not.toBeNull()
+    expect(doc.querySelector("[data-annotation-editor]")).toBeNull()
 
     unregister()
+  })
+
+  it("ESC 规则：编辑器优先关闭，其次解除选中，未选中时连按两次才退出批注模式", async () => {
+    frontDesignStore.registerDesign({
+      id: "d-escape-rule",
+      title: "Escape Rule",
+      html: "<div id='root'><button id='cta'>Buy</button></div>",
+    })
+
+    const { container } = render(<FrontDesignPage />)
+    const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
+    fireEvent.click(inspectBtn)
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    const doc = container.querySelector("iframe")?.contentDocument as Document
+    doc.body.innerHTML = "<div id='root'><button id='cta'>Buy</button></div>"
+    const target = doc.getElementById("cta") as HTMLElement
+    target.getBoundingClientRect = () =>
+      ({
+        left: 10,
+        top: 20,
+        width: 100,
+        height: 40,
+        right: 110,
+        bottom: 60,
+        x: 10,
+        y: 20,
+        toJSON: () => ({}),
+      }) as DOMRect
+
+    // 选中元素：生成批注输入框与蓝色选中框（jsdom 无布局，位置断言由 annotationLayer 单测覆盖）
+    fireEvent.click(target)
+    await act(async () => {})
+    expect(doc.querySelector("[data-annotation-editor]")).not.toBeNull()
+    const selectionBox = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+
+    // ESC 1：关闭输入框，仍保持选中（下一次 ESC 不会直接退出模式）
+    fireEvent.keyDown(window, { key: "Escape" })
+    await act(async () => {})
+    expect(doc.querySelector("[data-annotation-editor]")).toBeNull()
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // ESC 2：解除选中而非退出模式（若此处按“无选中”处理，ESC 3 就会立刻退出）
+    fireEvent.keyDown(window, { key: "Escape" })
+    await act(async () => {})
+    expect(selectionBox.style.display).toBe("none")
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // ESC 3：无选中，仅提示；ESC 4：连按两次才退出批注模式
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
   })
 
   it("多轮修改后（v1, v2, v3），顶部版本下拉菜单完整显示所有版本选项，并支持自由往返切换且实时更新画布 HTML", () => {
