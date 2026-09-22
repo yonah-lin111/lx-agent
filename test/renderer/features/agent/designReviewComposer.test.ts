@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildAnnotationReviewMessage,
   buildIssueReviewMessage,
+  buildIterateMessage,
   isMentionSafeSelector,
   sanitizeMentionText,
 } from "@/features/agent/utils/designReviewComposer"
@@ -146,5 +147,27 @@ describe("设计评审消息编译", () => {
       header: "头行",
     })
     expect(message.startsWith("@design:d1 头行")).toBe(true)
+  })
+
+  it("快捷迭代消息：设计级 mention 带标题 + 指令，标题清洗括号与换行", () => {
+    expect(
+      buildIterateMessage({
+        designId: "d1",
+        title: "Login (v2)",
+        instruction: "请补充空态、加载态、错误态与成功态",
+      }),
+    ).toBe("@design:d1 (Login v2) 请补充空态、加载态、错误态与成功态")
+  })
+
+  it("快捷迭代消息：标题缺失时省略括号，空 designId 或空指令返回空串", () => {
+    const message = buildIterateMessage({
+      designId: "d1",
+      title: "",
+      instruction: "  适配移动端  ",
+    })
+    expect(message).toBe("@design:d1 适配移动端")
+
+    expect(buildIterateMessage({ designId: "", title: "x", instruction: "指令" })).toBe("")
+    expect(buildIterateMessage({ designId: "d1", title: "x", instruction: "   " })).toBe("")
   })
 })

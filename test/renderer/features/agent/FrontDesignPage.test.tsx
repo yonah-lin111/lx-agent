@@ -161,10 +161,10 @@ describe("FrontDesignPage 前端设计预览看板", () => {
 
     const { container } = render(<FrontDesignPage />)
 
-    // 选项应包含跟随系统、浅色模式、暗色模式
-    const lightOption = screen.getByRole("menuitem", { name: /浅色模式|Light/i })
-    const darkOption = screen.getByRole("menuitem", { name: /暗色模式|Dark/i })
-    const systemOption = screen.getByRole("menuitem", { name: /跟随系统|System/i })
+    // 选项应包含跟随系统、浅色模式、暗色模式（精确匹配，避免命中快捷迭代动作标签）
+    const lightOption = screen.getByRole("menuitem", { name: /^(浅色模式|Light)$/ })
+    const darkOption = screen.getByRole("menuitem", { name: /^(暗色模式|Dark)$/ })
+    const systemOption = screen.getByRole("menuitem", { name: /^(跟随系统|System)$/ })
 
     expect(lightOption).not.toBeNull()
     expect(darkOption).not.toBeNull()

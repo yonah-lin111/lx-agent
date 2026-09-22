@@ -126,9 +126,9 @@ export const frontDesign = {
   iterateTitle: "Quick iterate",
   iterateHint: "Compose an iteration instruction into the input, editable before sending",
   iterateStates: "Complete states",
-  iterateResponsive: "Mobile adaptation",
-  iterateDark: "Dark mode",
-  iterateMicro: "Micro-interactions",
+  iterateResponsive: "Adapt for mobile",
+  iterateDark: "Add dark mode",
+  iterateMicro: "Add micro-interactions",
   iterateVariant: "Generate variant",
   iterateInstructionStates:
     "Add empty, loading, error and success states while keeping the current design system and layout style",

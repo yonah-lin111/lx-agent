@@ -121,9 +121,9 @@ export const frontDesign = {
   iterateTitle: "快捷迭代",
   iterateHint: "一键生成迭代指令并插入输入框，可编辑后再发送",
   iterateStates: "补齐状态",
-  iterateResponsive: "移动端适配",
-  iterateDark: "暗色模式",
-  iterateMicro: "微交互",
+  iterateResponsive: "适配移动端",
+  iterateDark: "补充暗色模式",
+  iterateMicro: "增强微交互",
   iterateVariant: "生成变体",
   iterateInstructionStates: "请补充空态、加载态、错误态与成功态，保持现有设计系统与布局风格",
   iterateInstructionResponsive:

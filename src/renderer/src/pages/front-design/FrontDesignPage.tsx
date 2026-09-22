@@ -5,8 +5,12 @@ import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { designSystemStore, useDesignSystem } from "@/features/agent/hooks/designSystemStore"
 import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
-import { buildIssueReviewMessage } from "@/features/agent/utils/designReviewComposer"
-import { useTranslation } from "@/i18n"
+import {
+  buildIssueReviewMessage,
+  buildIterateMessage,
+  type DesignIterateActionId,
+} from "@/features/agent/utils/designReviewComposer"
+import { type TranslationKey, useTranslation } from "@/i18n"
 import { FrontDesignAnnotationsPanel } from "@/pages/front-design/components/FrontDesignAnnotationsPanel"
 import { FrontDesignCanvas } from "@/pages/front-design/components/FrontDesignCanvas"
 import { FrontDesignComparePane } from "@/pages/front-design/components/FrontDesignComparePane"
@@ -19,6 +23,15 @@ import { useDesignTheme } from "@/pages/front-design/hooks/useDesignTheme"
 import type { ViewportMode } from "@/pages/front-design/types"
 import { pickDefaultCompareDesign } from "@/pages/front-design/utils/compareSelection"
 import { extractDesignTokens } from "@/pages/front-design/utils/tokenExtraction"
+
+// 快捷迭代动作对应的指令文案键。
+const ITERATE_INSTRUCTION_KEYS: Record<DesignIterateActionId, TranslationKey> = {
+  states: "frontDesign.iterateInstructionStates",
+  responsive: "frontDesign.iterateInstructionResponsive",
+  dark: "frontDesign.iterateInstructionDark",
+  micro: "frontDesign.iterateInstructionMicro",
+  variant: "frontDesign.iterateInstructionVariant",
+}
 
 /**
  * FrontDesignPage - Agent 前端设计看板。
@@ -158,6 +171,35 @@ export const FrontDesignPage = (): React.JSX.Element => {
     successToast(t("frontDesign.issuesPanelSentToast", { count: targets.length }))
   }, [checks, activeDesignId, title, sessionId, t, successToast])
 
+  // 快捷迭代：编译动作指令并插入输入框（沿用评审回流的 design 模式与目标 Tab 解析）。
+  const handleIterateAction = useCallback(
+    (action: DesignIterateActionId) => {
+      if (!activeDesignId || !html || isStreaming) return
+
+      const message = buildIterateMessage({
+        designId: activeDesignId,
+        title,
+        instruction: t(ITERATE_INSTRUCTION_KEYS[action]),
+      })
+      if (!message) return
+
+      let targetTabId = agentTabStore.getActiveTabId()
+      if (sessionId) {
+        const targetTab = agentTabStore.findTabBySessionId(sessionId)
+        if (targetTab) {
+          targetTabId = targetTab.id
+        }
+      }
+
+      void agentApi
+        .setCollaborationMode("design", sessionId ?? undefined, targetTabId)
+        .catch(() => {})
+      agentTabStore.insertPromptToActiveTab(message)
+      successToast(t("frontDesign.iterateInsertedToast"))
+    },
+    [activeDesignId, html, isStreaming, title, sessionId, t, successToast],
+  )
+
   // 令牌提取：把当前画布的真实用色 / 圆角 / 字体沉淀为设计系统令牌。
   const handleExtractTokens = useCallback(() => {
     const extracted = extractDesignTokens(iframeRef.current?.contentDocument)
@@ -216,6 +258,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
         compareOpen={Boolean(compareDesign)}
         canCompare={canCompare}
         onToggleCompare={handleToggleCompare}
+        onIterateAction={handleIterateAction}
         sessionId={sessionId}
         onOpenDesignDir={handleOpenDesignDirectory}
         onCopy={handleCopy}

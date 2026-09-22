@@ -84,3 +84,30 @@ export const buildIssueReviewMessage = ({
 
   return `@design:${designId}${titleSuffix} ${header}\n${lines.join("\n")}`
 }
+
+// 快捷迭代动作标识（文案与指令由调用方按当前语言注入）。
+export type DesignIterateActionId = "states" | "responsive" | "dark" | "micro" | "variant"
+
+export interface BuildIterateMessageOptions {
+  designId: string
+  title: string
+  // 已按当前语言格式化的动作指令。
+  instruction: string
+}
+
+/**
+ * 快捷迭代消息：设计级 mention 携带完整基线，动作指令追加在 mention 行尾。
+ */
+export const buildIterateMessage = ({
+  designId,
+  title,
+  instruction,
+}: BuildIterateMessageOptions): string => {
+  const cleanInstruction = instruction.trim()
+  if (!designId || !cleanInstruction) return ""
+
+  const cleanTitle = sanitizeMentionText(title)
+  const titleSuffix = cleanTitle ? ` (${cleanTitle})` : ""
+
+  return `@design:${designId}${titleSuffix} ${cleanInstruction}`
+}
