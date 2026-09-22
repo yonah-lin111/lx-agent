@@ -2,6 +2,7 @@ import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { sanitizeHtmlDocument } from "@/features/agent/components/visuals/sanitizeVisual"
+import { buildPreviewErrorGuardScript } from "@/pages/front-design/utils/previewGuard"
 
 export interface UseDesignPreviewOptions {
   iframeRef: React.RefObject<HTMLIFrameElement | null>
@@ -131,12 +132,14 @@ export const useDesignPreview = ({
       ? `<style id="lx-front-design-tailwind-compiled">${compiledTailwindCss}</style>`
       : ""
     const sandboxGuardScript = `<script id="lx-sandbox-guard">try{Object.defineProperty(window,'parent',{get:()=>null,set:()=>{},configurable:false});Object.defineProperty(window,'top',{get:()=>null,set:()=>{},configurable:false});Object.defineProperty(window,'frameElement',{get:()=>null,set:()=>{},configurable:false});Object.defineProperty(window,'opener',{get:()=>null,set:()=>{},configurable:false});if('electron' in window){try{delete window.electron;}catch(e){}}window.open=()=>null;}catch(e){}</script>`
+    // 错误采集守卫必须早于设计稿自身脚本执行，因此与沙箱守卫同级注入 head。
+    const errorGuardScript = buildPreviewErrorGuardScript()
     let docWithTheme = baseDoc
 
     // 根据模式为 <html> 标签注入或移除 dark 类名
     docWithTheme = applyHtmlThemeClass(docWithTheme, effectiveMode === "dark")
 
-    const injectedHead = `${sandboxGuardScript}\n${styleTag}\n${twStyleTag}`
+    const injectedHead = `${sandboxGuardScript}\n${errorGuardScript}\n${styleTag}\n${twStyleTag}`
     if (docWithTheme.includes("</head>")) {
       return docWithTheme.replace("</head>", `${injectedHead}</head>`)
     }
@@ -235,13 +238,13 @@ export const useDesignPreview = ({
           }
         }
 
-        // 4. 平滑替换 body 结构（保留可能存在的 inspector overlay）
-        const overlay = doc.getElementById("lx-design-inspector-overlay")
+        // 4. 平滑替换 body 结构（保留批注图层，避免更新后钉选气泡丢失）
+        const annotationLayer = doc.getElementById("lx-design-annotation-layer")
         const newBodyHtml = parsed.body?.innerHTML || ""
         if (doc.body.innerHTML !== newBodyHtml) {
           doc.body.innerHTML = newBodyHtml
-          if (overlay) {
-            doc.body.appendChild(overlay)
+          if (annotationLayer) {
+            doc.body.appendChild(annotationLayer)
           }
           if (!isStreamingRef.current) {
             executeIframeScripts(doc)

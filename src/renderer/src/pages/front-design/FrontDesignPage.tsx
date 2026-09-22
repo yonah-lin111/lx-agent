@@ -1,24 +1,31 @@
 import type React from "react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { agentApi } from "@/features/agent/api/agentApi"
+import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
+import { designSystemStore, useDesignSystem } from "@/features/agent/hooks/designSystemStore"
 import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
+import { buildIssueReviewMessage } from "@/features/agent/utils/designReviewComposer"
 import { useTranslation } from "@/i18n"
+import { FrontDesignAnnotationsPanel } from "@/pages/front-design/components/FrontDesignAnnotationsPanel"
 import { FrontDesignCanvas } from "@/pages/front-design/components/FrontDesignCanvas"
+import { FrontDesignIssuesPanel } from "@/pages/front-design/components/FrontDesignIssuesPanel"
 import { FrontDesignToolbar } from "@/pages/front-design/components/FrontDesignToolbar"
-import { useDesignInspector } from "@/pages/front-design/hooks/useDesignInspector"
+import { useDesignAnnotations } from "@/pages/front-design/hooks/useDesignAnnotations"
+import { useDesignChecks } from "@/pages/front-design/hooks/useDesignChecks"
 import { useDesignPreview } from "@/pages/front-design/hooks/useDesignPreview"
 import { useDesignTheme } from "@/pages/front-design/hooks/useDesignTheme"
 import type { ViewportMode } from "@/pages/front-design/types"
 
 /**
  * FrontDesignPage - Agent 前端设计看板。
- * 聚焦渲染当前激活的 Agent 前端原型，提供刷新、深色/浅色/跟随系统主题切换、视口切换、Inspector 点选与代码复制能力。
+ * 聚焦渲染激活的前端原型，提供版本切换、视口预设、画布批注评审、体检回流与设计系统令牌约束。
  */
 export const FrontDesignPage = (): React.JSX.Element => {
   const { t } = useTranslation()
   const { success: successToast } = useLxAgentToast()
   const designState = useFrontDesign()
+  const designTokens = useDesignSystem()
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
@@ -28,23 +35,37 @@ export const FrontDesignPage = (): React.JSX.Element => {
 
   const { pageTheme, setPageTheme, effectiveMode } = useDesignTheme()
 
-  const { html, activeDesignId, mode, sessionId, isStreaming } = designState
+  const { html, activeDesignId, mode, sessionId, title, isStreaming } = designState
+
+  const annotations = useDesignAnnotations({
+    iframeRef,
+    html,
+    activeDesignId,
+    sessionId,
+    title,
+    parentId: designState.parentId,
+    mode,
+    isStreaming,
+  })
+
+  const checks = useDesignChecks({
+    iframeRef,
+    activeDesignId,
+    hasHtml: Boolean(html),
+    isStreaming,
+    refreshKey,
+  })
 
   const availableVersions = useMemo(() => {
     if (!activeDesignId) return []
     return frontDesignStore.getDesignVersions(activeDesignId)
   }, [activeDesignId, designState.designs, designState.updatedAt])
 
-  const { isInspectorActive, setIsInspectorActive, attachIframeKeydown } = useDesignInspector({
-    iframeRef,
-    html,
-    activeDesignId,
-    sessionId,
-    title: designState.title,
-    parentId: designState.parentId,
-    mode,
-    isStreaming,
-  })
+  // iframe 每次加载完成后重建批注图层并触发审计，确保图层与运行时文档同源。
+  const handleDesignRuntime = useCallback(() => {
+    annotations.attachIframeRuntime()
+    checks.scheduleAudit()
+  }, [annotations, checks])
 
   const { cachedSrcDoc, currentKey, handleIframeLoad } = useDesignPreview({
     iframeRef,
@@ -55,12 +76,8 @@ export const FrontDesignPage = (): React.JSX.Element => {
     activeDesignId,
     sessionId,
     refreshKey,
-    onIframeLoad: attachIframeKeydown,
+    onIframeLoad: handleDesignRuntime,
   })
-
-  useEffect(() => {
-    attachIframeKeydown()
-  }, [attachIframeKeydown, refreshKey, activeDesignId])
 
   const handleCopy = useCallback(async () => {
     if (!html) return
@@ -83,6 +100,35 @@ export const FrontDesignPage = (): React.JSX.Element => {
     await agentApi.openDesignDir(sessionId, activeDesignId)
   }, [sessionId, activeDesignId])
 
+  // 体检问题回流：勾选项编译为设计级 mention + 编号清单，写入聊天输入框。
+  const handleSendIssues = useCallback(async () => {
+    const targets = checks.selectedIssues
+    if (targets.length === 0 || !activeDesignId) return
+
+    const message = buildIssueReviewMessage({
+      designId: activeDesignId,
+      title,
+      issues: targets,
+      header: t("frontDesign.issuesMessageHeader", { count: targets.length }),
+    })
+    if (!message) return
+
+    let targetTabId = agentTabStore.getActiveTabId()
+    if (sessionId) {
+      const targetTab = agentTabStore.findTabBySessionId(sessionId)
+      if (targetTab) {
+        targetTabId = targetTab.id
+      }
+    }
+
+    await agentApi
+      .setCollaborationMode("design", sessionId ?? undefined, targetTabId)
+      .catch(() => {})
+    agentTabStore.insertPromptToActiveTab(message)
+    checks.clearSelection()
+    successToast(t("frontDesign.issuesPanelSentToast", { count: targets.length }))
+  }, [checks, activeDesignId, title, sessionId, t, successToast])
+
   const viewportWidthClass = useMemo(() => {
     switch (viewport) {
       case "mobile":
@@ -95,6 +141,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
   }, [viewport])
 
   const isDesktop = viewport === "desktop"
+  const showAnnotationsPanel = annotations.isInspectorActive || annotations.annotations.length > 0
 
   return (
     <div
@@ -113,25 +160,60 @@ export const FrontDesignPage = (): React.JSX.Element => {
         viewport={viewport}
         onViewportChange={setViewport}
         isStreaming={isStreaming}
-        isInspectorActive={isInspectorActive}
-        onToggleInspector={() => setIsInspectorActive((prev) => !prev)}
+        isInspectorActive={annotations.isInspectorActive}
+        onToggleInspector={() => annotations.setIsInspectorActive((prev) => !prev)}
         sessionId={sessionId}
         onOpenDesignDir={handleOpenDesignDirectory}
         onCopy={handleCopy}
         copied={copied}
         pageTheme={pageTheme}
         onSelectTheme={setPageTheme}
+        designTokens={designTokens}
+        onDesignTokensChange={designSystemStore.setTokens}
+        onDesignTokensReset={designSystemStore.reset}
       />
-      <FrontDesignCanvas
-        hasHtml={Boolean(html)}
-        viewportWidthClass={viewportWidthClass}
-        isDesktop={isDesktop}
-        effectiveMode={effectiveMode}
-        iframeRef={iframeRef}
-        cachedSrcDoc={cachedSrcDoc}
-        currentKey={currentKey}
-        onIframeLoad={handleIframeLoad}
-      />
+
+      <div className="flex min-h-0 min-w-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <FrontDesignCanvas
+            hasHtml={Boolean(html)}
+            viewportWidthClass={viewportWidthClass}
+            isDesktop={isDesktop}
+            effectiveMode={effectiveMode}
+            iframeRef={iframeRef}
+            cachedSrcDoc={cachedSrcDoc}
+            currentKey={currentKey}
+            onIframeLoad={handleIframeLoad}
+          />
+          {Boolean(html) && (
+            <FrontDesignIssuesPanel
+              issues={checks.issues}
+              runtimeCount={checks.runtimeCount}
+              a11yCount={checks.a11yCount}
+              isStreaming={isStreaming}
+              isOpen={checks.isPanelOpen}
+              onOpenChange={checks.setIsPanelOpen}
+              selectedIds={checks.selectedIds}
+              isAllSelected={checks.isAllSelected}
+              onToggleIssue={checks.toggleIssue}
+              onToggleAll={checks.toggleAll}
+              onRerun={checks.rerun}
+              onSend={handleSendIssues}
+            />
+          )}
+        </div>
+
+        {showAnnotationsPanel && Boolean(html) && (
+          <FrontDesignAnnotationsPanel
+            annotations={annotations.annotations}
+            onSend={annotations.sendAnnotations}
+            onEdit={annotations.editAnnotation}
+            onRemove={annotations.removeAnnotation}
+            onClear={annotations.clearAnnotations}
+            onHighlight={annotations.highlightAnnotation}
+          />
+        )}
+      </div>
     </div>
   )
 }
