@@ -50,7 +50,7 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(container.querySelector(".front-design-empty-title")).not.toBeNull()
     expect(container.querySelector(".front-design-empty-desc")).not.toBeNull()
     expect(container.querySelector("iframe")).toBeNull()
-    // 不应存在任何搜索框或地址输入框（测试桩 Tooltip 常驻展开令牌面板，需排除其对应用 UI 的输入框）
+    // 不应存在任何搜索框或地址输入框（测试桩 Tooltip 会常驻展开下拉内容，需排除其内的输入框）
     const pageLevelTextboxes = screen
       .queryAllByRole("textbox")
       .filter((element) => !element.closest('[data-testid="tooltip-click-content"]'))
@@ -162,9 +162,9 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     const { container } = render(<FrontDesignPage />)
 
     // 选项应包含跟随系统、浅色模式、暗色模式
-    const lightOption = screen.getByRole("menuitem", { name: /浅色模式|Light/i })
-    const darkOption = screen.getByRole("menuitem", { name: /暗色模式|Dark/i })
-    const systemOption = screen.getByRole("menuitem", { name: /跟随系统|System/i })
+    const lightOption = screen.getByRole("menuitem", { name: /^(浅色模式|Light)$/ })
+    const darkOption = screen.getByRole("menuitem", { name: /^(暗色模式|Dark)$/ })
+    const systemOption = screen.getByRole("menuitem", { name: /^(跟随系统|System)$/ })
 
     expect(lightOption).not.toBeNull()
     expect(darkOption).not.toBeNull()
@@ -586,11 +586,8 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(storedHtml).not.toContain("lx-design-annotation-layer")
     expect(mockNavigate).not.toHaveBeenCalled()
 
-    // 5. 选中框保持显示；点击画布空白才解除，批注条目保留
+    // 5. 确认后选中内容已被消费：蓝色选中框随之移除，批注条目保留
     const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
-    expect(highlight.style.display).toBe("block")
-    fireEvent.click(doc.body)
-    await act(async () => {})
     expect(highlight.style.display).toBe("none")
     expect(screen.getByText("补充匿名元素说明")).not.toBeNull()
     expect(doc.querySelector("[data-annotation-editor]")).toBeNull()

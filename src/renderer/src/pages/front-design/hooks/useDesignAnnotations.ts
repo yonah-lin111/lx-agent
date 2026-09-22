@@ -100,6 +100,15 @@ export const useDesignAnnotations = ({
       remove: t("frontDesign.reviewDelete"),
       emptyHint: t("frontDesign.reviewEmptyComment"),
       close: t("frontDesign.reviewClose"),
+      styleLabels: {
+        padding: t("frontDesign.inspectStylePadding"),
+        margin: t("frontDesign.inspectStyleMargin"),
+        font: t("frontDesign.inspectStyleFont"),
+        color: t("frontDesign.inspectStyleColor"),
+        background: t("frontDesign.inspectStyleBackground"),
+        radius: t("frontDesign.inspectStyleRadius"),
+        border: t("frontDesign.inspectStyleBorder"),
+      },
     }),
     [t],
   )

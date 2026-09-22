@@ -6,6 +6,8 @@ import {
   type AnnotationEditorTheme,
   FALLBACK_EDITOR_THEME,
 } from "@/pages/front-design/utils/annotationEditorTheme"
+import type { ElementStyleKey, ElementStyleSummary } from "@/pages/front-design/utils/elementStyles"
+import { summarizeElementStyles } from "@/pages/front-design/utils/elementStyles"
 
 // 批注图层容器 id：useDesignPreview 在增量更新 body 时会保留该节点。
 export const ANNOTATION_LAYER_ID = "lx-design-annotation-layer"
@@ -27,6 +29,8 @@ export interface AnnotationLayerLabels {
   remove: string
   emptyHint: string
   close: string
+  // 元素样式摘要行标签。
+  styleLabels: Record<ElementStyleKey, string>
 }
 
 export interface AnnotationEditorRequest {
@@ -77,12 +81,19 @@ const isDegeneratePosition = (position: LayerPosition): boolean =>
   position.width <= 0 && position.height <= 0
 
 // 生成浮层样式表：输入框几何与配色全部取自应用主题（像素主题下自动获得直角/浮雕/马赛克底纹）。
+// 信息条与样式摘要复用同一实体表面（lx-ann-surface），避免半透明底色被设计稿内容穿透导致不可读。
 const buildEditorStyle = (theme: AnnotationEditorTheme): string => `
+#${ANNOTATION_LAYER_ID} .lx-ann-surface { box-sizing: border-box; border: ${theme.borderWidth} ${theme.borderStyle} ${theme.borderColor}; border-radius: ${theme.borderRadius}; background-color: ${theme.backgroundColor}; font-family: ${theme.fontFamily}; box-shadow: ${theme.boxShadow}; }
+${theme.backgroundImage ? `#${ANNOTATION_LAYER_ID} .lx-ann-surface { background-image: ${theme.backgroundImage}; background-repeat: ${theme.backgroundRepeat}; image-rendering: ${theme.imageRendering}; }` : ""}
 #${ANNOTATION_LAYER_ID} .lx-ann-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-#${ANNOTATION_LAYER_ID} .lx-ann-info { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 1px 6px; font-family: ${theme.chipFontFamily}; color: ${SELECTION_COLOR}; background-color: ${SELECTION_FILL}; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: ${theme.borderRadius}; }
-#${ANNOTATION_LAYER_ID} .lx-ann-size { color: rgba(56, 189, 248, 0.8); }
-#${ANNOTATION_LAYER_ID} .lx-ann-box { box-sizing: border-box; padding: 8px 10px; border: ${theme.borderWidth} ${theme.borderStyle} ${theme.borderColor}; border-radius: ${theme.borderRadius}; background-color: ${theme.backgroundColor}; font-family: ${theme.fontFamily}; box-shadow: ${theme.boxShadow}; transition: border-color 150ms ease, box-shadow 150ms ease; }
-${theme.backgroundImage ? `#${ANNOTATION_LAYER_ID} .lx-ann-box { background-image: ${theme.backgroundImage}; background-repeat: ${theme.backgroundRepeat}; image-rendering: ${theme.imageRendering}; }` : ""}
+#${ANNOTATION_LAYER_ID} .lx-ann-info { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 6px; font-family: ${theme.chipFontFamily}; color: ${theme.color}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-size { color: ${theme.mutedColor}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-styles { display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 100%; overflow: hidden; margin-bottom: 4px; padding: 4px 6px; }
+#${ANNOTATION_LAYER_ID} .lx-ann-style-row { display: flex; align-items: center; gap: 4px; width: 100%; min-width: 0; }
+#${ANNOTATION_LAYER_ID} .lx-ann-style-label { flex: 0 1 auto; min-width: 34px; color: ${theme.mutedColor}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-style-value { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${theme.color}; font-family: ${theme.chipFontFamily}; }
+#${ANNOTATION_LAYER_ID} .lx-ann-style-swatch { flex-shrink: 0; width: 9px; height: 9px; border: 1px solid ${theme.borderColor}; border-radius: 2px; }
+#${ANNOTATION_LAYER_ID} .lx-ann-box { padding: 8px 10px; transition: border-color 150ms ease, box-shadow 150ms ease; }
 #${ANNOTATION_LAYER_ID} .lx-ann-box:focus-within { border-color: ${theme.borderColorStrong}; box-shadow: ${theme.boxShadow}, 0 0 0 1px rgba(255, 255, 255, 0.06); }
 #${ANNOTATION_LAYER_ID} .lx-ann-box--invalid { border-color: #f43f5e !important; }
 #${ANNOTATION_LAYER_ID} .lx-ann-textarea { width: 100%; height: 52px; resize: none; box-sizing: border-box; padding: 0; border: none; outline: none; background: transparent; color: ${theme.color}; font-family: inherit; }
@@ -172,6 +183,9 @@ export const createAnnotationLayer = (
   let editorHint: HTMLElement | null = null
   let editorSizeLabel: HTMLElement | null = null
   let editorBox: HTMLElement | null = null
+  // 样式摘要块与其对应的锚点元素（锚点被重建后需要刷新）。
+  let editorStylesBlock: HTMLElement | null = null
+  let styledAnchor: Element | null = null
   let activeRequest: AnnotationEditorRequest | null = null
   // 编辑器是否已按有效锚点定位过：定位过之后退化只保留原位，未定位过才用点击点兜底。
   let editorPositioned = false
@@ -194,6 +208,15 @@ export const createAnnotationLayer = (
     remove: "",
     emptyHint: "",
     close: "",
+    styleLabels: {
+      padding: "",
+      margin: "",
+      font: "",
+      color: "",
+      background: "",
+      radius: "",
+      border: "",
+    },
   }
 
   // 元素脱离文档后按选择器重新绑定；无法重绑时返回 null。
@@ -236,12 +259,18 @@ export const createAnnotationLayer = (
         editorSizeLabel.textContent = `${Math.round(position.width)}×${Math.round(position.height)}`
       }
 
+      // 锚点被 body 重建替换后，样式摘要跟随新元素刷新。
+      if (anchor && anchor !== styledAnchor) {
+        mountStylesBlock(anchor, currentLabels.styleLabels)
+      }
+
       const viewportHeight = doc.documentElement.clientHeight || doc.defaultView?.innerHeight || 0
       const viewportWidth = doc.documentElement.clientWidth || doc.defaultView?.innerWidth || 0
+      // 优先使用实测高度（含样式摘要块），取不到时回退估算值。
+      const editorHeight = editorElement.offsetHeight || EDITOR_ESTIMATED_HEIGHT
       const editorTop =
-        viewportHeight > 0 &&
-        position.top + position.height + 8 + EDITOR_ESTIMATED_HEIGHT > viewportHeight
-          ? Math.max(8, position.top - EDITOR_ESTIMATED_HEIGHT - 8)
+        viewportHeight > 0 && position.top + position.height + 8 + editorHeight > viewportHeight
+          ? Math.max(8, position.top - editorHeight - 8)
           : position.top + position.height + 8
       const editorLeft =
         viewportWidth > 0
@@ -402,6 +431,75 @@ export const createAnnotationLayer = (
     return button
   }
 
+  // 样式摘要行顺序：间距 → 字体 → 颜色 → 圆角 → 边框。
+  const STYLE_ROW_ORDER: ElementStyleKey[] = [
+    "padding",
+    "margin",
+    "font",
+    "color",
+    "background",
+    "radius",
+    "border",
+  ]
+
+  // 构建元素样式摘要块：无有效行时返回 null。
+  const buildStylesBlock = (
+    anchor: Element | null,
+    styleLabels: Record<ElementStyleKey, string>,
+  ): HTMLElement | null => {
+    if (!anchor) return null
+    const summary: ElementStyleSummary = summarizeElementStyles(anchor)
+    const rows = STYLE_ROW_ORDER.filter((key) => summary[key])
+    if (rows.length === 0) return null
+
+    const block = doc.createElement("div")
+    block.setAttribute("data-annotation-editor-styles", "true")
+    block.className = "lx-ann-styles lx-ann-surface"
+    block.style.fontSize = "11px"
+
+    for (const key of rows) {
+      const row = doc.createElement("div")
+      row.className = "lx-ann-style-row"
+
+      // 颜色 / 背景行附色块，直观区分取色来源。
+      if (key === "color" || key === "background") {
+        const swatch = doc.createElement("span")
+        swatch.className = "lx-ann-style-swatch"
+        swatch.style.backgroundColor = summary[key] ?? "transparent"
+        row.appendChild(swatch)
+      }
+
+      const label = doc.createElement("span")
+      label.className = "lx-ann-style-label"
+      label.textContent = styleLabels[key]
+
+      const value = doc.createElement("span")
+      value.className = "lx-ann-style-value"
+      value.textContent = summary[key] ?? ""
+
+      row.appendChild(label)
+      row.appendChild(value)
+      block.appendChild(row)
+    }
+
+    return block
+  }
+
+  // 挂载 / 刷新样式摘要块：插在 meta 行与输入框之间。
+  const mountStylesBlock = (
+    anchor: Element | null,
+    styleLabels: Record<ElementStyleKey, string>,
+  ): void => {
+    if (!editorElement) return
+    editorStylesBlock?.remove()
+    editorStylesBlock = null
+    styledAnchor = anchor
+    const block = buildStylesBlock(anchor, styleLabels)
+    if (!block) return
+    editorStylesBlock = block
+    editorElement.insertBefore(block, editorBox)
+  }
+
   const closeEditor = (): void => {
     if (editorElement?.parentNode) {
       editorElement.parentNode.removeChild(editorElement)
@@ -411,9 +509,11 @@ export const createAnnotationLayer = (
     editorHint = null
     editorSizeLabel = null
     editorBox = null
+    editorStylesBlock = null
+    styledAnchor = null
     activeRequest = null
     editorPositioned = false
-    // 选中框保持显示：仅「点击空白」或「选中其他元素」才会解除。
+    // 取消关闭时选中框保持显示：确认提交、点击空白或选中其他元素时才解除。
     observeTargets()
   }
 
@@ -430,6 +530,8 @@ export const createAnnotationLayer = (
     }
     callbacks.onSubmit(request.selector, request.description, comment, request.isNew)
     closeEditor()
+    // 选中内容已被消费：确认后一并解除选中态，避免蓝色选中框残留在画布上。
+    clearSelection()
   }
 
   const mountEditor = (request: AnnotationEditorRequest, labels: AnnotationLayerLabels): void => {
@@ -450,7 +552,7 @@ export const createAnnotationLayer = (
 
     const info = doc.createElement("span")
     info.setAttribute("data-annotation-editor-info", "true")
-    info.className = "lx-ann-info"
+    info.className = "lx-ann-info lx-ann-surface"
     info.style.fontSize = "11px"
 
     const infoName = doc.createElement("span")
@@ -470,7 +572,7 @@ export const createAnnotationLayer = (
     // 输入框本体：对齐 AgentInput 底栏（深色圆角容器 + 无边框文本区 + 底部圆形操作按钮）。
     const box = doc.createElement("div")
     box.setAttribute("data-annotation-editor-box", "true")
-    box.className = "lx-ann-box"
+    box.className = "lx-ann-box lx-ann-surface"
 
     const textarea = doc.createElement("textarea")
     textarea.className = "lx-ann-textarea"
@@ -535,6 +637,9 @@ export const createAnnotationLayer = (
     editorHint = hint
     editorSizeLabel = infoSize
     editorBox = box
+    currentLabels = labels
+    // 元素样式摘要：让批注有具体数值依据（间距 / 字体 / 颜色 / 圆角 / 边框）。
+    mountStylesBlock(request.anchor, labels.styleLabels)
     // 进入选中态：选中框常驻在该元素上，关闭输入框后依然保留。
     selectionTarget = request.anchor
     selectionSelector = request.selector

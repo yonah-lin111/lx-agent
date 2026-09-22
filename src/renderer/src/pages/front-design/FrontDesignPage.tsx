@@ -1,14 +1,14 @@
 import type React from "react"
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
-import { designSystemStore, useDesignSystem } from "@/features/agent/hooks/designSystemStore"
 import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
 import { buildIssueReviewMessage } from "@/features/agent/utils/designReviewComposer"
 import { useTranslation } from "@/i18n"
 import { FrontDesignAnnotationsPanel } from "@/pages/front-design/components/FrontDesignAnnotationsPanel"
 import { FrontDesignCanvas } from "@/pages/front-design/components/FrontDesignCanvas"
+import { FrontDesignComparePane } from "@/pages/front-design/components/FrontDesignComparePane"
 import { FrontDesignIssuesPanel } from "@/pages/front-design/components/FrontDesignIssuesPanel"
 import { FrontDesignToolbar } from "@/pages/front-design/components/FrontDesignToolbar"
 import { useDesignAnnotations } from "@/pages/front-design/hooks/useDesignAnnotations"
@@ -16,22 +16,24 @@ import { useDesignChecks } from "@/pages/front-design/hooks/useDesignChecks"
 import { useDesignPreview } from "@/pages/front-design/hooks/useDesignPreview"
 import { useDesignTheme } from "@/pages/front-design/hooks/useDesignTheme"
 import type { ViewportMode } from "@/pages/front-design/types"
+import { pickDefaultCompareDesign } from "@/pages/front-design/utils/compareSelection"
 
 /**
  * FrontDesignPage - Agent 前端设计看板。
- * 聚焦渲染激活的前端原型，提供版本切换、视口预设、画布批注评审、体检回流与设计系统令牌约束。
+ * 聚焦渲染激活的前端原型，提供版本切换、版本对照、视口预设、画布批注评审与体检回流。
  */
 export const FrontDesignPage = (): React.JSX.Element => {
   const { t } = useTranslation()
   const { success: successToast } = useLxToast()
   const designState = useFrontDesign()
-  const designTokens = useDesignSystem()
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const [viewport, setViewport] = useState<ViewportMode>("desktop")
   const [copied, setCopied] = useState<boolean>(false)
   const [refreshKey, setRefreshKey] = useState<number>(0)
+  // 版本对照：null 表示关闭，非 null 为对照窗当前展示的版本 id。
+  const [compareDesignId, setCompareDesignId] = useState<string | null>(null)
 
   const { pageTheme, setPageTheme, effectiveMode } = useDesignTheme()
 
@@ -60,6 +62,30 @@ export const FrontDesignPage = (): React.JSX.Element => {
     if (!activeDesignId) return []
     return frontDesignStore.getDesignVersions(activeDesignId)
   }, [activeDesignId, designState.designs, designState.updatedAt])
+
+  const canCompare = availableVersions.length > 1
+
+  // 对照窗当前版本：解析失败时由 effect 回落到默认候选。
+  const compareDesign = useMemo(() => {
+    if (!compareDesignId) return null
+    return availableVersions.find((item) => item.id === compareDesignId) ?? null
+  }, [compareDesignId, availableVersions])
+
+  // 主画布切版本 / 版本族变化导致对照目标失效时自动重选，无候选则关闭对照。
+  useEffect(() => {
+    if (!compareDesignId) return
+    const isValid = availableVersions.some(
+      (item) => item.id === compareDesignId && item.id !== activeDesignId,
+    )
+    if (isValid) return
+    setCompareDesignId(pickDefaultCompareDesign(availableVersions, activeDesignId))
+  }, [compareDesignId, availableVersions, activeDesignId])
+
+  const handleToggleCompare = useCallback(() => {
+    setCompareDesignId((prev) =>
+      prev ? null : pickDefaultCompareDesign(availableVersions, activeDesignId),
+    )
+  }, [availableVersions, activeDesignId])
 
   // iframe 每次加载完成后重建批注图层并触发审计，确保图层与运行时文档同源。
   const handleDesignRuntime = useCallback(() => {
@@ -162,29 +188,43 @@ export const FrontDesignPage = (): React.JSX.Element => {
         isStreaming={isStreaming}
         isInspectorActive={annotations.isInspectorActive}
         onToggleInspector={() => annotations.setIsInspectorActive((prev) => !prev)}
+        compareOpen={Boolean(compareDesign)}
+        canCompare={canCompare}
+        onToggleCompare={handleToggleCompare}
         sessionId={sessionId}
         onOpenDesignDir={handleOpenDesignDirectory}
         onCopy={handleCopy}
         copied={copied}
         pageTheme={pageTheme}
         onSelectTheme={setPageTheme}
-        designTokens={designTokens}
-        onDesignTokensChange={designSystemStore.setTokens}
-        onDesignTokensReset={designSystemStore.reset}
       />
 
       <div className="flex min-h-0 min-w-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <FrontDesignCanvas
-            hasHtml={Boolean(html)}
-            viewportWidthClass={viewportWidthClass}
-            isDesktop={isDesktop}
-            effectiveMode={effectiveMode}
-            iframeRef={iframeRef}
-            cachedSrcDoc={cachedSrcDoc}
-            currentKey={currentKey}
-            onIframeLoad={handleIframeLoad}
-          />
+          <div className="flex min-h-0 min-w-0 flex-1">
+            <FrontDesignCanvas
+              hasHtml={Boolean(html)}
+              viewportWidthClass={viewportWidthClass}
+              isDesktop={isDesktop}
+              effectiveMode={effectiveMode}
+              iframeRef={iframeRef}
+              cachedSrcDoc={cachedSrcDoc}
+              currentKey={currentKey}
+              onIframeLoad={handleIframeLoad}
+            />
+
+            {compareDesign && (
+              <FrontDesignComparePane
+                design={compareDesign}
+                options={availableVersions.filter((item) => item.id !== activeDesignId)}
+                viewportWidthClass={viewportWidthClass}
+                isDesktop={isDesktop}
+                effectiveMode={effectiveMode}
+                onSelectVersion={setCompareDesignId}
+                onClose={() => setCompareDesignId(null)}
+              />
+            )}
+          </div>
           {Boolean(html) && (
             <FrontDesignIssuesPanel
               issues={checks.issues}

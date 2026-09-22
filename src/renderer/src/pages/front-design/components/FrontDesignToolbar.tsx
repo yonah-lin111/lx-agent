@@ -1,6 +1,7 @@
 import {
   Check,
   ChevronDown,
+  Columns2,
   Copy,
   Eraser,
   FolderOpen,
@@ -10,7 +11,6 @@ import {
   Palette,
   RefreshCw,
   Smartphone,
-  SwatchBook,
   Tablet,
 } from "lucide-react"
 import type React from "react"
@@ -18,10 +18,8 @@ import { useMemo } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import type { DesignSystemTokens } from "@/features/agent/hooks/designSystemStore"
 import type { FrontDesignItem } from "@/features/agent/hooks/frontDesignStore"
 import { useTranslation } from "@/i18n"
-import { FrontDesignDesignSystemPanel } from "@/pages/front-design/components/FrontDesignDesignSystemPanel"
 import type { FrontDesignPageTheme } from "@/pages/front-design/hooks/useDesignTheme"
 import type { ViewportMode } from "@/pages/front-design/types"
 
@@ -39,19 +37,19 @@ export interface FrontDesignToolbarProps {
   isStreaming: boolean
   isInspectorActive: boolean
   onToggleInspector: () => void
+  compareOpen: boolean
+  canCompare: boolean
+  onToggleCompare: () => void
   sessionId: string | null
   onOpenDesignDir: () => void
   onCopy: () => void
   copied: boolean
   pageTheme: FrontDesignPageTheme
   onSelectTheme: (theme: FrontDesignPageTheme) => void
-  designTokens: DesignSystemTokens
-  onDesignTokensChange: (next: Partial<DesignSystemTokens>) => void
-  onDesignTokensReset: () => void
 }
 
 /**
- * FrontDesignToolbar - 设计画布顶部工具栏：版本切换、视口预设、Inspector、主题与复制。
+ * FrontDesignToolbar - 设计画布顶部工具栏：版本切换、版本对照、视口预设、Inspector、主题与复制。
  */
 export const FrontDesignToolbar = ({
   mode,
@@ -67,15 +65,15 @@ export const FrontDesignToolbar = ({
   isStreaming,
   isInspectorActive,
   onToggleInspector,
+  compareOpen,
+  canCompare,
+  onToggleCompare,
   sessionId,
   onOpenDesignDir,
   onCopy,
   copied,
   pageTheme,
   onSelectTheme,
-  designTokens,
-  onDesignTokensChange,
-  onDesignTokensReset,
 }: FrontDesignToolbarProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -180,6 +178,25 @@ export const FrontDesignToolbar = ({
         >
           <RefreshCw />
         </LxIconButton>
+
+        {/* 版本对照：同族另一版本并排只读预览 */}
+        {activeDesignId && hasHtml && (
+          <LxIconButton
+            size="small"
+            disabled={!canCompare}
+            highlighted={compareOpen}
+            onClick={onToggleCompare}
+            aria-label={t("frontDesign.compareTitle")}
+            title={{
+              content: canCompare
+                ? t("frontDesign.compareToggle")
+                : t("frontDesign.compareNeedTwo"),
+              placement: "bottom",
+            }}
+          >
+            <Columns2 />
+          </LxIconButton>
+        )}
       </div>
 
       {/* 中间：视口预设切换（桌面 / 平板 / 移动） */}
@@ -256,28 +273,6 @@ export const FrontDesignToolbar = ({
             <FolderOpen />
           </LxIconButton>
         )}
-
-        {/* 设计系统令牌（design 模式下随消息注入 Agent） */}
-        <LxTooltip
-          hover={{
-            content: t("frontDesign.designSystemTitle"),
-            placement: "bottom",
-          }}
-          click={{
-            content: (
-              <FrontDesignDesignSystemPanel
-                tokens={designTokens}
-                onChange={onDesignTokensChange}
-                onReset={onDesignTokensReset}
-              />
-            ),
-            placement: "bottom",
-          }}
-        >
-          <LxIconButton aria-label={t("frontDesign.designSystemTitle")} size="small">
-            <SwatchBook />
-          </LxIconButton>
-        </LxTooltip>
 
         {/* 设计页面主题切换（复刻 HeaderSideBar Palette 图标风格） */}
         <LxTooltip

@@ -44,6 +44,15 @@ const LABELS: AnnotationLayerLabels = {
   remove: "删除",
   emptyHint: "批注内容不能为空",
   close: "关闭输入框",
+  styleLabels: {
+    padding: "内边距",
+    margin: "外边距",
+    font: "字体",
+    color: "文字色",
+    background: "背景色",
+    radius: "圆角",
+    border: "边框",
+  },
 }
 
 // 合成文档没有 defaultView，无法走 testing-library 的 fireEvent，直接派发原生事件。
@@ -169,6 +178,54 @@ describe("批注图层", () => {
     expect(layer.isEditorOpen()).toBe(false)
   })
 
+  it("确认提交后解除蓝色选中框（编辑既有批注同样解除）", () => {
+    const { doc, callbacks, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 10, top: 20, width: 100, height: 40 })
+
+    const selectionBox = doc.querySelector("[data-annotation-highlight]") as HTMLElement
+
+    // 新建批注：输入框打开期间选中框常驻，确认后移除
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+    expect(selectionBox.style.display).toBe("block")
+
+    const editor = doc.querySelector("[data-annotation-editor]") as HTMLElement
+    const textarea = editor.querySelector("textarea") as HTMLTextAreaElement
+    dispatchInput(textarea, "改为高对比色")
+    dispatchClick(editor.querySelector('[data-annotation-action="confirm"]') as Element)
+
+    expect(callbacks.onSubmit).toHaveBeenCalledTimes(1)
+    expect(layer.hasSelection()).toBe(false)
+    expect(selectionBox.style.display).toBe("none")
+
+    // 编辑既有批注：确认后同样解除
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "改为高对比色",
+        isNew: false,
+        anchor: target,
+      },
+      LABELS,
+    )
+    expect(selectionBox.style.display).toBe("block")
+
+    dispatchClick(doc.querySelector('[data-annotation-action="confirm"]') as Element)
+    expect(callbacks.onSubmit).toHaveBeenCalledTimes(2)
+    expect(layer.hasSelection()).toBe(false)
+    expect(selectionBox.style.display).toBe("none")
+  })
+
   it("输入框上方展示元素信息与尺寸，支持关闭按钮退出", () => {
     const { doc, callbacks, layer } = setup()
     const target = doc.getElementById("target") as HTMLElement
@@ -195,7 +252,11 @@ describe("批注图层", () => {
     // 容器样式对齐 AgentInput 底栏（主题值集中在注入样式表中）
     const styleText = (doc.querySelector("#lx-design-annotation-layer style") as HTMLStyleElement)
       ?.textContent
-    expect(box.className).toBe("lx-ann-box")
+    expect(box.className).toContain("lx-ann-box")
+    // 信息条、样式摘要与输入框共用同一实体表面（实心主题底色，避免被设计稿穿透）
+    const infoChip = meta.querySelector("[data-annotation-editor-info]") as HTMLElement
+    expect(infoChip.classList.contains("lx-ann-surface")).toBe(true)
+    expect(box.classList.contains("lx-ann-surface")).toBe(true)
     expect(styleText).toContain("background-color: #2a2a2a")
     expect(styleText).toContain("border-radius: 6px")
 
@@ -213,6 +274,67 @@ describe("批注图层", () => {
     expect(layer.isEditorOpen()).toBe(false)
     expect(doc.querySelector("[data-annotation-editor]")).toBeNull()
     expect(callbacks.onSubmit).not.toHaveBeenCalled()
+  })
+
+  it("批注编辑器展示元素样式摘要，空值行跳过且色块与颜色值同源", () => {
+    const { doc, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 24, top: 40, width: 120, height: 36 })
+
+    // 合成文档没有 defaultView：注入仅提供计算样式的假视图。
+    const fakeStyle = {
+      paddingTop: "8px",
+      paddingRight: "16px",
+      paddingBottom: "8px",
+      paddingLeft: "16px",
+      marginTop: "0px",
+      marginRight: "0px",
+      marginBottom: "0px",
+      marginLeft: "0px",
+      fontSize: "14px",
+      lineHeight: "20px",
+      fontWeight: "700",
+      color: "rgb(17, 24, 39)",
+      backgroundColor: "rgba(0, 0, 0, 0)",
+      borderTopWidth: "1px",
+      borderTopStyle: "solid",
+      borderTopColor: "rgb(229, 231, 235)",
+      borderTopLeftRadius: "8px",
+    }
+    Object.defineProperty(doc, "defaultView", {
+      value: { getComputedStyle: () => fakeStyle },
+      configurable: true,
+    })
+
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+
+    const editor = doc.querySelector("[data-annotation-editor]") as HTMLElement
+    const block = editor.querySelector("[data-annotation-editor-styles]") as HTMLElement
+    expect(block).not.toBeNull()
+    expect(block.classList.contains("lx-ann-surface")).toBe(true)
+
+    const labels = Array.from(block.querySelectorAll(".lx-ann-style-label")).map(
+      (node) => node.textContent,
+    )
+    const values = Array.from(block.querySelectorAll(".lx-ann-style-value")).map(
+      (node) => node.textContent,
+    )
+    expect(labels).toEqual(["内边距", "字体", "文字色", "圆角", "边框"])
+    expect(values).toEqual(["8px 16px", "14px/20px 700", "#111827", "8px", "1px solid #e5e7eb"])
+    // 背景透明被跳过；色块只挂在颜色行上且与显示值同源
+    expect(labels).not.toContain("背景色")
+    expect(labels).not.toContain("外边距")
+    const swatch = block.querySelector(".lx-ann-style-swatch") as HTMLElement
+    expect(swatch.style.backgroundColor).toBe("rgb(17, 24, 39)")
   })
 
   it("Enter 确认、 ESC 取消，编辑态提供删除", () => {
