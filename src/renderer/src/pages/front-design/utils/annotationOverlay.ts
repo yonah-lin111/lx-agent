@@ -32,6 +32,8 @@ export interface AnnotationEditorRequest {
   // 新建批注为 true，编辑已有批注为 false。
   isNew: boolean
   anchor: HTMLElement | null
+  // 点击点（画布坐标）：锚点已折叠 / 隐藏时用于兜底定位，避免浮层贴到左上角。
+  anchorPoint?: { left: number; top: number }
 }
 
 export interface AnnotationLayerCallbacks {
@@ -59,6 +61,10 @@ interface LayerPosition {
 }
 
 type ResizeObserverCtor = new (callback: () => void) => ResizeObserver
+
+// 尺寸退化（元素被折叠、隐藏或已脱离文档）时不能按该坐标定位，否则浮层会挤到左上角。
+const isDegeneratePosition = (position: LayerPosition): boolean =>
+  position.width <= 0 && position.height <= 0
 
 /**
  * 创建批注图层：容器挂载在 body，钉选气泡与编辑器按文档坐标绝对定位，滚动天然跟随；
@@ -114,12 +120,14 @@ export const createAnnotationLayer = (
   let editorHint: HTMLElement | null = null
   let editorSizeLabel: HTMLElement | null = null
   let activeRequest: AnnotationEditorRequest | null = null
+  // 编辑器是否已按有效锚点定位过：定位过之后退化只保留原位，未定位过才用点击点兜底。
+  let editorPositioned = false
   // 图层是否已销毁：销毁后不再观察任何元素。
   let destroyed = false
   // 高亮框当前跟踪的元素（悬停或面板选中）。
   let highlightTarget: Element | null = null
-  // 钉选气泡与其跟踪的元素。
-  let pinTargets: Array<{ pin: HTMLElement; target: Element }> = []
+  // 钉选气泡与其跟踪的元素（含选择器，用于 body 重建后重新绑定）。
+  let pinTargets: Array<{ pin: HTMLElement; target: Element; selector: string }> = []
   // 最近一次渲染使用的文案，供钉选气泡直接唤起编辑器复用。
   let currentLabels: AnnotationLayerLabels = {
     placeholder: "",
@@ -137,11 +145,23 @@ export const createAnnotationLayer = (
     highlightBox.style.height = `${position.height}px`
   }
 
+  // 元素脱离文档后按选择器重新绑定；无法重绑时返回 null。
+  const reResolveTarget = (element: Element | null, selector: string): Element | null => {
+    if (element?.isConnected) return element
+    return doc.querySelector(selector)
+  }
+
   const positionPins = (): void => {
-    for (const { pin, target } of pinTargets) {
+    for (const entry of pinTargets) {
+      const target = reResolveTarget(entry.target, entry.selector)
+      if (!target) continue
+      entry.target = target
+
       const position = toLayerPosition(target)
-      pin.style.left = `${position.left}px`
-      pin.style.top = `${position.top}px`
+      // 目标折叠或隐藏时保留气泡原位，避免全部挤到左上角。
+      if (isDegeneratePosition(position)) continue
+      entry.pin.style.left = `${position.left}px`
+      entry.pin.style.top = `${position.top}px`
     }
   }
 
@@ -150,34 +170,60 @@ export const createAnnotationLayer = (
     if (!editorElement || !activeRequest) return
 
     // body 被重建后原锚点已脱离文档：按选择器重新定位，避免尺寸信息与位置失效。
-    if (activeRequest.anchor && !activeRequest.anchor.isConnected) {
-      const refreshed = doc.querySelector(activeRequest.selector)
-      if (refreshed instanceof HTMLElement) {
-        activeRequest.anchor = refreshed
+    const anchor = reResolveTarget(activeRequest.anchor, activeRequest.selector)
+    activeRequest.anchor = (anchor as HTMLElement | null) ?? null
+
+    // 锁定的高亮框跟随重新绑定后的锚点。
+    if (anchor && isHighlightLocked()) {
+      highlightTarget = anchor
+    }
+
+    const position = anchor ? toLayerPosition(anchor) : null
+    if (position && !isDegeneratePosition(position)) {
+      if (editorSizeLabel) {
+        editorSizeLabel.textContent = `${Math.round(position.width)}×${Math.round(position.height)}`
       }
+
+      const viewportHeight = doc.documentElement.clientHeight || doc.defaultView?.innerHeight || 0
+      const viewportWidth = doc.documentElement.clientWidth || doc.defaultView?.innerWidth || 0
+      const editorTop =
+        viewportHeight > 0 &&
+        position.top + position.height + 8 + EDITOR_ESTIMATED_HEIGHT > viewportHeight
+          ? Math.max(8, position.top - EDITOR_ESTIMATED_HEIGHT - 8)
+          : position.top + position.height + 8
+      const editorLeft =
+        viewportWidth > 0
+          ? Math.min(position.left, Math.max(0, viewportWidth - EDITOR_WIDTH - 8))
+          : position.left
+
+      editorElement.style.left = `${editorLeft}px`
+      editorElement.style.top = `${editorTop}px`
+      editorPositioned = true
+      return
     }
 
-    const anchor = activeRequest.anchor
-    if (!anchor) return
-
-    const position = toLayerPosition(anchor)
+    // 锚点被折叠 / 隐藏 / 不可解析：尺寸标记不可用。
     if (editorSizeLabel) {
-      editorSizeLabel.textContent = `${Math.round(position.width)}×${Math.round(position.height)}`
+      editorSizeLabel.textContent = "--"
     }
-
-    const viewportHeight = doc.documentElement.clientHeight || 0
-    const editorTop =
-      position.top + position.height + 8 + EDITOR_ESTIMATED_HEIGHT > viewportHeight
-        ? Math.max(8, position.top - EDITOR_ESTIMATED_HEIGHT - 8)
-        : position.top + position.height + 8
-    const viewportWidth = doc.documentElement.clientWidth || 0
-    editorElement.style.left = `${Math.min(position.left, Math.max(0, viewportWidth - EDITOR_WIDTH - 8))}px`
-    editorElement.style.top = `${editorTop}px`
+    if (!editorPositioned && activeRequest.anchorPoint) {
+      // 首帧就退化时用点击点兜底，避免输入框落到左上角。
+      editorElement.style.left = `${activeRequest.anchorPoint.left}px`
+      editorElement.style.top = `${activeRequest.anchorPoint.top}px`
+      editorPositioned = true
+    }
   }
 
   // 全量重排：目标尺寸变化后统一校正高亮框、气泡与编辑器。
   const syncPositions = (): void => {
-    if (highlightTarget) showHighlightAt(toLayerPosition(highlightTarget))
+    if (highlightTarget) {
+      const position = toLayerPosition(highlightTarget)
+      if (highlightTarget.isConnected && !isDegeneratePosition(position)) {
+        showHighlightAt(position)
+      } else {
+        highlightBox.style.display = "none"
+      }
+    }
     positionPins()
     positionEditor()
   }
@@ -214,7 +260,15 @@ export const createAnnotationLayer = (
       observeTargets()
       return
     }
-    showHighlightAt(toLayerPosition(element))
+
+    // 无面积元素（空标签、被折叠 / 隐藏）不画选中框，否则只剩一个边框点。
+    const position = toLayerPosition(element)
+    if (isDegeneratePosition(position)) {
+      highlightBox.style.display = "none"
+      observeTargets()
+      return
+    }
+    showHighlightAt(position)
     observeTargets()
   }
 
@@ -261,6 +315,7 @@ export const createAnnotationLayer = (
     editorHint = null
     editorSizeLabel = null
     activeRequest = null
+    editorPositioned = false
     // 关闭后解除锁定，一并收起选中框。
     setHighlightTarget(null)
   }
@@ -476,9 +531,10 @@ export const createAnnotationLayer = (
       })
 
       pinContainer.appendChild(pin)
-      pinTargets.push({ pin, target })
+      pinTargets.push({ pin, target, selector: annotation.selector })
     }
 
+    positionPins()
     observeTargets()
   }
 

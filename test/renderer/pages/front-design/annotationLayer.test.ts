@@ -308,20 +308,139 @@ describe("批注图层", () => {
     expect(highlight.style.display).toBe("none")
   })
 
-  it("悬停与选中高亮按选择器切换显示", () => {
+  it("锚点脱离文档后按选择器重新绑定气泡与输入框", () => {
+    vi.stubGlobal("ResizeObserver", MockResizeObserver)
     const { doc, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 10, top: 20, width: 100, height: 40 })
+
+    layer.render([createAnnotation()], LABELS)
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+
+    const container = doc.getElementById(ANNOTATION_LAYER_ID) as HTMLElement
+    const pin = doc.querySelector("[data-annotation-pin]") as HTMLElement
+    expect(pin.style.top).toBe("20px")
+
+    // body 被重建：旧节点全部替换（useDesignPreview 会保留并回挂批注图层）
+    doc.body.innerHTML = "<main><button id='target'>Buy</button></main>"
+    doc.body.appendChild(container)
+    stubRect(doc.getElementById("target") as HTMLElement, {
+      left: 30,
+      top: 200,
+      width: 120,
+      height: 48,
+    })
+    MockResizeObserver.instances.at(-1)?.trigger()
+
+    expect(pin.style.left).toBe("30px")
+    expect(pin.style.top).toBe("200px")
+    expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("120×48")
+  })
+
+  it("锚点完全不可解析时输入框保留位置并标记尺寸不可用", () => {
+    vi.stubGlobal("ResizeObserver", MockResizeObserver)
+    const { doc, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 24, top: 40, width: 120, height: 36 })
+
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "button#target",
+        comment: "",
+        isNew: true,
+        anchor: target,
+      },
+      LABELS,
+    )
+
+    const container = doc.getElementById(ANNOTATION_LAYER_ID) as HTMLElement
+    const editor = doc.querySelector("[data-annotation-editor]") as HTMLElement
+    const editorLeft = editor.style.left
+    const editorTop = editor.style.top
+    expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("120×36")
+
+    doc.body.innerHTML = "<main><span>gone</span></main>"
+    doc.body.appendChild(container)
+    MockResizeObserver.instances.at(-1)?.trigger()
+
+    // 不把输入框挪到左上角，只把尺寸标记为不可用
+    expect(editor.style.left).toBe(editorLeft)
+    expect(editor.style.top).toBe(editorTop)
+    expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("--")
+  })
+
+  it("目标尺寸退化为 0×0 时气泡保留原位", () => {
+    vi.stubGlobal("ResizeObserver", MockResizeObserver)
+    const { doc, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 10, top: 20, width: 100, height: 40 })
+
+    layer.render([createAnnotation()], LABELS)
+    const pin = doc.querySelector("[data-annotation-pin]") as HTMLElement
+    expect(pin.style.top).toBe("20px")
+
+    stubRect(target, { left: 0, top: 0, width: 0, height: 0 })
+    MockResizeObserver.instances.at(-1)?.trigger()
+
+    expect(pin.style.left).toBe("10px")
+    expect(pin.style.top).toBe("20px")
+  })
+
+  it("首帧锚点退化时输入框用点击点兜底，不贴左上角", () => {
+    const { doc, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 0, top: 0, width: 0, height: 0 })
+
+    layer.openEditor(
+      {
+        selector: "#target",
+        description: "p",
+        comment: "",
+        isNew: true,
+        anchor: target,
+        anchorPoint: { left: 320, top: 180 },
+      },
+      LABELS,
+    )
+
+    const editor = doc.querySelector("[data-annotation-editor]") as HTMLElement
+    expect(editor.style.left).toBe("320px")
+    expect(editor.style.top).toBe("180px")
+    expect(doc.querySelector("[data-annotation-editor-size]")?.textContent).toBe("--")
+  })
+
+  it("悬停与选中高亮按选择器切换显示，无面积元素不画框", () => {
+    const { doc, layer } = setup()
+    const target = doc.getElementById("target") as HTMLElement
+    stubRect(target, { left: 12, top: 34, width: 80, height: 24 })
     const highlight = doc.querySelector("[data-annotation-highlight]") as HTMLElement
 
     layer.highlight("#target")
     expect(highlight.style.display).toBe("block")
+    expect(highlight.style.left).toBe("12px")
 
     layer.highlight("#missing")
     expect(highlight.style.display).toBe("none")
 
-    layer.showHover(doc.getElementById("target") as HTMLElement)
+    layer.showHover(target)
     expect(highlight.style.display).toBe("block")
 
     layer.showHover(null)
+    expect(highlight.style.display).toBe("none")
+
+    // 空标签 / 被隐藏元素没有可框选区域
+    stubRect(target, { left: 0, top: 0, width: 0, height: 0 })
+    layer.showHover(target)
     expect(highlight.style.display).toBe("none")
   })
 

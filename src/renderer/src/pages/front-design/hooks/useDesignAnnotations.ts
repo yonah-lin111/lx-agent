@@ -250,7 +250,18 @@ export const useDesignAnnotations = ({
       }
 
       layer.openEditor(
-        { selector, description, comment: "", isNew: true, anchor: target },
+        {
+          selector,
+          description,
+          comment: "",
+          isNew: true,
+          anchor: target,
+          // 点击点兜底：目标在点击瞬间被折叠 / 隐藏时，输入框仍贴在用户点击的位置。
+          anchorPoint: {
+            left: event.clientX - doc.body.getBoundingClientRect().left,
+            top: event.clientY - doc.body.getBoundingClientRect().top,
+          },
+        },
         labelsRef.current,
       )
     }
