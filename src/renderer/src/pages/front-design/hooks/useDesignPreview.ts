@@ -1,8 +1,7 @@
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
-import { sanitizeHtmlDocument } from "@/features/agent/components/visuals/sanitizeVisual"
-import { buildPreviewErrorGuardScript } from "@/pages/front-design/utils/previewGuard"
+import { buildPreviewDocument } from "@/pages/front-design/utils/previewDocument"
 
 export interface UseDesignPreviewOptions {
   iframeRef: React.RefObject<HTMLIFrameElement | null>
@@ -23,24 +22,6 @@ export interface UseDesignPreviewResult {
   // iframe key：设计切换、主题切换或手动刷新时强制重建。
   currentKey: string
   handleIframeLoad: () => void
-}
-
-/**
- * 仅在 `<html>` 标签上增删 dark 类名；全文档正则替换会误伤组件上的 `dark:` 变体类名。
- */
-export const applyHtmlThemeClass = (source: string, dark: boolean): string => {
-  const tagMatch = source.match(/<html\b[^>]*>/i)
-  if (!tagMatch) return source
-  const tag = tagMatch[0]
-  const classMatch = tag.match(/class=["']([^"']*)["']/i)
-  const classes = (classMatch?.[1] ?? "").split(/\s+/).filter((name) => name && name !== "dark")
-  if (dark) classes.push("dark")
-  const nextTag = classes.length
-    ? classMatch
-      ? tag.replace(/class=["'][^"']*["']/i, `class="${classes.join(" ")}"`)
-      : tag.replace(/\s*>$/, ` class="${classes.join(" ")}">`)
-    : tag.replace(/\s*class=["'][^"']*["']/i, "")
-  return source.replace(tag, () => nextTag)
 }
 
 /**
@@ -109,42 +90,10 @@ export const useDesignPreview = ({
   }, [sessionId, activeDesignId, html, mode, refreshKey, isStreaming])
 
   // 构建注入 Tailwind 样式和主题类后的完整 HTML 沙箱文档
-  const sanitizedHtmlDoc = useMemo(() => {
-    if (!html || typeof html !== "string") return ""
-    const baseDoc = sanitizeHtmlDocument(html, { allowScripts: true })
-
-    const colorSchemeCss =
-      effectiveMode === "dark"
-        ? ":root { color-scheme: dark; } html { color-scheme: dark; background-color: #0b0f19; color: #f3f4f6; }"
-        : ":root { color-scheme: light; } html { color-scheme: light; background-color: #ffffff; color: #111827; }"
-
-    // 仅清除浏览器默认外边距：padding/height 强制归零会覆盖设计稿在 body 上的内边距与高度策略。
-    const resetOverrides = `
-      ${colorSchemeCss}
-      html, body {
-        margin: 0 !important;
-        min-height: 100% !important;
-        box-sizing: border-box !important;
-      }
-    `
-    const styleTag = `<style id="lx-front-design-theme-override">${resetOverrides}</style>`
-    const twStyleTag = compiledTailwindCss
-      ? `<style id="lx-front-design-tailwind-compiled">${compiledTailwindCss}</style>`
-      : ""
-    const sandboxGuardScript = `<script id="lx-sandbox-guard">try{Object.defineProperty(window,'parent',{get:()=>null,set:()=>{},configurable:false});Object.defineProperty(window,'top',{get:()=>null,set:()=>{},configurable:false});Object.defineProperty(window,'frameElement',{get:()=>null,set:()=>{},configurable:false});Object.defineProperty(window,'opener',{get:()=>null,set:()=>{},configurable:false});if('electron' in window){try{delete window.electron;}catch(e){}}window.open=()=>null;}catch(e){}</script>`
-    // 错误采集守卫必须早于设计稿自身脚本执行，因此与沙箱守卫同级注入 head。
-    const errorGuardScript = buildPreviewErrorGuardScript()
-    let docWithTheme = baseDoc
-
-    // 根据模式为 <html> 标签注入或移除 dark 类名
-    docWithTheme = applyHtmlThemeClass(docWithTheme, effectiveMode === "dark")
-
-    const injectedHead = `${sandboxGuardScript}\n${errorGuardScript}\n${styleTag}\n${twStyleTag}`
-    if (docWithTheme.includes("</head>")) {
-      return docWithTheme.replace("</head>", `${injectedHead}</head>`)
-    }
-    return `${injectedHead}${docWithTheme}`
-  }, [html, effectiveMode, compiledTailwindCss])
+  const sanitizedHtmlDoc = useMemo(
+    () => buildPreviewDocument(html, { effectiveMode, compiledTailwindCss }),
+    [html, effectiveMode, compiledTailwindCss],
+  )
 
   // 保持单次挂载时稳定的初始 srcDoc，仅在设计项切换、主题模式切换或手动刷新时更新
   // 流式期间不更新 srcDoc，彻底消除浏览器重新导航 iframe 导致的白屏闪烁
