@@ -43,7 +43,7 @@
 
 - **步骤**
   1. `pathname === PAGE_ROUTES.openclaw` 时在面包屑容器末尾渲染 `<OpenClawBreadcrumb />`。
-  2. 按 `@/features/openclaw/components/OpenClawBreadcrumb` 直接导入（对齐 `ProjectRecentItemsTags`）。
+  2. 由 `@/features/openclaw` 公开导出并导入（对齐「不得跨 feature 深层导入实现文件」规范）。
 - **期望**：其它路由不挂载该组件、不加载 OpenClaw 配置。
 
 ### T5 页面工具条展示选中员工名

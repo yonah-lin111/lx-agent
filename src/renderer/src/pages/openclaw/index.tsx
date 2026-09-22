@@ -14,7 +14,6 @@ import {
   type OpenClawInputPicker,
   type OpenClawInputRef,
   OpenClawMessageList,
-  type OpenClawTargetOffice,
   parseOpenClawCommand,
   resolveClawDispatchTargets,
   splitCommandAgentNames,
@@ -109,9 +108,10 @@ export const OpenClawPage = (): React.JSX.Element => {
 
   const onlyCommandAvailable = timelineAgents.length > 1
 
-  const activeAgent = useMemo(
-    () => agents.find((agent) => agent.id === activeAgentId),
-    [activeAgentId, agents],
+  // 顶部工具条展示的扇出目标：按名册顺序取当前办公区中已选中的员工。
+  const selectedAgents = useMemo(
+    () => agents.filter((agent) => selectedAgentIds.includes(agent.id)),
+    [agents, selectedAgentIds],
   )
 
   const officeStatus = useMemo<OpenClawConnectionStatus>(() => {
@@ -169,17 +169,6 @@ export const OpenClawPage = (): React.JSX.Element => {
         }
       }),
     [agents, sessionModelByAgent],
-  )
-
-  // 构建用于输入框选择器的办公区与员工列表
-  const offices = useMemo<OpenClawTargetOffice[]>(
-    () =>
-      enabledInstances.map(({ id, instance }) => ({
-        id,
-        name: instance.name,
-        agents: instance.agents.map((a) => ({ id: a.id, name: a.name })),
-      })),
-    [enabledInstances],
   )
 
   // 跨页派发的 @claw 委派：定位办公区/员工后立即下发任务。
@@ -550,9 +539,13 @@ export const OpenClawPage = (): React.JSX.Element => {
     <section className="openclaw-page-container flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
       {/* 顶部工具条：办公区标题、连接状态与操作 */}
       <div className="flex shrink-0 items-center gap-2 border-b border-white/5 px-3 py-2">
-        <span className="flex items-center gap-1.5 text-xs font-medium text-white/80">
-          {currentInstance?.name ?? t("nav.openclaw")}
-          {activeAgent ? <span className="text-white/45">· {activeAgent.name}</span> : null}
+        <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-white/80">
+          <span className="shrink-0">{currentInstance?.name ?? t("nav.openclaw")}</span>
+          {selectedAgents.length > 0 ? (
+            <span className="min-w-0 truncate text-white/45">
+              · {selectedAgents.map((agent) => agent.name).join(" · ")}
+            </span>
+          ) : null}
         </span>
         <span className="flex items-center gap-1.5 text-[11px] text-white/45">
           <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_CLASS[officeStatus]}`} />
@@ -647,12 +640,8 @@ export const OpenClawPage = (): React.JSX.Element => {
             placeholder={t("openclaw.placeholder")}
             disabled={agentIds.length === 0}
             isStreaming={isAnyStreaming}
-            offices={offices}
-            selectedOfficeId={selectedInstanceId}
+            agents={agents}
             selectedAgentIds={selectedAgentIds}
-            onSelectOffice={(officeId) => {
-              selectOffice(officeId, instances[officeId]?.agents[0]?.id)
-            }}
             onToggleAgent={(agentId) => {
               selectAgent(agentId, { additive: true })
             }}

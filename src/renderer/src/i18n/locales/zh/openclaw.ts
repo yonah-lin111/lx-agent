@@ -41,6 +41,7 @@ export const openclaw = {
   contextCapacity: "上下文容量：{{total}} tokens",
   officePickerTitle: "切换办公区",
   agentPickerTitle: "选择员工",
+  agentCountLabel: "{{count}} 名员工",
   targetLabel: "派发目标：",
   gatewayUnreachable:
     "无法连接到 OpenClaw Gateway 主机，请检查实例配置中的网关地址、端口及网络连通性。",

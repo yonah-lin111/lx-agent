@@ -8,20 +8,9 @@ import {
 } from "@/features/openclaw/components/OpenClawInput"
 import { OpenClawTargetSelect } from "@/features/openclaw/components/OpenClawTargetSelect"
 
-const offices = [
-  {
-    id: "office-1",
-    name: "研发中心",
-    agents: [
-      { id: "agent-a", name: "架构师" },
-      { id: "agent-b", name: "前端工程" },
-    ],
-  },
-  {
-    id: "office-2",
-    name: "运营中心",
-    agents: [{ id: "agent-c", name: "运营助手" }],
-  },
+const agents = [
+  { id: "agent-a", name: "架构师" },
+  { id: "agent-b", name: "前端工程" },
 ]
 
 describe("OpenClawTargetSelect & OpenClawInput UI", () => {
@@ -29,37 +18,58 @@ describe("OpenClawTargetSelect & OpenClawInput UI", () => {
     cleanup()
   })
 
-  it("OpenClawTargetSelect 能正确渲染当前办公区与选中员工数，并触发切换事件", () => {
-    const onSelectOffice = vi.fn()
+  it("OpenClawTargetSelect 按钮按未选中 / 单个 / 多个显示文案", () => {
+    const onToggleAgent = vi.fn()
+    const { rerender } = render(
+      <OpenClawTargetSelect agents={agents} selectedAgentIds={[]} onToggleAgent={onToggleAgent} />,
+    )
+    expect(screen.getByRole("button").textContent).toContain("Select coworkers")
+
+    rerender(
+      <OpenClawTargetSelect
+        agents={agents}
+        selectedAgentIds={["agent-a"]}
+        onToggleAgent={onToggleAgent}
+      />,
+    )
+    expect(screen.getByRole("button").textContent).toContain("架构师")
+
+    rerender(
+      <OpenClawTargetSelect
+        agents={agents}
+        selectedAgentIds={["agent-a", "agent-b"]}
+        onToggleAgent={onToggleAgent}
+      />,
+    )
+    expect(screen.getByRole("button").textContent).toContain("2 agents")
+  })
+
+  it("OpenClawTargetSelect 面板只列员工，不含办公区分组，点击触发多选回调", () => {
     const onToggleAgent = vi.fn()
 
     render(
       <OpenClawTargetSelect
-        offices={offices}
-        selectedOfficeId="office-1"
-        selectedAgentIds={["agent-a"]}
-        onSelectOffice={onSelectOffice}
+        agents={agents}
+        selectedAgentIds={["agent-b"]}
         onToggleAgent={onToggleAgent}
       />,
     )
 
-    const btn = screen.getByRole("button")
-    expect(btn.textContent).toContain("研发中心 · 架构师")
+    fireEvent.click(screen.getByRole("button"))
 
-    // 打开下拉
-    fireEvent.click(btn)
-    expect(screen.getByText("运营中心")).not.toBeNull()
+    // 面板只列员工：无办公区分组标题与办公区名。
+    expect(screen.queryByText("Switch office")).toBeNull()
+    expect(screen.queryByText("研发中心")).toBeNull()
+    expect(screen.getByRole("option", { name: "架构师" })).not.toBeNull()
+    expect(screen.getByRole("option", { name: "前端工程" }).getAttribute("aria-selected")).toBe(
+      "true",
+    )
 
-    // 切换办公区
-    fireEvent.click(screen.getByText("运营中心"))
-    expect(onSelectOffice).toHaveBeenCalledWith("office-2")
-
-    // 点击员工多选
-    fireEvent.click(screen.getByText("前端工程"))
-    expect(onToggleAgent).toHaveBeenCalledWith("agent-b")
+    fireEvent.click(screen.getByRole("option", { name: "架构师" }))
+    expect(onToggleAgent).toHaveBeenCalledWith("agent-a")
   })
 
-  it("OpenClawInput 正确渲染语音按钮、目标选择器与发送按钮", () => {
+  it("OpenClawInput 正确渲染语音按钮、员工选择器与发送按钮", () => {
     const onSend = vi.fn()
     const onStop = vi.fn()
 
@@ -73,15 +83,13 @@ describe("OpenClawTargetSelect & OpenClawInput UI", () => {
         onCommand={vi.fn()}
         files={[]}
         onFilesChange={vi.fn()}
-        offices={offices}
-        selectedOfficeId="office-1"
+        agents={agents}
         selectedAgentIds={["agent-a"]}
-        onSelectOffice={vi.fn()}
         onToggleAgent={vi.fn()}
       />,
     )
 
-    expect(screen.getByText("研发中心 · 架构师")).not.toBeNull()
+    expect(screen.getByText("架构师")).not.toBeNull()
     const sendBtn = screen.getByRole("button", { name: "Send" })
     expect(sendBtn).not.toBeNull()
     fireEvent.click(sendBtn)

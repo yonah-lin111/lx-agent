@@ -110,3 +110,39 @@ describe("OpenClawPage 跨页 @claw 派发", () => {
     expect(sendMessage).toHaveBeenCalledTimes(2)
   })
 })
+
+describe("OpenClawPage 顶部工具条", () => {
+  beforeEach(() => {
+    useOpenClawOfficeStore.setState({
+      selectedInstanceId: "local",
+      selectedAgentIds: ["amy", "lily"],
+      activeAgentId: "amy",
+      onlyAgentIds: null,
+      pendingDispatch: null,
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("多选员工时显示办公区名与全部选中员工名", async () => {
+    render(<OpenClawPage />)
+
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("Local OpenClaw")
+      expect(document.body.textContent).toContain("· Amy · Lily")
+    })
+  })
+
+  it("单选员工时只显示该员工名", async () => {
+    useOpenClawOfficeStore.setState({ selectedAgentIds: ["lily"], activeAgentId: "lily" })
+
+    render(<OpenClawPage />)
+
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("· Lily")
+    })
+    expect(document.body.textContent).not.toContain("· Amy")
+  })
+})

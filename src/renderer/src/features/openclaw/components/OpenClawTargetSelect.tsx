@@ -9,17 +9,14 @@ import {
 } from "@/components/ui/useFloatingLayer"
 import { useTranslation } from "@/i18n"
 
-export interface OpenClawTargetOffice {
+export interface OpenClawTargetAgent {
   id: string
   name: string
-  agents: { id: string; name: string }[]
 }
 
 export interface OpenClawTargetSelectProps {
-  offices: OpenClawTargetOffice[]
-  selectedOfficeId: string | null
+  agents: OpenClawTargetAgent[]
   selectedAgentIds: string[]
-  onSelectOffice: (officeId: string) => void
   onToggleAgent: (agentId: string) => void
   disabled?: boolean
   className?: string
@@ -27,13 +24,12 @@ export interface OpenClawTargetSelectProps {
 
 /**
  * OpenClawTargetSelect - 结构、类名及动效完全对齐 AgentModelSelect / LxSelect 的复合选择组件。
+ * 仅选择当前办公区（由调用方传入）的员工，办公区切换由左栏与 `/office` 面板负责。
  * 默认向上弹出并挂载于 document.body，采用 CSS Token 适配全套主题（包括像素主题）。
  */
 export const OpenClawTargetSelect = ({
-  offices,
-  selectedOfficeId,
+  agents,
   selectedAgentIds,
-  onSelectOffice,
   onToggleAgent,
   disabled = false,
   className = "",
@@ -83,25 +79,13 @@ export const OpenClawTargetSelect = ({
     return () => window.removeEventListener("resize", updatePosition)
   }, [shouldRender])
 
-  const currentOffice = useMemo(
-    () => offices.find((o) => o.id === selectedOfficeId),
-    [offices, selectedOfficeId],
-  )
-
-  const currentOfficeAgents = useMemo(() => currentOffice?.agents ?? [], [currentOffice])
-
-  // 按钮文案展示：实例 · 选中的员工数 / 名字
+  // 按钮文案：未选中显示占位标题，单个显示名称，多个显示数量。
   const buttonLabel = useMemo(() => {
-    if (!currentOffice) return t("openclaw.noInstances")
-    const activeAgents = currentOfficeAgents.filter((a) => selectedAgentIds.includes(a.id))
-    if (activeAgents.length === 0) {
-      return `${currentOffice.name} · ${t("openclaw.noAgents")}`
-    }
-    if (activeAgents.length === 1) {
-      return `${currentOffice.name} · ${activeAgents[0].name}`
-    }
-    return `${currentOffice.name} · ${activeAgents.length} Agents`
-  }, [currentOffice, currentOfficeAgents, selectedAgentIds, t])
+    const selectedAgents = agents.filter((agent) => selectedAgentIds.includes(agent.id))
+    if (selectedAgents.length === 0) return t("openclaw.agentPickerTitle")
+    if (selectedAgents.length === 1) return selectedAgents[0].name
+    return t("openclaw.agentCountLabel", { count: selectedAgents.length })
+  }, [agents, selectedAgentIds, t])
 
   return (
     <>
@@ -137,46 +121,17 @@ export const OpenClawTargetSelect = ({
               role="listbox"
               style={{ ...(listboxStyle ?? undefined), zIndex: 50 }}
             >
-              {/* 办公区/实例分组 */}
-              <div className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-white/40">
-                {t("openclaw.officePickerTitle")}
-              </div>
-              <div className="mb-1 flex flex-col gap-0.5">
-                {offices.map((office) => {
-                  const isSelected = office.id === selectedOfficeId
-                  return (
-                    <button
-                      key={office.id}
-                      type="button"
-                      role="option"
-                      aria-selected={isSelected}
-                      onClick={() => {
-                        onSelectOffice(office.id)
-                      }}
-                      className={`flex w-full items-center justify-between rounded-[4px] px-2.5 py-1.5 text-left text-xs transition-colors ${
-                        isSelected
-                          ? "bg-white/10 font-medium text-white shadow-xs"
-                          : "text-white/70 hover:bg-white/5 hover:text-white"
-                      }`}
-                    >
-                      <span className="min-w-0 flex-1 truncate">{office.name}</span>
-                      {isSelected && <Check className="ml-2 h-3 w-3 text-sky-400 shrink-0" />}
-                    </button>
-                  )
-                })}
-              </div>
-
               {/* 员工多选分组 */}
-              <div className="border-t border-white/10 pt-1 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-white/40">
+              <div className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-white/40">
                 {t("openclaw.agentPickerTitle")}
               </div>
               <div className="flex flex-col gap-0.5">
-                {currentOfficeAgents.length === 0 ? (
+                {agents.length === 0 ? (
                   <div className="px-2.5 py-1.5 text-xs text-white/40">
                     {t("openclaw.noAgents")}
                   </div>
                 ) : (
-                  currentOfficeAgents.map((agent) => {
+                  agents.map((agent) => {
                     const isChecked = selectedAgentIds.includes(agent.id)
                     return (
                       <button
