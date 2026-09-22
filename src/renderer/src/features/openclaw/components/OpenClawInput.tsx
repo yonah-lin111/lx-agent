@@ -51,6 +51,7 @@ import { getClawMentionDeletionRange } from "../clawMention"
 import {
   getMatchedOpenClawCommands,
   keepsCommandText,
+  type OpenClawCommandCapabilities,
   type OpenClawCommandId,
   parseOpenClawCommand,
 } from "../openclawCommands"
@@ -84,6 +85,8 @@ export interface OpenClawInputProps {
   // 仅可提及当前办公区内的 Agent。
   candidates: ClawMentionCandidate[]
   onCommand: (commandId: OpenClawCommandId) => void
+  // 命令可见性（推荐由页面按状态计算：/only 需要多名员工，/all 仅在筛选态可用）。
+  commandCapabilities?: OpenClawCommandCapabilities
   picker?: OpenClawInputPicker | null
   onPickerClose?: () => void
   placeholder?: string
@@ -123,6 +126,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       onStop,
       candidates,
       onCommand,
+      commandCapabilities,
       picker = null,
       onPickerClose,
       placeholder: placeholderText,
@@ -193,6 +197,8 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     onStopRef.current = onStop
     const onCommandRef = useRef(onCommand)
     onCommandRef.current = onCommand
+    const commandCapabilitiesRef = useRef(commandCapabilities)
+    commandCapabilitiesRef.current = commandCapabilities
     const onPickerCloseRef = useRef(onPickerClose)
     onPickerCloseRef.current = onPickerClose
 
@@ -317,7 +323,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         // office/execute 等显式面板由父级控制；文本绑定的面板失配时在同一事务回落。
         if (activePicker && !activePicker.commandId) return
 
-        const commands = getMatchedOpenClawCommands(docText, t)
+        const commands = getMatchedOpenClawCommands(docText, t, commandCapabilitiesRef.current)
         if (commands.length > 0) {
           setActiveMode("command")
           setCommandIndex(0)
@@ -367,6 +373,15 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         setActiveMode((current) => (current === "picker" ? null : current))
       }
     }, [pickerKey, updatePanelPosition])
+
+    // 命令可见性变化时按当前文本刷新已打开的命令面板（不依赖输入变化）。
+    const canOnly = commandCapabilities?.canOnly ?? true
+    const canRestore = commandCapabilities?.canRestore ?? true
+    useEffect(() => {
+      const view = editorViewRef.current
+      if (!view) return
+      syncPanelsRef.current(view.state.doc.toString(), view.state.selection.main.head)
+    }, [canOnly, canRestore])
 
     const applyCommand = useCallback((command: AgentInputCommand): void => {
       const commandId = command.id as OpenClawCommandId
@@ -478,8 +493,19 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         {
           key: "Escape",
           run: () => {
-            if (stateRef.current.activeMode) {
-              if (stateRef.current.activeMode === "picker") onPickerCloseRef.current?.()
+            const { activeMode: mode, picker: activePicker } = stateRef.current
+            if (mode) {
+              if (mode === "picker") onPickerCloseRef.current?.()
+              // 文本派生的二级面板（/clear、/only）：取消面板即丢弃派生文本，避免残留命令再次拉起面板。
+              if (mode === "picker" && activePicker?.commandId) {
+                const view = editorViewRef.current
+                const docLength = view?.state.doc.length ?? 0
+                if (view && docLength > 0) {
+                  view.dispatch({ changes: { from: 0, to: docLength, insert: "" } })
+                } else {
+                  onChangeRef.current("")
+                }
+              }
               setActiveMode(null)
               setMatchedCommands([])
               setMentionItems([])

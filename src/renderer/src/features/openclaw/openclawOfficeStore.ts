@@ -14,28 +14,41 @@ interface OpenClawOfficeState {
   selectedAgentIds: string[]
   // 当前正在查看其会话的员工。
   activeAgentId: string | null
+  // 消息列表的视图筛选：null = 不筛选；空集合归一化为 null（退出 only）。
+  onlyAgentIds: string[] | null
   // 待消费的派发请求（内存态，不持久化）。
   pendingDispatch: OpenClawPendingDispatch | null
   selectOffice: (instanceId: string | null, agentId?: string) => void
   selectAgent: (agentId: string, options?: { additive?: boolean }) => void
   setSelectedAgentIds: (agentIds: string[]) => void
+  setOnlyAgentIds: (agentIds: string[] | null) => void
   requestDispatch: (dispatch: OpenClawPendingDispatch) => void
   consumePendingDispatch: () => OpenClawPendingDispatch | null
 }
 
+// 归一化 only 筛选集合：去重、去空；空集合等价于不筛选。
+const normalizeOnlyAgentIds = (agentIds: string[] | null): string[] | null => {
+  if (!agentIds) return null
+  const unique = [...new Set(agentIds.filter((id) => id.length > 0))]
+  return unique.length > 0 ? unique : null
+}
+
 /**
- * OpenClaw 办公区状态 Store：办公区、员工选中集合与当前查看的员工（仅内存）。
+ * OpenClaw 办公区状态 Store：办公区、员工选中集合、当前查看的员工与消息列表筛选（仅内存）。
  */
 export const useOpenClawOfficeStore = create<OpenClawOfficeState>((set, get) => ({
   selectedInstanceId: null,
   selectedAgentIds: [],
   activeAgentId: null,
+  onlyAgentIds: null,
   pendingDispatch: null,
   selectOffice: (instanceId, agentId) =>
     set({
       selectedInstanceId: instanceId,
       selectedAgentIds: agentId ? [agentId] : [],
       activeAgentId: agentId ?? null,
+      // 员工 id 属于旧办公区，跨区筛选无意义。
+      onlyAgentIds: null,
     }),
   selectAgent: (agentId, options) =>
     set((state) => {
@@ -58,6 +71,7 @@ export const useOpenClawOfficeStore = create<OpenClawOfficeState>((set, get) => 
           ? state.activeAgentId
           : (agentIds[0] ?? null),
     })),
+  setOnlyAgentIds: (agentIds) => set({ onlyAgentIds: normalizeOnlyAgentIds(agentIds) }),
   requestDispatch: (pendingDispatch) => set({ pendingDispatch }),
   consumePendingDispatch: () => {
     const dispatch = get().pendingDispatch

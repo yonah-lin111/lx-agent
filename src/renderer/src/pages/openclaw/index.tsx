@@ -1,12 +1,14 @@
 import type { OpenClawAttachmentFile, OpenClawConnectionStatus } from "@shared/contracts/openclaw"
-import { Plus, RefreshCw } from "lucide-react"
+import { FilterX, Plus, RefreshCw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import {
   accentHexForIndex,
   type ConversationAgent,
+  filterOfficeTimeline,
   type OpenClawCommandId,
   OpenClawInput,
   type OpenClawInputPicker,
@@ -15,8 +17,8 @@ import {
   type OpenClawTargetOffice,
   parseOpenClawCommand,
   resolveClawDispatchTargets,
-  splitClearAgentNames,
-  toggleClearAgentName,
+  splitCommandAgentNames,
+  toggleCommandAgentName,
   useOpenClawChatStore,
   useOpenClawConfig,
   useOpenClawOffice,
@@ -61,6 +63,8 @@ export const OpenClawPage = (): React.JSX.Element => {
   const selectOffice = useOpenClawOfficeStore((state) => state.selectOffice)
   const selectAgent = useOpenClawOfficeStore((state) => state.selectAgent)
   const setSelectedAgentIds = useOpenClawOfficeStore((state) => state.setSelectedAgentIds)
+  const onlyAgentIds = useOpenClawOfficeStore((state) => state.onlyAgentIds)
+  const setOnlyAgentIds = useOpenClawOfficeStore((state) => state.setOnlyAgentIds)
   const pendingDispatch = useOpenClawOfficeStore((state) => state.pendingDispatch)
   const consumePendingDispatch = useOpenClawOfficeStore((state) => state.consumePendingDispatch)
 
@@ -77,6 +81,17 @@ export const OpenClawPage = (): React.JSX.Element => {
   const agentIds = useMemo(() => agents.map((agent) => agent.id), [agents])
 
   const { sessions, timeline, isAnyStreaming } = useOpenClawOffice(selectedInstanceId, agentIds)
+
+  // only 筛选只作用于视图：发送目标、会话数据与提及逻辑保持原样。
+  const visibleTimeline = useMemo(
+    () => filterOfficeTimeline(timeline, onlyAgentIds),
+    [onlyAgentIds, timeline],
+  )
+
+  const commandCapabilities = useMemo(
+    () => ({ canOnly: agents.length > 1, canRestore: onlyAgentIds !== null }),
+    [agents.length, onlyAgentIds],
+  )
 
   const activeAgent = useMemo(
     () => agents.find((agent) => agent.id === activeAgentId),
@@ -168,6 +183,13 @@ export const OpenClawPage = (): React.JSX.Element => {
     }
   }, [agentIds, selectedAgentIds, setSelectedAgentIds])
 
+  // only 筛选同样随员工失效裁剪；裁剪为空即退出筛选（归一化为 null）。
+  useEffect(() => {
+    if (!onlyAgentIds) return
+    const valid = onlyAgentIds.filter((id) => agentIds.includes(id))
+    if (valid.length !== onlyAgentIds.length) setOnlyAgentIds(valid)
+  }, [agentIds, onlyAgentIds, setOnlyAgentIds])
+
   // 打开新建会话面板：选中员工即创建会话。
   const openSessionPicker = useCallback((): void => {
     if (!selectedInstanceId || agents.length === 0) {
@@ -176,6 +198,27 @@ export const OpenClawPage = (): React.JSX.Element => {
     }
     setPickerKind("session")
   }, [agents.length, selectedInstanceId, t, toast])
+
+  // 命令参数中的员工名 → 当前办公区员工（大小写不敏感）。
+  const matchAgentsByName = useCallback(
+    (names: string[]) =>
+      agents.filter((agent) =>
+        names.some((name) => name.toLowerCase() === agent.name.toLowerCase()),
+      ),
+    [agents],
+  )
+
+  // `/only` 命令行 → 视图筛选：参数文本是唯一来源，集合由员工名解析；全部不匹配返回 false。
+  const applyOnlyFilter = useCallback(
+    (args: string): boolean => {
+      const names = splitCommandAgentNames(args)
+      const matched = matchAgentsByName(names)
+      if (names.length > 0 && matched.length === 0) return false
+      setOnlyAgentIds(matched.map((agent) => agent.id))
+      return true
+    },
+    [matchAgentsByName, setOnlyAgentIds],
+  )
 
   const runCommand = useCallback(
     (command: OpenClawCommandId): void => {
@@ -195,9 +238,13 @@ export const OpenClawPage = (): React.JSX.Element => {
         case "office":
           setPickerKind("office")
           break
+        case "all":
+          // 命令仅在筛选态可见；重复执行幂等。
+          setOnlyAgentIds(null)
+          break
       }
     },
-    [selectedInstanceId, sessions],
+    [selectedInstanceId, sessions, setOnlyAgentIds],
   )
 
   // 发送：命令优先；`@claw` 提及或选中集合决定扇出目标。
@@ -209,16 +256,22 @@ export const OpenClawPage = (): React.JSX.Element => {
 
     const command = parseOpenClawCommand(text)
     if (command) {
+      if (command.id === "only") {
+        const names = splitCommandAgentNames(command.args)
+        // 无参数：`/only` 文本已派生员工选择面板，保持打开即可。
+        if (names.length === 0) return
+        if (!applyOnlyFilter(command.args)) toast.error(t("openclaw.sessionNoMatch"))
+        setInput("")
+        return
+      }
       if (command.id === "clear") {
-        const names = splitClearAgentNames(command.args)
+        const names = splitCommandAgentNames(command.args)
         if (names.length === 0) {
           // 无参数：`/clear` 文本已派生员工选择面板，保持打开即可。
           return
         }
         if (!selectedInstanceId) return
-        const targets = agents.filter((agent) =>
-          names.some((name) => name.toLowerCase() === agent.name.toLowerCase()),
-        )
+        const targets = matchAgentsByName(names)
         if (targets.length === 0) {
           toast.error(t("openclaw.sessionNoMatch"))
           return
@@ -283,7 +336,18 @@ export const OpenClawPage = (): React.JSX.Element => {
         setFiles((current) => (current.length > 0 ? current : pendingFiles))
       }
     })
-  }, [agentIds, agents, files, input, runCommand, selectedAgentIds, selectedInstanceId, t, toast])
+  }, [
+    agentIds,
+    applyOnlyFilter,
+    files,
+    input,
+    matchAgentsByName,
+    runCommand,
+    selectedAgentIds,
+    selectedInstanceId,
+    t,
+    toast,
+  ])
 
   const handleDeleteTurn = useCallback(
     (agentId: string, assistantMessageId: string): void => {
@@ -305,9 +369,35 @@ export const OpenClawPage = (): React.JSX.Element => {
   const picker = useMemo<OpenClawInputPicker | null>(() => {
     // compose 面板由输入文本派生（对齐 /model 二级面板）：`/clear` 即展示员工选择。
     const parsed = parseOpenClawCommand(input)
+    if (parsed?.id === "only") {
+      const onlyNameSet = new Set(
+        splitCommandAgentNames(parsed.args).map((name) => name.toLowerCase()),
+      )
+      return {
+        key: "only",
+        commandId: "only",
+        title: t("openclaw.onlyPickerTitle"),
+        emptyText: t("openclaw.noAgents"),
+        // 多选：空格切换即实时过滤，回车收尾（应用并清空输入）。
+        multiSelect: true,
+        items: agents.map((agent) => ({
+          id: agent.id,
+          label: agent.name,
+          hint: agent.id,
+          selected: onlyNameSet.has(agent.name.toLowerCase()),
+        })),
+        onPick: (id) => {
+          const agent = agents.find((item) => item.id === id)
+          if (!agent) return
+          const nextInput = toggleCommandAgentName(input, "only", agent.name)
+          setInput(nextInput)
+          applyOnlyFilter(parseOpenClawCommand(nextInput)?.args ?? "")
+        },
+      }
+    }
     if (parsed?.id === "clear") {
       const clearNameSet = new Set(
-        splitClearAgentNames(parsed.args).map((name) => name.toLowerCase()),
+        splitCommandAgentNames(parsed.args).map((name) => name.toLowerCase()),
       )
       return {
         key: "session:compose",
@@ -325,7 +415,7 @@ export const OpenClawPage = (): React.JSX.Element => {
         onPick: (id) => {
           const agent = agents.find((item) => item.id === id)
           if (!agent) return
-          setInput((current) => toggleClearAgentName(current, agent.name))
+          setInput((current) => toggleCommandAgentName(current, "clear", agent.name))
         },
       }
     }
@@ -379,6 +469,7 @@ export const OpenClawPage = (): React.JSX.Element => {
   }, [
     activeAgentId,
     agents,
+    applyOnlyFilter,
     enabledInstances,
     input,
     instances,
@@ -412,8 +503,37 @@ export const OpenClawPage = (): React.JSX.Element => {
           ) : null}
         </span>
 
+        {onlyAgentIds ? (
+          <span className="flex min-w-0 items-center gap-1 text-[11px] text-white/45">
+            <span className="shrink-0">{t("openclaw.onlyFilterLabel")}</span>
+            <span className="flex min-w-0 items-center gap-1 overflow-hidden">
+              {onlyAgentIds.map((agentId) => (
+                <LxTag
+                  key={agentId}
+                  color="sky"
+                  size="small"
+                  confirmClose={false}
+                  closeTooltipContent={t("openclaw.onlyFilterRemove")}
+                  onClose={() => setOnlyAgentIds(onlyAgentIds.filter((id) => id !== agentId))}
+                >
+                  {agents.find((agent) => agent.id === agentId)?.name ?? agentId}
+                </LxTag>
+              ))}
+            </span>
+          </span>
+        ) : null}
+
         <div className="flex-1" />
 
+        <LxIconButton
+          size="small"
+          aria-label={t("openclaw.onlyFilterClear")}
+          title={{ content: t("openclaw.onlyFilterClear"), placement: "bottom" }}
+          disabled={onlyAgentIds === null}
+          onClick={() => setOnlyAgentIds(null)}
+        >
+          <FilterX />
+        </LxIconButton>
         <LxIconButton
           size="small"
           aria-label={t("openclaw.reconnect")}
@@ -437,8 +557,9 @@ export const OpenClawPage = (): React.JSX.Element => {
       {/* 视图区：当前办公区内所有员工的消息合流时间线 */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <OpenClawMessageList
-          timeline={timeline}
+          timeline={visibleTimeline}
           agents={conversationAgents}
+          isFiltered={onlyAgentIds !== null}
           onDeleteTurn={handleDeleteTurn}
         />
       </div>
@@ -458,6 +579,7 @@ export const OpenClawPage = (): React.JSX.Element => {
           }}
           candidates={candidates}
           onCommand={runCommand}
+          commandCapabilities={commandCapabilities}
           picker={picker}
           onPickerClose={() => setPickerKind(null)}
           placeholder={t("openclaw.placeholder")}

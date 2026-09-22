@@ -227,4 +227,94 @@ describe("OpenClawInput 命令面板交互（对齐 AgentInput）", () => {
 
     expect(onChange).toHaveBeenLastCalledWith("/clear")
   })
+
+  it("commandCapabilities 收窄命令列表：/only 需多员工、/all 仅筛选态", async () => {
+    const { rerender } = render(
+      <OpenClawInput
+        {...baseInputProps}
+        value=""
+        picker={null}
+        commandCapabilities={{ canOnly: true, canRestore: false }}
+      />,
+    )
+
+    rerender(
+      <OpenClawInput
+        {...baseInputProps}
+        value="/"
+        picker={null}
+        commandCapabilities={{ canOnly: true, canRestore: false }}
+      />,
+    )
+    expect(await screen.findByText("/only")).not.toBeNull()
+    expect(screen.queryByText("/all")).toBeNull()
+
+    rerender(
+      <OpenClawInput
+        {...baseInputProps}
+        value="/"
+        picker={null}
+        commandCapabilities={{ canOnly: false, canRestore: true }}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.queryByText("/only")).toBeNull()
+    })
+    expect(await screen.findByText("/all")).not.toBeNull()
+  })
+
+  it("Esc 取消文本派生的二级面板并清空命令文本", async () => {
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <OpenClawInput {...baseInputProps} onChange={onChange} value="" picker={null} />,
+    )
+
+    rerender(
+      <OpenClawInput
+        {...baseInputProps}
+        onChange={onChange}
+        value="/clear"
+        picker={composePicker}
+      />,
+    )
+    await screen.findByRole("listbox", { name: "选择员工" })
+
+    const content = document.querySelector(".cm-content")
+    expect(content).not.toBeNull()
+    fireEvent.keyDown(content as HTMLElement, { key: "Escape" })
+
+    expect(onChange).toHaveBeenLastCalledWith("")
+    // 清空只发生一次（避免 dispatch 与显式回调重复触发）。
+    const values = onChange.mock.calls.map(([next]) => next)
+    expect(values.filter((value) => value === "").length).toBe(1)
+  })
+
+  it("Esc 关闭显式面板（/office）时保留输入文本", async () => {
+    const onChange = vi.fn()
+    const onPickerClose = vi.fn()
+    const officePicker: OpenClawInputPicker = {
+      key: "office",
+      title: "选择办公区",
+      emptyText: "无办公区",
+      items: [{ id: "office-1", label: "研发中心" }],
+      onPick: vi.fn(),
+    }
+
+    render(
+      <OpenClawInput
+        {...baseInputProps}
+        onChange={onChange}
+        value="hello"
+        picker={officePicker}
+        onPickerClose={onPickerClose}
+      />,
+    )
+    await screen.findByRole("listbox", { name: "选择办公区" })
+
+    const content = document.querySelector(".cm-content")
+    fireEvent.keyDown(content as HTMLElement, { key: "Escape" })
+
+    expect(onPickerClose).toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })

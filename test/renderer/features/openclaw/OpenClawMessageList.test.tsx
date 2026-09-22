@@ -44,6 +44,16 @@ describe("OpenClawMessageList & OpenClawMessageItem", () => {
     expect(screen.getByText("No message yet. Pick a coworker and send a task.")).not.toBeNull()
   })
 
+  it("筛选态下无匹配消息展示专属空态", () => {
+    render(<OpenClawMessageList timeline={[]} agents={agents} isFiltered />)
+
+    expect(
+      screen.getByText(
+        "No messages under the current filter. Use the restore button above to show all.",
+      ),
+    ).not.toBeNull()
+  })
+
   it("跨 Agent 交错渲染并标注来源员工与头像首字母", () => {
     const timeline: OfficeTimelineMessage[] = [
       { agentId: "lily", message: user("u1", "帮我看看登录逻辑", 100) },

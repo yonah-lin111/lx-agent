@@ -4,8 +4,8 @@ import {
   keepsCommandText,
   OPENCLAW_COMMANDS,
   parseOpenClawCommand,
-  splitClearAgentNames,
-  toggleClearAgentName,
+  splitCommandAgentNames,
+  toggleCommandAgentName,
 } from "@/features/openclaw/openclawCommands"
 
 // 测试用翻译函数：直接回显 key，便于断言。
@@ -31,6 +31,35 @@ describe("getMatchedOpenClawCommands", () => {
   })
 })
 
+describe("getMatchedOpenClawCommands 命令可见性", () => {
+  const names = (capabilities: { canOnly: boolean; canRestore: boolean }): string[] =>
+    getMatchedOpenClawCommands("/", t, capabilities).map((command) => command.name)
+
+  it("单员工且非筛选态：只剩与筛选无关的命令", () => {
+    const visible = names({ canOnly: false, canRestore: false })
+
+    expect(visible).not.toContain("/only")
+    expect(visible).not.toContain("/all")
+    expect(visible).toContain("/clear")
+    expect(visible).toContain("/stop")
+    expect(visible).toContain("/office")
+  })
+
+  it("多员工非筛选态：保留 /only、隐藏 /all", () => {
+    const visible = names({ canOnly: true, canRestore: false })
+
+    expect(visible).toContain("/only")
+    expect(visible).not.toContain("/all")
+  })
+
+  it("筛选态：/only 仍可用于调整，/all 可用", () => {
+    const visible = names({ canOnly: true, canRestore: true })
+
+    expect(visible).toContain("/only")
+    expect(visible).toContain("/all")
+  })
+})
+
 describe("parseOpenClawCommand", () => {
   it("解析精确命令与大小写", () => {
     expect(parseOpenClawCommand("/clear")).toEqual({ id: "clear", args: "" })
@@ -42,6 +71,15 @@ describe("parseOpenClawCommand", () => {
       id: "clear",
       args: "lily & lucy",
     })
+  })
+
+  it("解析 /only 与 /all", () => {
+    expect(parseOpenClawCommand("/only")).toEqual({ id: "only", args: "" })
+    expect(parseOpenClawCommand("/only lily & lucy")).toEqual({
+      id: "only",
+      args: "lily & lucy",
+    })
+    expect(parseOpenClawCommand("/all")).toEqual({ id: "all", args: "" })
   })
 
   it("/new 与 /agent 已移除", () => {
@@ -58,33 +96,42 @@ describe("parseOpenClawCommand", () => {
 })
 
 describe("keepsCommandText", () => {
-  it("clear 保留输入文本以支持追加参数", () => {
+  it("clear 与 only 保留输入文本以支持追加参数", () => {
     expect(keepsCommandText("clear")).toBe(true)
+    expect(keepsCommandText("only")).toBe(true)
     expect(keepsCommandText("stop")).toBe(false)
     expect(keepsCommandText("office")).toBe(false)
+    expect(keepsCommandText("all")).toBe(false)
   })
 })
 
-describe("splitClearAgentNames", () => {
+describe("splitCommandAgentNames", () => {
   it("按 & 拆分并去空", () => {
-    expect(splitClearAgentNames("lily & lucy")).toEqual(["lily", "lucy"])
-    expect(splitClearAgentNames(" lily ")).toEqual(["lily"])
-    expect(splitClearAgentNames("")).toEqual([])
+    expect(splitCommandAgentNames("lily & lucy")).toEqual(["lily", "lucy"])
+    expect(splitCommandAgentNames(" lily ")).toEqual(["lily"])
+    expect(splitCommandAgentNames("")).toEqual([])
   })
 })
 
-describe("toggleClearAgentName", () => {
-  it("首次选择生成 /clear 命令", () => {
-    expect(toggleClearAgentName("", "Lily")).toBe("/clear Lily")
-    expect(toggleClearAgentName("/clear", "Lily")).toBe("/clear Lily")
+describe("toggleCommandAgentName", () => {
+  it("首次选择生成对应命令", () => {
+    expect(toggleCommandAgentName("", "clear", "Lily")).toBe("/clear Lily")
+    expect(toggleCommandAgentName("/clear", "clear", "Lily")).toBe("/clear Lily")
+    expect(toggleCommandAgentName("/only", "only", "Lily")).toBe("/only Lily")
   })
 
   it("追加第二个员工并用 & 分隔", () => {
-    expect(toggleClearAgentName("/clear Lily", "Lucy")).toBe("/clear Lily & Lucy")
+    expect(toggleCommandAgentName("/clear Lily", "clear", "Lucy")).toBe("/clear Lily & Lucy")
+    expect(toggleCommandAgentName("/only Lily", "only", "Lucy")).toBe("/only Lily & Lucy")
   })
 
   it("重复选择同名校验忽略大小写并移除", () => {
-    expect(toggleClearAgentName("/clear Lily & Lucy", "lily")).toBe("/clear Lucy")
-    expect(toggleClearAgentName("/clear Lily", "Lily")).toBe("/clear")
+    expect(toggleCommandAgentName("/clear Lily & Lucy", "clear", "lily")).toBe("/clear Lucy")
+    expect(toggleCommandAgentName("/only Lily & Lucy", "only", "Lucy")).toBe("/only Lily")
+    expect(toggleCommandAgentName("/only Lily", "only", "Lily")).toBe("/only")
+  })
+
+  it("切换命令时丢弃旧命令的参数", () => {
+    expect(toggleCommandAgentName("/clear Lily", "only", "Lucy")).toBe("/only Lucy")
   })
 })

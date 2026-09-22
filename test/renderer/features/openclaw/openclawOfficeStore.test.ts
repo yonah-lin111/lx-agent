@@ -7,6 +7,7 @@ describe("useOpenClawOfficeStore", () => {
       selectedInstanceId: null,
       selectedAgentIds: [],
       activeAgentId: null,
+      onlyAgentIds: null,
       pendingDispatch: null,
     })
   })
@@ -63,5 +64,26 @@ describe("useOpenClawOfficeStore", () => {
 
     expect(useOpenClawOfficeStore.getState().consumePendingDispatch()).toEqual(dispatch)
     expect(useOpenClawOfficeStore.getState().consumePendingDispatch()).toBeNull()
+  })
+
+  it("only 筛选集合去重、去空，空集合归一化为 null", () => {
+    useOpenClawOfficeStore.getState().setOnlyAgentIds(["lily", "lily", "", "amy"])
+    expect(useOpenClawOfficeStore.getState().onlyAgentIds).toEqual(["lily", "amy"])
+
+    useOpenClawOfficeStore.getState().setOnlyAgentIds([])
+    expect(useOpenClawOfficeStore.getState().onlyAgentIds).toBeNull()
+
+    useOpenClawOfficeStore.getState().setOnlyAgentIds(["amy"])
+    useOpenClawOfficeStore.getState().setOnlyAgentIds(null)
+    expect(useOpenClawOfficeStore.getState().onlyAgentIds).toBeNull()
+  })
+
+  it("切换办公区时清空 only 筛选", () => {
+    useOpenClawOfficeStore.getState().selectOffice("local", "lily")
+    useOpenClawOfficeStore.getState().setOnlyAgentIds(["lily"])
+
+    useOpenClawOfficeStore.getState().selectOffice("remote", "amy")
+
+    expect(useOpenClawOfficeStore.getState().onlyAgentIds).toBeNull()
   })
 })

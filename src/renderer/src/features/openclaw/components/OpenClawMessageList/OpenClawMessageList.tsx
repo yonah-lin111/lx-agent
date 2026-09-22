@@ -13,6 +13,8 @@ const NEAR_BOTTOM_THRESHOLD = 150
 export interface OpenClawMessageListProps {
   timeline: OfficeTimelineMessage[]
   agents: ConversationAgent[]
+  // 时间线是否处于 only 筛选态（决定空态文案）。
+  isFiltered?: boolean
   // 删除某轮问答（云端 rewind），仅在每条会话最后一条非流式 AI 消息上提供入口。
   onDeleteTurn?: (agentId: string, messageId: string) => void
 }
@@ -23,6 +25,7 @@ export interface OpenClawMessageListProps {
 export const OpenClawMessageList = ({
   timeline,
   agents,
+  isFiltered = false,
   onDeleteTurn,
 }: OpenClawMessageListProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -109,7 +112,9 @@ export const OpenClawMessageList = ({
   if (timeline.length === 0) {
     return (
       <div className="flex h-full w-full items-center justify-center p-4">
-        <p className="text-xs text-white/45">{t("openclaw.conversationEmpty")}</p>
+        <p className="text-xs text-white/45">
+          {isFiltered ? t("openclaw.conversationFilteredEmpty") : t("openclaw.conversationEmpty")}
+        </p>
       </div>
     )
   }
