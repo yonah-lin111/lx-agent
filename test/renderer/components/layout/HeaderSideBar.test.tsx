@@ -22,6 +22,10 @@ const summary: UsageSummary = {
   avgDurationMs: 100,
 }
 
+vi.mock("@/features/openclaw", () => ({
+  OpenClawBreadcrumb: () => <span>工作台</span>,
+}))
+
 const createApiMock = () => ({
   schedule: {
     listByDate: vi.fn().mockResolvedValue([]),
@@ -119,5 +123,28 @@ describe("HeaderSideBar", () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(api.schedule.listByDate).not.toHaveBeenCalled()
     expect(api.usage.getSummary).not.toHaveBeenCalled()
+  })
+
+  it("OpenClaw 路由面包屑追加当前办公区，其它路由不渲染", async () => {
+    const api = createApiMock()
+    // @ts-expect-error Mock window.api
+    window.api = api
+
+    const openclawView = render(
+      <MemoryRouter initialEntries={["/openclaw"]}>
+        <HeaderSideBar isExpanded={false} onExpandedChange={vi.fn()} />
+      </MemoryRouter>,
+    )
+    expect(openclawView.container.textContent).toContain("工作台")
+    cleanup()
+
+    const homeView = render(
+      <MemoryRouter initialEntries={["/"]}>
+        <HeaderSideBar isExpanded={false} onExpandedChange={vi.fn()} />
+      </MemoryRouter>,
+    )
+    expect(homeView.container.textContent).not.toContain("工作台")
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
   })
 })
