@@ -1,7 +1,5 @@
 import { Sparkles } from "lucide-react"
 import type React from "react"
-import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import type { ExecutionModelSwitchContent } from "@/features/agent/types"
@@ -9,12 +7,10 @@ import { useTranslation } from "@/i18n"
 
 export interface FlowItemModelSwitchContentProps {
   content: ExecutionModelSwitchContent
-  previewRef?: React.RefObject<HTMLElement | null>
 }
 
 export const FlowItemModelSwitchContent = ({
   content,
-  previewRef,
 }: FlowItemModelSwitchContentProps): React.JSX.Element => {
   const { t } = useTranslation()
   const settings = useModelSettings()
@@ -55,15 +51,9 @@ export const FlowItemModelSwitchContent = ({
             <Sparkles className="h-3 w-3" />
             <span>{t("agent.vendorPrompt")}</span>
           </div>
-          <div className="custom-scrollbar max-h-60 overflow-y-auto rounded bg-black/40 p-2.5">
-            <LxMarkdownPreview
-              html={markdownRenderer.render(content.instructions)}
-              previewMode="preview"
-              previewRef={previewRef}
-              className="px-0"
-              contentClassName="py-0 text-white/70 [&_*]:!text-white/70 [&_h2]:text-cyan-300/90 [&_h3]:text-cyan-300/80"
-              sanitizeCopy
-            />
+          {/* 厂商自适应提示词为 XML 结构：按原文展示，不做 markdown 渲染（避免未知标签被清洗吞掉） */}
+          <div className="custom-scrollbar max-h-60 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2.5 font-mono text-xs leading-relaxed text-white/70">
+            {content.instructions}
           </div>
         </div>
       ) : (

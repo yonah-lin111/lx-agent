@@ -236,24 +236,28 @@ describe("SystemPromptManager", () => {
       expect(assembly.contexts.some((c) => c.name === PROMPT_SECTION_NAMES.ENVIRONMENT)).toBe(true)
 
       expect(assembly.rendered).toContain("You are Yonah (also known as LX)")
-      expect(assembly.rendered).toContain("# General Behavior Guidelines")
-      expect(assembly.rendered).toContain("## Preamble & Intent Declaration")
-      expect(assembly.rendered).toContain("## Task Planning & Execution")
-      expect(assembly.rendered).toContain("## Ambition vs Surgical Precision")
-      expect(assembly.rendered).toContain("## Task Execution & File Mutations")
-      expect(assembly.rendered).toContain("## Multi-Agent & Orchestrator Guidelines")
-      expect(assembly.rendered).toContain("## Targeted Verification")
-      expect(assembly.rendered).toContain("## Safety Boundaries & Git Worktree Discipline")
-      expect(assembly.rendered).toContain("## High-Signal Response Formatting")
-      expect(assembly.rendered).toContain("## Code Reviews & Quality Assurance")
-      expect(assembly.rendered).toContain("## Frontend Design Standards")
+      expect(assembly.rendered).toContain("<behavior>")
+      expect(assembly.rendered).toContain("<preamble>")
+      expect(assembly.rendered).toContain("<task_planning>")
+      expect(assembly.rendered).toContain("<ambition_vs_precision>")
+      expect(assembly.rendered).toContain("<file_mutations>")
+      expect(assembly.rendered).toContain("<multi_agent>")
+      expect(assembly.rendered).toContain("<verification>")
+      expect(assembly.rendered).toContain("<safety>")
+      expect(assembly.rendered).toContain("<response_format>")
+      expect(assembly.rendered).toContain("<code_review>")
+      expect(assembly.rendered).toContain("<frontend_design>")
+      expect(assembly.rendered).not.toContain("## Preamble & Intent Declaration")
       expect(assembly.rendered).toContain("<available_skills>")
       expect(assembly.rendered).toContain("test-skill")
 
-      // 默认 pragmatic 人格验证
+      // 默认 pragmatic 人格验证（XML 化的 persona / operating_principles）
+      expect(assembly.rendered).toContain('<persona name="pragmatic">')
       expect(assembly.rendered).toContain(
         "You are a pragmatic, direct, and high-signal engineering collaborator.",
       )
+      expect(assembly.rendered).toContain("<operating_principles>")
+      expect(assembly.rendered).toContain("Read a file to confirm its content before modifying it")
 
       const envCtx = assembly.contexts.find((c) => c.name === PROMPT_SECTION_NAMES.ENVIRONMENT)
       expect(envCtx?.text).toContain("<env>")
@@ -271,6 +275,7 @@ describe("SystemPromptManager", () => {
         personality: "friendly",
       })
 
+      expect(assembly.rendered).toContain('<persona name="friendly">')
       expect(assembly.rendered).toContain(
         "You are an encouraging, collaborative, and insightful engineering co-builder.",
       )
