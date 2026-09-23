@@ -84,7 +84,7 @@ beforeEach(() => {
 afterEach(() => cleanup())
 
 describe("LxMarkdownEditor 自定义模板命令插入", () => {
-  it("补全 &&& 与 +++ supple 结束行 id，+++ log 结束行保持原样", async () => {
+  it("补全任务块 / 临时块 / 记录块结束行 id", async () => {
     render(<LxMarkdownEditor initialContent="" projectPath="/repo" />)
     await waitFor(() => expect(getCm()).not.toBeNull())
     await waitFor(() => expect(listMarkdownCommands).toHaveBeenCalled())
@@ -113,8 +113,8 @@ describe("LxMarkdownEditor 自定义模板命令插入", () => {
 
     const doc = view.state.doc.toString()
     expect(doc).toMatch(/^\+\+\+ supple --end \{id:[0-9a-f]{32}\}$/m)
-    expect(doc).toContain("%%% log --end\n&&& reviewTemplate --end {id:")
-    expect(doc.match(/\{id:[0-9a-f]{32}\}/g)).toHaveLength(2)
+    expect(doc).toMatch(/^%%% log --end \{id:[0-9a-f]{32}\}$/m)
+    expect(doc.match(/\{id:[0-9a-f]{32}\}/g)).toHaveLength(3)
     // 开始行与正文保持原样，未被注入 id。
     expect(doc).toContain("&&& reviewTemplate\n## 检查项")
   })

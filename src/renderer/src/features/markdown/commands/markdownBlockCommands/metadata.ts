@@ -1,9 +1,11 @@
 import {
+  MARKDOWN_LOG_END_RE,
   MARKDOWN_SUPPLE_END_RE,
   MARKDOWN_TEMPLATE_END_RE,
   MARKDOWN_TEMPLATE_ID_RE,
   MARKDOWN_TEMPLATE_START_RE,
   MARKDOWN_TEMPLATE_WT_RE,
+  parseMarkdownLogEndLine,
   parseMarkdownTemplateEndLine,
 } from "./markers"
 import type { MarkdownTemplateStatus, ParsedMarkdownSuppleEnd } from "./types"
@@ -18,25 +20,27 @@ export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
 }
 
 export const parseMarkdownSuppleEndLine = (lineText: string): ParsedMarkdownSuppleEnd | null => {
+  if (!MARKDOWN_SUPPLE_END_RE.test(lineText)) return null
+
   const match = lineText.match(
-    /^(\s*)\+\+\+\s+(suppleTemplate|supple)\s+--end(?:\s+\{id:([0-9a-f]{32})\})?(?:\s+\{wt:([^}\s{]+)\})?\s*$/,
+    /^(\s*)\+\+\+\s+([A-Za-z]\w*)\s+--end(?:\s+\{id:([0-9a-f]{32})\})?(?:\s+\{wt:([^}\s{]+)\})?\s*$/,
   )
   if (!match) return null
 
   return {
     indent: match[1],
-    command: match[2] as "suppleTemplate" | "supple",
+    command: match[2],
     id: match[3],
     wt: match[4],
   }
 }
 
-// 读取 supple 补充块结束行的工作区绑定分支；非结束行或无绑定返回 null。
+// 读取临时块结束行的工作区绑定分支；非结束行或无绑定返回 null。
 export const getMarkdownSuppleWorktree = (lineText: string): string | null => {
   return parseMarkdownSuppleEndLine(lineText)?.wt ?? null
 }
 
-// 更新 supple 补充块结束行的工作区绑定：branch 为 null 时移除绑定，否则写入 {wt:branch}。
+// 更新临时块结束行的工作区绑定：branch 为 null 时移除绑定，否则写入 {wt:branch}。
 export const setMarkdownSuppleWorktree = (lineText: string, branch: string | null): string => {
   const parsed = parseMarkdownSuppleEndLine(lineText)
   if (!parsed) return lineText
@@ -46,8 +50,6 @@ export const setMarkdownSuppleWorktree = (lineText: string, branch: string | nul
   const wtPart = wt ? ` {wt:${wt}}` : ""
   return `${parsed.indent}+++ ${parsed.command} --end${idPart}${wtPart}`
 }
-
-// log 日志块结束行：%%% logTemplate --end 或 %%% log --end（兼容旧版 +++）。
 
 /**
  * 更新模板块开始行的「title: 」字段：已有则替换内容，缺失则在行尾补插。
@@ -123,8 +125,8 @@ export const createMarkdownTemplateId = (): string => crypto.randomUUID().replac
 /**
  * 为自定义模板内容补全块 id（插入时调用）：
  * - `&&& <command> --end` 结束行注入 `{id:...}`，多个模板块各自独立；
- * - `+++ supple(--Template) --end` 结束行注入 `{id:...}`；
- * - `%%% log(--Template) --end` 不注入（log 结束行正则不接受 id 元数据）；
+ * - `+++ <name> --end` 临时块结束行注入 `{id:...}`；
+ * - `%%% <name> --end` 记录块结束行注入 `{id:...}`（兼容旧版 +++ log/logTemplate）；
  * 已有 id 的结束行保持不变，id 始终写在 `{wt:...}` 之前；开始行与正文行不受影响。
  */
 export const injectCustomTemplateBlockIds = (content: string): string =>
@@ -150,19 +152,29 @@ export const injectCustomTemplateBlockIds = (content: string): string =>
         return `${suppleEnd.indent}+++ ${suppleEnd.command} --end {id:${createMarkdownTemplateId()}}${wtPart}`
       }
 
+      const logEnd = parseMarkdownLogEndLine(line)
+      if (logEnd) {
+        if (logEnd.id) return line
+        return `${logEnd.indent}${logEnd.marker} ${logEnd.command} --end {id:${createMarkdownTemplateId()}}`
+      }
+
       return line
     })
     .join("\n")
 
 /**
- * 扫描文本中全部模板块及补充块结束行上的 id 源码范围，供编辑器只读保护使用。
+ * 扫描文本中全部任务块、临时块与记录块结束行上的 id 源码范围，供编辑器只读保护使用。
  */
 export const getMarkdownTemplateIdRanges = (text: string): { from: number; to: number }[] => {
   const ranges: { from: number; to: number }[] = []
   let offset = 0
 
   for (const line of text.split("\n")) {
-    if (MARKDOWN_TEMPLATE_END_RE.test(line) || MARKDOWN_SUPPLE_END_RE.test(line)) {
+    if (
+      MARKDOWN_TEMPLATE_END_RE.test(line) ||
+      MARKDOWN_SUPPLE_END_RE.test(line) ||
+      MARKDOWN_LOG_END_RE.test(line)
+    ) {
       const idMatch = line.match(MARKDOWN_TEMPLATE_ID_RE)
       if (idMatch?.index !== undefined) {
         ranges.push({
@@ -178,7 +190,7 @@ export const getMarkdownTemplateIdRanges = (text: string): { from: number; to: n
 }
 
 /**
- * 扫描文本中全部模板块及补充块结束行上的 wt（工作区绑定）源码范围，供编辑器只读保护使用。
+ * 扫描文本中全部任务块与临时块结束行上的 wt（工作区绑定）源码范围，供编辑器只读保护使用。
  */
 export const getMarkdownTemplateWtRanges = (text: string): { from: number; to: number }[] => {
   const ranges: { from: number; to: number }[] = []

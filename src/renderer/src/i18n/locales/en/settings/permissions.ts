@@ -83,8 +83,9 @@ Configure independent capability allowlists for the four collaboration modes (Bu
     "Permanently disabled roles: {{roles}} (capability set includes blocked tools; removed once you confirm an edit)",
 
   // Custom Commands section
-  customCommandAgentInputTab: "Chat Commands",
-  customCommandAgentMDTab: "Template Commands",
+  customCommandViewChat: "Chat Commands",
+  customCommandViewMd: "MD Commands",
+  customCommandViewBlocks: "MD Blocks",
   customCommandGlobalScope: "Global",
   customCommandProjectScope: "Project",
   customCommandSelectProject: "Select an imported project",
@@ -111,14 +112,37 @@ Configure independent capability allowlists for the four collaboration modes (Bu
   customCommandContent: "Template Content",
   customCommandMetaExpand: "Edit Details",
   customCommandMetaCollapse: "Collapse Details",
-  customCommandInsertBlock: "Insert Template Block",
-  customCommandBlockGroupTemplate: "Document Blocks",
-  customCommandBlockTemplateBasic: "Basic Block",
-  customCommandBlockTemplateTitled: "Titled Block",
-  customCommandBlockGroupSupple: "Supplement Blocks",
-  customCommandBlockSupple: "Supplement Block",
-  customCommandBlockGroupLog: "Log Blocks",
-  customCommandBlockLog: "Execution Log Block",
+  customCommandInsertBlock: "Insert Block",
+  customCommandBlocksList: "Blocks",
+  customCommandBlockTemplateName: "Task Block",
+  customCommandBlockSuppleName: "Temporary Block",
+  customCommandBlockLogName: "Record Block",
+  customCommandBlockTemplateScope: "Available globally",
+  customCommandBlockSubblockScope: "Inside Task Block only",
+  customCommandBlockTemplateDesc:
+    "Main document block: carries task details and requirements with title, status cycle and worktree binding; a unique id is injected on insert.",
+  customCommandBlockSuppleDesc:
+    "Temporary supplement block: records supplementary requirements and is removed entirely when copying the parent template.",
+  customCommandBlockLogDesc:
+    "Execution record block: records progress and conclusions; content is kept when copying the parent template.",
+  customCommandBlockSyntaxTitle: "Syntax",
+  customCommandBlockSyntaxStartEnd:
+    "Blocks are delimited by --start and --end; the name can be any identifier (e.g. xxxTemplate).",
+  customCommandBlockSyntaxTitleField:
+    "The start line may carry 「title: ...」 shown in the block header.",
+  customCommandBlockSyntaxId:
+    "A unique {id:...} is injected into the end line on insert (read-only in the editor).",
+  customCommandBlockSyntaxWt:
+    "Task and Temporary block end lines support {wt:branch} worktree binding.",
+  customCommandBlockSyntaxNested:
+    "Temporary and Record blocks can only be nested inside a Task Block.",
+  customCommandBlockExampleTitle: "Example",
+  customCommandBlockTemplateExample:
+    "&&& xxxTemplate --start 「title: 」\n# Task\n- Requirements:\n  - \n&&& xxxTemplate --end",
+  customCommandBlockSuppleExample:
+    "&&& xxxTemplate --start 「title: 」\n- Requirements:\n  - \n+++ xxxTemplate --start 「title: 」\n## Supplementary\n- \n+++ xxxTemplate --end\n&&& xxxTemplate --end",
+  customCommandBlockLogExample:
+    "&&& xxxTemplate --start 「title: 」\n%%% xxxTemplate --start 「title: 」\n## Execution Log\n- Time:\n- Conclusion:\n%%% xxxTemplate --end\n&&& xxxTemplate --end",
   customCommandNameRequired: "Command name is required",
   customCommandProjectPathRequired: "Project-scoped commands require selecting a valid project",
   customCommandSaveSuccess: "Custom command saved successfully",
@@ -135,18 +159,18 @@ Configure independent capability allowlists for the four collaboration modes (Bu
   customCommandMacroDefault: "Argument with fallback default value",
   customCommandMacroSlice: "All arguments starting from index N",
 
-  customCommandAgentMDHelpTitle: "Markdown Template Commands Guide",
+  customCommandAgentMDHelpTitle: "MD Commands Guide",
   customCommandAgentMDHelpDesc:
     "Type / in the Markdown editor to open the slash menu and insert rich text or template blocks directly.",
   customCommandMDScopeTitle: "Scope Details",
-  customCommandMDGlobalScopeDesc:
-    "Can be invoked both in normal text and inside &&& template blocks",
+  customCommandMDGlobalScopeDesc: "Can be invoked both in normal text and inside &&& task blocks",
   customCommandMDTemplateScopeDesc:
-    "Only available inside &&& template blocks (e.g. nested sub-templates)",
-  customCommandMDBlocksTitle: "Supported Template Blocks",
-  customCommandMDTemplateBlockDesc: "Document template block; a unique id is injected on insert",
+    "Only available inside &&& task blocks (e.g. nested sub-blocks)",
+  customCommandMDBlocksTitle: "Supported Blocks",
+  customCommandMDTemplateBlockDesc:
+    "Task block (&&&), available globally; a unique id is injected on insert",
   customCommandMDSuppleBlockDesc:
-    "Supplementary requirements sub-block (excluded when copying the parent template)",
+    "Temporary block (+++), inside Task Block only; removed when copying the parent template",
   customCommandMDLogBlockDesc:
-    "Execution log sub-block (content kept when copying the parent template)",
+    "Record block (%%%), inside Task Block only; content kept when copying the parent template",
 }

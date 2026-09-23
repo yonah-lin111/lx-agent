@@ -288,6 +288,7 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
     it("ActionWidget 的 onCleanTemplate 回调正确清除补充块 (suppleBlock) 中未填写的项", () => {
       const doc = [
+        "&&& addTemplate --start 「title: 测试」",
         "+++ suppleTemplate --start",
         "## 补充需求",
         "",
@@ -295,6 +296,7 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
         "- 位置: @src/supple.ts",
         "- 预期: ",
         "+++ suppleTemplate --end",
+        "&&& addTemplate --end",
       ].join("\n")
 
       const { view, plugin } = createTestView(doc)
@@ -316,13 +318,39 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
       expect(view.state.doc.toString()).toBe(
         [
+          "&&& addTemplate --start 「title: 测试」",
           "+++ suppleTemplate --start",
           "## 补充需求",
           "",
           "- 位置: @src/supple.ts",
           "+++ suppleTemplate --end",
+          "&&& addTemplate --end",
         ].join("\n"),
       )
+    })
+
+    it("任务块外的临时块 / 记录块不产生操作按钮与装饰", () => {
+      const doc = [
+        "+++ reviewTemplate --start",
+        "补充内容",
+        "+++ reviewTemplate --end",
+        "%%% execLog --start",
+        "记录内容",
+        "%%% execLog --end",
+      ].join("\n")
+
+      const { plugin } = createTestView(doc)
+      let hasSupple = false
+      let hasLog = false
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        if (cursor.value.spec?.widget?.isSupple) hasSupple = true
+        if (cursor.value.spec?.widget?.isLog) hasLog = true
+        cursor.next()
+      }
+
+      expect(hasSupple).toBe(false)
+      expect(hasLog).toBe(false)
     })
 
     it("删除第一个 supple 后，剩余 supple 块的 DOM / Widget 闭包范围必须更新为当前正确行号", () => {
@@ -444,6 +472,7 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
     it("ActionWidget 的 onCleanTemplate 回调正确清除日志块 (logBlock) 中未填写的项", () => {
       const doc = [
+        "&&& addTemplate --start 「title: 测试」",
         "%%% logTemplate --start",
         "## 运行日志",
         "",
@@ -451,6 +480,7 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
         "- 阶段: ",
         "- 结论: ",
         "%%% logTemplate --end",
+        "&&& addTemplate --end",
       ].join("\n")
 
       const { view, plugin } = createTestView(doc)
@@ -472,11 +502,13 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
       expect(view.state.doc.toString()).toBe(
         [
+          "&&& addTemplate --start 「title: 测试」",
           "%%% logTemplate --start",
           "## 运行日志",
           "",
           "- 时间: 2026-09-06",
           "%%% logTemplate --end",
+          "&&& addTemplate --end",
         ].join("\n"),
       )
     })

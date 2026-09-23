@@ -20,8 +20,14 @@ import {
   isInsideMarkdownCodeFence,
   isInsideMarkdownLogBlock,
   isInsideMarkdownTemplateBlock,
+  isMarkdownLogEndLine,
+  isMarkdownLogStartLine,
   isMarkdownSuppleEndLine,
+  isMarkdownSuppleStartLine,
+  parseMarkdownLogEndLine,
+  parseMarkdownLogStartLine,
   parseMarkdownSuppleEndLine,
+  parseMarkdownSuppleStartLine,
   setMarkdownSuppleWorktree,
   setMarkdownTemplateWorktree,
   toggleMarkdownTemplateCommentLines,
@@ -327,23 +333,34 @@ describe("自定义模板块 id 注入", () => {
     expect(result).toMatch(/^&&& reviewTemplate --end done \{id:[0-9a-f]{32}\} \{wt:dev\}$/)
   })
 
-  it("为 +++ supple 结束行注入 id，两种命令名与缩进均保留", () => {
+  it("为 +++ 临时块结束行注入 id，任意名称与缩进均保留", () => {
     expect(injectCustomTemplateBlockIds("+++ supple --end")).toMatch(
       /^\+\+\+ supple --end \{id:[0-9a-f]{32}\}$/,
     )
     expect(injectCustomTemplateBlockIds("  +++ suppleTemplate --end")).toMatch(
       /^ {2}\+\+\+ suppleTemplate --end \{id:[0-9a-f]{32}\}$/,
     )
+    expect(injectCustomTemplateBlockIds("+++ reviewTemplate --end")).toMatch(
+      /^\+\+\+ reviewTemplate --end \{id:[0-9a-f]{32}\}$/,
+    )
   })
 
-  it("%%% log 结束行不注入 id，旧版 +++ log 同样保持原样", () => {
-    expect(injectCustomTemplateBlockIds("%%% log --end")).toBe("%%% log --end")
-    expect(injectCustomTemplateBlockIds("%%% logTemplate --end")).toBe("%%% logTemplate --end")
-    expect(injectCustomTemplateBlockIds("+++ log --end")).toBe("+++ log --end")
-    expect(injectCustomTemplateBlockIds("+++ logTemplate --end")).toBe("+++ logTemplate --end")
+  it("%%% 记录块结束行注入 id，旧版 +++ log 兼容同样注入", () => {
+    expect(injectCustomTemplateBlockIds("%%% log --end")).toMatch(
+      /^%%% log --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("%%% logTemplate --end")).toMatch(
+      /^%%% logTemplate --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("%%% execLog --end")).toMatch(
+      /^%%% execLog --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("+++ log --end")).toMatch(
+      /^\+\+\+ log --end \{id:[0-9a-f]{32}\}$/,
+    )
   })
 
-  it("完整自定义模板：&&& 与 supple 注入、log 保持原样", () => {
+  it("完整自定义模板：任务块 / 临时块 / 记录块均注入独立 id", () => {
     const content = [
       "&&& reviewTemplate",
       "## 检查项",
@@ -357,8 +374,16 @@ describe("自定义模板块 id 注入", () => {
     ].join("\n")
     const result = injectCustomTemplateBlockIds(content)
 
-    expect(result).toContain("%%% log --end\n&&& reviewTemplate --end {id:")
-    expect(result.match(idPattern)).toHaveLength(2)
+    expect(result).toMatch(/^%%% log --end \{id:[0-9a-f]{32}\}$/m)
+    expect(result).toContain("&&& reviewTemplate --end {id:")
+    expect(result.match(idPattern)).toHaveLength(3)
+  })
+
+  it("已有 id 的结束行保持幂等，不重复注入", () => {
+    const id = "0123456789abcdef0123456789abcdef"
+    expect(injectCustomTemplateBlockIds(`%%% execLog --end {id:${id}}`)).toBe(
+      `%%% execLog --end {id:${id}}`,
+    )
   })
 })
 
@@ -741,5 +766,63 @@ describe("模板块工作区绑定 {wt:}", () => {
       expect(getMarkdownListContinuation("普通段落文字")).toBeNull()
       expect(getMarkdownListContinuation('key: "value"')).toBeNull()
     })
+  })
+})
+
+describe("临时块 / 记录块任意名称与 title", () => {
+  const id = "0123456789abcdef0123456789abcdef"
+
+  it("识别任意名称的临时块与记录块开始 / 结束行", () => {
+    expect(isMarkdownSuppleStartLine("+++ reviewTemplate --start")).toBe(true)
+    expect(isMarkdownSuppleEndLine("+++ reviewTemplate --end")).toBe(true)
+    expect(isMarkdownLogStartLine("%%% execLog --start")).toBe(true)
+    expect(isMarkdownLogEndLine("%%% execLog --end")).toBe(true)
+    expect(isMarkdownSuppleStartLine("+++ reviewTemplate --start 「title: 补充说明」")).toBe(true)
+    expect(isMarkdownLogStartLine("%%% execLog --start 「title: 执行记录」")).toBe(true)
+  })
+
+  it("旧版 +++ log / +++ logTemplate 仍识别为记录块而非临时块", () => {
+    expect(isMarkdownLogStartLine("+++ log --start")).toBe(true)
+    expect(isMarkdownLogStartLine("+++ logTemplate --start")).toBe(true)
+    expect(isMarkdownLogEndLine("+++ log --end")).toBe(true)
+    expect(isMarkdownSuppleStartLine("+++ log --start")).toBe(false)
+    expect(isMarkdownSuppleStartLine("+++ logTemplate --start")).toBe(false)
+  })
+
+  it("解析临时块 / 记录块开始行的名称与 title", () => {
+    expect(
+      parseMarkdownSuppleStartLine("+++ reviewTemplate --start 「title: 补充说明」"),
+    ).toMatchObject({
+      marker: "+++",
+      command: "reviewTemplate",
+      title: "补充说明",
+    })
+    expect(parseMarkdownLogStartLine("%%% execLog --start")).toMatchObject({
+      marker: "%%%",
+      command: "execLog",
+      title: undefined,
+    })
+    expect(parseMarkdownLogStartLine("+++ logTemplate --start 「title: 记录」")).toMatchObject({
+      marker: "+++",
+      command: "logTemplate",
+      title: "记录",
+    })
+    expect(parseMarkdownSuppleStartLine("+++ reviewTemplate --end")).toBeNull()
+  })
+
+  it("解析记录块结束行的 id，仅结束行命中", () => {
+    expect(parseMarkdownLogEndLine(`%%% execLog --end {id:${id}}`)).toMatchObject({
+      command: "execLog",
+      id,
+    })
+    expect(parseMarkdownLogEndLine("%%% execLog --end")).toMatchObject({ id: undefined })
+    expect(parseMarkdownLogEndLine("%%% execLog --start")).toBeNull()
+  })
+
+  it("记录块结束行 id 计入只读保护范围", () => {
+    const line = `%%% execLog --end {id:${id}}`
+    const ranges = getMarkdownTemplateIdRanges(line)
+    expect(ranges).toHaveLength(1)
+    expect(ranges[0]).toMatchObject({ from: line.indexOf("{id:") })
   })
 })

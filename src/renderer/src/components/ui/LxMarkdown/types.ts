@@ -28,6 +28,27 @@ export interface MarkdownToolbarMenuGroup {
   items: MarkdownToolbarMenuItem[]
 }
 
+// 编辑器工具栏 select 型选项的光标上下文。
+export interface MarkdownToolbarSelectContext {
+  // 光标之前的文档文本，用于判断光标所处的块上下文。
+  textBeforeCursor: string
+}
+
+// 编辑器工具栏 select 型选项：选中后在光标处插入指定文本。
+export interface MarkdownToolbarSelectOption {
+  label: string
+  insertText: string
+  selectionOffset?: number
+  // 选项可用性判断（如临时块 / 记录块仅限任务块内部）；缺省恒可用。
+  isAvailable?: (context: MarkdownToolbarSelectContext) => boolean
+}
+
+// 编辑器工具栏 select 型配置：选中即插入，不保持选中态。
+export interface MarkdownToolbarSelect {
+  placeholder: string
+  options: MarkdownToolbarSelectOption[]
+}
+
 // 编辑器工具项配置。
 export interface MarkdownToolbarAction {
   icon: React.ComponentType<{ className?: string }>
@@ -38,6 +59,8 @@ export interface MarkdownToolbarAction {
   disabled?: boolean
   // 下拉菜单：提供时按钮展开分组菜单，点击菜单项在光标处插入对应文本（用于插入模板块骨架等）。
   menu?: MarkdownToolbarMenuGroup[]
+  // 下拉选择：提供时渲染为 select 控件，选中选项即在光标处插入对应文本。
+  select?: MarkdownToolbarSelect
 }
 
 // 编辑器视觉滚动锚点。

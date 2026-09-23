@@ -244,7 +244,7 @@ export const useMarkdownSlashCommandPanel = ({
     }
 
     // 直接命令（scope=normal）插入时在结束行 &&& 标记后追加唯一 id；
-    // suppleTemplate 插入时在结束行 +++ 标记后追加唯一 id；光标位置不受影响。
+    // suppleTemplate / logTemplate 插入时在结束行标记后追加唯一 id；光标位置不受影响。
     let content = command.content
     if (command.scope === "normal") {
       content = content.replace(
@@ -253,7 +253,12 @@ export const useMarkdownSlashCommandPanel = ({
       )
     } else if (command.id === "suppleTemplate") {
       content = content.replace(
-        /(?:\+\+\+\s+(?:suppleTemplate|supple)\s+--end)$/m,
+        /(?:\+\+\+\s+[A-Za-z]\w*\s+--end)$/m,
+        (match) => `${match} {id:${createMarkdownTemplateId()}}`,
+      )
+    } else if (command.id === "logTemplate") {
+      content = content.replace(
+        /(?:%%%\s+[A-Za-z]\w*\s+--end)$/m,
         (match) => `${match} {id:${createMarkdownTemplateId()}}`,
       )
     }

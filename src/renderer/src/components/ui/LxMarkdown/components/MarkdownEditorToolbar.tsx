@@ -4,6 +4,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import type { MarkdownTableSize, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
+import { LxSelect } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { isMacOS } from "@/lib/platform"
@@ -17,6 +18,8 @@ interface MarkdownEditorToolbarProps {
   onInsertTable: (size: MarkdownTableSize) => void
   // 插入菜单项文本（menu 型 action 使用）。
   onInsertText?: (text: string, selectionOffset?: number) => void
+  // 光标之前的文档文本（select 型 action 判断选项可用性）。
+  textBeforeCursor?: string
 }
 
 const markdownShortcuts: { keys: string; descKey: TranslationKey }[] = [
@@ -50,6 +53,7 @@ export const MarkdownEditorToolbar = ({
   showSaveStatus,
   onInsertTable,
   onInsertText,
+  textBeforeCursor,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
@@ -157,10 +161,36 @@ export const MarkdownEditorToolbar = ({
   const rightActions = firstRightActionIndex === -1 ? [] : actions.slice(firstRightActionIndex)
 
   /**
-   * 渲染工具项：普通项为图标按钮；带 menu 的项包裹弹层，点击菜单项插入对应文本。
+   * 渲染工具项：普通项为图标按钮；带 menu 的项包裹弹层，点击菜单项插入对应文本；
+   * 带 select 的项渲染为下拉选择控件，选中选项即在光标处插入对应文本。
    */
   const renderAction = (action: MarkdownToolbarAction, className = ""): React.JSX.Element => {
-    const { disabled, highlighted, icon: Icon, label, onClick, menu } = action
+    const { disabled, highlighted, icon: Icon, label, onClick, menu, select } = action
+
+    if (select) {
+      const context = { textBeforeCursor: textBeforeCursor ?? "" }
+      const availableOptions = select.options.filter((option) =>
+        option.isAvailable ? option.isAvailable(context) : true,
+      )
+      return (
+        <div key={label} className={`w-[128px] shrink-0 ${className}`}>
+          <LxSelect
+            value=""
+            options={availableOptions.map((option, index) => ({
+              value: String(index),
+              label: option.label,
+            }))}
+            placeholder={select.placeholder}
+            size="small"
+            onChange={(value) => {
+              const option = availableOptions[Number(value)]
+              if (option) onInsertText?.(option.insertText, option.selectionOffset)
+            }}
+          />
+        </div>
+      )
+    }
+
     const button = (
       <LxIconButton
         key={label}

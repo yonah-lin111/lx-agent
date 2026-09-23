@@ -22,7 +22,7 @@ import { EditorState } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { Redo2, Undo2 } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
 import {
   captureEditorScrollAnchor,
@@ -66,6 +66,11 @@ export const LxMarkdownEditor = ({
   const lastEmittedContentRef = useRef(initialContent)
   // 创建视图时使用的最新外部内容（挂载后外部内容可能已更新）。
   const initialContentRef = useRef(initialContent)
+  // 光标之前的文档文本：select 型工具项据此判断选项可用性（如仅限任务块内部）。
+  const [textBeforeCursor, setTextBeforeCursor] = useState("")
+  // 是否存在 select 型工具项：仅此时维护光标上下文，避免无关编辑器产生额外开销。
+  const hasSelectActionRef = useRef(false)
+  hasSelectActionRef.current = (toolbarActions ?? []).some((action) => action.select !== undefined)
 
   useEffect(() => {
     initialContentRef.current = initialContent
@@ -314,11 +319,20 @@ export const LxMarkdownEditor = ({
           ...standardKeymap,
         ]),
         EditorView.updateListener.of((update) => {
-          if (!update.docChanged) return
+          if (update.docChanged) {
+            const nextContent = update.state.doc.toString()
+            lastEmittedContentRef.current = nextContent
+            onChangeRef.current?.(nextContent)
+          }
 
-          const nextContent = update.state.doc.toString()
-          lastEmittedContentRef.current = nextContent
-          onChangeRef.current?.(nextContent)
+          if (!hasSelectActionRef.current) return
+          if (!update.docChanged && !update.selectionSet) return
+
+          const cursor = update.state.selection.main.head
+          const nextTextBeforeCursor = update.state.doc.sliceString(0, cursor)
+          setTextBeforeCursor((prev) =>
+            prev === nextTextBeforeCursor ? prev : nextTextBeforeCursor,
+          )
         }),
       ],
     })
@@ -361,6 +375,7 @@ export const LxMarkdownEditor = ({
           showSaveStatus={showSaveStatus}
           onInsertTable={(size) => insertText(createMarkdownTable(size))}
           onInsertText={insertText}
+          textBeforeCursor={textBeforeCursor}
         />
       )}
       <div className={`min-h-0 flex text-sm ${autoHeight ? "" : "flex-1"}`}>

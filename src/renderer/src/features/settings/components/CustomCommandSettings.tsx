@@ -8,37 +8,32 @@ import { Folder, Globe, LayoutTemplate, Plus, SlidersHorizontal, Trash2 } from "
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
-import { LxInput } from "@/components/ui/LxInput"
 import { LxMarkdownEditor } from "@/components/ui/LxMarkdown/LxMarkdownEditor"
-import type { MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
+import type {
+  MarkdownToolbarAction,
+  MarkdownToolbarSelectContext,
+} from "@/components/ui/LxMarkdown/types"
 import { LxMenu } from "@/components/ui/LxMenu"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
-import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxSelect } from "@/components/ui/LxSelect"
-import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
+import { isInsideMarkdownTemplateBlock } from "@/features/markdown/commands/markdownBlockCommands"
 import { projectApi } from "@/features/project/api/projectApi"
 import { customCommandApi } from "@/features/settings/api/customCommandApi"
+import {
+  CommandMetaFields,
+  type CustomCommandFormState,
+  DEFAULT_CUSTOM_COMMAND_FORM,
+} from "@/features/settings/components/CommandMetaFields"
+import { CommandNav } from "@/features/settings/components/CommandNav"
+import { MarkdownBlockGuide } from "@/features/settings/components/MarkdownBlockGuide"
 import { useRegisterSettingsSection } from "@/features/settings/hooks/settingsDraftStore"
 import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 
-interface CustomCommandFormState {
-  name: string
-  description: string
-  content: string
-  argumentHint: string
-  mdScope: "global" | "template"
-}
-
-const DEFAULT_FORM: CustomCommandFormState = {
-  name: "",
-  description: "",
-  content: "",
-  argumentHint: "",
-  mdScope: "global",
-}
+// 设置页视图：对话命令 / md 命令 / md 模板块说明。
+type CustomCommandView = CustomCommandType | "blocks"
 
 const draftStore: Record<string, CustomCommandFormState> = {}
 const modifiedStore: Record<string, CustomCommandFormState> = {}
@@ -47,7 +42,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   const { t } = useTranslation()
   const toast = useLxToast()
 
-  const [activeTab, setActiveTab] = useState<CustomCommandType>("agentInput")
+  const [activeView, setActiveView] = useState<CustomCommandView>("agentInput")
   const [selectedScope, setSelectedScope] = useState<CustomCommandScope>("user")
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
@@ -55,7 +50,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   const [selectedCommandName, setSelectedCommandName] = useState<string | null>(null)
   const [hasDraft, setHasDraft] = useState(false)
   const [isEditingDraft, setIsEditingDraft] = useState(false)
-  const [formData, setFormData] = useState<CustomCommandFormState>(DEFAULT_FORM)
+  const [formData, setFormData] = useState<CustomCommandFormState>(DEFAULT_CUSTOM_COMMAND_FORM)
   const [isLoading, setIsLoading] = useState(false)
   // 命令行右键菜单状态：坐标、滚动关闭锚点与目标命令。
   const [menuState, setMenuState] = useState<{
@@ -67,6 +62,10 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   const [isConfirmingMenuDelete, setIsConfirmingMenuDelete] = useState(false)
   // 命令元数据字段默认折叠，由右栏头部按钮展开；新建草稿时自动展开。
   const [isMetaExpanded, setIsMetaExpanded] = useState(false)
+
+  const isBlocksView = activeView === "blocks"
+  // 命令视图下对应的命令类型（blocks 视图不加载命令，占位值不会被使用）。
+  const commandType: CustomCommandType = activeView === "blocks" ? "agentInput" : activeView
 
   // 1. 初始化拉取项目列表（仅包含有效 filesystem path 的项目）
   useEffect(() => {
@@ -101,17 +100,18 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   }, [selectedScope, currentProject])
 
   const draftKey = useMemo(() => {
-    return `${activeTab}:${selectedScope}:${effectiveProjectPath ?? "global"}`
-  }, [activeTab, selectedScope, effectiveProjectPath])
+    return `${commandType}:${selectedScope}:${effectiveProjectPath ?? "global"}`
+  }, [commandType, selectedScope, effectiveProjectPath])
 
   const getCommandKey = useCallback(
-    (name: string) => `${activeTab}:${selectedScope}:${effectiveProjectPath ?? "global"}:${name}`,
-    [activeTab, selectedScope, effectiveProjectPath],
+    (name: string) => `${commandType}:${selectedScope}:${effectiveProjectPath ?? "global"}:${name}`,
+    [commandType, selectedScope, effectiveProjectPath],
   )
 
   // 2. 加载命令列表
   const loadCommands = useCallback(
     async (targetSelectName?: string) => {
+      if (isBlocksView) return
       if (selectedScope === "project" && !effectiveProjectPath) {
         setCommands([])
         return
@@ -119,7 +119,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       setIsLoading(true)
       try {
         const list = await customCommandApi.list({
-          type: activeTab,
+          type: commandType,
           scope: selectedScope,
           projectPath: effectiveProjectPath,
         })
@@ -137,7 +137,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
         setIsLoading(false)
       }
     },
-    [activeTab, selectedScope, effectiveProjectPath, toast, t],
+    [commandType, isBlocksView, selectedScope, effectiveProjectPath, toast, t],
   )
 
   useEffect(() => {
@@ -151,8 +151,9 @@ export const CustomCommandSettings = (): React.JSX.Element => {
 
   // 4. 当选择的命令变更时同步到表单
   useEffect(() => {
+    if (isBlocksView) return
     if (isEditingDraft) {
-      setFormData(draftStore[draftKey] || DEFAULT_FORM)
+      setFormData(draftStore[draftKey] || DEFAULT_CUSTOM_COMMAND_FORM)
       return
     }
     const current = commands.find((c) => c.name === selectedCommandName)
@@ -172,7 +173,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       }
     } else if (hasDraft && !selectedCommandName) {
       setIsEditingDraft(true)
-      setFormData(draftStore[draftKey] || DEFAULT_FORM)
+      setFormData(draftStore[draftKey] || DEFAULT_CUSTOM_COMMAND_FORM)
     } else if (commands.length > 0) {
       const first = commands[0]
       setSelectedCommandName(first.name)
@@ -191,12 +192,21 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       }
     } else {
       setSelectedCommandName(null)
-      setFormData(DEFAULT_FORM)
+      setFormData(DEFAULT_CUSTOM_COMMAND_FORM)
     }
-  }, [commands, selectedCommandName, isEditingDraft, hasDraft, draftKey, getCommandKey])
+  }, [
+    commands,
+    selectedCommandName,
+    isEditingDraft,
+    hasDraft,
+    draftKey,
+    getCommandKey,
+    isBlocksView,
+  ])
 
   // 5. 脏数据判定 (Dirty State)
   const isDirty = useMemo(() => {
+    if (isBlocksView) return false
     if (isEditingDraft) {
       return (
         Boolean(formData.name.trim()) ||
@@ -213,9 +223,9 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       formData.description.trim() !== (orig.description || "") ||
       formData.content.trimEnd() !== (orig.content || "").trimEnd() ||
       formData.argumentHint.trim() !== (orig.argumentHint || "") ||
-      (activeTab === "agentMD" && (formData.mdScope || "global") !== (orig.mdScope || "global"))
+      (commandType === "agentMD" && (formData.mdScope || "global") !== (orig.mdScope || "global"))
     )
-  }, [isEditingDraft, selectedCommandName, commands, formData, activeTab])
+  }, [isBlocksView, isEditingDraft, selectedCommandName, commands, formData, commandType])
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -243,7 +253,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
         setSelectedCommandName(commands[0].name)
       } else {
         setSelectedCommandName(null)
-        setFormData(DEFAULT_FORM)
+        setFormData(DEFAULT_CUSTOM_COMMAND_FORM)
       }
     } else if (selectedCommandName) {
       delete modifiedStore[getCommandKey(selectedCommandName)]
@@ -269,6 +279,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   })
 
   handleSaveRef.current = async (): Promise<void> => {
+    if (isBlocksView) return
     const trimmedName = formData.name.trim()
     if (!trimmedName) {
       toast.error(t("settings.customCommandNameRequired"))
@@ -280,7 +291,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     }
 
     const result = await customCommandApi.save({
-      type: activeTab,
+      type: commandType,
       scope: selectedScope,
       projectPath: effectiveProjectPath,
       oldName: isEditingDraft ? undefined : (selectedCommandName ?? undefined),
@@ -288,7 +299,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       description: formData.description.trim(),
       content: formData.content.trimEnd(),
       argumentHint: formData.argumentHint.trim() ? formData.argumentHint.trim() : undefined,
-      mdScope: activeTab === "agentMD" ? formData.mdScope : undefined,
+      mdScope: commandType === "agentMD" ? formData.mdScope : undefined,
     })
 
     if (!result.ok) {
@@ -312,22 +323,22 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   // 内容编辑器重挂载标识：切换命令/草稿/作用域时重建编辑器，避免 undo 历史跨命令串扰。
   const editorKey = `${draftKey}:${isEditingDraft ? "draft" : (selectedCommandName ?? "empty")}`
 
-  // 切换分类或作用域
-  const handleTabChange = (val: string): void => {
-    setActiveTab(val as CustomCommandType)
+  // 切换视图或作用域
+  const handleViewChange = (value: string): void => {
+    setActiveView(value as CustomCommandView)
     setIsEditingDraft(false)
     setSelectedCommandName(null)
   }
 
-  const handleScopeChange = (val: string): void => {
-    setSelectedScope(val as CustomCommandScope)
+  const handleScopeChange = (value: string): void => {
+    setSelectedScope(value as CustomCommandScope)
     setIsEditingDraft(false)
     setSelectedCommandName(null)
   }
 
   const handleStartCreate = (): void => {
     if (!draftStore[draftKey]) {
-      draftStore[draftKey] = DEFAULT_FORM
+      draftStore[draftKey] = DEFAULT_CUSTOM_COMMAND_FORM
     }
     setHasDraft(true)
     setIsEditingDraft(true)
@@ -359,14 +370,14 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       setSelectedCommandName(commands[0].name)
     } else {
       setSelectedCommandName(null)
-      setFormData(DEFAULT_FORM)
+      setFormData(DEFAULT_CUSTOM_COMMAND_FORM)
     }
   }
 
   const handleDelete = async (name: string): Promise<void> => {
     try {
       const res = await customCommandApi.delete({
-        type: activeTab,
+        type: commandType,
         scope: selectedScope,
         name,
         projectPath: effectiveProjectPath,
@@ -409,59 +420,49 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     void handleDelete(name)
   }
 
-  // 模板块骨架插入菜单：按 文档块 / 补充块 / 日志块 分类，插入后光标落在块内空行。
+  // 模板块插入下拉：选中即在光标处插入骨架；任务块全局可用，临时块 / 记录块仅限任务块内部。
   const toolbarActions = useMemo<MarkdownToolbarAction[]>(() => {
     const bodyOffset = (text: string): number => text.indexOf("\n\n") + 1
-    const basicTemplateBlock = "&&& template\n\n&&& template --end"
-    const titledTemplateBlock = "&&& template --start 「title: 」\n\n&&& template --end"
-    const suppleBlock = "+++ suppleTemplate --start\n\n+++ suppleTemplate --end"
-    const logBlock = "%%% logTemplate --start\n\n%%% logTemplate --end"
+    const templateBlock = "&&& xxxTemplate --start 「title: 」\n\n&&& xxxTemplate --end"
+    const suppleBlock = "+++ xxxTemplate --start 「title: 」\n\n+++ xxxTemplate --end"
+    const logBlock = "%%% xxxTemplate --start 「title: 」\n\n%%% xxxTemplate --end"
+    const requiresTemplateBlock = (context: MarkdownToolbarSelectContext): boolean =>
+      isInsideMarkdownTemplateBlock(context.textBeforeCursor)
 
     return [
       {
         icon: LayoutTemplate,
         label: t("settings.customCommandInsertBlock"),
         alignRight: true,
-        menu: [
-          {
-            label: t("settings.customCommandBlockGroupTemplate"),
-            items: [
-              {
-                label: t("settings.customCommandBlockTemplateBasic"),
-                insertText: basicTemplateBlock,
-                selectionOffset: bodyOffset(basicTemplateBlock),
-              },
-              {
-                label: t("settings.customCommandBlockTemplateTitled"),
-                insertText: titledTemplateBlock,
-                selectionOffset: bodyOffset(titledTemplateBlock),
-              },
-            ],
-          },
-          {
-            label: t("settings.customCommandBlockGroupSupple"),
-            items: [
-              {
-                label: t("settings.customCommandBlockSupple"),
-                insertText: suppleBlock,
-                selectionOffset: bodyOffset(suppleBlock),
-              },
-            ],
-          },
-          {
-            label: t("settings.customCommandBlockGroupLog"),
-            items: [
-              {
-                label: t("settings.customCommandBlockLog"),
-                insertText: logBlock,
-                selectionOffset: bodyOffset(logBlock),
-              },
-            ],
-          },
-        ],
+        select: {
+          placeholder: t("settings.customCommandInsertBlock"),
+          options: [
+            {
+              label: t("settings.customCommandBlockTemplateName"),
+              insertText: templateBlock,
+              selectionOffset: bodyOffset(templateBlock),
+            },
+            ...(commandType === "agentMD"
+              ? [
+                  {
+                    label: t("settings.customCommandBlockSuppleName"),
+                    insertText: suppleBlock,
+                    selectionOffset: bodyOffset(suppleBlock),
+                    isAvailable: requiresTemplateBlock,
+                  },
+                  {
+                    label: t("settings.customCommandBlockLogName"),
+                    insertText: logBlock,
+                    selectionOffset: bodyOffset(logBlock),
+                    isAvailable: requiresTemplateBlock,
+                  },
+                ]
+              : []),
+          ],
+        },
       },
     ]
-  }, [t])
+  }, [t, commandType])
 
   const agentInputInfoDoc = `### ${t("settings.customCommandAgentInputHelpTitle")}
 ${t("settings.customCommandAgentInputHelpDesc")}
@@ -481,367 +482,184 @@ ${t("settings.customCommandAgentMDHelpDesc")}
 - **Template**: ${t("settings.customCommandMDTemplateScopeDesc")}
 
 #### ${t("settings.customCommandMDBlocksTitle")}
-- \`&&& <command> ... &&& <command> --end\`: ${t("settings.customCommandMDTemplateBlockDesc")}
-- \`+++ supple --start/--end\`: ${t("settings.customCommandMDSuppleBlockDesc")}
-- \`%%% log --start/--end\`: ${t("settings.customCommandMDLogBlockDesc")}
+- \`&&&\`: ${t("settings.customCommandMDTemplateBlockDesc")}
+- \`+++\`: ${t("settings.customCommandMDSuppleBlockDesc")}
+- \`%%%\`: ${t("settings.customCommandMDLogBlockDesc")}
 `
 
   return (
     <div className="@container flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
-      {/* 顶部分类 Tab 与作用域切换栏 */}
+      {/* 顶部视图切换、说明与作用域选择栏 */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="custom-command-tab-group flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              data-active={activeTab === "agentInput"}
-              className={`flex h-7 items-center whitespace-nowrap rounded-[6px] px-3 text-xs transition-colors ${
-                activeTab === "agentInput"
-                  ? "bg-white/10 text-white font-medium shadow-xs"
-                  : "text-white/60 hover:text-white"
-              }`}
-              onClick={() => handleTabChange("agentInput")}
-            >
-              {t("settings.customCommandAgentInputTab")}
-            </button>
-            <button
-              type="button"
-              data-active={activeTab === "agentMD"}
-              className={`flex h-7 items-center whitespace-nowrap rounded-[6px] px-3 text-xs transition-colors ${
-                activeTab === "agentMD"
-                  ? "bg-white/10 text-white font-medium shadow-xs"
-                  : "text-white/60 hover:text-white"
-              }`}
-              onClick={() => handleTabChange("agentMD")}
-            >
-              {t("settings.customCommandAgentMDTab")}
-            </button>
-          </div>
-          <LxInfoTooltip
-            markdown={activeTab === "agentInput" ? agentInputInfoDoc : agentMDInfoDoc}
-            placement="bottom"
-          />
-        </div>
-
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {selectedScope === "project" && (
-            <div className="w-[180px] max-w-full">
-              <LxSelect
-                value={selectedProjectId}
-                options={projects.map((p) => ({
-                  value: p.id,
-                  label: p.name,
-                  isImported: p.isImported !== false,
-                }))}
-                placeholder={t("settings.customCommandSelectProject")}
-                onChange={(val) => {
-                  setSelectedProjectId(val)
-                  setSelectedCommandName(null)
-                  setIsEditingDraft(false)
-                }}
-              />
-            </div>
-          )}
-
           <div className="w-[150px] max-w-full">
             <LxSelect
-              value={selectedScope}
+              value={activeView}
               options={[
-                {
-                  value: "user",
-                  label: t("settings.customCommandGlobalScope"),
-                  icon: <Globe className="h-3.5 w-3.5 text-sky-400" />,
-                },
-                {
-                  value: "project",
-                  label: t("settings.customCommandProjectScope"),
-                  icon: <Folder className="h-3.5 w-3.5 text-amber-400" />,
-                },
+                { value: "agentInput", label: t("settings.customCommandViewChat") },
+                { value: "agentMD", label: t("settings.customCommandViewMd") },
+                { value: "blocks", label: t("settings.customCommandViewBlocks") },
               ]}
-              onChange={(val) => handleScopeChange(val)}
+              onChange={(value) => handleViewChange(value)}
             />
           </div>
+          {!isBlocksView && (
+            <LxInfoTooltip
+              markdown={commandType === "agentInput" ? agentInputInfoDoc : agentMDInfoDoc}
+              placement="bottom"
+            />
+          )}
         </div>
+
+        {!isBlocksView && (
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {selectedScope === "project" && (
+              <div className="w-[180px] max-w-full">
+                <LxSelect
+                  value={selectedProjectId}
+                  options={projects.map((p) => ({
+                    value: p.id,
+                    label: p.name,
+                    isImported: p.isImported !== false,
+                  }))}
+                  placeholder={t("settings.customCommandSelectProject")}
+                  onChange={(value) => {
+                    setSelectedProjectId(value)
+                    setSelectedCommandName(null)
+                    setIsEditingDraft(false)
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="w-[150px] max-w-full">
+              <LxSelect
+                value={selectedScope}
+                options={[
+                  {
+                    value: "user",
+                    label: t("settings.customCommandGlobalScope"),
+                    icon: <Globe className="h-3.5 w-3.5 text-sky-400" />,
+                  },
+                  {
+                    value: "project",
+                    label: t("settings.customCommandProjectScope"),
+                    icon: <Folder className="h-3.5 w-3.5 text-amber-400" />,
+                  },
+                ]}
+                onChange={(value) => handleScopeChange(value)}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 主体两栏布局：左侧命令列表，右侧编辑面板 */}
-      <div className="custom-scrollbar grid min-h-0 flex-1 gap-3 overflow-y-auto @[560px]:overflow-hidden @[560px]:grid-cols-[220px_minmax(0,1fr)]">
-        {/* 左侧列表 */}
-        <div className="settings-item-card flex min-h-0 flex-col rounded-[6px] border border-white/8 bg-white/[0.02]">
-          <div className="flex items-center justify-between border-b border-white/8 p-2">
-            <span className="text-xs font-medium text-white/70">
-              {t("settings.customCommandsList")} ({commands.length + (hasDraft ? 1 : 0)})
-            </span>
-            <LxIconButton
-              preset="add"
-              aria-label={t("settings.addCustomCommand")}
-              title={{ content: t("settings.addCustomCommand"), placement: "top" }}
-              onClick={handleStartCreate}
-            >
-              <Plus />
-            </LxIconButton>
-          </div>
+      {isBlocksView ? (
+        <MarkdownBlockGuide />
+      ) : (
+        /* 主体两栏布局：左侧命令列表，右侧编辑面板 */
+        <div className="custom-scrollbar grid min-h-0 flex-1 gap-3 overflow-y-auto @[560px]:overflow-hidden @[560px]:grid-cols-[220px_minmax(0,1fr)]">
+          <CommandNav
+            commands={commands}
+            selectedCommandName={selectedCommandName}
+            isEditingDraft={isEditingDraft}
+            hasDraft={hasDraft}
+            draftName={formData.name}
+            isLoading={isLoading}
+            isCommandModified={(name) => Boolean(modifiedStore[getCommandKey(name)])}
+            onSelectCommand={(name) => {
+              setIsEditingDraft(false)
+              setSelectedCommandName(name)
+            }}
+            onSelectDraft={() => {
+              setIsEditingDraft(true)
+              setSelectedCommandName(null)
+            }}
+            onDeleteDraft={handleDeleteDraft}
+            onStartCreate={handleStartCreate}
+            onOpenContextMenu={(commandName, x, y, anchor) =>
+              setMenuState({ commandName, x, y, anchor })
+            }
+          />
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar">
-            {isLoading ? (
-              <div className="py-4 text-center text-xs text-white/40">{t("common.loading")}</div>
-            ) : commands.length === 0 && !hasDraft ? (
-              <div className="py-6 text-center text-xs text-white/40">
-                {t("settings.customCommandsEmpty")}
+          {/* 右侧表单编辑区 */}
+          <div className="settings-item-card flex min-h-0 flex-1 flex-col rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
+            {!selectedCommandName && !isEditingDraft && commands.length === 0 && !hasDraft ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-white/40">
+                <p>{t("settings.customCommandsEmptyTip")}</p>
+                <LxIconButton
+                  iconOnly={false}
+                  onClick={handleStartCreate}
+                  textClass="text-white"
+                  hoverBgClass="hover:bg-white/15"
+                  className="rounded-[6px] bg-white/10 cursor-pointer"
+                  icon={<Plus />}
+                >
+                  {t("settings.addCustomCommand")}
+                </LxIconButton>
               </div>
             ) : (
-              <>
-                {/* 草稿项：只要 hasDraft 存在就常驻列表，不随查看其它命令而消失 */}
-                {hasDraft && (
-                  <LxNavItem
-                    size="small"
-                    level={2}
-                    className={`group w-full justify-between ${
-                      isEditingDraft ? "bg-white/10 text-white font-medium" : "text-emerald-400"
-                    }`}
-                    onClick={() => {
-                      setIsEditingDraft(true)
-                      setSelectedCommandName(null)
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-white/8 pb-2">
+                  <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-white">
+                    <span className="truncate">
+                      {isEditingDraft
+                        ? t("settings.createCustomCommandTitle")
+                        : t("settings.editCustomCommandTitle", {
+                            name: selectedCommandName ?? "",
+                          })}
+                    </span>
+                    {isDirty && (
+                      <span
+                        aria-label="Unsaved"
+                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+                      />
+                    )}
+                  </h3>
+                  <LxIconButton
+                    aria-label={t("settings.customCommandMetaExpand")}
+                    title={{
+                      content: isMetaExpanded
+                        ? t("settings.customCommandMetaCollapse")
+                        : t("settings.customCommandMetaExpand"),
+                      placement: "bottom",
                     }}
+                    highlighted={isMetaExpanded}
+                    onClick={() => setIsMetaExpanded((prev) => !prev)}
                   >
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="text-emerald-400/60 font-mono">/</span>
-                      <span className="truncate italic">
-                        {formData.name.trim() || t("settings.newCustomCommandDraft")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <LxTag size="small" bgClass="bg-emerald-500/20 text-emerald-300">
-                        Draft
-                      </LxTag>
-                      <LxIconButton
-                        variant="ghost"
-                        showHoverBg={false}
-                        aria-label={t("common.delete")}
-                        hoverTextClass="hover:text-rose-400"
-                        className="opacity-0 group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteDraft()
-                        }}
-                      >
-                        <Trash2 />
-                      </LxIconButton>
-                    </div>
-                  </LxNavItem>
+                    <SlidersHorizontal />
+                  </LxIconButton>
+                </div>
+
+                {/* 字段输入区：默认折叠，由头部按钮展开 */}
+                {isMetaExpanded && (
+                  <CommandMetaFields
+                    activeTab={commandType}
+                    formData={formData}
+                    onChange={handleFormChange}
+                  />
                 )}
 
-                {commands.map((cmd) => {
-                  const isSelected = !isEditingDraft && cmd.name === selectedCommandName
-                  const isItemModified = Boolean(modifiedStore[getCommandKey(cmd.name)])
-                  return (
-                    <LxNavItem
-                      key={cmd.name}
-                      size="small"
-                      level={2}
-                      className={`w-full justify-between ${
-                        isSelected
-                          ? "bg-white/10 text-white font-medium"
-                          : "text-white/70 hover:text-white"
-                      }`}
-                      onClick={() => {
-                        setIsEditingDraft(false)
-                        setSelectedCommandName(cmd.name)
-                      }}
-                      onContextMenu={(event) => {
-                        event.preventDefault()
-                        setMenuState({
-                          commandName: cmd.name,
-                          x: event.clientX,
-                          y: event.clientY,
-                          anchor: event.currentTarget as HTMLElement,
-                        })
-                      }}
-                    >
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <span className="text-white/40 font-mono">/</span>
-                        <span className="truncate font-mono">{cmd.name}</span>
-                        {isItemModified && (
-                          <span
-                            aria-label="Modified"
-                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
-                          />
-                        )}
-                      </div>
-                    </LxNavItem>
-                  )
-                })}
-              </>
+                {/* 内容编辑区：Markdown 编辑器撑满剩余高度 */}
+                <div className="flex min-h-0 flex-1 flex-col gap-1">
+                  <span className="flex items-center gap-1 text-xs text-white/60">
+                    {t("settings.customCommandContent")}
+                    <span className="text-rose-400">*</span>
+                  </span>
+                  <div className="flex min-h-[240px] flex-1 flex-col @[560px]:min-h-0">
+                    <LxMarkdownEditor
+                      key={editorKey}
+                      initialContent={formData.content}
+                      toolbarActions={toolbarActions}
+                      onChange={(content) => handleFormChange((prev) => ({ ...prev, content }))}
+                    />
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
-
-        {/* 右侧表单编辑区 */}
-        <div className="settings-item-card flex min-h-0 flex-1 flex-col rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
-          {!selectedCommandName && !isEditingDraft && commands.length === 0 && !hasDraft ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-white/40">
-              <p>{t("settings.customCommandsEmptyTip")}</p>
-              <LxIconButton
-                iconOnly={false}
-                onClick={handleStartCreate}
-                textClass="text-white"
-                hoverBgClass="hover:bg-white/15"
-                className="rounded-[6px] bg-white/10 cursor-pointer"
-                icon={<Plus />}
-              >
-                {t("settings.addCustomCommand")}
-              </LxIconButton>
-            </div>
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col gap-3">
-              <div className="flex items-center justify-between border-b border-white/8 pb-2">
-                <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-white">
-                  <span className="truncate">
-                    {isEditingDraft
-                      ? t("settings.createCustomCommandTitle")
-                      : t("settings.editCustomCommandTitle", {
-                          name: selectedCommandName ?? "",
-                        })}
-                  </span>
-                  {isDirty && (
-                    <span
-                      aria-label="Unsaved"
-                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
-                    />
-                  )}
-                </h3>
-                <LxIconButton
-                  aria-label={t("settings.customCommandMetaExpand")}
-                  title={{
-                    content: isMetaExpanded
-                      ? t("settings.customCommandMetaCollapse")
-                      : t("settings.customCommandMetaExpand"),
-                    placement: "bottom",
-                  }}
-                  highlighted={isMetaExpanded}
-                  onClick={() => setIsMetaExpanded((prev) => !prev)}
-                >
-                  <SlidersHorizontal />
-                </LxIconButton>
-              </div>
-
-              {/* 字段输入区：默认折叠，由头部按钮展开 */}
-              {isMetaExpanded && (
-                <div className="grid shrink-0 gap-3 border-b border-white/8 pb-3 @[500px]:grid-cols-2">
-                  <label className="grid gap-1 text-xs text-white/60">
-                    <span className="flex items-center gap-1">
-                      {t("settings.customCommandName")}
-                      <span className="text-rose-400">*</span>
-                    </span>
-                    <LxInput
-                      placeholder="e.g. reviewCode"
-                      prefix={<span className="text-white/40 font-mono">/</span>}
-                      value={formData.name}
-                      onChange={(e) =>
-                        handleFormChange((prev) => ({ ...prev, name: e.target.value }))
-                      }
-                    />
-                  </label>
-
-                  <label className="grid gap-1 text-xs text-white/60">
-                    <span>{t("settings.customCommandDescription")}</span>
-                    <LxInput
-                      placeholder={t("settings.customCommandDescriptionPlaceholder")}
-                      value={formData.description}
-                      onChange={(e) =>
-                        handleFormChange((prev) => ({ ...prev, description: e.target.value }))
-                      }
-                    />
-                  </label>
-
-                  {activeTab === "agentInput" ? (
-                    <label className="grid gap-1 text-xs text-white/60 @[500px]:col-span-2">
-                      <span className="flex items-center gap-1">
-                        {t("settings.customCommandArgumentHint")}
-                        <LxInfoTooltip
-                          markdown={`\`argument-hint\`: ${t("settings.customCommandArgumentHintHelp")}`}
-                        />
-                      </span>
-                      <LxInput
-                        placeholder="e.g. [feature] [branch]"
-                        value={formData.argumentHint}
-                        onChange={(e) =>
-                          handleFormChange((prev) => ({
-                            ...prev,
-                            argumentHint: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                  ) : (
-                    <>
-                      <label className="grid gap-1 text-xs text-white/60">
-                        <span className="flex items-center gap-1">
-                          {t("settings.customCommandMDScope")}
-                          <LxInfoTooltip
-                            markdown={`**global**: ${t("settings.customCommandMDGlobalScopeDesc")}\n\n**template**: ${t("settings.customCommandMDTemplateScopeDesc")}`}
-                          />
-                        </span>
-                        <LxSelect
-                          value={formData.mdScope}
-                          options={[
-                            { value: "global", label: t("settings.customCommandScopeGlobal") },
-                            {
-                              value: "template",
-                              label: t("settings.customCommandScopeTemplateOnly"),
-                            },
-                          ]}
-                          onChange={(val) =>
-                            handleFormChange((prev) => ({
-                              ...prev,
-                              mdScope: val as "global" | "template",
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <label className="grid gap-1 text-xs text-white/60">
-                        <span className="flex items-center gap-1">
-                          {t("settings.customCommandArgumentHint")}
-                          <LxInfoTooltip
-                            markdown={`\`argument-hint\`: ${t("settings.customCommandArgumentHintHelp")}`}
-                          />
-                        </span>
-                        <LxInput
-                          placeholder="e.g. [feature] [branch]"
-                          value={formData.argumentHint}
-                          onChange={(e) =>
-                            handleFormChange((prev) => ({
-                              ...prev,
-                              argumentHint: e.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* 内容编辑区：Markdown 编辑器撑满剩余高度 */}
-              <div className="flex min-h-0 flex-1 flex-col gap-1">
-                <span className="flex items-center gap-1 text-xs text-white/60">
-                  {t("settings.customCommandContent")}
-                  <span className="text-rose-400">*</span>
-                </span>
-                <div className="flex min-h-[240px] flex-1 flex-col @[560px]:min-h-0">
-                  <LxMarkdownEditor
-                    key={editorKey}
-                    initialContent={formData.content}
-                    toolbarActions={toolbarActions}
-                    onChange={(content) => handleFormChange((prev) => ({ ...prev, content }))}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       <LxMenu
         ariaLabel={t("settings.customCommandMenu", { name: menuState?.commandName ?? "" })}

@@ -6,7 +6,7 @@ import type {
   ListCustomCommandsInput,
   SaveCustomCommandInput,
 } from "@shared/contracts/customCommand"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CustomCommandSettings } from "@/features/settings/components/CustomCommandSettings"
 import { useSettingsDraftStore } from "@/features/settings/hooks/settingsDraftStore"
@@ -160,7 +160,7 @@ describe("CustomCommandSettings 命令行", () => {
     )
   })
 
-  it("工具栏插入模板块菜单可插入文档块与日志块骨架", async () => {
+  it("工具栏插入模板块下拉可插入任务块骨架，对话命令视图不提供子块选项", async () => {
     renderComponent()
     await screen.findByText("alpha")
     // 等待自动选中首个命令（编辑器按 editorKey 重挂载完成）后再操作工具栏。
@@ -169,26 +169,78 @@ describe("CustomCommandSettings 命令行", () => {
     const cm = document.querySelector(".cm-content") as HTMLElement
     const view = EditorView.findFromDOM(cm)!
 
-    fireEvent.click(screen.getByLabelText("Insert Template Block"))
-    fireEvent.click(await screen.findByText("Basic Block"))
+    // 打开插入模板块下拉：对话命令视图仅提供任务块。
+    fireEvent.click(screen.getByText("Insert Block"))
+    await screen.findByText("Task Block")
+    expect(screen.queryByText("Temporary Block")).toBeNull()
+    expect(screen.queryByText("Record Block")).toBeNull()
+
+    fireEvent.mouseDown(screen.getByText("Task Block"))
 
     await waitFor(() => {
-      expect(view.state.doc.toString()).toContain("&&& template\n\n&&& template --end")
+      expect(view.state.doc.toString()).toContain("&&& xxxTemplate --start 「title: 」")
+      expect(view.state.doc.toString()).toContain("&&& xxxTemplate --end")
     })
+  })
 
-    fireEvent.click(screen.getByLabelText("Insert Template Block"))
-    fireEvent.click(await screen.findByText("Execution Log Block"))
+  it("md 命令视图：临时块 / 记录块选项仅在光标位于任务块内时提供", async () => {
+    renderComponent()
+    await screen.findByText("alpha")
 
-    await waitFor(() => {
-      expect(view.state.doc.toString()).toContain("%%% logTemplate --start")
+    // 顶部视图下拉切换到 md 命令。
+    fireEvent.click(screen.getByText("Chat Commands"))
+    fireEvent.mouseDown(await screen.findByText("MD Commands"))
+    await screen.findByText("md-alpha")
+    await screen.findByText("Edit Command /md-alpha")
+
+    const cm = document.querySelector(".cm-content") as HTMLElement
+    const view = EditorView.findFromDOM(cm)!
+
+    // 光标位于任务块外：仅任务块选项。
+    await act(async () => {
+      view.dispatch({ selection: { anchor: 0 } })
     })
+    fireEvent.click(screen.getByText("Insert Block"))
+    await screen.findByText("Task Block")
+    expect(screen.queryByText("Temporary Block")).toBeNull()
+    fireEvent.click(screen.getByText("Insert Block"))
+    await waitFor(() => expect(screen.queryByText("Task Block")).toBeNull())
+
+    // 光标位于任务块内部：临时块 / 记录块选项出现。
+    await act(async () => {
+      view.dispatch({ selection: { anchor: view.state.doc.line(2).from } })
+    })
+    fireEvent.click(screen.getByText("Insert Block"))
+    await screen.findByText("Temporary Block")
+    expect(screen.getByText("Record Block")).toBeTruthy()
+  })
+
+  it("md 模板块视图展示固定三项块列表与说明，且不加载命令列表", async () => {
+    renderComponent()
+    await screen.findByText("alpha")
+
+    // 顶部视图下拉切换到 md 模板块。
+    fireEvent.click(screen.getByText("Chat Commands"))
+    fireEvent.mouseDown(await screen.findByText("MD Blocks"))
+
+    // 左侧固定三项块类型（列表项与右侧标题同名，存在多处）。
+    expect((await screen.findAllByText("Task Block")).length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Temporary Block").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Record Block").length).toBeGreaterThan(0)
+    // 右侧说明与示例。
+    expect(screen.getByText("Available globally")).toBeTruthy()
+    expect(screen.getByText(/xxxTemplate --start/)).toBeTruthy()
+    // 命令列表、新建入口与作用域选择不再展示。
+    expect(screen.queryByText("New Command")).toBeNull()
+    expect(screen.queryByText("Global")).toBeNull()
   })
 
   it("agentMD 命令使用 Markdown 编辑器，编辑内容后保存为最新模板内容", async () => {
     renderComponent()
     await screen.findByText("alpha")
 
-    fireEvent.click(screen.getByText("Template Commands"))
+    fireEvent.click(screen.getByText("Chat Commands"))
+    fireEvent.mouseDown(await screen.findByText("MD Commands"))
     await screen.findByText("md-alpha")
 
     fireEvent.click(screen.getByText("md-alpha").closest('[role="button"]') as Element)

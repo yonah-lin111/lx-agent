@@ -57,7 +57,7 @@ export interface MarkdownListContinuation {
 
 export interface ParsedMarkdownSuppleEnd {
   indent: string
-  command: "suppleTemplate" | "supple"
+  command: string
   id?: string
   wt?: string
 }

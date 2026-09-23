@@ -273,3 +273,41 @@ $$$ varTemplate --end
     expect(html).toContain("正文内容")
   })
 })
+
+describe("模板块子块渲染与嵌套限制", () => {
+  it("任务块内部的临时块 / 记录块渲染为子块并展示名称与 title", () => {
+    const input = [
+      "&&& addTemplate --start 「title: 主任务」",
+      "+++ reviewTemplate --start 「title: 补充说明」",
+      "补充内容",
+      "+++ reviewTemplate --end",
+      "%%% execLog --start",
+      "记录内容",
+      "%%% execLog --end",
+      "&&& addTemplate --end",
+    ].join("\n")
+
+    const html = markdownRenderer.render(input)
+    expect(html).toContain('class="markdown-supple-block"')
+    expect(html).toContain('<span class="markdown-supple-label">reviewTemplate</span>')
+    expect(html).toContain('<span class="markdown-template-title">补充说明</span>')
+    expect(html).toContain('class="markdown-log-block"')
+    expect(html).toContain('<span class="markdown-log-label">execLog</span>')
+  })
+
+  it("任务块外的临时块 / 记录块不渲染为子块", () => {
+    const input = [
+      "+++ reviewTemplate --start",
+      "补充内容",
+      "+++ reviewTemplate --end",
+      "",
+      "%%% execLog --start",
+      "记录内容",
+      "%%% execLog --end",
+    ].join("\n")
+
+    const html = markdownRenderer.render(input)
+    expect(html).not.toContain("markdown-supple-block")
+    expect(html).not.toContain("markdown-log-block")
+  })
+})
