@@ -218,6 +218,17 @@ $$$ varTemplate --end
 正文内容`
       expect(stripMarkdownVariableBlocks(doc)).toBe("# 标题\n正文内容")
     })
+
+    it("结束行携带注入 id 时仍能剥离变量块", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 变量」",
+        'key: "value"',
+        "$$$ varTemplate --end {id:c7fa918944154ea8aa1ea07d9b871817}",
+        "",
+        "# 标题",
+      ].join("\n")
+      expect(stripMarkdownVariableBlocks(doc)).toBe("# 标题")
+    })
   })
 
   describe("getVariableTag", () => {
@@ -258,16 +269,16 @@ $$$ varTemplate --end`
       expect(cleaned).toContain("自定义内容")
     })
 
-    it("固定 @content 块与 +++ 子块原样保留", () => {
+    it("固定 @content 块与 +++ / %%% 子块原样保留", () => {
       const block = `$$$ varTemplate --start 「title: 变量」
 @content:
   - @src/foo.ts
   - @[refer-folder](src/bar)
 unfilled: ""
-+++ logTemplate --start
+%%% logTemplate --start
 - Records:
   - var
-+++ logTemplate --end
+%%% logTemplate --end
 $$$ varTemplate --end`
 
       const cleaned = cleanVarBlockItems(block)
@@ -275,9 +286,9 @@ $$$ varTemplate --end`
       expect(cleaned).toContain("  - @src/foo.ts")
       expect(cleaned).toContain("  - @[refer-folder](src/bar)")
       expect(cleaned).not.toContain('unfilled: ""')
-      expect(cleaned).toContain("+++ logTemplate --start")
+      expect(cleaned).toContain("%%% logTemplate --start")
       expect(cleaned).toContain("  - var")
-      expect(cleaned).toContain("+++ logTemplate --end")
+      expect(cleaned).toContain("%%% logTemplate --end")
     })
   })
 
@@ -733,6 +744,20 @@ describe("变量模板块正则边界", () => {
     expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("   $$$ --end")).toBe(true)
     expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ varTemplate --start")).toBe(false)
     expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ --end trailing")).toBe(false)
+  })
+
+  it("MARKDOWN_VAR_TEMPLATE_END_RE 兼容插入时注入的 {id:...}", () => {
+    expect(
+      MARKDOWN_VAR_TEMPLATE_END_RE.test(
+        "$$$ varTemplate --end {id:c7fa918944154ea8aa1ea07d9b871817}",
+      ),
+    ).toBe(true)
+    expect(
+      MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ --end {id:c7fa918944154ea8aa1ea07d9b871817}"),
+    ).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ {id:c7fa918944154ea8aa1ea07d9b871817}")).toBe(
+      true,
+    )
   })
 })
 

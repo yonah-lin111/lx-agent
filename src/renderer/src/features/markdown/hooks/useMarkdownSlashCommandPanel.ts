@@ -3,6 +3,7 @@ import type { RefObject } from "react"
 import { useRef, useState } from "react"
 import {
   createMarkdownTemplateId,
+  injectCustomTemplateBlockIds,
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import type { MarkdownSlashCommand } from "@/features/markdown/commands/markdownSlashCommands"
@@ -222,9 +223,13 @@ export const useMarkdownSlashCommandPanel = ({
       return
     }
 
-    // 自定义模板命令：直接将 content 插入光标行，若包含占位符则默认选中首个占位符。
+    // 自定义模板命令：补全内容中 &&& / +++ supple 结束行的块 id 后插入光标行。
+    // 模板块命令（block:）统一使用 cursorOffset（标题占位优先）；普通 md 命令仍优先选中首个 [xxx] 占位。
     if (command.kind === "customTemplate") {
-      const placeholderRange = getTemplatePlaceholderSelectionRange(command.content)
+      const content = injectCustomTemplateBlockIds(command.content)
+      const placeholderRange = command.id.startsWith("block:")
+        ? null
+        : getTemplatePlaceholderSelectionRange(content)
       const selection = placeholderRange
         ? {
             anchor: panel.line.from + placeholderRange.start,
@@ -233,7 +238,7 @@ export const useMarkdownSlashCommandPanel = ({
         : { anchor: panel.line.from + command.cursorOffset }
 
       view.dispatch({
-        changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
+        changes: { from: panel.line.from, to: panel.line.to, insert: content },
         selection,
       })
       view.focus()
@@ -242,7 +247,7 @@ export const useMarkdownSlashCommandPanel = ({
     }
 
     // 直接命令（scope=normal）插入时在结束行 &&& 标记后追加唯一 id；
-    // suppleTemplate 插入时在结束行 +++ 标记后追加唯一 id；光标位置不受影响。
+    // suppleTemplate / logTemplate 插入时在结束行标记后追加唯一 id；光标位置不受影响。
     let content = command.content
     if (command.scope === "normal") {
       content = content.replace(
@@ -251,7 +256,12 @@ export const useMarkdownSlashCommandPanel = ({
       )
     } else if (command.id === "suppleTemplate") {
       content = content.replace(
-        /(?:\+\+\+\s+(?:suppleTemplate|supple)\s+--end)$/m,
+        /(?:\+\+\+\s+[A-Za-z]\w*\s+--end)$/m,
+        (match) => `${match} {id:${createMarkdownTemplateId()}}`,
+      )
+    } else if (command.id === "logTemplate") {
+      content = content.replace(
+        /(?:%%%\s+[A-Za-z]\w*\s+--end)$/m,
         (match) => `${match} {id:${createMarkdownTemplateId()}}`,
       )
     }

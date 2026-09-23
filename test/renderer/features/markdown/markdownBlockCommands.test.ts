@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildAgentBlockSource,
   createMarkdownBlockInsertion,
   createMarkdownTemplateId,
   cycleMarkdownTemplateStatus,
+  extractAgentBlockBody,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   getMarkdownListContinuation,
@@ -16,14 +18,24 @@ import {
   getMarkdownTemplateStatuses,
   getMarkdownTemplateWorktree,
   getMarkdownTemplateWtRanges,
+  injectCustomTemplateBlockIds,
   isInsideMarkdownCodeFence,
   isInsideMarkdownLogBlock,
   isInsideMarkdownTemplateBlock,
+  isMarkdownLogEndLine,
+  isMarkdownLogStartLine,
   isMarkdownSuppleEndLine,
+  isMarkdownSuppleStartLine,
+  normalizeAgentBlockBody,
+  parseMarkdownLogEndLine,
+  parseMarkdownLogStartLine,
   parseMarkdownSuppleEndLine,
+  parseMarkdownSuppleStartLine,
   setMarkdownSuppleWorktree,
   setMarkdownTemplateWorktree,
+  stripMarkdownBlockNameSuffix,
   toggleMarkdownTemplateCommentLines,
+  withMarkdownBlockNameSuffix,
 } from "@/features/markdown/commands/markdownBlockCommands"
 
 describe("Markdown 块命令", () => {
@@ -62,6 +74,10 @@ describe("Markdown 块命令", () => {
     expect(isInsideMarkdownLogBlock("+++ logTemplate --start\n- log 1\n")).toBe(true)
     expect(
       isInsideMarkdownLogBlock("+++ logTemplate --start\n- log 1\n+++ logTemplate --end\n"),
+    ).toBe(false)
+    expect(isInsideMarkdownLogBlock("%%% logTemplate --start\n- log 1\n")).toBe(true)
+    expect(
+      isInsideMarkdownLogBlock("%%% logTemplate --start\n- log 1\n%%% logTemplate --end\n"),
     ).toBe(false)
   })
 
@@ -279,6 +295,130 @@ describe("模板块 id", () => {
   })
 })
 
+describe("自定义模板块 id 注入", () => {
+  const idPattern = /\{id:[0-9a-f]{32}\}/g
+
+  it("为 &&& 模板块结束行注入 id，开始行与正文不受影响", () => {
+    const result = injectCustomTemplateBlockIds(
+      ["&&& reviewTemplate", "## 内容", "&&& reviewTemplate --end"].join("\n"),
+    )
+    const lines = result.split("\n")
+
+    expect(lines[0]).toBe("&&& reviewTemplate")
+    expect(lines[1]).toBe("## 内容")
+    expect(lines[2]).toMatch(/^&&& reviewTemplate --end \{id:[0-9a-f]{32}\}$/)
+  })
+
+  it("多个模板块各自注入独立 id", () => {
+    const result = injectCustomTemplateBlockIds(
+      [
+        "&&& firstTemplate",
+        "&&& firstTemplate --end",
+        "&&& secondTemplate",
+        "&&& secondTemplate --end",
+      ].join("\n"),
+    )
+    const ids = result.match(idPattern) ?? []
+
+    expect(ids).toHaveLength(2)
+    expect(ids[0]).not.toBe(ids[1])
+  })
+
+  it("旧格式 &&& 结束行同样注入 id", () => {
+    expect(injectCustomTemplateBlockIds("&&& --end")).toMatch(/^&&& --end \{id:[0-9a-f]{32}\}$/)
+  })
+
+  it("已有 id 的结束行保持不变", () => {
+    const line = "&&& reviewTemplate --end {id:0123456789abcdef0123456789abcdef}"
+    expect(injectCustomTemplateBlockIds(line)).toBe(line)
+  })
+
+  it("id 注入在 {wt:...} 之前并保留结束行状态标记", () => {
+    const result = injectCustomTemplateBlockIds("&&& reviewTemplate --end done {wt:dev}")
+    expect(result).toMatch(/^&&& reviewTemplate --end done \{id:[0-9a-f]{32}\} \{wt:dev\}$/)
+  })
+
+  it("为 +++ 临时块结束行注入 id，任意名称与缩进均保留", () => {
+    expect(injectCustomTemplateBlockIds("+++ supple --end")).toMatch(
+      /^\+\+\+ supple --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("  +++ suppleTemplate --end")).toMatch(
+      /^ {2}\+\+\+ suppleTemplate --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("+++ reviewTemplate --end")).toMatch(
+      /^\+\+\+ reviewTemplate --end \{id:[0-9a-f]{32}\}$/,
+    )
+  })
+
+  it("%%% 记录块结束行注入 id，旧版 +++ log 兼容同样注入", () => {
+    expect(injectCustomTemplateBlockIds("%%% log --end")).toMatch(
+      /^%%% log --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("%%% logTemplate --end")).toMatch(
+      /^%%% logTemplate --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("%%% execLog --end")).toMatch(
+      /^%%% execLog --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("+++ log --end")).toMatch(
+      /^\+\+\+ log --end \{id:[0-9a-f]{32}\}$/,
+    )
+  })
+
+  it("$$$ 变量模板块结束行注入 id（显式 --end 与裸 $$$ 配对）", () => {
+    expect(injectCustomTemplateBlockIds("$$$ varTemplate --end")).toMatch(
+      /^\$\$\$ varTemplate --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("$$$ --end")).toMatch(/^\$\$\$ --end \{id:[0-9a-f]{32}\}$/)
+
+    // 裸 $$$ 行开闭同形：按配对状态区分开始行与结束行。
+    const explicit = ["$$$ varTemplate --start 「title: 标题」", "内容", "$$$"].join("\n")
+    expect(injectCustomTemplateBlockIds(explicit)).toMatch(
+      /^\$\$\$ varTemplate --start 「title: 标题」\n内容\n\$\$\$ \{id:[0-9a-f]{32}\}$/,
+    )
+
+    const bare = ["$$$", "标题: X", "$$$"].join("\n")
+    expect(injectCustomTemplateBlockIds(bare)).toMatch(
+      /^\$\$\$\n标题: X\n\$\$\$ \{id:[0-9a-f]{32}\}$/,
+    )
+  })
+
+  it("$$$ 变量模板块已有 id 时保持不变", () => {
+    const content = [
+      "$$$ varTemplate --start",
+      "x",
+      "$$$ varTemplate --end {id:c7fa918944154ea8aa1ea07d9b871817}",
+    ].join("\n")
+    expect(injectCustomTemplateBlockIds(content)).toBe(content)
+  })
+
+  it("完整自定义模板：任务块 / 临时块 / 记录块均注入独立 id", () => {
+    const content = [
+      "&&& reviewTemplate",
+      "## 检查项",
+      "+++ supple --start",
+      "补充说明",
+      "+++ supple --end",
+      "%%% log --start",
+      "执行记录",
+      "%%% log --end",
+      "&&& reviewTemplate --end",
+    ].join("\n")
+    const result = injectCustomTemplateBlockIds(content)
+
+    expect(result).toMatch(/^%%% log --end \{id:[0-9a-f]{32}\}$/m)
+    expect(result).toContain("&&& reviewTemplate --end {id:")
+    expect(result.match(idPattern)).toHaveLength(3)
+  })
+
+  it("已有 id 的结束行保持幂等，不重复注入", () => {
+    const id = "0123456789abcdef0123456789abcdef"
+    expect(injectCustomTemplateBlockIds(`%%% execLog --end {id:${id}}`)).toBe(
+      `%%% execLog --end {id:${id}}`,
+    )
+  })
+})
+
 describe("模板块工作区绑定 {wt:}", () => {
   const id = "0123456789abcdef0123456789abcdef"
 
@@ -381,13 +521,13 @@ describe("模板块工作区绑定 {wt:}", () => {
       expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe("- 需求: 任务 1\n- 位置: src/app.ts")
     })
 
-    it("&&& 模版块中包含 logTemplate 时，复制 &&& 块与 log 内容，并移除 +++ log 起止标记", () => {
+    it("&&& 模版块中包含 logTemplate 时，复制 &&& 块与 log 内容，并移除 %%% log 起止标记", () => {
       const doc = [
         "&&& addTemplate --start",
         "- 需求: 任务 1",
-        "+++ logTemplate --start",
+        "%%% logTemplate --start",
         "- 日志: 排查信息",
-        "+++ logTemplate --end",
+        "%%% logTemplate --end",
         "- 结果: 成功",
         "&&& addTemplate --end",
       ].join("\n")
@@ -434,9 +574,9 @@ describe("模板块工作区绑定 {wt:}", () => {
       const doc = [
         "&&& addTemplate --start",
         "- 需求: 任务 1",
-        "+++ logTemplate --start",
+        "%%% logTemplate --start",
         "- 日志: 错误日志",
-        "+++ logTemplate --end",
+        "%%% logTemplate --end",
         "&&& addTemplate --end",
       ].join("\n")
 
@@ -450,9 +590,9 @@ describe("模板块工作区绑定 {wt:}", () => {
         "- 需求: 任务 1",
         "+++ suppleTemplate --start",
         "- 补充: 需求 A",
-        "+++ logTemplate --start",
+        "%%% logTemplate --start",
         "- 日志: 嵌套在 supple 中的日志",
-        "+++ logTemplate --end",
+        "%%% logTemplate --end",
         "- 补充: 需求 B",
         "+++ suppleTemplate --end",
         "&&& addTemplate --end",
@@ -496,10 +636,24 @@ describe("模板块工作区绑定 {wt:}", () => {
     })
 
     it("顶层孤独的 logTemplate（无父模版块）不能单独复制，返回 null", () => {
-      const doc = ["+++ logTemplate --start", "- 独立日志", "+++ logTemplate --end"].join("\n")
+      const doc = ["%%% logTemplate --start", "- 独立日志", "%%% logTemplate --end"].join("\n")
 
       const pos = doc.indexOf("- 独立日志")
       expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBeNull()
+    })
+
+    it("旧版 +++ logTemplate 块仍按 log 语义处理（兼容读取）", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "- 需求: 任务 1",
+        "+++ logTemplate --start",
+        "- 日志: 旧版标记",
+        "+++ logTemplate --end",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const pos = doc.indexOf("- 需求: 任务 1")
+      expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe("- 需求: 任务 1\n- 日志: 旧版标记")
     })
   })
 
@@ -644,5 +798,169 @@ describe("模板块工作区绑定 {wt:}", () => {
       expect(getMarkdownListContinuation("普通段落文字")).toBeNull()
       expect(getMarkdownListContinuation('key: "value"')).toBeNull()
     })
+  })
+})
+
+describe("临时块 / 记录块任意名称与 title", () => {
+  const id = "0123456789abcdef0123456789abcdef"
+
+  it("识别任意名称的临时块与记录块开始 / 结束行", () => {
+    expect(isMarkdownSuppleStartLine("+++ reviewTemplate --start")).toBe(true)
+    expect(isMarkdownSuppleEndLine("+++ reviewTemplate --end")).toBe(true)
+    expect(isMarkdownLogStartLine("%%% execLog --start")).toBe(true)
+    expect(isMarkdownLogEndLine("%%% execLog --end")).toBe(true)
+    expect(isMarkdownSuppleStartLine("+++ reviewTemplate --start 「title: 补充说明」")).toBe(true)
+    expect(isMarkdownLogStartLine("%%% execLog --start 「title: 执行记录」")).toBe(true)
+  })
+
+  it("旧版 +++ log / +++ logTemplate 仍识别为记录块而非临时块", () => {
+    expect(isMarkdownLogStartLine("+++ log --start")).toBe(true)
+    expect(isMarkdownLogStartLine("+++ logTemplate --start")).toBe(true)
+    expect(isMarkdownLogEndLine("+++ log --end")).toBe(true)
+    expect(isMarkdownSuppleStartLine("+++ log --start")).toBe(false)
+    expect(isMarkdownSuppleStartLine("+++ logTemplate --start")).toBe(false)
+  })
+
+  it("解析临时块 / 记录块开始行的名称与 title", () => {
+    expect(
+      parseMarkdownSuppleStartLine("+++ reviewTemplate --start 「title: 补充说明」"),
+    ).toMatchObject({
+      marker: "+++",
+      command: "reviewTemplate",
+      title: "补充说明",
+    })
+    expect(parseMarkdownLogStartLine("%%% execLog --start")).toMatchObject({
+      marker: "%%%",
+      command: "execLog",
+      title: undefined,
+    })
+    expect(parseMarkdownLogStartLine("+++ logTemplate --start 「title: 记录」")).toMatchObject({
+      marker: "+++",
+      command: "logTemplate",
+      title: "记录",
+    })
+    expect(parseMarkdownSuppleStartLine("+++ reviewTemplate --end")).toBeNull()
+  })
+
+  it("解析记录块结束行的 id，仅结束行命中", () => {
+    expect(parseMarkdownLogEndLine(`%%% execLog --end {id:${id}}`)).toMatchObject({
+      command: "execLog",
+      id,
+    })
+    expect(parseMarkdownLogEndLine("%%% execLog --end")).toMatchObject({ id: undefined })
+    expect(parseMarkdownLogEndLine("%%% execLog --start")).toBeNull()
+  })
+
+  it("记录块结束行 id 计入只读保护范围", () => {
+    const line = `%%% execLog --end {id:${id}}`
+    const ranges = getMarkdownTemplateIdRanges(line)
+    expect(ranges).toHaveLength(1)
+    expect(ranges[0]).toMatchObject({ from: line.indexOf("{id:") })
+  })
+})
+
+describe("normalizeAgentBlockBody 模板块正文规范化", () => {
+  it("剥离任务块误带入的最外层起止行并提取 title", () => {
+    const body = [
+      "&&& testTemplate --start 「title: 需求评审」",
+      "## 需求",
+      "- 11111",
+      "&&& testTemplate --end",
+    ].join("\n")
+
+    expect(normalizeAgentBlockBody(body, "template")).toEqual({
+      content: "## 需求\n- 11111",
+      title: "需求评审",
+    })
+  })
+
+  it("剥离临时块 / 记录块起止行（含已注入 id 的结束行）", () => {
+    const supple = ["+++ addonTemplate --start", "- 补充", "+++ addonTemplate --end"].join("\n")
+    expect(normalizeAgentBlockBody(supple, "supple")).toEqual({ content: "- 补充" })
+
+    const log = [
+      "%%% execLog --start 「title: 执行记录」",
+      "- 步骤",
+      "%%% execLog --end {id:fc7cbab0429f4ec1abdc82c6a472b8ba}",
+    ].join("\n")
+    expect(normalizeAgentBlockBody(log, "log")).toEqual({
+      content: "- 步骤",
+      title: "执行记录",
+    })
+  })
+
+  it("正文不含起止行时保持原样（保留首行缩进，去除首尾空行）", () => {
+    expect(normalizeAgentBlockBody("  - item 1\n  - item 2", "template")).toEqual({
+      content: "  - item 1\n  - item 2",
+    })
+
+    expect(normalizeAgentBlockBody("\n\n- item\n\n", "supple")).toEqual({ content: "- item" })
+  })
+
+  it("首尾标记类型不匹配时不剥离", () => {
+    const body = ["&&& a --start", "- item", "%%% b --end"].join("\n")
+    expect(normalizeAgentBlockBody(body, "template")).toEqual({
+      content: "&&& a --start\n- item\n%%% b --end",
+    })
+  })
+
+  it("单行正文不剥离（即使形似开始行）", () => {
+    expect(normalizeAgentBlockBody("&&& a --start", "template")).toEqual({
+      content: "&&& a --start",
+    })
+  })
+
+  it("空正文返回空内容", () => {
+    expect(normalizeAgentBlockBody("\n\n", "template")).toEqual({ content: "" })
+  })
+})
+
+describe("buildAgentBlockSource / extractAgentBlockBody / 块名后缀", () => {
+  it("构建完整块源码：三种块类型与 title", () => {
+    expect(
+      buildAgentBlockSource({
+        name: "reviewTemplate",
+        title: "需求评审",
+        blockType: "template",
+        content: "## 需求\n- ",
+      }),
+    ).toBe("&&& reviewTemplate --start 「title: 需求评审」\n## 需求\n- \n&&& reviewTemplate --end")
+
+    expect(
+      buildAgentBlockSource({ name: "addonTemplate", title: "", blockType: "supple", content: "" }),
+    ).toBe("+++ addonTemplate --start 「title: 」\n\n+++ addonTemplate --end")
+
+    expect(
+      buildAgentBlockSource({ name: "logTemplate", title: "", blockType: "log", content: "x" }),
+    ).toBe("%%% logTemplate --start 「title: 」\nx\n%%% logTemplate --end")
+  })
+
+  it("提取正文无损往返（含空行、缩进与空正文）", () => {
+    const bodies = ["", "## 需求\n- ", "\n- item\n", "  - indented\n\n  - more", "11111"]
+    for (const body of bodies) {
+      for (const blockType of ["template", "supple", "log"] as const) {
+        const source = buildAgentBlockSource({
+          name: "xTemplate",
+          title: "",
+          blockType,
+          content: body,
+        })
+        expect(extractAgentBlockBody(source, blockType)).toBe(body)
+      }
+    }
+  })
+
+  it("结构不完整时提取返回 null", () => {
+    expect(extractAgentBlockBody("## 需求", "template")).toBeNull()
+    expect(extractAgentBlockBody("&&& a --start\nbody", "template")).toBeNull()
+    expect(extractAgentBlockBody("&&& a --start\nbody\n+++ b --end", "template")).toBeNull()
+  })
+
+  it("块名称后缀追加与剥离", () => {
+    expect(withMarkdownBlockNameSuffix("review")).toBe("reviewTemplate")
+    expect(withMarkdownBlockNameSuffix("reviewTemplate")).toBe("reviewTemplate")
+    expect(withMarkdownBlockNameSuffix("")).toBe("")
+    expect(stripMarkdownBlockNameSuffix("reviewTemplate")).toBe("review")
+    expect(stripMarkdownBlockNameSuffix("reviewBlock")).toBe("reviewBlock")
   })
 })

@@ -79,7 +79,7 @@ export const MARKDOWN_TEMPLATE_STYLE_CONTENT = [
 ].join("\n")
 
 export const MARKDOWN_TEMPLATE_SUPPLE_CONTENT = [
-  "+++ suppleTemplate --start",
+  "+++ suppleTemplate --start 「title: 」",
   "## Supplementary Requirements",
   "",
   "- Reference: ",
@@ -91,7 +91,7 @@ export const MARKDOWN_TEMPLATE_SUPPLE_CONTENT = [
 ].join("\n")
 
 export const MARKDOWN_TEMPLATE_LOG_CONTENT = [
-  "+++ logTemplate --start",
+  "%%% logTemplate --start 「title: 」",
   "## Execution Log",
   "",
   "- Time: ",
@@ -99,5 +99,5 @@ export const MARKDOWN_TEMPLATE_LOG_CONTENT = [
   "- Records: ",
   "  - ",
   "- Conclusion: ",
-  "+++ logTemplate --end",
+  "%%% logTemplate --end",
 ].join("\n")

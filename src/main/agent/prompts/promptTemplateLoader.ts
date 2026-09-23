@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { basename, join, resolve } from "node:path"
 import type { PromptTemplateItem } from "@shared/contracts/agent"
+import type { CustomCommandBlockType } from "@shared/contracts/customCommand"
 import type { MarkdownCommandScope, MarkdownTemplateCommandItem } from "@shared/contracts/markdown"
 import matter from "gray-matter"
 import { getAppDataRoot } from "@/paths"
@@ -22,6 +23,17 @@ export interface LoadedMarkdownTemplateCommand {
   argumentHint?: string
   content: string
   scope: MarkdownCommandScope
+  source: "project" | "user"
+  filePath: string
+}
+
+// 已加载的模板块对象（agentBlock）。
+export interface LoadedMarkdownBlock {
+  name: string
+  description: string
+  blockType: CustomCommandBlockType
+  title?: string
+  content: string
   source: "project" | "user"
   filePath: string
 }
@@ -278,6 +290,43 @@ export function loadTemplateFromFile(
 }
 
 /**
+ * 从单个 .md 文件加载并解析模板块（agentBlock）：frontmatter 携带 block 类型与 title，正文为块内容。
+ */
+export function loadBlockFromFile(
+  filePath: string,
+  source: "project" | "user",
+): LoadedMarkdownBlock | null {
+  try {
+    const fileContent = readFileSync(filePath, "utf8")
+    const { frontmatter, content: body } = parseFrontmatterSafely(fileContent)
+
+    const name = basename(filePath, ".md").trim()
+    if (!name || RESERVED_COMMANDS.has(name) || name.startsWith("skill:")) {
+      return null
+    }
+
+    const rawBlock = String(frontmatter.block ?? "").trim()
+    const blockType: CustomCommandBlockType =
+      rawBlock === "supple" || rawBlock === "log" ? rawBlock : "template"
+    const title = typeof frontmatter.title === "string" ? frontmatter.title.trim() : ""
+    const description =
+      typeof frontmatter.description === "string" ? frontmatter.description.trim() : ""
+
+    return {
+      name,
+      description,
+      blockType,
+      title: title || undefined,
+      content: body.replace(/^\r?\n+/, "").trimEnd(),
+      source,
+      filePath,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
  * 从单个 .md 文件加载并解析 Markdown 模板命令。
  */
 export function loadMarkdownCommandFromFile(
@@ -364,6 +413,41 @@ function loadMarkdownCommandsFromDir(
   }
 
   return commands
+}
+
+/**
+ * 扫描指定目录下的模板块 .md 文件（非递归）。
+ */
+function loadBlocksFromDir(dir: string, source: "project" | "user"): LoadedMarkdownBlock[] {
+  const blocks: LoadedMarkdownBlock[] = []
+  if (!existsSync(dir)) return blocks
+
+  try {
+    const entries = readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name)
+      let isFile = entry.isFile()
+
+      if (entry.isSymbolicLink()) {
+        try {
+          isFile = statSync(fullPath).isFile()
+        } catch {
+          continue
+        }
+      }
+
+      if (isFile && entry.name.endsWith(".md")) {
+        const block = loadBlockFromFile(fullPath, source)
+        if (block) {
+          blocks.push(block)
+        }
+      }
+    }
+  } catch {
+    return blocks
+  }
+
+  return blocks
 }
 
 /**
@@ -471,6 +555,32 @@ export class PromptTemplateLoader {
   }
 
   /**
+   * 加载当前环境下的全部模板块（用于 Markdown 文档编辑器）：
+   * 1. 全局：~/.lx/command/agentBlock/（user）
+   * 2. 项目：<cwd>/.lx/command/agentBlock/（project）
+   * 冲突策略：Project Overrides User（项目级覆盖全局级）。
+   */
+  loadMarkdownBlocks(cwd?: string): LoadedMarkdownBlock[] {
+    const blockMap = new Map<string, LoadedMarkdownBlock>()
+
+    // 1. 加载全局（User）
+    const globalDir = join(getAppDataRoot(), "command", "agentBlock")
+    for (const block of loadBlocksFromDir(globalDir, "user")) {
+      blockMap.set(block.name, block)
+    }
+
+    // 2. 加载项目（Project，优先级更高）
+    if (cwd) {
+      const projectDir = resolve(cwd, ".lx", "command", "agentBlock")
+      for (const block of loadBlocksFromDir(projectDir, "project")) {
+        blockMap.set(block.name, block)
+      }
+    }
+
+    return Array.from(blockMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  /**
    * 转换为 IPC 传输条目列表（Agent 对话框）。
    */
   list(cwd?: string): PromptTemplateItem[] {
@@ -484,10 +594,10 @@ export class PromptTemplateLoader {
   }
 
   /**
-   * 转换为 IPC 传输条目列表（Markdown 编辑器）。
+   * 转换为 IPC 传输条目列表（Markdown 编辑器）：md 命令 + 模板块（blockType 标记区分）。
    */
   listMarkdownCommands(cwd?: string): MarkdownTemplateCommandItem[] {
-    return this.loadMarkdownCommands(cwd).map((cmd) => ({
+    const commands: MarkdownTemplateCommandItem[] = this.loadMarkdownCommands(cwd).map((cmd) => ({
       name: cmd.name,
       description: cmd.description,
       argumentHint: cmd.argumentHint,
@@ -496,6 +606,20 @@ export class PromptTemplateLoader {
       source: cmd.source,
       filePath: cmd.filePath,
     }))
+
+    // 模板块：任务块全局可用（global），临时块 / 记录块仅任务块内部（template）。
+    const blocks: MarkdownTemplateCommandItem[] = this.loadMarkdownBlocks(cwd).map((block) => ({
+      name: block.name,
+      description: block.description,
+      content: block.content,
+      scope: block.blockType === "template" ? "global" : "template",
+      source: block.source,
+      filePath: block.filePath,
+      blockType: block.blockType,
+      title: block.title,
+    }))
+
+    return [...commands, ...blocks]
   }
 
   /**

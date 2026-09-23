@@ -172,15 +172,15 @@ describe("markdownRenderer", () => {
     )
   })
 
-  it("stripMarkdownSubblockFences 仅移除 +++ 标记行并保留内部正文内容", () => {
+  it("stripMarkdownSubblockFences 仅移除 +++ / %%% 标记行并保留内部正文内容", () => {
     const input = [
       "- 位置: src/a.ts",
       "+++ suppleTemplate --start",
       "- 补充内容 1",
       "+++ suppleTemplate --end",
-      "+++ logTemplate --start",
+      "%%% logTemplate --start",
       "- 运行日志 1",
-      "+++ logTemplate --end",
+      "%%% logTemplate --end",
       "- 要求: 具体要求",
     ].join("\n")
 
@@ -207,9 +207,9 @@ describe("markdownRenderer", () => {
       "+++ suppleTemplate --start",
       "- 补充项: 内部信息",
       "+++ suppleTemplate --end",
-      "+++ logTemplate --start",
+      "%%% logTemplate --start",
       "- 日志项: 排查记录",
-      "+++ logTemplate --end",
+      "%%% logTemplate --end",
       "- 描述: 任务描述",
     ].join("\n")
     const html = markdownRenderer.render(`&&& addTemplate\n${content}\n&&&`)
@@ -218,7 +218,7 @@ describe("markdownRenderer", () => {
     expect(html).toContain(`data-template-content="${encodeURIComponent(expectedCopied)}"`)
     expect(html).not.toContain(encodeURIComponent("内部信息"))
     expect(html).not.toContain(encodeURIComponent("+++ suppleTemplate --start"))
-    expect(html).not.toContain(encodeURIComponent("+++ logTemplate --start"))
+    expect(html).not.toContain(encodeURIComponent("%%% logTemplate --start"))
   })
 
   it("渲染模板块支持新语法 --start 与 --end 边界标记", () => {
@@ -271,5 +271,43 @@ $$$ varTemplate --end
     expect(html).not.toContain("https://api.github.com")
     expect(html).toContain("正文标题")
     expect(html).toContain("正文内容")
+  })
+})
+
+describe("模板块子块渲染与嵌套限制", () => {
+  it("任务块内部的临时块 / 记录块渲染为子块并展示名称与 title", () => {
+    const input = [
+      "&&& addTemplate --start 「title: 主任务」",
+      "+++ reviewTemplate --start 「title: 补充说明」",
+      "补充内容",
+      "+++ reviewTemplate --end",
+      "%%% execLog --start",
+      "记录内容",
+      "%%% execLog --end",
+      "&&& addTemplate --end",
+    ].join("\n")
+
+    const html = markdownRenderer.render(input)
+    expect(html).toContain('class="markdown-supple-block"')
+    expect(html).toContain('<span class="markdown-supple-label">reviewTemplate</span>')
+    expect(html).toContain('<span class="markdown-template-title">补充说明</span>')
+    expect(html).toContain('class="markdown-log-block"')
+    expect(html).toContain('<span class="markdown-log-label">execLog</span>')
+  })
+
+  it("任务块外的临时块 / 记录块不渲染为子块", () => {
+    const input = [
+      "+++ reviewTemplate --start",
+      "补充内容",
+      "+++ reviewTemplate --end",
+      "",
+      "%%% execLog --start",
+      "记录内容",
+      "%%% execLog --end",
+    ].join("\n")
+
+    const html = markdownRenderer.render(input)
+    expect(html).not.toContain("markdown-supple-block")
+    expect(html).not.toContain("markdown-log-block")
   })
 })

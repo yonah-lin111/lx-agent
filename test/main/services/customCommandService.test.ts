@@ -102,4 +102,43 @@ describe("CustomCommandService", () => {
     expect(found?.argumentHint).toBe("[module] [desc]")
     expect(found?.mdScope).toBe("global")
   })
+
+  it("saves and lists agentBlock entries with block type and title", () => {
+    const saved = service.save({
+      type: "agentBlock",
+      scope: "user",
+      name: "reviewBlock",
+      description: "需求评审块",
+      content: "## 需求\n- ",
+      blockType: "supple",
+      title: "补充说明",
+    })
+
+    expect(saved.blockType).toBe("supple")
+    expect(saved.title).toBe("补充说明")
+
+    const diskFile = readFileSync(saved.filePath, "utf8")
+    expect(diskFile).toContain("block: supple")
+    expect(diskFile).toContain('title: "补充说明"')
+
+    const list = service.list({ type: "agentBlock", scope: "user" })
+    const found = list.find((c) => c.name === "reviewBlock")
+    expect(found).toBeDefined()
+    expect(found?.blockType).toBe("supple")
+    expect(found?.title).toBe("补充说明")
+    expect(found?.content).toBe("## 需求\n-")
+  })
+
+  it("defaults agentBlock type to template when blockType is missing", () => {
+    const saved = service.save({
+      type: "agentBlock",
+      scope: "user",
+      name: "plainBlock",
+      description: "",
+      content: "内容",
+    })
+
+    expect(saved.blockType).toBe("template")
+    expect(readFileSync(saved.filePath, "utf8")).toContain("block: template")
+  })
 })

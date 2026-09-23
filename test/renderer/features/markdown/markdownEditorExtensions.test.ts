@@ -156,6 +156,43 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
       expect(plugin!.decorations.size).toBeGreaterThan(0)
     })
 
+    it("allowStandaloneSubblocks 控制独立 +++ / %%% 块高亮（设置页预览场景）", () => {
+      const readDecorationSize = (doc: string, allowStandaloneSubblocks: boolean): number => {
+        const extension = markdownMarkerHighlight(
+          true,
+          undefined,
+          undefined,
+          undefined,
+          true,
+          allowStandaloneSubblocks,
+        )
+        const pluginSpec = extension[0]!
+        const state = EditorState.create({
+          doc,
+          extensions: [markdown({ extensions: [GFM] }), extension],
+        })
+        const view = new EditorView({ state })
+        const size = view.plugin(pluginSpec)!.decorations.size
+        view.destroy()
+        return size
+      }
+
+      const suppleDoc = [
+        "+++ suppleTemplate --start 「title: 」",
+        "内容",
+        "+++ suppleTemplate --end",
+      ].join("\n")
+      const logDoc = ["%%% logTemplate --start 「title: 」", "记录", "%%% logTemplate --end"].join(
+        "\n",
+      )
+
+      // 默认不允许独立子块：任务块外的 +++ / %%% 不参与高亮
+      expect(readDecorationSize(suppleDoc, false)).toBeLessThan(readDecorationSize(suppleDoc, true))
+      expect(readDecorationSize(logDoc, false)).toBeLessThan(readDecorationSize(logDoc, true))
+      expect(readDecorationSize(suppleDoc, true)).toBeGreaterThan(0)
+      expect(readDecorationSize(logDoc, true)).toBeGreaterThan(0)
+    })
+
     it("支持折叠状态切换事务分发", () => {
       const doc = "```js\nconsole.log(1)\n```"
       const { view, plugin } = createTestView(doc)
@@ -288,6 +325,7 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
     it("ActionWidget 的 onCleanTemplate 回调正确清除补充块 (suppleBlock) 中未填写的项", () => {
       const doc = [
+        "&&& addTemplate --start 「title: 测试」",
         "+++ suppleTemplate --start",
         "## 补充需求",
         "",
@@ -295,6 +333,7 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
         "- 位置: @src/supple.ts",
         "- 预期: ",
         "+++ suppleTemplate --end",
+        "&&& addTemplate --end",
       ].join("\n")
 
       const { view, plugin } = createTestView(doc)
@@ -316,13 +355,39 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
       expect(view.state.doc.toString()).toBe(
         [
+          "&&& addTemplate --start 「title: 测试」",
           "+++ suppleTemplate --start",
           "## 补充需求",
           "",
           "- 位置: @src/supple.ts",
           "+++ suppleTemplate --end",
+          "&&& addTemplate --end",
         ].join("\n"),
       )
+    })
+
+    it("任务块外的临时块 / 记录块不产生操作按钮与装饰", () => {
+      const doc = [
+        "+++ reviewTemplate --start",
+        "补充内容",
+        "+++ reviewTemplate --end",
+        "%%% execLog --start",
+        "记录内容",
+        "%%% execLog --end",
+      ].join("\n")
+
+      const { plugin } = createTestView(doc)
+      let hasSupple = false
+      let hasLog = false
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        if (cursor.value.spec?.widget?.isSupple) hasSupple = true
+        if (cursor.value.spec?.widget?.isLog) hasLog = true
+        cursor.next()
+      }
+
+      expect(hasSupple).toBe(false)
+      expect(hasLog).toBe(false)
     })
 
     it("删除第一个 supple 后，剩余 supple 块的 DOM / Widget 闭包范围必须更新为当前正确行号", () => {
@@ -444,13 +509,15 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
     it("ActionWidget 的 onCleanTemplate 回调正确清除日志块 (logBlock) 中未填写的项", () => {
       const doc = [
-        "+++ logTemplate --start",
+        "&&& addTemplate --start 「title: 测试」",
+        "%%% logTemplate --start",
         "## 运行日志",
         "",
         "- 时间: 2026-09-06",
         "- 阶段: ",
         "- 结论: ",
-        "+++ logTemplate --end",
+        "%%% logTemplate --end",
+        "&&& addTemplate --end",
       ].join("\n")
 
       const { view, plugin } = createTestView(doc)
@@ -472,11 +539,13 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
       expect(view.state.doc.toString()).toBe(
         [
-          "+++ logTemplate --start",
+          "&&& addTemplate --start 「title: 测试」",
+          "%%% logTemplate --start",
           "## 运行日志",
           "",
           "- 时间: 2026-09-06",
-          "+++ logTemplate --end",
+          "%%% logTemplate --end",
+          "&&& addTemplate --end",
         ].join("\n"),
       )
     })

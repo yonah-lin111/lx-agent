@@ -105,6 +105,22 @@ describe("Markdown 斜杠命令", () => {
     )
   })
 
+  it("内置模板块内容统一携带「title: 」占位（supple / log / var）", () => {
+    const outside = getMarkdownSlashCommands("/", false, true, [], "en")
+    const inside = getMarkdownSlashCommands("/", true, true, [], "en")
+
+    const expectations: Array<[string, typeof outside]> = [
+      ["varTemplate", outside],
+      ["suppleTemplate", inside],
+      ["logTemplate", inside],
+    ]
+    for (const [id, list] of expectations) {
+      const cmd = list.find((c) => c.id === id)
+      expect(cmd).toBeDefined()
+      expect(cmd!.content.split("\n")[0]).toMatch(/--start 「title: 」$/)
+    }
+  })
+
   it("所有模板的 Notes 均在最下方，且 /bugTemplate 也包含 Notes", () => {
     const templates = getMarkdownSlashCommands("/", false, true, [], "en")
     const checkTemplates = [
@@ -666,9 +682,13 @@ describe("Markdown 斜杠命令 CLI 标题识别", () => {
     })
   })
 
-  it("getTemplateCursorOffset 定位列表占位符与空标题冒号", () => {
+  it("getTemplateCursorOffset 优先定位「title: 」占位内，其次列表占位符", () => {
     expect(getTemplateCursorOffset("- 目标: \n- 约束: ")).toBe(6)
     expect(getTemplateCursorOffset("模板标题「title: 」\n- 内容")).toBe(12)
     expect(getTemplateCursorOffset("无占位符内容")).toBe(6)
+    // 标题占位符优先于列表占位符
+    expect(getTemplateCursorOffset("「title: 」\n- 目标: ")).toBe(8)
+    // 已有标题文本时落在标题末尾（」 之前）
+    expect(getTemplateCursorOffset("「title: 需求说明」")).toBe(12)
   })
 })

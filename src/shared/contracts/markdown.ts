@@ -1,3 +1,5 @@
+import type { CustomCommandBlockType } from "./customCommand"
+
 // Markdown 模板命令可用范围：global = 全局可用（普通文档正文及 &&& 模板块内），template = 仅 &&& 模板块内。
 export type MarkdownCommandScope = "global" | "template"
 
@@ -10,6 +12,10 @@ export interface MarkdownTemplateCommandItem {
   scope: MarkdownCommandScope
   source: "project" | "user"
   filePath: string
+  // 模板块条目（agentBlock）：标记块类型，此时 content 为块正文；缺省表示普通 md 命令。
+  blockType?: CustomCommandBlockType
+  // 模板块条目的标题（frontmatter title）。
+  title?: string
 }
 
 // Markdown 领域 preload API 契约：模板块标题生成与自定义斜杠命令列表。

@@ -17,6 +17,11 @@ import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { useGitWorktrees } from "@/features/git"
+import {
+  buildAgentBlockSource,
+  normalizeAgentBlockBody,
+} from "@/features/markdown/commands/markdownBlockCommands"
+import { getTemplateCursorOffset } from "@/features/markdown/commands/markdownSlashCommands"
 import { parseMarkdownVariables } from "@/features/markdown/commands/markdownVariableCommands"
 import { MarkdownCommandPanels } from "@/features/markdown/components/MarkdownCommandPanels"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
@@ -138,18 +143,43 @@ export const LxMarkdownEditor = ({
   }, [projectPath])
 
   const formattedCustomSlashCommands = useMemo(() => {
-    return customMarkdownCommands.map((cmd) => ({
-      id: `custom:${cmd.name}`,
-      label: `/${cmd.name}`,
-      description: cmd.description,
-      argumentHint: cmd.argumentHint,
-      content: cmd.content,
-      cursorOffset: cmd.content.length,
-      scope: (cmd.scope === "template" ? "template" : "both") as "template" | "both",
-      kind: "customTemplate" as const,
-      source: cmd.source,
-      customScope: cmd.scope,
-    }))
+    return customMarkdownCommands.map((cmd) => {
+      // 模板块条目：插入完整块源码（开始行带「title: 」占位），任务块全局可用、子块仅任务块内部。
+      if (cmd.blockType) {
+        // 正文可能已含起止行（用户直接粘贴完整块），先规范化避免双重包裹。
+        const normalized = normalizeAgentBlockBody(cmd.content, cmd.blockType)
+        const content = buildAgentBlockSource({
+          name: cmd.name,
+          title: cmd.title || normalized.title || "",
+          blockType: cmd.blockType,
+          content: normalized.content,
+        })
+        return {
+          id: `block:${cmd.name}`,
+          label: `/${cmd.name}`,
+          description: cmd.description,
+          content,
+          cursorOffset: getTemplateCursorOffset(content),
+          scope: (cmd.blockType === "template" ? "both" : "template") as "template" | "both",
+          kind: "customTemplate" as const,
+          source: cmd.source,
+          customScope: cmd.scope,
+        }
+      }
+
+      return {
+        id: `custom:${cmd.name}`,
+        label: `/${cmd.name}`,
+        description: cmd.description,
+        argumentHint: cmd.argumentHint,
+        content: cmd.content,
+        cursorOffset: cmd.content.length,
+        scope: (cmd.scope === "template" ? "template" : "both") as "template" | "both",
+        kind: "customTemplate" as const,
+        source: cmd.source,
+        customScope: cmd.scope,
+      }
+    })
   }, [customMarkdownCommands])
 
   const panels = useMarkdownPanels({

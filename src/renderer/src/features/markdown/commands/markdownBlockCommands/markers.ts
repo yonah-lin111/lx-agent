@@ -66,30 +66,135 @@ export const parseMarkdownTemplateEndLine = (
   return { indent, marker, command, endFlag, status, id, wt }
 }
 
+export interface ParsedMarkdownSubblockStart {
+  indent: string
+  marker: string
+  command: string
+  title?: string
+}
+
+export interface ParsedMarkdownLogEnd {
+  indent: string
+  marker: string
+  command: string
+  id?: string
+}
+
+/**
+ * 解析任务块开始行（&&& <名称> [--start] [「title: 标题」]）；非开始行返回 null。
+ */
+export const parseMarkdownTemplateStartLine = (
+  lineText: string,
+): ParsedMarkdownSubblockStart | null => {
+  if (!MARKDOWN_TEMPLATE_START_RE.test(lineText)) return null
+  const match = lineText.match(
+    /^(\s*)(&&&)\s+([A-Za-z]\w*)(?:\s+--start)?(?:\s+「title:\s*([^」\n]*)」)?\s*$/,
+  )
+  if (!match) return null
+
+  return { indent: match[1], marker: match[2], command: match[3], title: match[4] }
+}
+
+/**
+ * 解析临时块开始行（+++ <名称> --start [「title: 标题」]）；非开始行返回 null。
+ */
+export const parseMarkdownSuppleStartLine = (
+  lineText: string,
+): ParsedMarkdownSubblockStart | null => {
+  if (!MARKDOWN_SUPPLE_START_RE.test(lineText)) return null
+  const match = lineText.match(
+    /^(\s*)(\+\+\+)\s+([A-Za-z]\w*)\s+--start(?:\s+「title:\s*([^」\n]*)」)?\s*$/,
+  )
+  if (!match) return null
+
+  return { indent: match[1], marker: match[2], command: match[3], title: match[4] }
+}
+
+/**
+ * 解析记录块开始行（%%% <名称> --start [「title: 标题」]，兼容旧版 +++ log/logTemplate）；非开始行返回 null。
+ */
+export const parseMarkdownLogStartLine = (lineText: string): ParsedMarkdownSubblockStart | null => {
+  if (!MARKDOWN_LOG_START_RE.test(lineText)) return null
+  const match = lineText.match(
+    /^(\s*)(%%%|\+\+\+)\s+([A-Za-z]\w*)\s+--start(?:\s+「title:\s*([^」\n]*)」)?\s*$/,
+  )
+  if (!match) return null
+
+  return { indent: match[1], marker: match[2], command: match[3], title: match[4] }
+}
+
+/**
+ * 解析记录块结束行（%%% <名称> --end [{id:...}]，兼容旧版 +++ log/logTemplate）；非结束行返回 null。
+ */
+export const parseMarkdownLogEndLine = (lineText: string): ParsedMarkdownLogEnd | null => {
+  if (!MARKDOWN_LOG_END_RE.test(lineText)) return null
+  const match = lineText.match(
+    /^(\s*)(%%%|\+\+\+)\s+([A-Za-z]\w*)\s+--end(?:\s+\{id:([0-9a-f]{32})\})?\s*$/,
+  )
+  if (!match) return null
+
+  return { indent: match[1], marker: match[2], command: match[3], id: match[4] }
+}
+
 // 模板块注释行：// 开头（允许前置缩进）。
 export const MARKDOWN_TEMPLATE_COMMENT_RE = /^\s*\/\//
 
-// supple 补充块开始行：+++ suppleTemplate --start 或 +++ supple --start。
-export const MARKDOWN_SUPPLE_START_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--start\s*$/
+// 临时块开始行：+++ <名称> --start [「title: 标题」]；名称可为任意标识符，log/logTemplate 保留给记录块旧格式。
+export const MARKDOWN_SUPPLE_START_RE =
+  /^\s*\+\+\+\s+(?!log\b|logTemplate\b)[A-Za-z]\w*\s+--start(?:\s+「title:[^」\n]*」)?\s*$/
 
-// log 补充块开始行：+++ logTemplate --start 或 +++ log --start。
-export const MARKDOWN_LOG_START_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--start\s*$/
+// 记录块开始行：%%% <名称> --start [「title: 标题」]；兼容读取旧版 +++ log/logTemplate。
+export const MARKDOWN_LOG_START_RE =
+  /^\s*(?:%%%\s+[A-Za-z]\w*|\+\+\+\s+(?:log|logTemplate))\s+--start(?:\s+「title:[^」\n]*」)?\s*$/
 
-// supple 补充块结束行：+++ suppleTemplate --end 或 +++ supple --end，可选携带 {id:...} 与 {wt:...}。
+// 临时块结束行：+++ <名称> --end，可选携带 {id:...} 与 {wt:...}。
 export const MARKDOWN_SUPPLE_END_RE =
-  /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--end(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
+  /^\s*\+\+\+\s+(?!log\b|logTemplate\b)[A-Za-z]\w*\s+--end(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
 
-// 变量模板块开始行：$$$ varTemplate [--start] [「title: 标题」]。
+// 记录块结束行：%%% <名称> --end，可选携带 {id:...}；兼容读取旧版 +++ log/logTemplate。
+export const MARKDOWN_LOG_END_RE =
+  /^\s*(?:%%%\s+[A-Za-z]\w*|\+\+\+\s+(?:log|logTemplate))\s+--end(?:\s+\{id:[0-9a-f]{32}\})?\s*$/
+
+// 变量模板块开始行：$$$ [varTemplate [--start]] [「title: 标题」]（裸 $$$ 亦为合法开始行，与 variableSyntax 一致）。
 export const MARKDOWN_VAR_TEMPLATE_START_RE =
-  /^\s*\$\$\$\s+varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?\s*$/
+  /^\s*\$\$\$\s*(?:varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?)?\s*$/
 
-// 变量模板块结束行：$$$ [varTemplate --end | --end]。
-export const MARKDOWN_VAR_TEMPLATE_END_RE = /^\s*\$\$\$(?:\s+(?:varTemplate)\s+--end|\s+--end)?\s*$/
+// 变量模板块结束行：$$$ [varTemplate --end | --end]，可选携带 {id:...}。
+export const MARKDOWN_VAR_TEMPLATE_END_RE =
+  /^\s*\$\$\$(?:\s+(?:varTemplate)\s+--end|\s+--end)?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/
 
-export const MARKDOWN_LOG_END_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--end\s*$/
+export interface ParsedMarkdownVarTemplateEnd {
+  indent: string
+  command?: string
+  endFlag?: string
+  id?: string
+}
 
 /**
- * 判断指定文本末尾是否处于未闭合的 log 日志块内。
+ * 解析变量模板块结束行（$$$ [varTemplate --end | --end] [{id:...}]）；非结束行返回 null。
+ */
+export const parseMarkdownVarTemplateEndLine = (
+  lineText: string,
+): ParsedMarkdownVarTemplateEnd | null => {
+  if (!MARKDOWN_VAR_TEMPLATE_END_RE.test(lineText)) return null
+  const match = lineText.match(
+    /^(\s*)\$\$\$(?:\s+(varTemplate)\s+(--end)|\s+(--end))?(?:\s+\{id:([0-9a-f]{32})\})?\s*$/,
+  )
+  if (!match) return null
+
+  return {
+    indent: match[1],
+    command: match[2],
+    endFlag: match[3] ?? match[4],
+    id: match[5],
+  }
+}
+
+// 记录块标记定位：新 %%% 与旧版 +++ 兼容，供编辑器装饰计算标记范围。
+export const MARKDOWN_LOG_MARKER_RE = /%%%|\+\+\+/
+
+/**
+ * 判断指定文本末尾是否处于未闭合的记录块内。
  */
 export const isInsideMarkdownLogBlock = (text: string): boolean => {
   let isOpen = false
@@ -108,7 +213,7 @@ export const isInsideMarkdownLogBlock = (text: string): boolean => {
 }
 
 /**
- * 判断指定文本末尾是否处于未闭合的 supple 补充块内。
+ * 判断指定文本末尾是否处于未闭合的临时块内。
  */
 export const isInsideMarkdownSuppleBlock = (text: string): boolean => {
   let isOpen = false
@@ -195,22 +300,22 @@ export const isMarkdownTemplateEndLine = (line: string): boolean =>
   MARKDOWN_TEMPLATE_END_RE.test(line)
 
 /**
- * 判断一行是否为 supple 补充块开始标记（+++ suppleTemplate --start 或 +++ supple --start）。
+ * 判断一行是否为临时块开始标记（+++ <名称> --start）。
  */
 export const isMarkdownSuppleStartLine = (line: string): boolean =>
   MARKDOWN_SUPPLE_START_RE.test(line)
 
 /**
- * 判断一行是否为 supple 补充块结束标记（+++ suppleTemplate --end 或 +++ supple --end）。
+ * 判断一行是否为临时块结束标记（+++ <名称> --end）。
  */
 export const isMarkdownSuppleEndLine = (line: string): boolean => MARKDOWN_SUPPLE_END_RE.test(line)
 
 /**
- * 判断一行是否为 log 补充块开始标记（+++ logTemplate --start 或 +++ log --start）。
+ * 判断一行是否为记录块开始标记（%%% <名称> --start，兼容旧版 +++ log/logTemplate）。
  */
 export const isMarkdownLogStartLine = (line: string): boolean => MARKDOWN_LOG_START_RE.test(line)
 
 /**
- * 判断一行是否为 log 补充块结束标记（+++ logTemplate --end 或 +++ log --end）。
+ * 判断一行是否为记录块结束标记（%%% <名称> --end，兼容旧版 +++ log/logTemplate）。
  */
 export const isMarkdownLogEndLine = (line: string): boolean => MARKDOWN_LOG_END_RE.test(line)

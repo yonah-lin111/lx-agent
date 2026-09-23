@@ -169,6 +169,7 @@ export const buildMarkdownMarkerDecorations = (
   onCleanVarBlock: (startLine: number, endLine: number) => void = () => {},
   onMergeVarBlock: (startLine: number, endLine: number) => void = () => {},
   onMoveVarBlockToTop: (startLine: number, endLine: number) => void = () => {},
+  allowStandaloneSubblocks = false,
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: MarkerDecoItem[] = []
@@ -188,6 +189,7 @@ export const buildMarkdownMarkerDecorations = (
     line: "",
     offset: 0,
     showFolding,
+    allowStandaloneSubblocks,
     addMarkerAlways: (from, to, className, atomic = false) => {
       allDecos.push({ type: "mark", from: offset + from, to: offset + to, className, atomic })
     },

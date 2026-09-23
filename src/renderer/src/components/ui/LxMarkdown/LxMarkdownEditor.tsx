@@ -18,16 +18,15 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { EditorState } from "@codemirror/state"
+import { EditorState, Transaction } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { Redo2, Undo2 } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
 import {
   captureEditorScrollAnchor,
   createMarkdownTable,
-  editorTheme,
   formatMarkdown,
   mapMarkdownPosition,
   markdownHighlightStyle,
@@ -38,8 +37,10 @@ import {
   markdownFoldGutter,
   markdownHeadingFolding,
 } from "@/components/ui/LxMarkdown/extensions/markdownFolding"
-import { markdownMarkerHighlight } from "@/components/ui/LxMarkdown/extensions/markdownMarkerHighlight"
 import type { LxMarkdownEditorProps, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
+import { useLxToast } from "@/components/ui/LxToast"
+import { editorTheme } from "@/features/markdown/extensions/editorTheme"
+import { markdownMarkerHighlight } from "@/features/markdown/extensions/markerPlugin"
 import { useTranslation } from "@/i18n"
 
 /**
@@ -52,11 +53,22 @@ export const LxMarkdownEditor = ({
   isSaved = true,
   showSaveStatus = false,
   showToolbar = true,
+  toolbarActions,
+  extraExtensions,
   height,
   autoHeight = false,
   showLineNumbers = false,
   showFolding = false,
+  initialLogFolded = true,
+  allowStandaloneSubblocks = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
+  // 模板块操作提示与文案：经 ref 读取，避免引用变化触发编辑器重建。
+  const { t } = useTranslation()
+  const toast = useLxToast()
+  const markerTRef = useRef(t)
+  markerTRef.current = t
+  const markerToastRef = useRef(toast)
+  markerToastRef.current = toast
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const editorViewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
@@ -65,6 +77,14 @@ export const LxMarkdownEditor = ({
   const lastEmittedContentRef = useRef(initialContent)
   // 创建视图时使用的最新外部内容（挂载后外部内容可能已更新）。
   const initialContentRef = useRef(initialContent)
+  // 光标之前的文档文本：select 型工具项据此判断选项可用性（如仅限任务块内部）。
+  const [textBeforeCursor, setTextBeforeCursor] = useState("")
+  // 是否存在 select 型工具项：仅此时维护光标上下文，避免无关编辑器产生额外开销。
+  const hasSelectActionRef = useRef(false)
+  hasSelectActionRef.current = (toolbarActions ?? []).some((action) => action.select !== undefined)
+  // 额外扩展：仅在创建编辑器时读取，避免调用方每次渲染传入新引用导致编辑器重建。
+  const extraExtensionsRef = useRef(extraExtensions)
+  extraExtensionsRef.current = extraExtensions
 
   useEffect(() => {
     initialContentRef.current = initialContent
@@ -85,6 +105,8 @@ export const LxMarkdownEditor = ({
     const anchor = captureEditorScrollAnchor(view)
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: initialContent },
+      // 标记为外部来源并排除出撤销历史：供只读保护过滤器放行，且撤销不会回退起止行更新。
+      annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)],
     })
     restoreEditorScrollAnchor(view, anchor)
     lastEmittedContentRef.current = initialContent
@@ -233,7 +255,17 @@ export const LxMarkdownEditor = ({
               }),
             ]
           : []),
-        markdownMarkerHighlight(showFolding),
+        markdownMarkerHighlight(
+          showFolding,
+          undefined,
+          {
+            success: (msg) => markerToastRef.current.success(msg),
+            warning: (msg) => markerToastRef.current.warning(msg),
+          },
+          (key) => markerTRef.current(key as Parameters<typeof t>[0]),
+          initialLogFolded,
+          allowStandaloneSubblocks,
+        ),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
           ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]
@@ -312,12 +344,22 @@ export const LxMarkdownEditor = ({
           ...historyKeymap,
           ...standardKeymap,
         ]),
+        ...(extraExtensionsRef.current ? [extraExtensionsRef.current] : []),
         EditorView.updateListener.of((update) => {
-          if (!update.docChanged) return
+          if (update.docChanged) {
+            const nextContent = update.state.doc.toString()
+            lastEmittedContentRef.current = nextContent
+            onChangeRef.current?.(nextContent)
+          }
 
-          const nextContent = update.state.doc.toString()
-          lastEmittedContentRef.current = nextContent
-          onChangeRef.current?.(nextContent)
+          if (!hasSelectActionRef.current) return
+          if (!update.docChanged && !update.selectionSet) return
+
+          const cursor = update.state.selection.main.head
+          const nextTextBeforeCursor = update.state.doc.sliceString(0, cursor)
+          setTextBeforeCursor((prev) =>
+            prev === nextTextBeforeCursor ? prev : nextTextBeforeCursor,
+          )
         }),
       ],
     })
@@ -328,9 +370,7 @@ export const LxMarkdownEditor = ({
       editorViewRef.current = null
       view.destroy()
     }
-  }, [showLineNumbers, showFolding])
-
-  const { t } = useTranslation()
+  }, [showLineNumbers, showFolding, initialLogFolded, allowStandaloneSubblocks])
 
   const actions: MarkdownToolbarAction[] = [
     {
@@ -343,6 +383,7 @@ export const LxMarkdownEditor = ({
       label: t("common.redo"),
       onClick: () => editorViewRef.current && redo(editorViewRef.current),
     },
+    ...(toolbarActions ?? []),
   ]
 
   return (
@@ -358,6 +399,8 @@ export const LxMarkdownEditor = ({
           isSaved={isSaved}
           showSaveStatus={showSaveStatus}
           onInsertTable={(size) => insertText(createMarkdownTable(size))}
+          onInsertText={insertText}
+          textBeforeCursor={textBeforeCursor}
         />
       )}
       <div className={`min-h-0 flex text-sm ${autoHeight ? "" : "flex-1"}`}>

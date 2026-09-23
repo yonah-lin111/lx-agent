@@ -10,6 +10,7 @@ import type {
 } from "@shared/contracts/customCommand"
 import { getAppDataRoot } from "@/paths"
 import {
+  loadBlockFromFile,
   loadMarkdownCommandFromFile,
   loadTemplateFromFile,
   RESERVED_COMMANDS,
@@ -46,7 +47,7 @@ export class CustomCommandService {
 
   list(input: ListCustomCommandsInput = {}): CustomCommandDetailItem[] {
     const { type, scope, projectPath } = input
-    const typesToScan: CustomCommandType[] = type ? [type] : ["agentInput", "agentMD"]
+    const typesToScan: CustomCommandType[] = type ? [type] : ["agentInput", "agentMD", "agentBlock"]
     const scopesToScan: CustomCommandScope[] = scope
       ? [scope]
       : projectPath
@@ -83,6 +84,20 @@ export class CustomCommandService {
                   argumentHint: loaded.argumentHint,
                 })
               }
+            } else if (curType === "agentBlock") {
+              const loaded = loadBlockFromFile(fullPath, curScope)
+              if (loaded) {
+                results.push({
+                  name: loaded.name,
+                  type: "agentBlock",
+                  scope: curScope,
+                  filePath: fullPath,
+                  description: loaded.description,
+                  content: loaded.content,
+                  blockType: loaded.blockType,
+                  title: loaded.title,
+                })
+              }
             } else {
               const loaded = loadMarkdownCommandFromFile(fullPath, curScope)
               if (loaded) {
@@ -112,8 +127,19 @@ export class CustomCommandService {
   }
 
   save(input: SaveCustomCommandInput): CustomCommandDetailItem {
-    const { type, scope, projectPath, oldName, name, description, content, argumentHint, mdScope } =
-      input
+    const {
+      type,
+      scope,
+      projectPath,
+      oldName,
+      name,
+      description,
+      content,
+      argumentHint,
+      mdScope,
+      blockType,
+      title,
+    } = input
     this.validateName(name)
 
     const targetDir = this.getTargetDir(type, scope, projectPath)
@@ -148,6 +174,15 @@ export class CustomCommandService {
     if (type === "agentMD") {
       lines.push(`scope: ${mdScope === "template" ? "template" : "global"}`)
     }
+
+    if (type === "agentBlock") {
+      const normalizedBlockType =
+        blockType === "supple" || blockType === "log" ? blockType : "template"
+      lines.push(`block: ${normalizedBlockType}`)
+      if (title && title.trim()) {
+        lines.push(`title: ${JSON.stringify(title.trim())}`)
+      }
+    }
     lines.push("---")
     lines.push("")
     lines.push(normalizedContent)
@@ -164,6 +199,13 @@ export class CustomCommandService {
       content: normalizedContent,
       argumentHint: argumentHint?.trim(),
       mdScope: type === "agentMD" ? (mdScope === "template" ? "template" : "global") : undefined,
+      blockType:
+        type === "agentBlock"
+          ? blockType === "supple" || blockType === "log"
+            ? blockType
+            : "template"
+          : undefined,
+      title: type === "agentBlock" ? title?.trim() : undefined,
     }
   }
 

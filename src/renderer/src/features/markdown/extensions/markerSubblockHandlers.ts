@@ -1,9 +1,12 @@
 import {
   MARKDOWN_LOG_END_RE,
-  MARKDOWN_LOG_START_RE,
+  MARKDOWN_LOG_MARKER_RE,
   MARKDOWN_SUPPLE_END_RE,
-  MARKDOWN_SUPPLE_START_RE,
   MARKDOWN_TEMPLATE_COMMENT_RE,
+  parseMarkdownLogEndLine,
+  parseMarkdownLogStartLine,
+  parseMarkdownSuppleEndLine,
+  parseMarkdownSuppleStartLine,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import type { MarkerBlockScanContext } from "@/features/markdown/extensions/markerTemplateHandlers"
 import { CodeBlockActionWidget } from "@/features/markdown/extensions/markerWidgets"
@@ -13,10 +16,14 @@ import {
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
 
-// 处理补充说明块（+++ supple ... +++）的标记与折叠交互。
+// 处理临时块（+++ <名称> ... +++，仅限任务块内部）的标记与折叠交互。
 export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
-  const suppleStartMatch = MARKDOWN_SUPPLE_START_RE.exec(ctx.line)
-  if (suppleStartMatch && !ctx.isInsideSuppleBlock) {
+  const suppleStart = parseMarkdownSuppleStartLine(ctx.line)
+  if (
+    suppleStart &&
+    !ctx.isInsideSuppleBlock &&
+    (ctx.isInsideTemplateBlock || ctx.allowStandaloneSubblocks)
+  ) {
     const startLine = ctx.i
     const currentSuppleIndex = ctx.suppleBlockIndex++
     ctx.currentSuppleFolded = ctx.suppleFoldedIndices.has(currentSuppleIndex)
@@ -36,20 +43,25 @@ export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
 
     const markerStart = ctx.line.indexOf("+++")
     ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-supple-marker")
-    const commandMatch = ctx.line.match(/\+\+\+\s+(suppleTemplate|supple)\s+(--start)/)
-    if (commandMatch && commandMatch.index !== undefined) {
-      const commandStart = ctx.line.indexOf(commandMatch[1], markerStart + 3)
-      if (commandStart !== -1) {
-        ctx.addMarkerAlways(
-          commandStart,
-          commandStart + commandMatch[1].length,
-          "cm-md-supple-command",
-        )
-        const flagStart = ctx.line.indexOf(commandMatch[2], commandStart + commandMatch[1].length)
-        if (flagStart !== -1) {
-          ctx.addMarkerAlways(flagStart, flagStart + commandMatch[2].length, "cm-md-supple-flag")
-        }
+    const commandStart = ctx.line.indexOf(suppleStart.command, markerStart + 3)
+    if (commandStart !== -1) {
+      ctx.addMarkerAlways(
+        commandStart,
+        commandStart + suppleStart.command.length,
+        "cm-md-supple-command",
+      )
+      const flagStart = ctx.line.indexOf("--start", commandStart + suppleStart.command.length)
+      if (flagStart !== -1) {
+        ctx.addMarkerAlways(flagStart, flagStart + "--start".length, "cm-md-supple-flag")
       }
+    }
+    const titleMatch = ctx.line.match(/「title:[^」\n]*」/)
+    if (titleMatch?.index !== undefined) {
+      ctx.addMarkerAlways(
+        titleMatch.index,
+        titleMatch.index + titleMatch[0].length,
+        "cm-md-template-title",
+      )
     }
     ctx.allDecos.push({
       type: "widget",
@@ -90,23 +102,24 @@ export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
   if (ctx.isInsideSuppleBlock && MARKDOWN_SUPPLE_END_RE.test(ctx.line)) {
     const markerStart = ctx.line.indexOf("+++")
     ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-supple-marker")
-    const endCommandMatch = ctx.line.match(/\+\+\+\s+(suppleTemplate|supple)\s+(--end)/)
-    if (endCommandMatch && endCommandMatch.index !== undefined) {
-      const commandStart = ctx.line.indexOf(endCommandMatch[1], markerStart + 3)
+    const suppleEnd = parseMarkdownSuppleEndLine(ctx.line)
+    if (suppleEnd) {
+      const commandStart = ctx.line.indexOf(suppleEnd.command, markerStart + 3)
       if (commandStart !== -1) {
         ctx.addMarkerAlways(
           commandStart,
-          commandStart + endCommandMatch[1].length,
+          commandStart + suppleEnd.command.length,
           "cm-md-supple-command",
         )
-        const flagStart = ctx.line.indexOf(
-          endCommandMatch[2],
-          commandStart + endCommandMatch[1].length,
-        )
-        if (flagStart !== -1) {
-          ctx.addMarkerAlways(flagStart, flagStart + endCommandMatch[2].length, "cm-md-supple-flag")
-        }
       }
+    }
+    const flagMatch = ctx.line.match(/--end/)
+    if (flagMatch?.index !== undefined) {
+      ctx.addMarkerAlways(
+        flagMatch.index,
+        flagMatch.index + flagMatch[0].length,
+        "cm-md-supple-flag",
+      )
     }
     const idMatch = ctx.line.match(/\{id:[0-9a-f]{32}\}/)
     if (idMatch?.index !== undefined) {
@@ -152,9 +165,10 @@ export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
   return false
 }
 
-// 处理日志块（+++ log ... +++）的标记与折叠交互。
+// 处理记录块（%%% <名称> ... %%%；兼容旧版 +++ log/logTemplate；仅限任务块内部）的标记与折叠交互。
 export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
-  if (MARKDOWN_LOG_START_RE.test(ctx.line)) {
+  const logStart = parseMarkdownLogStartLine(ctx.line)
+  if (logStart && (ctx.isInsideTemplateBlock || ctx.allowStandaloneSubblocks)) {
     const startLine = ctx.i
     const currentLogIndex = ctx.logBlockIndex++
     ctx.currentLogFolded = ctx.logFoldedIndices.has(currentLogIndex)
@@ -172,22 +186,23 @@ export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
       currentLogTextLines.push(subLine)
     }
 
-    const markerStart = ctx.line.indexOf("+++")
+    const markerStart = ctx.line.search(MARKDOWN_LOG_MARKER_RE)
     ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
-    const commandMatch = ctx.line.match(/\+\+\+\s+(logTemplate|log)\s+(--start)/)
-    if (commandMatch && commandMatch.index !== undefined) {
-      const commandStart = ctx.line.indexOf(commandMatch[1], markerStart + 3)
-      if (commandStart !== -1) {
-        ctx.addMarkerAlways(
-          commandStart,
-          commandStart + commandMatch[1].length,
-          "cm-md-log-command",
-        )
-        const flagStart = ctx.line.indexOf(commandMatch[2], commandStart + commandMatch[1].length)
-        if (flagStart !== -1) {
-          ctx.addMarkerAlways(flagStart, flagStart + commandMatch[2].length, "cm-md-log-flag")
-        }
+    const commandStart = ctx.line.indexOf(logStart.command, markerStart + 3)
+    if (commandStart !== -1) {
+      ctx.addMarkerAlways(commandStart, commandStart + logStart.command.length, "cm-md-log-command")
+      const flagStart = ctx.line.indexOf("--start", commandStart + logStart.command.length)
+      if (flagStart !== -1) {
+        ctx.addMarkerAlways(flagStart, flagStart + "--start".length, "cm-md-log-flag")
       }
+    }
+    const titleMatch = ctx.line.match(/「title:[^」\n]*」/)
+    if (titleMatch?.index !== undefined) {
+      ctx.addMarkerAlways(
+        titleMatch.index,
+        titleMatch.index + titleMatch[0].length,
+        "cm-md-template-title",
+      )
     }
     ctx.allDecos.push({
       type: "widget",
@@ -222,25 +237,27 @@ export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
   }
 
   if (ctx.isInsideLogBlock && MARKDOWN_LOG_END_RE.test(ctx.line)) {
-    const markerStart = ctx.line.indexOf("+++")
+    const markerStart = ctx.line.search(MARKDOWN_LOG_MARKER_RE)
     ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
-    const endCommandMatch = ctx.line.match(/\+\+\+\s+(logTemplate|log)\s+(--end)/)
-    if (endCommandMatch && endCommandMatch.index !== undefined) {
-      const commandStart = ctx.line.indexOf(endCommandMatch[1], markerStart + 3)
+    const logEnd = parseMarkdownLogEndLine(ctx.line)
+    if (logEnd) {
+      const commandStart = ctx.line.indexOf(logEnd.command, markerStart + 3)
       if (commandStart !== -1) {
-        ctx.addMarkerAlways(
-          commandStart,
-          commandStart + endCommandMatch[1].length,
-          "cm-md-log-command",
-        )
-        const flagStart = ctx.line.indexOf(
-          endCommandMatch[2],
-          commandStart + endCommandMatch[1].length,
-        )
-        if (flagStart !== -1) {
-          ctx.addMarkerAlways(flagStart, flagStart + endCommandMatch[2].length, "cm-md-log-flag")
-        }
+        ctx.addMarkerAlways(commandStart, commandStart + logEnd.command.length, "cm-md-log-command")
       }
+    }
+    const flagMatch = ctx.line.match(/--end/)
+    if (flagMatch?.index !== undefined) {
+      ctx.addMarkerAlways(flagMatch.index, flagMatch.index + flagMatch[0].length, "cm-md-log-flag")
+    }
+    const idMatch = ctx.line.match(/\{id:[0-9a-f]{32}\}/)
+    if (idMatch?.index !== undefined) {
+      ctx.addMarkerAlways(
+        idMatch.index,
+        idMatch.index + idMatch[0].length,
+        "cm-md-template-id",
+        true,
+      )
     }
     ctx.allDecos.push({
       type: "line",

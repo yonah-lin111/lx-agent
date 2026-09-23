@@ -20,6 +20,7 @@ import type { Options, Token } from "markdown-it"
 import MarkdownIt from "markdown-it"
 import {
   getMarkdownTemplateStatus,
+  isInsideMarkdownTemplateBlock,
   MARKDOWN_LOG_END_RE,
   MARKDOWN_LOG_START_RE,
   MARKDOWN_SUPPLE_END_RE,
@@ -28,6 +29,8 @@ import {
   MARKDOWN_VAR_TEMPLATE_END_RE,
   MARKDOWN_VAR_TEMPLATE_START_RE,
   type MarkdownTemplateStatus,
+  parseMarkdownLogStartLine,
+  parseMarkdownSuppleStartLine,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import {
   getMarkdownReferenceIconSvg,
@@ -88,7 +91,7 @@ export const markdownRenderer = new MarkdownIt({
 })
 
 interface MarkdownBlockState {
-  env?: { disableTemplateBlocks?: boolean }
+  env?: { disableTemplateBlocks?: boolean; insideTemplateBlock?: boolean }
   src: string
   bMarks: number[]
   tShift: number[]
@@ -112,7 +115,7 @@ const isTemplateListItemLine = (line: string): RegExpMatchArray | null =>
 
 /**
  * 移除模板块内容中未填写的列表项及空占位子项。
- * preserveSuppleBlocks: 为 true 时，若遇到 +++ ... +++ 补充块，则内部内容原样保留，不进行列表项清理。
+ * preserveSuppleBlocks: 为 true 时，若遇到 +++ / %%% 子块，则内部内容原样保留，不进行列表项清理。
  */
 export const stripEmptyTemplateItems = (content: string, preserveSuppleBlocks = false): string => {
   const lines = content.split("\n")
@@ -219,7 +222,7 @@ export const stripMarkdownSubblocks = (content: string): string => {
 /**
  * 提取父级模版块用于复制的内容：
  * - 排除所有 supple 补充块及其内部内容；
- * - 保留直接位于该块内部的 log 补充块内容，但剔除 +++ log 起止标记行。
+ * - 保留直接位于该块内部的 log 日志块内容，但剔除 %%% log 起止标记行。
  */
 export const extractParentTemplateCopyContent = (content: string): string => {
   const lines = content.split("\n")
@@ -248,7 +251,7 @@ export const extractParentTemplateCopyContent = (content: string): string => {
 }
 
 /**
- * 移除文本中所有子块（如 supple / log）的 +++ 标记行，但完整保留内部子块正文。
+ * 移除文本中所有子块（如 supple / log）的 +++ / %%% 标记行，但完整保留内部子块正文。
  */
 export const stripMarkdownSubblockFences = (content: string): string => {
   const lines = content.split("\n")
@@ -398,20 +401,25 @@ markdownRenderer.block.ruler.before("fence", "markdown_template", markdownTempla
   alt: ["paragraph", "reference", "blockquote", "list"],
 })
 
+// 判断当前解析位置是否位于任务块内部：任务块内容二次渲染时由 env 标记，顶层文档按前缀扫描判定。
+const isInsideTemplateRenderContext = (state: MarkdownBlockState, startLine: number): boolean =>
+  state.env?.insideTemplateBlock === true ||
+  isInsideMarkdownTemplateBlock(state.src.slice(0, state.bMarks[startLine]))
+
 const markdownSuppleBlock = (
   state: MarkdownBlockState,
   startLine: number,
   endLine: number,
   silent: boolean,
 ): boolean => {
-  if (state.env?.disableTemplateBlocks) return false
+  if (!isInsideTemplateRenderContext(state, startLine)) return false
 
   const startText = state.src.slice(
     state.bMarks[startLine] + state.tShift[startLine],
     state.eMarks[startLine],
   )
-  const startMatch = MARKDOWN_SUPPLE_START_RE.exec(startText)
-  if (!startMatch) return false
+  const startParsed = parseMarkdownSuppleStartLine(startText)
+  if (!startParsed) return false
 
   let closeLine = startLine + 1
   while (closeLine < endLine) {
@@ -429,6 +437,8 @@ const markdownSuppleBlock = (
   token.block = true
   token.map = [startLine, closeLine + 1]
   token.meta = {
+    command: startParsed.command,
+    title: startParsed.title?.trim() ?? "",
     content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
   }
   state.line = closeLine + 1
@@ -445,14 +455,14 @@ const markdownLogBlock = (
   endLine: number,
   silent: boolean,
 ): boolean => {
-  if (state.env?.disableTemplateBlocks) return false
+  if (!isInsideTemplateRenderContext(state, startLine)) return false
 
   const startText = state.src.slice(
     state.bMarks[startLine] + state.tShift[startLine],
     state.eMarks[startLine],
   )
-  const startMatch = MARKDOWN_LOG_START_RE.exec(startText)
-  if (!startMatch) return false
+  const startParsed = parseMarkdownLogStartLine(startText)
+  if (!startParsed) return false
 
   let closeLine = startLine + 1
   while (closeLine < endLine) {
@@ -470,6 +480,8 @@ const markdownLogBlock = (
   token.block = true
   token.map = [startLine, closeLine + 1]
   token.meta = {
+    command: startParsed.command,
+    title: startParsed.title?.trim() ?? "",
     content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
   }
   state.line = closeLine + 1
@@ -482,22 +494,28 @@ markdownRenderer.block.ruler.before("markdown_template", "markdown_log", markdow
 
 markdownRenderer.renderer.rules.markdown_log = (tokens, index) => {
   const token = tokens[index]
-  const meta = token?.meta as { content: string }
+  const meta = token?.meta as { command?: string; title?: string; content: string }
   const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
   const sourceLine = token.attrGet("data-line")
   const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
+  const command = markdownRenderer.utils.escapeHtml(meta.command ?? "")
+  const title = markdownRenderer.utils.escapeHtml(meta.title ?? "").trim()
+  const titleHtml = title ? `<span class="markdown-template-title">${title}</span>` : ""
 
-  return `<section class="markdown-log-block"${lineAttribute}><header class="markdown-log-block-header"><span class="markdown-log-label">logTemplate</span></header><div class="markdown-log-content">${contentHtml}</div></section>`
+  return `<section class="markdown-log-block"${lineAttribute}><header class="markdown-log-block-header"><span class="markdown-log-titles"><span class="markdown-log-label">${command}</span>${titleHtml}</span></header><div class="markdown-log-content">${contentHtml}</div></section>`
 }
 
 markdownRenderer.renderer.rules.markdown_supple = (tokens, index) => {
   const token = tokens[index]
-  const meta = token?.meta as { content: string }
+  const meta = token?.meta as { command?: string; title?: string; content: string }
   const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
   const sourceLine = token.attrGet("data-line")
   const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
+  const command = markdownRenderer.utils.escapeHtml(meta.command ?? "")
+  const title = markdownRenderer.utils.escapeHtml(meta.title ?? "").trim()
+  const titleHtml = title ? `<span class="markdown-template-title">${title}</span>` : ""
 
-  return `<section class="markdown-supple-block"${lineAttribute}><header class="markdown-supple-block-header"><span class="markdown-supple-label">suppleTemplate</span></header><div class="markdown-supple-content">${contentHtml}</div></section>`
+  return `<section class="markdown-supple-block"${lineAttribute}><header class="markdown-supple-block-header"><span class="markdown-supple-titles"><span class="markdown-supple-label">${command}</span>${titleHtml}</span></header><div class="markdown-supple-content">${contentHtml}</div></section>`
 }
 
 markdownRenderer.inline.ruler.before("link", "markdown-reference", (state, silent) => {
@@ -682,10 +700,14 @@ markdownRenderer.renderer.rules.fence = (
 /**
  * 渲染模板块正文：// 注释行按行拆出渲染为灰色斜体，其余内容分段交给 MarkdownIt。
  * 拆出注释行而非注册块规则，可避免带缩进的注释行被列表 lazy 续行规则吞掉。
+ * 段落渲染带 insideTemplateBlock 标记，使任务块内部的临时块 / 记录块子块正常渲染。
  */
 const renderTemplateContent = (content: string): string => {
   const renderSection = (lines: string[]): string =>
-    markdownRenderer.render(lines.join("\n"), { disableTemplateBlocks: true })
+    markdownRenderer.render(lines.join("\n"), {
+      disableTemplateBlocks: true,
+      insideTemplateBlock: true,
+    })
 
   const sections: string[] = []
   const buffer: string[] = []

@@ -3,7 +3,9 @@ import type { MarkdownColonTrigger } from "./types"
 // 变量模板块（$$$ varTemplate --start 「title:...」 ... $$$ varTemplate --end）。
 export const MARKDOWN_VAR_TEMPLATE_START_RE =
   /^\s*\$\$\$\s*(?:varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?)?\s*$/
-export const MARKDOWN_VAR_TEMPLATE_END_RE = /^\s*\$\$\$(?:\s+varTemplate\s+--end|\s+--end)?\s*$/
+// 结束行可选携带插入时注入的 {id:...}（与 markdownBlockCommands/markers.ts 保持同步）。
+export const MARKDOWN_VAR_TEMPLATE_END_RE =
+  /^\s*\$\$\$(?:\s+varTemplate\s+--end|\s+--end)?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/
 
 /**
  * 判断光标位置是否处于文档中的 $$$ 变量模板块区域内。

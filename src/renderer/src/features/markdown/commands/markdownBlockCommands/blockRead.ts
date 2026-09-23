@@ -20,11 +20,11 @@ import {
  *    - 若不属于任何父模版块，返回 null。
  * 2. 若光标在非 logTemplate 的 +++ 模版块（如 suppleTemplate）内部：
  *    - 只复制该 +++ 模版块的内容；
- *    - 如果该 +++ 模版块内包含直接子级 logTemplate，连同其内容一起复制，并移除 +++ logTemplate 起止标记行。
+ *    - 如果该 +++ 模版块内包含直接子级 logTemplate，连同其内容一起复制，并移除 %%% logTemplate 起止标记行。
  * 3. 若光标在 &&& 模版块中（且非任何可单独复制的 +++ 模版块内部）：
  *    - 复制该 &&& 模版块的内容；
  *    - 剔除其中的 suppleTemplate 及其嵌套内容；
- *    - 保留直接位于 &&& 块内部的 logTemplate 内容，并移除 +++ logTemplate 起止标记行。
+ *    - 保留直接位于 &&& 块内部的 logTemplate 内容，并移除 %%% logTemplate 起止标记行。
  * 4. 光标不在任何上述模版块内，返回 null。
  */
 export const getMarkdownTemplateBlockCopyText = (text: string, position: number): string | null => {
@@ -121,7 +121,7 @@ export const getMarkdownTemplateBlockCopyText = (text: string, position: number)
   // 辅助函数：处理父级（无论是 template 还是 supple）复制内容
   // 规则：
   // 1. 移除子 supple 块；
-  // 2. 保留子 log 块内容（移除 +++ 标记行）；
+  // 2. 保留子 log 块内容（移除 %%% 标记行）；
   // 3. 移除未填写的空 item、注释行及斜杠命令（与右上角复制按钮逻辑保持一致）。
   const formatBlockContent = (bodyLines: string[]): string => {
     const kept: string[] = []
@@ -138,7 +138,7 @@ export const getMarkdownTemplateBlockCopyText = (text: string, position: number)
         }
         continue
       }
-      // 剔除 log 块的 +++ 起止标记行，保留其内容
+      // 剔除 log 块的 %%% 起止标记行，保留其内容
       if (isMarkdownLogStartLine(l) || isMarkdownLogEndLine(l)) {
         continue
       }
@@ -178,7 +178,7 @@ export const getMarkdownTemplateBlockCopyText = (text: string, position: number)
 
   if (innermost.type === "supple") {
     // 处于 supple 内部：只复制该 supple 块的内容
-    // 如果内部包含 logTemplate，剔除 +++ 标记，保留 log 内容
+    // 如果内部包含 logTemplate，剔除 %%% 标记，保留 log 内容
     const suppleBodyLines = lines.slice(innermost.startLine + 1, innermost.endLine)
     return formatBlockContent(suppleBodyLines)
   }
