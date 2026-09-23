@@ -27,7 +27,6 @@ import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/Mar
 import {
   captureEditorScrollAnchor,
   createMarkdownTable,
-  editorTheme,
   formatMarkdown,
   mapMarkdownPosition,
   markdownHighlightStyle,
@@ -40,6 +39,7 @@ import {
 } from "@/components/ui/LxMarkdown/extensions/markdownFolding"
 import type { LxMarkdownEditorProps, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
 import { useLxToast } from "@/components/ui/LxToast"
+import { editorTheme } from "@/features/markdown/extensions/editorTheme"
 import { markdownMarkerHighlight } from "@/features/markdown/extensions/markerPlugin"
 import { useTranslation } from "@/i18n"
 
