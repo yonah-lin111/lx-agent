@@ -5,6 +5,8 @@
  * 1. 递归拆解 shell 封装层 (如 sudo, env, sh -c, bash -c 等)，最深支持 8 层；
  * 2. rm 的受保护目标 (/, ~, $HOME, .., cwd, 通配清空) 结构化判定，其余绝对破坏性指令 (git reset --hard, git clean -fdx, mkfs 等) 模式匹配，直接判定为 DENY；
  * 3. 仅拦截写入真实文件的重定向与内容改写命令 (如 > file、tee file、sed -i)；丢弃输出 (>/dev/null)、fd 复制 (2>&1) 放行；
+ *    Minimal 协作模式只有 bash 一个工具，shell 是唯一写文件通道：调用方传 allowShellFileWrites 放行该层，
+ *    破坏性指令 (rm 受保护目标、mkfs、dd 等) 不受影响，仍然阻断；
  * 4. heredoc 正文按数据处理（未加引号分隔符的正文仅提取命令替换）；命令替换 ($(...)、`...`) 递归评估；
  * 5. 模式匹配敏感指令 (如 git push --force, chmod -R 777, shutdown 等)，动态提升为需要用户确认 (ASK)；
  * 6. 结构性文件操作 (touch/mkdir/cp/mv) 不硬拦截，交由权限确认流程处理；
@@ -20,6 +22,11 @@ export interface CommandSafetyEvaluation {
   level: CommandSafetyLevel
   reason?: string
   matchedCommand?: string
+}
+
+export interface CommandSafetyOptions {
+  // 无 write/edit/apply_patch 可用时（Minimal 模式）放行 shell 写文件：重定向与内容改写不再硬拦。
+  allowShellFileWrites?: boolean
 }
 
 const MAX_WRAPPER_DEPTH = 8
@@ -524,9 +531,106 @@ export function unwrapCommand(commandStr: string, depth = 0): string {
 }
 
 /**
+ * 顶层子命令拆分：`&&`、`||`、`;`、`|`、`&` 与换行在 shell 顶层是命令边界，出现在引号、转义、
+ * 命令替换或进程替换内部时只是数据。盲拆会破坏引号上下文（多行引号参数被肢解，其中的 `>` 被
+ * 误判为写文件重定向），故按 shell 词法单遍扫描后再拆。
+ */
+const splitTopLevelCommands = (commandStr: string): string[] => {
+  const parts: string[] = []
+  let current = ""
+  let i = 0
+
+  while (i < commandStr.length) {
+    const ch = commandStr[i]
+
+    // 转义字符与其后字符是数据
+    if (ch === "\\") {
+      current += commandStr.slice(i, i + 2)
+      i += 2
+      continue
+    }
+
+    // 引号段整体保留：引号内的分隔符不是命令边界
+    if (ch === "'" || ch === '"') {
+      const start = i
+      i++
+      while (i < commandStr.length && commandStr[i] !== ch) {
+        if (ch === '"' && commandStr[i] === "\\") i++
+        i++
+      }
+      i++
+      current += commandStr.slice(start, i)
+      continue
+    }
+
+    // 命令替换整体保留：其正文由 extractCommandSubstitutions 单独递归评估
+    if (ch === "$" || ch === "`") {
+      const substitution = matchCommandSubstitution(commandStr, i)
+      if (substitution) {
+        current += commandStr.slice(i, substitution.end)
+        i = substitution.end
+        continue
+      }
+    }
+
+    // 进程替换 <(cmd) / >(cmd) 整体保留：括号内是另一条命令的正文
+    if ((ch === "<" || ch === ">") && commandStr[i + 1] === "(") {
+      const start = i
+      let depth = 0
+      while (i < commandStr.length) {
+        if (commandStr[i] === "(") depth++
+        else if (commandStr[i] === ")" && --depth === 0) {
+          i++
+          break
+        }
+        i++
+      }
+      current += commandStr.slice(start, i)
+      continue
+    }
+
+    // 顶层命令边界
+    if (commandStr.startsWith("&&", i) || commandStr.startsWith("||", i)) {
+      parts.push(current)
+      current = ""
+      i += 2
+      continue
+    }
+    if (ch === ";" || ch === "|" || ch === "\n" || ch === "\r") {
+      parts.push(current)
+      current = ""
+      i++
+      continue
+    }
+    if (ch === "&") {
+      const prev = commandStr[i - 1]
+      // fd 复制 (2>&1) 与重定向 (>&2、&>file) 不是命令边界
+      if (prev !== ">" && prev !== "<" && commandStr[i + 1] !== ">") {
+        parts.push(current)
+        current = ""
+      } else {
+        current += ch
+      }
+      i++
+      continue
+    }
+
+    current += ch
+    i++
+  }
+
+  parts.push(current)
+  return parts.map((part) => part.trim()).filter(Boolean)
+}
+
+/**
  * 评估单条 Shell 指令的安全性
  */
-export function evaluateCommandSafety(commandStr: string, depth = 0): CommandSafetyEvaluation {
+export function evaluateCommandSafety(
+  commandStr: string,
+  options: CommandSafetyOptions = {},
+  depth = 0,
+): CommandSafetyEvaluation {
   if (!commandStr || typeof commandStr !== "string") {
     return { level: "safe" }
   }
@@ -543,20 +647,24 @@ export function evaluateCommandSafety(commandStr: string, depth = 0): CommandSaf
 
   // 命令替换 ($(...)、`...`) 会被 shell 执行：递归评估其正文
   for (const substitution of [...substitutions, ...extractCommandSubstitutions(command)]) {
-    const verdict = evaluateCommandSafety(substitution, depth + 1)
+    const verdict = evaluateCommandSafety(substitution, options, depth + 1)
     if (verdict.level !== "safe") return verdict
   }
 
-  // 针对复合命令（`cmd1 && cmd2`、`cmd1 ; cmd2`、`cmd1 | cmd2`、换行与 `&` 后台分隔）拆分子命令逐个评估
-  const subCommands = command
-    .split(/&&|\|\||;|\||\n|\r|(?<![&])&(?![&])/)
-    .map((c) => c.trim())
-    .filter(Boolean)
+  // 顶层分隔符拆分子命令逐个评估（引号与替换内的分隔符不拆分）
+  const subCommands = splitTopLevelCommands(command)
 
   for (const rawSubCmd of subCommands) {
     const unwrapped = unwrapCommand(rawSubCmd)
     const normalized = stripQuotes(unwrapped)
     const normalizedRaw = stripQuotes(rawSubCmd)
+
+    // 0. 包装层（sudo/env/eval/sh -c ...）解开后是不同的命令文本：递归评估载荷，
+    //    保证引号里的分隔符（sh -c "cd /tmp && rm -rf /"）在不再盲拆后仍能被命中。
+    if (unwrapped !== rawSubCmd.trim()) {
+      const verdict = evaluateCommandSafety(unwrapped, options, depth + 1)
+      if (verdict.level !== "safe") return verdict
+    }
 
     // 1. 优先检查绝对破坏性指令：rm 的受保护目标（引号/变量/路径归一化后判定）
     if (isDangerousRmCommand(unwrapped) || isDangerousRmCommand(rawSubCmd)) {
@@ -577,7 +685,11 @@ export function evaluateCommandSafety(commandStr: string, depth = 0): CommandSaf
     }
 
     // 2. 仅拦截把输出写入真实文件的重定向（如 echo ... > file）；丢弃输出与 fd 复制放行
-    if (hasFileRedirection(unwrapped) || hasFileRedirection(rawSubCmd)) {
+    //    Minimal 模式 shell 是唯一写文件通道：放行该层，交由权限流程决定
+    if (
+      !options.allowShellFileWrites &&
+      (hasFileRedirection(unwrapped) || hasFileRedirection(rawSubCmd))
+    ) {
       return {
         level: "dangerous",
         reason:
@@ -587,7 +699,10 @@ export function evaluateCommandSafety(commandStr: string, depth = 0): CommandSaf
     }
 
     // 3. 内容改写命令（tee file、sed -i、truncate）：与重定向同级，封死 shell 写文件通道
-    if (isContentWriteCommand(normalized) || isContentWriteCommand(normalizedRaw)) {
+    if (
+      !options.allowShellFileWrites &&
+      (isContentWriteCommand(normalized) || isContentWriteCommand(normalizedRaw))
+    ) {
       return {
         level: "dangerous",
         reason:

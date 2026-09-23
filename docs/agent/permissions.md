@@ -71,7 +71,7 @@ export type CollaborationMode = "build" | "plan" | "review" | "design" | "minima
 | **`minimal`** | **白名单模式**：仅 `bash` 放行，其余全部工具 fail-closed 拦截；`bash` 的 `background: true` 参数亦拒绝 | 无（`task` 不在白名单，无法派发） | 仅 `bash`（含 `session` 持久会话）；可经 `modes.minimal` 白名单再收紧 | 无 |
 
 - 非 build 模式的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`MODE_MUTATION_REASONS`）；`memory` 会写 `<project>/.lx/memory/memory.xml` 与 `~/.lx/memory/memory.xml`，因此同样纳入基线。
-- **Minimal 白名单（dsh 同构）**：注册表激活层同步收窄（模型只看到 `bash`），提示词以 `complete` 独占段压掉其余全部内容（见 modes.md §5）；`background: true` 单独拒绝（`MINIMAL_BACKGROUND_REASON`），引导改用 shell 后台（`command &`）或 `bash.session` 持久会话。
+- **Minimal 白名单（dsh 同构）**：注册表激活层同步收窄（模型只看到 `bash`），提示词以 `complete` 独占段压掉其余全部内容（见 modes.md §5）；`background: true` 单独拒绝（`MINIMAL_BACKGROUND_REASON`），引导改用 shell 后台（`command &`）或 `bash.session` 持久会话。该模式无 `write` / `edit` / `apply_patch`，`bash` 即唯一写文件通道：门控向 `CommandSafetyGuard` 传 `allowShellFileWrites`，放行重定向与内容改写类硬拦，破坏性指令不受影响。
 - **子代理派发**：`task` 不再属于硬基线，由 `modes.<mode>.subagents` 白名单控制（按 `agent_type` 判定，批量 `tasks[]` 逐项校验，未携带角色视为未命中）。非 build 模式缺省白名单 = `["explorer"]`（内置只读探索子代理），`build` 缺省 = 不限制；显式配置覆盖缺省，显式空数组 = 该模式完全禁止派发；`minimal` 无缺省白名单且 `task` 不在工具白名单内。
 - **父模式基线穿透**：子代理按 `agent.subagents.mode`（缺省 `build`）装配提示词与门控，但父会话的硬基线会以 `parentMode` 叠加到子代理的每次工具调用上——`plan` / `review` / `design` 下派发的子代理同样不能写文件，`design` 下还不能用 `wireframe`，`minimal` 下只能使用 `bash`，派发无法绕过模式约束。
 - **角色兼容性**：角色能力集与模式硬基线有交集时（含 `tools` 未限制的角色，如内置 `worker`），该角色在此非 build 模式**永久禁用**——设置页锁定为不可勾选，门控层同时拒绝派发（白名单列出也不放行），避免派发一个写操作必然被拒的残废子代理；`build` 无硬基线，因此不锁定任何角色。角色被改动后与已保存白名单失配时，权限页模式行会提示「永久禁用角色：…」，打开编辑弹窗即自动剔除该角色并在确认后落盘；`minimal` 行为只读展示（白名单外角色永久禁用，不提供编辑入口）。

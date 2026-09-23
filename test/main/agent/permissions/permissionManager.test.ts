@@ -910,6 +910,44 @@ describe("permissionManager 永久决策写回（G5）", () => {
         permissionManager.evaluate("bash", { command: "ls" }, { collaborationMode: "minimal" }),
       ).toBe("deny")
     })
+
+    it("shell 写文件通道放行：重定向与内容改写不再硬拦，破坏性指令仍拒绝", () => {
+      applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+
+      expect(
+        permissionManager.evaluate(
+          "bash",
+          { command: "cat <<'EOF' > /Users/yonah/Desktop/snake.html\nbody\nEOF" },
+          { collaborationMode: "minimal" },
+        ),
+      ).toBe("allow")
+      expect(
+        permissionManager.evaluate(
+          "bash",
+          { command: "sed -i 's/a/b/' src/a.ts" },
+          { collaborationMode: "minimal" },
+        ),
+      ).toBe("allow")
+      // 破坏性指令不受写通道放行影响
+      expect(
+        permissionManager.evaluate(
+          "bash",
+          { command: "rm -rf /" },
+          { collaborationMode: "minimal" },
+        ),
+      ).toBe("deny")
+
+      // 其余模式维持既有判定（无 write 工具但语义只读的 plan/review/design 仍封死 shell 写）
+      for (const collaborationMode of ["build", "plan", "review", "design"] as const) {
+        expect(
+          permissionManager.evaluate(
+            "bash",
+            { command: "echo hi > /tmp/lx-out.txt" },
+            { collaborationMode },
+          ),
+        ).toBe("deny")
+      }
+    })
   })
 })
 

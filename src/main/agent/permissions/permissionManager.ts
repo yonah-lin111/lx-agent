@@ -337,9 +337,13 @@ class PermissionManager {
       return { decision: "deny", reason: READ_ONLY_SANDBOX_REASON }
     }
 
-    // 3. 指令安全检测：破坏性高危指令绝对阻断 (Deny)
+    // 3. 指令安全检测：破坏性高危指令绝对阻断 (Deny)。
+    //    Minimal 模式没有 write/edit/apply_patch，shell 是唯一写文件通道：
+    //    放行重定向与内容改写（如 cat <<'EOF' > file、tee、sed -i），破坏性指令仍然阻断。
     if (toolName === "bash" && typeof record.command === "string") {
-      const safety = evaluateCommandSafety(record.command)
+      const safety = evaluateCommandSafety(record.command, {
+        allowShellFileWrites: collaborationMode === "minimal",
+      })
       if (safety.level === "dangerous") {
         return { decision: "deny", reason: safety.reason ?? DENY_RULE_REASON }
       }
@@ -383,7 +387,9 @@ class PermissionManager {
 
     // 8. 敏感指令提升为 ask
     if (toolName === "bash" && typeof record.command === "string") {
-      const safety = evaluateCommandSafety(record.command)
+      const safety = evaluateCommandSafety(record.command, {
+        allowShellFileWrites: collaborationMode === "minimal",
+      })
       if (safety.level === "sensitive") {
         return { decision: "ask" }
       }

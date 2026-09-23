@@ -191,6 +191,41 @@ describe("CommandSafetyGuard", () => {
     expect(evaluateCommandSafety("sh -c 'echo x > /dev/null'").level).toBe("safe")
   })
 
+  it("多行引号参数不被肢解：引号内的 > 不是写文件重定向", () => {
+    // 回归：python3 -c "多行 HTML" 里的 <title>x</title> 曾被顶层盲拆后误判为写文件重定向
+    expect(
+      evaluateCommandSafety(
+        `python3 -c "\nhtml = '<title>x</title>'\nopen('f.html','w').write(html)\n"`,
+      ).level,
+    ).toBe("safe")
+    expect(evaluateCommandSafety(`python3 -c "\nif 10 > 5:\n    print('ok')"`).level).toBe("safe")
+    // 引号内的真实写操作仍按命令评估（sh -c 载荷递归检查）
+    expect(evaluateCommandSafety(`sh -c "echo a > b" && echo ok`).level).toBe("dangerous")
+  })
+
+  it("引号内的分隔符载荷仍纳入评估，不因拆分修复而漏判", () => {
+    expect(evaluateCommandSafety('sh -c "cd /tmp && rm -rf /"').level).toBe("dangerous")
+    expect(evaluateCommandSafety('sh -c "ls; git reset --hard"').level).toBe("dangerous")
+  })
+
+  it("allowShellFileWrites 放行 shell 写文件通道（Minimal 模式），破坏性与敏感性不变", () => {
+    const allow = { allowShellFileWrites: true }
+
+    expect(evaluateCommandSafety("cat <<'EOF' > out.txt\nbody\nEOF", allow).level).toBe("safe")
+    expect(evaluateCommandSafety("pnpm test | tee test.log", allow).level).toBe("safe")
+    expect(evaluateCommandSafety("sed -i 's/a/b/' src/a.ts", allow).level).toBe("safe")
+    expect(evaluateCommandSafety("truncate -s 0 logs.txt", allow).level).toBe("safe")
+    expect(evaluateCommandSafety("sh -c 'echo p > /tmp/lx-out.txt'", allow).level).toBe("safe")
+
+    // 破坏性与敏感性判定不受该选项影响
+    expect(evaluateCommandSafety("rm -rf /", allow).level).toBe("dangerous")
+    expect(evaluateCommandSafety("git reset --hard", allow).level).toBe("dangerous")
+    expect(evaluateCommandSafety("git push --force origin main", allow).level).toBe("sensitive")
+
+    // 默认（有 write/edit 工具的模式）仍然拦截
+    expect(evaluateCommandSafety("echo hello > out.txt").level).toBe("dangerous")
+  })
+
   it("常见文件操作指令不做硬拦截，交由权限确认流程", () => {
     expect(evaluateCommandSafety("touch index.ts").level).toBe("safe")
     expect(evaluateCommandSafety("mkdir -p src/features").level).toBe("safe")
