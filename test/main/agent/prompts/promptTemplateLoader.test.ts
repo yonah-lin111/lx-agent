@@ -424,5 +424,84 @@ scope: template
         "  - 使用开发流程和代码检索mcp，必须使用grill me质问用户确认边界\n  - 编写代码需要在 .worktrees 新建git工作区执行，在工作区执行任务，任务执行完成后询问用户是否合并",
       )
     })
+
+    it("loads agentBlock entries into listMarkdownCommands with block type and scope mapping", () => {
+      const userBlockDir = join(holder.appDataRoot, "command", "agentBlock")
+      mkdirSync(userBlockDir, { recursive: true })
+      writeFileSync(
+        join(userBlockDir, "reviewBlock.md"),
+        `---
+description: 需求评审
+block: template
+title: 需求评审
+---
+## 需求
+- 
+`,
+      )
+      writeFileSync(
+        join(userBlockDir, "addonBlock.md"),
+        `---
+description: 补充需求
+block: supple
+---
+## 补充
+- 
+`,
+      )
+
+      const blocks = loader.loadMarkdownBlocks(projectDir)
+      expect(blocks).toHaveLength(2)
+      const review = blocks.find((b) => b.name === "reviewBlock")
+      expect(review).toMatchObject({ blockType: "template", title: "需求评审", source: "user" })
+
+      const ipcList = loader.listMarkdownCommands(projectDir)
+      const ipcReview = ipcList.find((c) => c.name === "reviewBlock")
+      expect(ipcReview).toMatchObject({
+        blockType: "template",
+        title: "需求评审",
+        scope: "global",
+        content: "## 需求\n-",
+      })
+
+      // 临时块 / 记录块仅任务块内部可用：scope 映射为 template。
+      const ipcAddon = ipcList.find((c) => c.name === "addonBlock")
+      expect(ipcAddon).toMatchObject({ blockType: "supple", scope: "template" })
+    })
+
+    it("overrides user agentBlock with project agentBlock", () => {
+      const userBlockDir = join(holder.appDataRoot, "command", "agentBlock")
+      mkdirSync(userBlockDir, { recursive: true })
+      writeFileSync(
+        join(userBlockDir, "sharedBlock.md"),
+        `---
+description: user block
+block: supple
+---
+user content
+`,
+      )
+
+      const projectBlockDir = join(projectDir, ".lx", "command", "agentBlock")
+      mkdirSync(projectBlockDir, { recursive: true })
+      writeFileSync(
+        join(projectBlockDir, "sharedBlock.md"),
+        `---
+description: project block
+block: log
+---
+project content
+`,
+      )
+
+      const blocks = loader.loadMarkdownBlocks(projectDir)
+      expect(blocks).toHaveLength(1)
+      expect(blocks[0]).toMatchObject({
+        name: "sharedBlock",
+        blockType: "log",
+        content: "project content",
+        source: "project",
+      })
+    })
   })
 })

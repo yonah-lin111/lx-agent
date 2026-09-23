@@ -119,3 +119,50 @@ describe("LxMarkdownEditor 自定义模板命令插入", () => {
     expect(doc).toContain("&&& reviewTemplate\n## 检查项")
   })
 })
+
+describe("LxMarkdownEditor 模板块斜杠命令", () => {
+  it("模板块条目可通过斜杠命令唤起并插入完整块源码（自动注入 id）", async () => {
+    listMarkdownCommands.mockResolvedValue([
+      {
+        name: "reviewBlock",
+        description: "需求评审",
+        content: "## 需求\n- ",
+        scope: "global",
+        source: "user",
+        filePath: "/tmp/reviewBlock.md",
+        blockType: "template",
+        title: "需求评审",
+      },
+    ])
+
+    render(<LxMarkdownEditor initialContent="" projectPath="/repo" />)
+    await waitFor(() => expect(getCm()).not.toBeNull())
+    await waitFor(() => expect(listMarkdownCommands).toHaveBeenCalled())
+    // 等待自定义条目加载完成并同步到面板上下文 ref。
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    const view = EditorView.findFromDOM(getCm()!)!
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: "/reviewBlock" },
+      selection: { anchor: "/reviewBlock".length },
+    })
+    await waitFor(() => expect(document.querySelector('[role="listbox"]')).not.toBeNull())
+
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(view.state.doc.toString()).toContain("&&& reviewBlock --start 「title: 需求评审」")
+    })
+
+    const doc = view.state.doc.toString()
+    expect(doc).toContain("## 需求")
+    expect(doc).toMatch(/^&&& reviewBlock --end \{id:[0-9a-f]{32}\}$/m)
+  })
+})

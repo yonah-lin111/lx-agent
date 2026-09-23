@@ -138,18 +138,38 @@ export const LxMarkdownEditor = ({
   }, [projectPath])
 
   const formattedCustomSlashCommands = useMemo(() => {
-    return customMarkdownCommands.map((cmd) => ({
-      id: `custom:${cmd.name}`,
-      label: `/${cmd.name}`,
-      description: cmd.description,
-      argumentHint: cmd.argumentHint,
-      content: cmd.content,
-      cursorOffset: cmd.content.length,
-      scope: (cmd.scope === "template" ? "template" : "both") as "template" | "both",
-      kind: "customTemplate" as const,
-      source: cmd.source,
-      customScope: cmd.scope,
-    }))
+    return customMarkdownCommands.map((cmd) => {
+      // 模板块条目：插入完整块源码（含起止行与 title），任务块全局可用、子块仅任务块内部。
+      if (cmd.blockType) {
+        const marker = cmd.blockType === "supple" ? "+++" : cmd.blockType === "log" ? "%%%" : "&&&"
+        const titlePart = cmd.title?.trim() ? ` 「title: ${cmd.title.trim()}」` : ""
+        const content = `${marker} ${cmd.name} --start${titlePart}\n${cmd.content}\n${marker} ${cmd.name} --end`
+        return {
+          id: `block:${cmd.name}`,
+          label: `/${cmd.name}`,
+          description: cmd.description,
+          content,
+          cursorOffset: content.length,
+          scope: (cmd.blockType === "template" ? "both" : "template") as "template" | "both",
+          kind: "customTemplate" as const,
+          source: cmd.source,
+          customScope: cmd.scope,
+        }
+      }
+
+      return {
+        id: `custom:${cmd.name}`,
+        label: `/${cmd.name}`,
+        description: cmd.description,
+        argumentHint: cmd.argumentHint,
+        content: cmd.content,
+        cursorOffset: cmd.content.length,
+        scope: (cmd.scope === "template" ? "template" : "both") as "template" | "both",
+        kind: "customTemplate" as const,
+        source: cmd.source,
+        customScope: cmd.scope,
+      }
+    })
   }, [customMarkdownCommands])
 
   const panels = useMarkdownPanels({
