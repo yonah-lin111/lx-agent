@@ -20,13 +20,13 @@ import { LxSelect } from "@/components/ui/LxSelect"
 import { useLxToast } from "@/components/ui/LxToast"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import {
+  agentBlockPreviewExtensions,
   buildAgentBlockSource,
   extractAgentBlockBody,
   injectCustomTemplateBlockIds,
   isInsideMarkdownTemplateBlock,
   normalizeAgentBlockBody,
-} from "@/features/markdown/commands/markdownBlockCommands"
-import { agentBlockPreviewExtensions } from "@/features/markdown/extensions/markdownAgentBlockPreview"
+} from "@/features/markdown"
 import { projectApi } from "@/features/project/api/projectApi"
 import { customCommandApi } from "@/features/settings/api/customCommandApi"
 import {
@@ -505,13 +505,14 @@ export const CustomCommandSettings = (): React.JSX.Element => {
 
     // 我的模板块：任务块全局可用，临时块 / 记录块仅限任务块内部。
     for (const block of blockCommands) {
-      const marker =
-        block.blockType === "supple" ? "+++" : block.blockType === "log" ? "%%%" : "&&&"
       // 正文可能已含起止行（用户直接粘贴完整块），先规范化避免双重包裹。
       const normalized = normalizeAgentBlockBody(block.content, block.blockType || "template")
-      const title = block.title?.trim() || normalized.title || ""
-      const titlePart = title ? ` 「title: ${title}」` : ""
-      const blockText = `${marker} ${block.name} --start${titlePart}\n${normalized.content}\n${marker} ${block.name} --end`
+      const blockText = buildAgentBlockSource({
+        name: block.name,
+        title: block.title || normalized.title || "",
+        blockType: block.blockType || "template",
+        content: normalized.content,
+      })
       options.push({
         group: customGroup,
         label: block.name,

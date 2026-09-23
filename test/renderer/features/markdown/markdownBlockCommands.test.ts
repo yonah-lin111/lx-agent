@@ -365,6 +365,33 @@ describe("自定义模板块 id 注入", () => {
     )
   })
 
+  it("$$$ 变量模板块结束行注入 id（显式 --end 与裸 $$$ 配对）", () => {
+    expect(injectCustomTemplateBlockIds("$$$ varTemplate --end")).toMatch(
+      /^\$\$\$ varTemplate --end \{id:[0-9a-f]{32}\}$/,
+    )
+    expect(injectCustomTemplateBlockIds("$$$ --end")).toMatch(/^\$\$\$ --end \{id:[0-9a-f]{32}\}$/)
+
+    // 裸 $$$ 行开闭同形：按配对状态区分开始行与结束行。
+    const explicit = ["$$$ varTemplate --start 「title: 标题」", "内容", "$$$"].join("\n")
+    expect(injectCustomTemplateBlockIds(explicit)).toMatch(
+      /^\$\$\$ varTemplate --start 「title: 标题」\n内容\n\$\$\$ \{id:[0-9a-f]{32}\}$/,
+    )
+
+    const bare = ["$$$", "标题: X", "$$$"].join("\n")
+    expect(injectCustomTemplateBlockIds(bare)).toMatch(
+      /^\$\$\$\n标题: X\n\$\$\$ \{id:[0-9a-f]{32}\}$/,
+    )
+  })
+
+  it("$$$ 变量模板块已有 id 时保持不变", () => {
+    const content = [
+      "$$$ varTemplate --start",
+      "x",
+      "$$$ varTemplate --end {id:c7fa918944154ea8aa1ea07d9b871817}",
+    ].join("\n")
+    expect(injectCustomTemplateBlockIds(content)).toBe(content)
+  })
+
   it("完整自定义模板：任务块 / 临时块 / 记录块均注入独立 id", () => {
     const content = [
       "&&& reviewTemplate",
@@ -901,11 +928,11 @@ describe("buildAgentBlockSource / extractAgentBlockBody / 块名后缀", () => {
 
     expect(
       buildAgentBlockSource({ name: "addonTemplate", title: "", blockType: "supple", content: "" }),
-    ).toBe("+++ addonTemplate --start\n\n+++ addonTemplate --end")
+    ).toBe("+++ addonTemplate --start 「title: 」\n\n+++ addonTemplate --end")
 
     expect(
       buildAgentBlockSource({ name: "logTemplate", title: "", blockType: "log", content: "x" }),
-    ).toBe("%%% logTemplate --start\nx\n%%% logTemplate --end")
+    ).toBe("%%% logTemplate --start 「title: 」\nx\n%%% logTemplate --end")
   })
 
   it("提取正文无损往返（含空行、缩进与空正文）", () => {

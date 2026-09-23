@@ -2,10 +2,7 @@ import type { CustomCommandBlockType, CustomCommandType } from "@shared/contract
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect } from "@/components/ui/LxSelect"
-import {
-  stripMarkdownBlockNameSuffix,
-  withMarkdownBlockNameSuffix,
-} from "@/features/markdown/commands/markdownBlockCommands"
+import { stripMarkdownBlockNameSuffix, withMarkdownBlockNameSuffix } from "@/features/markdown"
 import { useTranslation } from "@/i18n"
 
 // 自定义命令表单状态。

@@ -6,7 +6,11 @@ export {
   getMarkdownTemplateBlockEndLine,
   getMarkdownTemplateBlockStartLine,
 } from "./blockRead"
-export type { ParsedMarkdownLogEnd, ParsedMarkdownSubblockStart } from "./markers"
+export type {
+  ParsedMarkdownLogEnd,
+  ParsedMarkdownSubblockStart,
+  ParsedMarkdownVarTemplateEnd,
+} from "./markers"
 export {
   isInsideMarkdownLogBlock,
   isInsideMarkdownSuppleBlock,
@@ -30,6 +34,7 @@ export {
   parseMarkdownLogStartLine,
   parseMarkdownSuppleStartLine,
   parseMarkdownTemplateStartLine,
+  parseMarkdownVarTemplateEndLine,
   toggleMarkdownTemplateCommentLines,
 } from "./markers"
 export {

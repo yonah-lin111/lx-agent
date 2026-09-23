@@ -6,12 +6,15 @@ import {
   MARKDOWN_TEMPLATE_ID_RE,
   MARKDOWN_TEMPLATE_START_RE,
   MARKDOWN_TEMPLATE_WT_RE,
+  MARKDOWN_VAR_TEMPLATE_END_RE,
+  MARKDOWN_VAR_TEMPLATE_START_RE,
   type ParsedMarkdownSubblockStart,
   parseMarkdownLogEndLine,
   parseMarkdownLogStartLine,
   parseMarkdownSuppleStartLine,
   parseMarkdownTemplateEndLine,
   parseMarkdownTemplateStartLine,
+  parseMarkdownVarTemplateEndLine,
 } from "./markers"
 import type {
   MarkdownTemplateStatus,
@@ -136,12 +139,21 @@ export const createMarkdownTemplateId = (): string => crypto.randomUUID().replac
  * - `&&& <command> --end` 结束行注入 `{id:...}`，多个模板块各自独立；
  * - `+++ <name> --end` 临时块结束行注入 `{id:...}`；
  * - `%%% <name> --end` 记录块结束行注入 `{id:...}`（兼容旧版 +++ log/logTemplate）；
+ * - `$$$ [varTemplate --end | --end]` 变量模板块结束行注入 `{id:...}`；
  * 已有 id 的结束行保持不变，id 始终写在 `{wt:...}` 之前；开始行与正文行不受影响。
  */
-export const injectCustomTemplateBlockIds = (content: string): string =>
-  content
+export const injectCustomTemplateBlockIds = (content: string): string => {
+  // $$$ 变量模板块的裸 $$$ 行开闭同形，需按配对状态区分开始行与结束行。
+  let isInsideVarBlock = false
+
+  return content
     .split("\n")
     .map((line) => {
+      if (!isInsideVarBlock && MARKDOWN_VAR_TEMPLATE_START_RE.test(line)) {
+        isInsideVarBlock = true
+        return line
+      }
+
       const templateEnd = parseMarkdownTemplateEndLine(line)
       if (templateEnd) {
         if (templateEnd.id) return line
@@ -167,9 +179,22 @@ export const injectCustomTemplateBlockIds = (content: string): string =>
         return `${logEnd.indent}${logEnd.marker} ${logEnd.command} --end {id:${createMarkdownTemplateId()}}`
       }
 
-      return line
+      // 变量模板块结束行：显式 --end 形式无需配对状态；裸 $$$ 行开闭同形，需处于配对状态。
+      const varEnd = parseMarkdownVarTemplateEndLine(line)
+      const isVarEndLine = varEnd !== null && (Boolean(varEnd.endFlag) || isInsideVarBlock)
+      if (!varEnd || !isVarEndLine) return line
+
+      isInsideVarBlock = false
+      if (varEnd.id) return line
+      const commandPart = varEnd.command ? ` ${varEnd.command}` : ""
+      const endFlagPart = varEnd.endFlag ? ` ${varEnd.endFlag}` : ""
+      // 模板字符串中 "$$${" 会被解析为插值，故拼接字面量。
+      return (
+        varEnd.indent + "$$$" + commandPart + endFlagPart + ` {id:${createMarkdownTemplateId()}}`
+      )
     })
     .join("\n")
+}
 
 // 按块类型解析开始行。
 const parseAgentBlockStartLine = (
@@ -239,7 +264,8 @@ export const stripMarkdownBlockNameSuffix = (name: string): string =>
     : name
 
 /**
- * 构建模板块完整源码（设置页预览用）：起止行由表单驱动，结束行不带 id（插入文档时统一注入）。
+ * 构建模板块完整源码（设置页预览与插入共用）：起止行由表单驱动，
+ * 开始行始终携带「title: 」占位（空标题时留位便于填充），结束行不带 id（插入文档时统一注入）。
  */
 export const buildAgentBlockSource = (input: {
   name: string
@@ -248,9 +274,7 @@ export const buildAgentBlockSource = (input: {
   content: string
 }): string => {
   const marker = input.blockType === "supple" ? "+++" : input.blockType === "log" ? "%%%" : "&&&"
-  const title = input.title.trim()
-  const titlePart = title ? ` 「title: ${title}」` : ""
-  return `${marker} ${input.name} --start${titlePart}\n${input.content}\n${marker} ${input.name} --end`
+  return `${marker} ${input.name} --start 「title: ${input.title.trim()}」\n${input.content}\n${marker} ${input.name} --end`
 }
 
 /**
@@ -270,7 +294,7 @@ export const extractAgentBlockBody = (
 }
 
 /**
- * 扫描文本中全部任务块、临时块与记录块结束行上的 id 源码范围，供编辑器只读保护使用。
+ * 扫描文本中全部任务块、临时块、记录块与变量模板块结束行上的 id 源码范围，供编辑器只读保护使用。
  */
 export const getMarkdownTemplateIdRanges = (text: string): { from: number; to: number }[] => {
   const ranges: { from: number; to: number }[] = []
@@ -280,7 +304,8 @@ export const getMarkdownTemplateIdRanges = (text: string): { from: number; to: n
     if (
       MARKDOWN_TEMPLATE_END_RE.test(line) ||
       MARKDOWN_SUPPLE_END_RE.test(line) ||
-      MARKDOWN_LOG_END_RE.test(line)
+      MARKDOWN_LOG_END_RE.test(line) ||
+      MARKDOWN_VAR_TEMPLATE_END_RE.test(line)
     ) {
       const idMatch = line.match(MARKDOWN_TEMPLATE_ID_RE)
       if (idMatch?.index !== undefined) {

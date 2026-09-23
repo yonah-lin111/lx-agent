@@ -155,12 +155,40 @@ export const MARKDOWN_SUPPLE_END_RE =
 export const MARKDOWN_LOG_END_RE =
   /^\s*(?:%%%\s+[A-Za-z]\w*|\+\+\+\s+(?:log|logTemplate))\s+--end(?:\s+\{id:[0-9a-f]{32}\})?\s*$/
 
-// 变量模板块开始行：$$$ varTemplate [--start] [「title: 标题」]。
+// 变量模板块开始行：$$$ [varTemplate [--start]] [「title: 标题」]（裸 $$$ 亦为合法开始行，与 variableSyntax 一致）。
 export const MARKDOWN_VAR_TEMPLATE_START_RE =
-  /^\s*\$\$\$\s+varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?\s*$/
+  /^\s*\$\$\$\s*(?:varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?)?\s*$/
 
-// 变量模板块结束行：$$$ [varTemplate --end | --end]。
-export const MARKDOWN_VAR_TEMPLATE_END_RE = /^\s*\$\$\$(?:\s+(?:varTemplate)\s+--end|\s+--end)?\s*$/
+// 变量模板块结束行：$$$ [varTemplate --end | --end]，可选携带 {id:...}。
+export const MARKDOWN_VAR_TEMPLATE_END_RE =
+  /^\s*\$\$\$(?:\s+(?:varTemplate)\s+--end|\s+--end)?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/
+
+export interface ParsedMarkdownVarTemplateEnd {
+  indent: string
+  command?: string
+  endFlag?: string
+  id?: string
+}
+
+/**
+ * 解析变量模板块结束行（$$$ [varTemplate --end | --end] [{id:...}]）；非结束行返回 null。
+ */
+export const parseMarkdownVarTemplateEndLine = (
+  lineText: string,
+): ParsedMarkdownVarTemplateEnd | null => {
+  if (!MARKDOWN_VAR_TEMPLATE_END_RE.test(lineText)) return null
+  const match = lineText.match(
+    /^(\s*)\$\$\$(?:\s+(varTemplate)\s+(--end)|\s+(--end))?(?:\s+\{id:([0-9a-f]{32})\})?\s*$/,
+  )
+  if (!match) return null
+
+  return {
+    indent: match[1],
+    command: match[2],
+    endFlag: match[3] ?? match[4],
+    id: match[5],
+  }
+}
 
 // 记录块标记定位：新 %%% 与旧版 +++ 兼容，供编辑器装饰计算标记范围。
 export const MARKDOWN_LOG_MARKER_RE = /%%%|\+\+\+/

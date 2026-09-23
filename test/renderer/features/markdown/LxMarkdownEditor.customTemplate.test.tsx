@@ -211,6 +211,7 @@ describe("LxMarkdownEditor 模板块脏数据容错", () => {
     const doc = view.state.doc.toString()
     expect(doc.match(/&&& testTemplate --start/g)).toHaveLength(1)
     expect(doc.match(/&&& testTemplate --end/g)).toHaveLength(1)
-    expect(doc).not.toContain("「title: 」")
+    // 空 title 时也保留「title: 」占位，便于填充。
+    expect(doc).toContain("&&& testTemplate --start 「title: 」")
   })
 })

@@ -734,6 +734,20 @@ describe("变量模板块正则边界", () => {
     expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ varTemplate --start")).toBe(false)
     expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ --end trailing")).toBe(false)
   })
+
+  it("MARKDOWN_VAR_TEMPLATE_END_RE 兼容插入时注入的 {id:...}", () => {
+    expect(
+      MARKDOWN_VAR_TEMPLATE_END_RE.test(
+        "$$$ varTemplate --end {id:c7fa918944154ea8aa1ea07d9b871817}",
+      ),
+    ).toBe(true)
+    expect(
+      MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ --end {id:c7fa918944154ea8aa1ea07d9b871817}"),
+    ).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ {id:c7fa918944154ea8aa1ea07d9b871817}")).toBe(
+      true,
+    )
+  })
 })
 
 describe("变量块固定 @content 内容块", () => {
