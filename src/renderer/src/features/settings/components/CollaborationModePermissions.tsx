@@ -3,6 +3,8 @@ import type {
   PermissionSettings as PermissionSettingsConfig,
 } from "@shared/contracts/agent"
 import {
+  COLLABORATION_MODE_ORDER,
+  getModeAllowedTools,
   getModeBlockedTools,
   roleBlockedTools,
   withModePermissionDefaults,
@@ -14,7 +16,8 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxModal } from "@/components/ui/LxModal"
 import { LxTag } from "@/components/ui/LxTag"
-import { type TranslationKey, useTranslation } from "@/i18n"
+import { useTranslation } from "@/i18n"
+import { COLLABORATION_MODE_META } from "@/lib/collaborationModes"
 import { settingsApi } from "../api/settingsApi"
 import {
   describePermissions,
@@ -22,9 +25,6 @@ import {
   permissionsEqual,
   SubagentPermissionsForm,
 } from "./SubagentPermissionsForm"
-
-// 协作模式展示顺序与文案键（描述复用 agent 命名空间）。
-const MODE_ORDER: readonly CollaborationMode[] = ["build", "plan", "review", "design"]
 
 // 权限分组：五组（tools / mcp / skills / websearch / subagents）。
 const PERMISSION_GROUPS: readonly PermissionGroup[] = [
@@ -35,36 +35,15 @@ const PERMISSION_GROUPS: readonly PermissionGroup[] = [
   "subagents",
 ]
 
-const MODE_LABEL_KEYS: Record<CollaborationMode, TranslationKey> = {
-  build: "agent.collaborationModeBuild",
-  plan: "agent.collaborationModePlan",
-  review: "agent.collaborationModeReview",
-  design: "agent.collaborationModeDesign",
-}
-
-const MODE_DESC_KEYS: Record<CollaborationMode, TranslationKey> = {
-  build: "agent.collaborationModeBuildDesc",
-  plan: "agent.collaborationModePlanDesc",
-  review: "agent.collaborationModeReviewDesc",
-  design: "agent.collaborationModeDesignDesc",
-}
-
-// 模式标签配色（与状态栏协作模式指示一致）。
-const MODE_TAG_COLORS: Record<CollaborationMode, "default" | "sky" | "purple" | "pink"> = {
-  build: "default",
-  plan: "sky",
-  review: "purple",
-  design: "pink",
-}
-
 export interface CollaborationModePermissionsProps {
   settings: PermissionSettingsConfig
   setSettings: (settings: PermissionSettingsConfig) => void
 }
 
 /**
- * 设置页"协作模式权限"卡片：Build / Plan / Review / Design 四行能力权限覆盖。
- * 非 build 模式的写操作硬基线不可放开（UI 锁定、保存时由主进程规范化剥离）。
+ * 设置页"协作模式权限"卡片：Build / Plan / Review / Design / Minimal 五行能力权限覆盖。
+ * 非 build 模式的写操作硬基线不可放开（UI 锁定、保存时由主进程规范化剥离）；
+ * Minimal 为白名单模式（仅终端工具），只读展示、不可编辑。
  */
 export const CollaborationModePermissions = ({
   settings,
@@ -128,7 +107,10 @@ export const CollaborationModePermissions = ({
   const renderRow = (mode: CollaborationMode): React.JSX.Element => {
     const override = settings.modes?.[mode]
     const effective = withModePermissionDefaults(mode, override)
+    const meta = COLLABORATION_MODE_META[mode]
     const lockedTools = [...getModeBlockedTools(mode)]
+    // 白名单模式（Minimal）：无黑名单，仅展示允许工具且不可编辑。
+    const allowedTools = getModeAllowedTools(mode)
     // 白名单里已被角色改动变成永久禁用的角色（死条目）：提示用户重新编辑，确认后自动清理。
     const lockedRoles = lockedRolesOf(mode)
     const staleRoles = (effective?.subagents ?? []).filter((name) => lockedRoles.includes(name))
@@ -140,8 +122,8 @@ export const CollaborationModePermissions = ({
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <LxTag size="small" color={MODE_TAG_COLORS[mode]}>
-              {t(MODE_LABEL_KEYS[mode])}
+            <LxTag size="small" color={meta.color}>
+              {t(meta.labelKey)}
             </LxTag>
             {override ? (
               <LxTag size="small" color="amber">
@@ -149,17 +131,19 @@ export const CollaborationModePermissions = ({
               </LxTag>
             ) : null}
           </div>
-          <LxIconButton
-            preset="edit"
-            onClick={() => handleOpenEdit(mode)}
-            title={{ content: t("settings.collaborationModePermissionsEdit"), placement: "top" }}
-            aria-label={`${t("settings.collaborationModePermissionsEdit")} ${t(MODE_LABEL_KEYS[mode])}`}
-          >
-            <Edit2 className="text-white/70" />
-          </LxIconButton>
+          {allowedTools ? null : (
+            <LxIconButton
+              preset="edit"
+              onClick={() => handleOpenEdit(mode)}
+              title={{ content: t("settings.collaborationModePermissionsEdit"), placement: "top" }}
+              aria-label={`${t("settings.collaborationModePermissionsEdit")} ${t(meta.labelKey)}`}
+            >
+              <Edit2 className="text-white/70" />
+            </LxIconButton>
+          )}
         </div>
         <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
-          {t(MODE_DESC_KEYS[mode])}
+          {t(meta.descKey)}
         </p>
         <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
           <span>{t("settings.subagentsPermissions")}:</span>{" "}
@@ -169,7 +153,14 @@ export const CollaborationModePermissions = ({
               : t("settings.subagentsPermissionsUnlimited")}
           </span>
         </p>
-        {lockedTools.length > 0 ? (
+        {allowedTools ? (
+          <p className="flex items-center gap-1 text-xs text-emerald-300/70">
+            <Lock className="h-3 w-3 shrink-0" />
+            {t("settings.collaborationModePermissionsAllowedOnlyHint", {
+              tools: [...allowedTools].join(", "),
+            })}
+          </p>
+        ) : lockedTools.length > 0 ? (
           <p className="flex items-center gap-1 text-xs text-rose-300/70">
             <Lock className="h-3 w-3 shrink-0" />
             {t("settings.collaborationModePermissionsLockedHint", {
@@ -205,12 +196,12 @@ export const CollaborationModePermissions = ({
         <LxInfoTooltip markdown={t("settings.collaborationModePermissionsDoc")} placement="right" />
       </div>
       <p className="text-xs text-white/45">{t("settings.collaborationModePermissionsDesc")}</p>
-      <div className="flex flex-col gap-2">{MODE_ORDER.map(renderRow)}</div>
+      <div className="flex flex-col gap-2">{COLLABORATION_MODE_ORDER.map(renderRow)}</div>
 
       <LxModal
         isOpen={editingMode !== null}
         onClose={() => setEditingMode(null)}
-        title={editingMode ? t(MODE_LABEL_KEYS[editingMode]) : ""}
+        title={editingMode ? t(COLLABORATION_MODE_META[editingMode].labelKey) : ""}
         width="720px"
       >
         <div className="flex flex-col gap-3.5 p-1 text-xs text-white/80">

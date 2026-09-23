@@ -20,7 +20,7 @@ User Input / Drain
 ┌─────────────────┐
 │ TurnContext     │ ──► 捕获并冻结不可变环境快照:
 │                 │     - cwd, is_worktree, git_branch, platform
-│                 │     - collaborationMode (build | plan | review | design)
+│                 │     - collaborationMode (build | plan | review | design | minimal)
 │                 │     - sandboxPolicy
 └────────┬────────┘
          │

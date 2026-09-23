@@ -6,6 +6,7 @@ import {
   type BuildSystemPromptOptions,
   buildSystemPromptSync,
   createRegistry,
+  narrowActivationByMode,
   resolveConnectedMcpServers,
   resolveCwd,
 } from "./assembly"
@@ -106,11 +107,18 @@ export const buildSessionAgent = (
   })
   const subagentRuntime =
     host.subagentRuntime ?? new SubagentRuntime(subagentSettings.maxConcurrent)
-  const registry = createRegistry(
-    cwd,
+  // 白名单模式收窄激活工具集：Minimal 仅暴露终端工具（模型不可见其余工具）。
+  const activation = narrowActivationByMode(
+    host.collaborationMode,
     activeCapabilities,
     activeMcp,
     activeSkills.length > 0,
+  )
+  const registry = createRegistry(
+    cwd,
+    activation.tools,
+    activation.mcp,
+    activation.withReadSkill,
     {
       subagentSystemPrompt,
       // 角色技能白名单收窄 available_skills 注入（与 read_skill 工具同源）。

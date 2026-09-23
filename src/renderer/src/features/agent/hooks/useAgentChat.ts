@@ -134,6 +134,7 @@ export const useAgentChat = (
   const { restoreChat } = useAgentChatRestore({ core, stopStreaming })
   const { sendMessage, continueChat, canContinue, editMessage } = useAgentChatSend({ core })
   const {
+    selectCollaborationMode,
     toggleCollaborationMode,
     acceptAndExecutePlan,
     acceptAndExecuteReviewFixes,
@@ -146,6 +147,7 @@ export const useAgentChat = (
     messages,
     todos,
     collaborationMode,
+    selectCollaborationMode,
     toggleCollaborationMode,
     queuedCount,
     queuedMessages,

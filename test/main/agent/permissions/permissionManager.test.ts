@@ -830,6 +830,87 @@ describe("permissionManager 永久决策写回（G5）", () => {
       expect(result?.reason).toContain("wireframe")
     })
   })
+
+  describe("极简模式 (Minimal Mode 门禁)", () => {
+    it("仅放行 bash：其余工具全部硬拦截，bypassPermissions 也不可绕过", () => {
+      applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+      const minimal = { collaborationMode: "minimal" as const }
+
+      expect(permissionManager.evaluate("bash", { command: "ls" }, minimal)).toBe("allow")
+      for (const toolName of [
+        "read",
+        "ls",
+        "grep",
+        "find",
+        "write",
+        "edit",
+        "apply_patch",
+        "task",
+        "question",
+        "todowrite",
+        "memory",
+        "wireframe",
+        "web_search",
+        "webfetch",
+        "read_skill",
+        "lsp",
+        "view_image",
+        "mcp__codegraph__search",
+      ]) {
+        expect(permissionManager.evaluate(toolName, {}, minimal)).toBe("deny")
+      }
+    })
+
+    it("后台作业参数被拒绝；持久会话参数正常放行", async () => {
+      applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+
+      expect(
+        permissionManager.evaluate(
+          "bash",
+          { command: "npm run dev", background: true },
+          { collaborationMode: "minimal" },
+        ),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate(
+          "bash",
+          { command: "cd src && ls", session: "s1" },
+          { collaborationMode: "minimal" },
+        ),
+      ).toBe("allow")
+
+      const result = await permissionManager.gate(
+        gateContext("bash", { command: "npm run dev", background: true }),
+        "s1",
+        undefined,
+        { collaborationMode: "minimal" },
+      )
+      expect(result?.block).toBe(true)
+      expect(result?.reason).toContain("background jobs")
+    })
+
+    it("父模式基线穿透：build 会话派发的子代理调用同样受 Minimal 白名单约束", () => {
+      applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+      const child = { collaborationMode: "build" as const, parentMode: "minimal" as const }
+
+      expect(permissionManager.evaluate("read", {}, child)).toBe("deny")
+      expect(permissionManager.evaluate("bash", { command: "ls" }, child)).toBe("allow")
+    })
+
+    it("模式能力配置只能收紧：显式 tools 白名单移除 bash 后 bash 也被拒绝", () => {
+      applySettings({
+        defaultMode: "bypassPermissions",
+        allow: [],
+        deny: [],
+        ask: [],
+        modes: { minimal: { tools: [] } },
+      })
+
+      expect(
+        permissionManager.evaluate("bash", { command: "ls" }, { collaborationMode: "minimal" }),
+      ).toBe("deny")
+    })
+  })
 })
 
 describe("permissionManager 协作模式权限（模式策略统一表）", () => {

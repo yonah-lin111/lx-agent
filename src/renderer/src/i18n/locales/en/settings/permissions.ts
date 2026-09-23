@@ -48,6 +48,16 @@ Controls the **interactive approval behavior** between Agent and human user.
   modeBypassDesc: "All gated tools execute directly without asking confirmation.",
   bypassWarning:
     "Under bypassPermissions, gated tools (bash / write / edit / MCP) will not ask for confirmation.",
+  defaultCollaborationMode: "Default Collaboration Mode",
+  defaultCollaborationModeDesc:
+    "Collaboration mode used when a new session starts; existing sessions are unaffected.",
+  defaultCollaborationModeDoc: `### Default Collaboration Mode
+
+The collaboration mode used when a new session starts (new tab / after app restart). Switch temporarily from the status bar mode tag or with Shift + Tab.
+
+- **Build / Plan / Review / Design**: same as the status bar collaboration modes.
+- **Minimal**: terminal-only mode (\`bash\`), useful for testing and comparing basic model performance.
+- **Effective**: applies to new sessions only; temporary switches in current sessions are not overwritten.`,
   ruleGroups: "Rule Groups",
   allowRules: "Allow Rules",
   allowRulesDesc: "Always execute without confirmation",
@@ -67,18 +77,20 @@ Controls the **interactive approval behavior** between Agent and human user.
   // Collaboration Mode Permissions
   collaborationModePermissions: "Collaboration Mode Permissions",
   collaborationModePermissionsDesc:
-    "Configure capabilities for each collaboration mode (Build / Plan / Review / Design); configuration can only narrow the hard baseline, never widen it.",
+    "Configure capabilities for each collaboration mode (Build / Plan / Review / Design / Minimal); configuration can only narrow the hard baseline, never widen it.",
   collaborationModePermissionsDoc: `### Collaboration Mode Permissions
 
-Configure independent capability allowlists for the four collaboration modes (Build / Plan / Review / Design).
+Configure independent capability allowlists for the five collaboration modes (Build / Plan / Review / Design / Minimal).
 
 - **Non-Build hard baseline**: \`write\` / \`edit\` / \`apply_patch\` / \`todowrite\` / \`memory\` are permanently disabled and cannot be re-enabled by configuration.
+- **Minimal Mode allowlist**: only the \`bash\` terminal tool is allowed (background job flags and every other tool are permanently disabled); not editable.
 - **Sub-agent dispatch**: \`task\` is controlled by the \`subagents\` group. Non-Build modes default to the built-in explorer sub-agent only; other or custom roles can be checked in. Sub-agent tool calls also inherit the parent mode's hard baseline.
 - **Design Mode**: additionally disables \`wireframe\` (deliver prototypes via the \`<front_design>\` protocol).
 - **Semantics**: an unrestricted group is bounded only by the hard baseline; a restricted group keeps only the checked items (none checked = group fully disabled).
 - **Effective**: applies from the next turn; hard-baseline tools are stripped from saved allowlists automatically.`,
   collaborationModePermissionsEdit: "Edit permissions",
   collaborationModePermissionsLockedHint: "Permanently disabled: {{tools}}",
+  collaborationModePermissionsAllowedOnlyHint: "Allowed only: {{tools}}",
   collaborationModePermissionsLockedRolesHint:
     "Permanently disabled roles: {{roles}} (capability set includes blocked tools; removed once you confirm an edit)",
 

@@ -131,6 +131,7 @@ vi.mock("@/agent/permissions/permissionManager", () => ({
   permissionManager: {
     load: vi.fn(),
     getSandboxPolicy: vi.fn(() => "workspace-write"),
+    getDefaultCollaborationMode: vi.fn(() => "build"),
     setMcpTools: vi.fn(),
     clearSession: vi.fn(),
     gate: vi.fn(

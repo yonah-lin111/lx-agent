@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest"
 import {
   createDefaultSystemPromptManager,
   interpolateVariables,
+  MINIMAL_MODE_PROMPT,
   PROMPT_ORDERS,
   PROMPT_SECTION_NAMES,
   SystemPromptManager,
@@ -504,6 +505,49 @@ describe("SystemPromptManager", () => {
 
         expect(assembly.rendered).toContain("The `wireframe` tool is DISABLED in Front Design Mode")
         expect(assembly.rendered).toContain("Never call it")
+      })
+
+      it("minimal 模式独占提示词：仅注入终端约定，压掉其余全部段与上下文", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "minimal",
+          cwd: "/tmp/minimal-project",
+          activeSkills: [
+            {
+              name: "deploy",
+              description: "Deploy helper",
+              filePath: "/tmp/skills/deploy/SKILL.md",
+              baseDir: "/tmp/skills/deploy",
+              disableModelInvocation: false,
+            },
+          ],
+          contextUsage: { tokens: 1000, contextWindow: 200000 },
+        })
+
+        expect(assembly.sections).toHaveLength(1)
+        expect(assembly.sections[0]?.name).toBe(PROMPT_SECTION_NAMES.MINIMAL_MODE)
+        expect(assembly.contexts).toEqual([])
+        expect(assembly.rendered).toBe(MINIMAL_MODE_PROMPT)
+        // 身份 / 行为规范 / 人格与操作规范 / 技能 / 环境上下文全部被压掉。
+        expect(assembly.rendered).not.toContain("<identity>")
+        expect(assembly.rendered).not.toContain("<operating_principles>")
+        expect(assembly.rendered).not.toContain("<available_skills>")
+        expect(assembly.rendered).not.toContain("<env>")
+      })
+
+      it("非 minimal 模式不注入独占段，常规分层与各模式互不影响", async () => {
+        const manager = createDefaultSystemPromptManager()
+        for (const mode of ["build", "plan", "review", "design"] as const) {
+          const assembly = await manager.assemble({ collaborationMode: mode })
+          expect(assembly.rendered).not.toContain("You have exactly one tool: bash")
+          expect(
+            assembly.sections.some((section) => section.name === PROMPT_SECTION_NAMES.MINIMAL_MODE),
+          ).toBe(false)
+        }
+
+        const build = await manager.assemble({ collaborationMode: "build" })
+        expect(build.rendered).toContain("<identity>")
+        expect(build.rendered).toContain('<collaboration_mode name="build">')
       })
     })
   })

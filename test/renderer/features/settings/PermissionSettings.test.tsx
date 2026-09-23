@@ -117,4 +117,26 @@ describe("PermissionSettings", () => {
 
     expect(screen.queryAllByText(/bypassPermissions/).length).toBeGreaterThan(0)
   })
+
+  it("默认协作模式选择器：展示当前模式并可切换到 Minimal", () => {
+    const setSettings = vi.fn()
+    render(<PermissionSettings settings={baseSettings()} setSettings={setSettings} />)
+
+    // 选择器触发器按当前值展示 Build Mode（协作模式权限卡片同文案，用 aria-haspopup 定位）。
+    const trigger = screen
+      .getAllByRole("button")
+      .find(
+        (button) =>
+          button.getAttribute("aria-haspopup") === "listbox" &&
+          button.textContent?.includes("Build Mode"),
+      )
+    expect(trigger).toBeTruthy()
+
+    fireEvent.click(trigger as HTMLButtonElement)
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Minimal Mode" }))
+
+    expect(setSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ collaborationMode: "minimal" }),
+    )
+  })
 })

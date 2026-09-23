@@ -42,6 +42,7 @@ const MODE_STEP_TITLES: Record<CollaborationMode, string> = {
   plan: "Plan Mode",
   review: "Review Mode",
   design: "Design Mode",
+  minimal: "Minimal Mode",
 }
 
 /**

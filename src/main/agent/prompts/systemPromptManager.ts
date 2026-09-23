@@ -47,6 +47,7 @@ export const PROMPT_SECTION_NAMES = {
   IDENTITY: "harness:identity",
   BEHAVIOR: "harness:behavior",
   COLLABORATION_MODE: "harness:collaboration-mode",
+  MINIMAL_MODE: "harness:minimal-mode",
   PERSONA: "deployment:persona",
   MODEL_ADAPTIVE: "harness:model-adaptive",
   SKILLS: "agent:skills",
@@ -534,6 +535,14 @@ export class SystemPromptManager {
   }
 }
 
+/** Minimal 协作模式系统提示词：dsh 同构的独占段（一句身份 + 最小终端约定）。 */
+export const MINIMAL_MODE_PROMPT = [
+  "You are a helpful software engineer assistant.",
+  "You have exactly one tool: bash. Perform all file reads, searches, and edits through shell commands.",
+  "For long-running processes, use shell backgrounding (command &) or a persistent shell session (the session parameter); the background flag is unavailable in this mode.",
+  "Run pwd first if the working directory is unclear.",
+].join("\n")
+
 /** 创建带有 LX Agent 标准默认分层的提示词管理器 */
 export function createDefaultSystemPromptManager(
   options: { defaultPersonality?: PersonalityName; userMemoryRoot?: string } = {},
@@ -796,6 +805,14 @@ export function createDefaultSystemPromptManager(
         "</collaboration_mode>",
       ].join("\n")
     },
+  })
+
+  // 380: Minimal 模式独占提示词（complete 段：仅 minimal 模式渲染，渲染时压掉其余全部 section 与 context）
+  manager.registerSection({
+    name: PROMPT_SECTION_NAMES.MINIMAL_MODE,
+    order: PROMPT_ORDERS.COLLABORATION_MODE,
+    complete: true,
+    text: (ctx) => (ctx.collaborationMode === "minimal" ? MINIMAL_MODE_PROMPT : ""),
   })
 
   // 0: 核心操作规范与角色指导 (结合动态人格与操作规则)

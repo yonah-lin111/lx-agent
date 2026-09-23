@@ -7,7 +7,7 @@ LX Agent 的 Agent 能力（对话 + 工具 + 协作）运行于 Electron main �
 - [architecture.md](./architecture.md)（本篇）：整体分层架构、进程模型、并发模型、核心契约、消息流与 SQLite 存储
 - [runtime.md](./runtime.md)：Turn 状态机、Unified Exec 执行引擎、上下文治理、Token Saver、子代理池与角色治理、记忆与后台作业
 - [tools.md](./tools.md)：内置工具全集（文件/检索/补丁/记忆/MCP/Skill/图片查看）与提示词装配规范、生命周期钩子
-- [permissions.md](./permissions.md)：四模式硬门禁、三档沙箱策略、Guardian 防护网与多级审批
+- [permissions.md](./permissions.md)：五模式硬门禁、三档沙箱策略、Guardian 防护网与多级审批
 - [modes.md](./modes.md)：Plan / Review / Design 三模式的输出协议、解析契约与交互卡片（含 Front Design 画布）
 - [openclaw.md](./openclaw.md)：OpenClaw Gateway 接入的页面、会话扇出与跨页委派
 
@@ -58,7 +58,7 @@ flowchart TD
 ### 1.1 一次对话的完整数据流
 
 1. **输入与路由**：Renderer 发起 `sendMessage(text, options)`，经 `AgentSendContext` 携带 `sessionId` / `tabId` → Main `agentHandlers` → `SessionRunnerManager.getOrCreateRunner()` 按 `sess:<id>` / `tab:<id>` 键取到对应 `AgentSessionRunner`。若该会话正在流式运行，消息默认进入 FIFO `InputQueue`（上限 20 条），或通过 `delivery: "steer"` 转换为即时插话。
-2. **环境切片与装配**：`TurnContext` 冻结当前 Turn 的 `cwd`、`is_worktree`、`git_branch`、协作模式（`build`/`plan`/`review`/`design`）、沙箱策略等不可变快照；`SystemPromptManager` 按 order 分层动态拼装（见 tools.md §3）。
+2. **环境切片与装配**：`TurnContext` 冻结当前 Turn 的 `cwd`、`is_worktree`、`git_branch`、协作模式（`build`/`plan`/`review`/`design`/`minimal`）、沙箱策略等不可变快照；`SystemPromptManager` 按 order 分层动态拼装（见 tools.md §3）。
 3. **驱动循环 (Agent Loop)**：
    - 构造 `LlmMessage` 列表，执行上下文修剪（`ContextPruner`）与记忆/任务状态注入（`transformContext`）。
    - 调用 `aiSdkStreamFn` 发起流式推理，由 `IdleWatchdog`（默认 60s）监控防止网络半开假死；出站请求副本按 Token Saver 配置压缩与风格注入（见 runtime.md §4.6），落库与 UI 保持原始内容。
@@ -219,7 +219,7 @@ type AgentMessage =
 | **消息增量** | `message_start` / `message_update` / `message_end` | 助手流式文本、思考块及 ToolCall 实时增量 |
 | **工具执行** | `tool_execution_start` / `_update` / `_end` | 工具 ID、名称、参数、耗时 `durationMs` 及结果 |
 | **模型** | `model_switch` | 会话内模型切换 / 初始模型条目 |
-| **模式状态** | `collaboration_mode_changed` | 四态协作模式切换 |
+| **模式状态** | `collaboration_mode_changed` | 五态协作模式切换 |
 | **会话标题** | `session_title` | AI 生成的会话标题更新 |
 | **安全审批** | `permission_request` / `question_request` | 权限提升弹窗、多级审批选项或模型主动提问 |
 | **队列与任务** | `queue_changed` / `todo_updated` | 输入排队长度/列表、`todowrite` 任务清单变动 |
@@ -270,7 +270,7 @@ Renderer 采用 **Feature-First** 模块化设计（`src/renderer/src/features/a
    - 将底层消息流与 `PromptAssembly` 统一投影为标准执行步骤序列（`system` / `user` / `assistant` / `thinking` / `tool` / `subagent` / `compaction` / `undo` / `modelSwitch` / `error` / `proposedPlan` / `reviewFindings` / `frontDesign`）。
    - 专用渲染分发器：`FlowToolBash`（命令高亮、退出码、终端窗格）、`FlowToolFileOps`（行级 Diff 统计）、`FlowToolSearch`（搜索命中概览）、`FlowToolViewImage`（缩略图与元信息）。
    - 聚合 Telemetry 指标：单步耗时 `durationMs`、Token 明细、缓存命中状态与 Token Saver 生效标注。
-4. **状态栏 (`AgentStatusBar`)**：协作模式按钮（四态循环）、权限请求面板与沙箱盾牌（`PermissionStatusButton`）、后台作业状态与 `AgentContextUsagePill` 容量指示。
+4. **状态栏 (`AgentStatusBar`)**：协作模式按钮（五态循环 + 点击列表定向切换）、权限请求面板与沙箱盾牌（`PermissionStatusButton`）、后台作业状态与 `AgentContextUsagePill` 容量指示。
 5. **面板 (`panels/`)**：`AgentHistoryPanel` 会话历史、`AgentSubagentPanel` 子代理时间轴、`AgentJobsMonitorView` 作业监控。
 
 ---

@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process"
 import type { AgentContextUsage, CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
+import { getModeAllowedTools } from "@shared/contracts/agent"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import type { PersonalityName } from "./prompts/personalities"
 import { defaultSystemPromptManager, type SystemPromptManager } from "./prompts/systemPromptManager"
@@ -225,6 +226,25 @@ export const ALL_TOOL_NAMES = new Set([
 
 // skill 注入上限（按 name 排序取前 N；描述注入时截断）。
 export const MAX_INJECTED_SKILLS = 50
+
+/**
+ * 按模式白名单收窄工具激活集：白名单模式（minimal）仅激活集合内内置工具，MCP 与 skill 一律关闭；
+ * 其余模式原样返回。门控层硬基线与此处激活集保持一致（模型不可见被拦截工具）。
+ */
+export const narrowActivationByMode = (
+  mode: CollaborationMode,
+  activeTools: string[],
+  activeMcp: string[],
+  hasSkills: boolean,
+): { tools: string[]; mcp: string[]; withReadSkill: boolean } => {
+  const allowed = getModeAllowedTools(mode)
+  if (!allowed) return { tools: activeTools, mcp: activeMcp, withReadSkill: hasSkills }
+  return {
+    tools: activeTools.filter((name) => allowed.has(name)),
+    mcp: [],
+    withReadSkill: false,
+  }
+}
 
 // 解析 Agent 会话 cwd：最近更新的文件系统项目目录（独立模块，避免 settingsService 侧循环依赖）。
 export { resolveCwd } from "./cwdResolver"

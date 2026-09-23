@@ -66,17 +66,28 @@ beforeEach(() => {
 })
 
 describe("CollaborationModePermissions", () => {
-  it("渲染四种模式行，非 build 模式展示永久禁用硬基线", async () => {
+  it("渲染五种模式行，非 build 模式展示永久禁用硬基线", async () => {
     renderComponent(baseSettings())
 
     expect(await screen.findByText("Build Mode")).toBeTruthy()
     expect(screen.getByText("Plan Mode")).toBeTruthy()
     expect(screen.getByText("Review Mode")).toBeTruthy()
     expect(screen.getByText("Design Mode")).toBeTruthy()
-    // build 无锁定提示；plan/review/design 三行展示同一硬基线文案。
+    expect(screen.getByText("Minimal Mode")).toBeTruthy()
+    // build / minimal 无硬基线锁定提示；plan/review/design 三行展示同一硬基线文案。
     expect(screen.getAllByText(/Permanently disabled:/)).toHaveLength(3)
     // design 行额外展示 wireframe。
     expect(screen.getAllByText(/wireframe/)).toHaveLength(1)
+  })
+
+  it("Minimal 行为只读白名单：仅展示允许工具、无编辑入口", async () => {
+    renderComponent(baseSettings())
+
+    expect(await screen.findByText("Minimal Mode")).toBeTruthy()
+    expect(screen.getByText("Allowed only: bash")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Edit permissions Minimal Mode" })).toBeNull()
+    // 其余模式仍有编辑入口。
+    expect(screen.getByRole("button", { name: "Edit permissions Build Mode" })).toBeTruthy()
   })
 
   it("编辑 design：硬基线工具锁定不可勾选，确认后写入白名单", async () => {
