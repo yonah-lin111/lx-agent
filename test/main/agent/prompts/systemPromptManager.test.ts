@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   createDefaultSystemPromptManager,
@@ -582,21 +585,33 @@ describe("SystemPromptManager", () => {
       expect(skills?.text).toContain("{{#if feature}}")
     })
 
-    it("MEMORY.md 原文含 {{...}} 模板文本时不抛错且原样注入", async () => {
-      const manager = createDefaultSystemPromptManager()
-      const assembly = await manager.assemble({
-        workspaceMemory: {
-          memoryPath: "/mem/MEMORY.md",
-          rawContent: "Remember {{name}} and {{#if x}} rules",
-          sections: [],
-          notesCount: 0,
-          rolloutsCount: 0,
-        },
-      })
+    it("记忆 XML 原文含 {{...}} 模板文本时不抛错且原样注入", async () => {
+      const cwd = await mkdtemp(join(tmpdir(), "lx-prompt-memory-"))
+      try {
+        const userRoot = join(cwd, "user-memory")
+        await mkdir(userRoot, { recursive: true })
+        await writeFile(
+          join(userRoot, "memory.xml"),
+          [
+            "<memories>",
+            '  <memory type="user" name="tpl">Remember {{name}} and {{#if x}} rules</memory>',
+            "</memories>",
+          ].join("\n"),
+          "utf-8",
+        )
 
-      const memory = assembly.sections.find((s) => s.name === PROMPT_SECTION_NAMES.WORKSPACE_MEMORY)
-      expect(memory?.text).toContain("{{name}}")
-      expect(memory?.text).toContain("{{#if x}}")
+        const manager = createDefaultSystemPromptManager({ userMemoryRoot: userRoot })
+        const assembly = await manager.assemble({ cwd })
+
+        const memory = assembly.sections.find(
+          (s) => s.name === PROMPT_SECTION_NAMES.WORKSPACE_MEMORY,
+        )
+        expect(memory?.text).toContain("{{name}}")
+        expect(memory?.text).toContain("{{#if x}}")
+        expect(memory?.text).toContain("<memory_guidance>")
+      } finally {
+        await rm(cwd, { recursive: true, force: true })
+      }
     })
   })
 })

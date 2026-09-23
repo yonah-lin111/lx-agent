@@ -1,4 +1,4 @@
-// Agent 消息契约：用户/助手消息、记忆引用与消息联合类型。
+// Agent 消息契约：用户/助手消息与消息联合类型。
 
 import type { HookContextMessage } from "./hooks"
 import type { CollaborationMode } from "./permissions"
@@ -38,26 +38,6 @@ export interface UserMessage {
     size?: string
     extension?: string
   }[]
-}
-
-export interface MemoryCitationEntry {
-  path: string
-  lineStart: number
-  lineEnd: number
-  note?: string
-}
-
-export interface MemoryCitation {
-  entries: MemoryCitationEntry[]
-  rolloutIds?: string[]
-}
-
-export interface WorkspaceMemorySummary {
-  memoryPath: string
-  rawContent: string
-  sections: { title: string; content: string }[]
-  notesCount: number
-  rolloutsCount: number
 }
 
 // 单条工具输出的 RTK 压缩命中记录（按 toolCallId 归因到工具步骤）。
@@ -102,7 +82,6 @@ export interface AssistantMessage {
   // 首字/首个事件到达的时间戳（用于精准统计 TTFT 及 User 提示词响应耗时）。
   firstChunkTimestamp?: number
   durationMs?: number
-  citations?: MemoryCitation
   // 本轮请求实际生效的 Token Saver 记录（未生效时不设置）。
   tokenSaver?: TokenSaverRun
 }

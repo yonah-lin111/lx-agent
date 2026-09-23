@@ -118,8 +118,8 @@ src/main/agent/
 │   ├── modelAdapters.ts      # 模型自适应规则 (按模型家族注入)
 │   ├── promptTemplateLoader.ts # Slash 命令 Markdown 模板加载器
 │   └── personalities/        # 人格提示词 (pragmatic / friendly)
-├── memories/              # 分层记忆系统
-│   └── memoryManager.ts   #   MEMORY.md 索引与 Topic Notes 管理
+├── memories/              # XML 记忆系统
+│   └── memoryManager.ts   #   memory.xml 读写、截断与提示词组装
 ├── tools/                 # 内置工具全集 (清单详见 tools.md §2)
 │   └── registry.ts        #   ToolRegistry (注册/激活集/cwd 绑定)
 ├── skills/                # SkillLoader 扫描与 read_skill 工具

@@ -219,15 +219,16 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 
 ---
 
-## 6. 分层记忆系统 (`src/main/agent/memories/`)
+## 6. XML 记忆系统 (`src/main/agent/memories/`)
 
-采用纯工具化召回（不自动注入，全部由模型主动调用）：
+只沉淀**用户习惯**与**可复用工作流程**；一次性 bug 修复、评审结论、任务进度等易污染上下文的内容禁止写入：
 
-1. **两层文件组织**：
-   - `<project-root>/.lx/memory/MEMORY.md`：单行高密度索引文件（常驻提示词，加载上限 **200 行 / 25KB**）；
-   - `<project-root>/.lx/memory/notes/*.md`：具体 Topic 笔记（带 YAML frontmatter：`name`, `description`, `type`）。
-2. **记忆分类（Type）**：`user`（偏好/习惯）、`feedback`（历史踩坑/纠偏）、`project`（关键架构决策）、`reference`（外部线索）。
-3. **主动召回与维护**：提示词指导 Agent 在遇到重要决策时调用 `memory` 工具（`action: "save"`）更新，需要详情时按需读取（`action: "view"`）。
+1. **双作用域单文件**：
+   - 用户级 `~/.lx/memory/memory.xml`：跨项目习惯（type `user`）；
+   - 项目级 `<project-root>/.lx/memory/memory.xml`：仓库特定流程（type `workflow`）。
+   每条记忆一个 `<memory type name>` 元素，注入上限 **200 行 / 25KB**（按完整元素截断，不切断元素）。
+2. **旧格式迁移**：检测到旧版 `MEMORY.md` + `notes/` 分层结构时直接清理重建，不留兼容路径。
+3. **常驻注入与维护**：`<auto_memory>`（含 `<memory_guidance>` 指导语）常驻系统提示词；模型识别到持久习惯/流程时调用 `memory` 工具（`save`/`view`/`search`/`delete`）维护；文件损坏时保存侧先备份为 `memory.xml.corrupt-<时间戳>` 再重建。
 
 ---
 

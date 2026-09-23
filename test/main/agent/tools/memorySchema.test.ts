@@ -31,26 +31,34 @@ describe("memory 工具 JSON Schema 契约", () => {
     expect(schema.anyOf).toBeUndefined()
   })
 
-  it("action 为必填枚举，其余字段按动作可选", () => {
+  it("action 必填；scope/type 枚举收窄；旧参数已移除", () => {
     const schema = toModelJsonSchema() as {
       required?: string[]
       properties?: Record<string, { enum?: string[] }>
     }
     expect(schema.required).toEqual(["action"])
     expect(schema.properties?.action?.enum).toEqual(["view", "save", "search", "delete"])
-    expect(schema.properties).toHaveProperty("query")
-    expect(schema.properties).toHaveProperty("content")
+    expect(schema.properties?.scope?.enum).toEqual(["user", "project"])
+    expect(schema.properties?.type?.enum).toEqual(["user", "workflow"])
+
+    for (const field of ["name", "content", "query"]) {
+      expect(schema.properties).toHaveProperty(field)
+    }
+    for (const legacyField of ["topic", "path", "description"]) {
+      expect(schema.properties).not.toHaveProperty(legacyField)
+    }
   })
 
   it("save 缺失必填字段时返回明确错误且不落盘", async () => {
-    const tool = createMemoryTool(testDir)
-    const result = await tool.execute("call_missing", { action: "save", topic: "only_topic" })
+    const tool = createMemoryTool(testDir, { userRoot: join(testDir, "user-memory") })
+    const result = await tool.execute("call_missing", { action: "save", name: "only_name" })
     const first = result.content[0]
     expect(first?.type === "text" ? first.text : "").toContain("Missing required save parameters")
+    expect(existsSync(join(testDir, ".lx"))).toBe(false)
   })
 
   it("search 缺失 query 时返回空查询错误", async () => {
-    const tool = createMemoryTool(testDir)
+    const tool = createMemoryTool(testDir, { userRoot: join(testDir, "user-memory") })
     const result = await tool.execute("call_no_query", { action: "search" })
     const first = result.content[0]
     expect(first?.type === "text" ? first.text : "").toContain("Empty search query provided.")
