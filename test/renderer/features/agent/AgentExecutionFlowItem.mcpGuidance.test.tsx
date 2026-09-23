@@ -4,7 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { AgentExecutionFlowItem } from "@/features/agent/components/AgentExecutionFlowList/AgentExecutionFlowItem"
 import type { ExecutionStep } from "@/features/agent/types"
 
-const buildSystemStep = (sections: { name: string; text: string }[]): ExecutionStep => ({
+const buildSystemStep = (
+  sections: { name: string; text: string }[],
+  activeTools?: string[],
+): ExecutionStep => ({
   id: "step-system-1",
   turnIndex: 0,
   stepIndex: 1,
@@ -16,6 +19,7 @@ const buildSystemStep = (sections: { name: string; text: string }[]): ExecutionS
     contexts: [],
     variables: {},
     rendered: sections.map((section) => section.text).join("\n\n"),
+    ...(activeTools ? { activeTools } : {}),
   },
 })
 
@@ -81,5 +85,34 @@ describe("AgentExecutionFlow - MCP 策略指引折叠项", () => {
 
     expect(container.querySelector(".agent-execution-flow-mcp-guidance")).toBeNull()
     expect(screen.queryByText("MCP Guidance")).toBeNull()
+  })
+
+  it("Available Capabilities 的 MCP 分类下每个 server 独立折叠", () => {
+    const step = buildSystemStep(
+      [{ name: "harness:identity", text: "<identity>Yonah</identity>" }],
+      [
+        "read",
+        "mcp__codegraph__codegraph_explore",
+        "mcp__codebase-memory-mcp__search_graph",
+        "mcp__codebase-memory-mcp__trace_path",
+      ],
+    )
+
+    const { container } = render(
+      <AgentExecutionFlowItem step={step} isExpanded={true} onToggleExpand={vi.fn()} />,
+    )
+
+    // 每个 MCP server 一个折叠项（summary = server 名 + 工具数）
+    expect(container.querySelectorAll(".agent-execution-flow-mcp-server")).toHaveLength(2)
+    const codegraphItem = screen.getByText("codegraph").closest("details")
+    const memoryItem = screen.getByText("codebase-memory-mcp").closest("details")
+    expect(codegraphItem).not.toBeNull()
+    expect(memoryItem).not.toBeNull()
+    expect(codegraphItem).not.toBe(memoryItem)
+
+    // 折叠项内展示该 server 的工具 chips
+    expect(screen.getByText("mcp__codegraph__codegraph_explore")).toBeDefined()
+    expect(screen.getByText("mcp__codebase-memory-mcp__search_graph")).toBeDefined()
+    expect(screen.getByText("mcp__codebase-memory-mcp__trace_path")).toBeDefined()
   })
 })

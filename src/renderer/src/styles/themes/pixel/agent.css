@@ -612,6 +612,14 @@
   font-weight: 600;
 }
 
+/* Available Capabilities 的 MCP server 折叠行：与默认主题 text-teal-300/70 保持一致，不随系统内容 summary 金色规则 */
+[data-theme="pixel"]
+  .agent-execution-flow-system-content
+  .agent-execution-flow-mcp-server
+  > summary {
+  color: rgb(94 234 212 / 0.7) !important;
+}
+
 /* ========================================================
  * 8. Skill 技能调用块 (AgentSkillCallBlock) - 3D 浮雕凸起
  * ======================================================== */

@@ -205,11 +205,15 @@ export const FlowItemSystemContent = ({
                     </div>
                     <div className="flex flex-col gap-1.5 pl-3">
                       {serverGroups.map(({ serverName, tools: serverTools }) => (
-                        <div key={serverName} className="flex flex-col gap-1">
-                          <div className="text-xs text-teal-300/70 font-mono">
-                            {serverName} ({serverTools.length})
-                          </div>
-                          <div className="flex flex-wrap gap-1 pl-2">
+                        <details
+                          key={serverName}
+                          className="agent-execution-flow-mcp-server group rounded border border-white/5 bg-white/[0.02] p-1.5"
+                        >
+                          <summary className="cursor-pointer font-mono text-xs text-teal-300/70 select-none">
+                            {serverName}{" "}
+                            <span className="text-white/30">({serverTools.length})</span>
+                          </summary>
+                          <div className="flex flex-wrap gap-1 pl-2 pt-1.5">
                             {serverTools.map((tool) => (
                               <span
                                 key={tool}
@@ -219,7 +223,7 @@ export const FlowItemSystemContent = ({
                               </span>
                             ))}
                           </div>
-                        </div>
+                        </details>
                       ))}
                     </div>
                   </div>
