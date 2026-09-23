@@ -121,6 +121,8 @@ Configure independent capability allowlists for the four collaboration modes (Bu
   customCommandBlockType: "Block Type",
   customCommandBlockTitle: "Block Title (title)",
   customCommandBlockTitlePlaceholder: "e.g. Requirement Notes",
+  customCommandBlockTitleHelp:
+    "Shown next to the block name in rendered output, to identify the block's purpose in the document. Not used for parsing.",
   customCommandBlockContent: "Block Content",
   customBlocksList: "Blocks",
   customBlocksEmpty: "No blocks in the current scope",

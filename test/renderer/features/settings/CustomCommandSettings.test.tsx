@@ -265,7 +265,11 @@ describe("CustomCommandSettings 命令行", () => {
     await useSettingsDraftStore.getState().save()
 
     expect(saveCommand).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "agentBlock", name: "myAddon", blockType: "template" }),
+      expect.objectContaining({
+        type: "agentBlock",
+        name: "myAddonTemplate",
+        blockType: "template",
+      }),
     )
   })
 
@@ -308,14 +312,17 @@ describe("CustomCommandSettings 命令行", () => {
     // 编辑已有块时字段区默认折叠，先展开。
     fireEvent.click(screen.getByLabelText("Edit Details"))
 
-    // 将正文替换为整段粘贴的完整块源码（含 title 的开始行 + 结束行）。
+    // 编辑器展示完整块源码（起止行由表单驱动）；在正文区域粘贴完整块源码验证保存兜底。
     const cm = document.querySelector(".cm-content") as HTMLElement
     const view = EditorView.findFromDOM(cm)!
+    expect(view.state.doc.toString()).toContain("&&& reviewBlock --start 「title: 需求评审」")
+    const bodyFrom = view.state.doc.line(1).to + 1
+    const bodyTo = view.state.doc.line(view.state.doc.lines).from - 1
     await act(async () => {
       view.dispatch({
         changes: {
-          from: 0,
-          to: view.state.doc.length,
+          from: bodyFrom,
+          to: bodyTo,
           insert: "&&& pastedBlock --start 「title: 新标题」\n11111\n&&& pastedBlock --end",
         },
       })
@@ -331,6 +338,67 @@ describe("CustomCommandSettings 命令行", () => {
     expect(saveCommand).toHaveBeenCalledWith(
       expect.objectContaining({ type: "agentBlock", content: "11111", title: "新标题" }),
     )
+  })
+
+  it("md 模板块视图：编辑器渲染完整块源码，Block Type / Name 变化时同步更新且起止行只读", async () => {
+    renderComponent()
+    await screen.findByText("alpha")
+
+    fireEvent.click(screen.getByText("Chat Commands"))
+    fireEvent.mouseDown(await screen.findByText("MD Blocks"))
+    await screen.findByText("reviewBlock")
+
+    fireEvent.click(screen.getByText("reviewBlock").closest('[role="button"]') as Element)
+    await screen.findByText("Edit Block /reviewBlock")
+    fireEvent.click(screen.getByLabelText("Edit Details"))
+
+    // md 模板块视图不提供插入下拉。
+    expect(screen.queryByText("Insert Block")).toBeNull()
+
+    const cm = document.querySelector(".cm-content") as HTMLElement
+    const view = EditorView.findFromDOM(cm)!
+
+    // 编辑器展示完整块源码；结束行末尾以装饰显示 id 占位（真实文本不含 id）。
+    await waitFor(() => {
+      expect(view.state.doc.toString()).toBe(
+        "&&& reviewBlock --start 「title: 需求评审」\n## 需求\n- \n&&& reviewBlock --end",
+      )
+    })
+    await waitFor(() => {
+      expect(document.querySelector(".cm-md-agent-block-id-placeholder")?.textContent).toBe(
+        " {id-xxxxx}",
+      )
+    })
+    expect(view.state.doc.toString()).not.toContain("{id-")
+
+    // 起止行只读：修改首行被拒绝，正文区域可编辑。
+    const original = view.state.doc.toString()
+    await act(async () => {
+      view.dispatch({ changes: { from: 0, to: 5, insert: "XXX" } })
+    })
+    expect(view.state.doc.toString()).toBe(original)
+
+    const bodyFrom = view.state.doc.line(1).to + 1
+    await act(async () => {
+      view.dispatch({ changes: { from: bodyFrom, to: bodyFrom, insert: "新内容\n" } })
+    })
+    expect(view.state.doc.toString()).toContain("新内容")
+
+    // 切换 Block Type：起止标记同步切换为 +++。
+    fireEvent.click(screen.getByText("Task Block"))
+    fireEvent.mouseDown(await screen.findByText("Temporary Block"))
+    await waitFor(() => {
+      expect(view.state.doc.toString()).toContain("+++ reviewBlock --start 「title: 需求评审」")
+      expect(view.state.doc.toString()).toContain("+++ reviewBlock --end")
+    })
+
+    // 修改名称：编辑器块名同步更新，名称输入框显示剥离 Template 后缀后的值。
+    const nameInput = screen.getByPlaceholderText("e.g. reviewCode") as HTMLInputElement
+    expect(nameInput.value).toBe("reviewBlock")
+    fireEvent.change(nameInput, { target: { value: "reviewV2" } })
+    await waitFor(() => {
+      expect(view.state.doc.toString()).toContain("+++ reviewV2Template --start")
+    })
   })
 
   it("agentMD 命令使用 Markdown 编辑器，编辑内容后保存为最新模板内容", async () => {

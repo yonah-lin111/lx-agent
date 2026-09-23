@@ -33,8 +33,10 @@ export {
   toggleMarkdownTemplateCommentLines,
 } from "./markers"
 export {
+  buildAgentBlockSource,
   createMarkdownTemplateId,
   cycleMarkdownTemplateStatus,
+  extractAgentBlockBody,
   getMarkdownSuppleWorktree,
   getMarkdownTemplateIdRanges,
   getMarkdownTemplateStatus,
@@ -42,6 +44,7 @@ export {
   getMarkdownTemplateWorktree,
   getMarkdownTemplateWtRanges,
   injectCustomTemplateBlockIds,
+  MARKDOWN_BLOCK_NAME_SUFFIX,
   MARKDOWN_TEMPLATE_STATUS_LABELS,
   MARKDOWN_TEMPLATE_STATUS_SUFFIX,
   normalizeAgentBlockBody,
@@ -49,6 +52,8 @@ export {
   setMarkdownSuppleWorktree,
   setMarkdownTemplateTitle,
   setMarkdownTemplateWorktree,
+  stripMarkdownBlockNameSuffix,
+  withMarkdownBlockNameSuffix,
 } from "./metadata"
 export {
   getMarkdownBlockTrigger,

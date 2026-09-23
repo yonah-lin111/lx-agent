@@ -18,7 +18,7 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { EditorState } from "@codemirror/state"
+import { EditorState, Transaction } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { Redo2, Undo2 } from "lucide-react"
@@ -53,6 +53,7 @@ export const LxMarkdownEditor = ({
   showSaveStatus = false,
   showToolbar = true,
   toolbarActions,
+  extraExtensions,
   height,
   autoHeight = false,
   showLineNumbers = false,
@@ -71,6 +72,9 @@ export const LxMarkdownEditor = ({
   // 是否存在 select 型工具项：仅此时维护光标上下文，避免无关编辑器产生额外开销。
   const hasSelectActionRef = useRef(false)
   hasSelectActionRef.current = (toolbarActions ?? []).some((action) => action.select !== undefined)
+  // 额外扩展：仅在创建编辑器时读取，避免调用方每次渲染传入新引用导致编辑器重建。
+  const extraExtensionsRef = useRef(extraExtensions)
+  extraExtensionsRef.current = extraExtensions
 
   useEffect(() => {
     initialContentRef.current = initialContent
@@ -91,6 +95,8 @@ export const LxMarkdownEditor = ({
     const anchor = captureEditorScrollAnchor(view)
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: initialContent },
+      // 标记为外部来源并排除出撤销历史：供只读保护过滤器放行，且撤销不会回退起止行更新。
+      annotations: [Transaction.remote.of(true), Transaction.addToHistory.of(false)],
     })
     restoreEditorScrollAnchor(view, anchor)
     lastEmittedContentRef.current = initialContent
@@ -318,6 +324,7 @@ export const LxMarkdownEditor = ({
           ...historyKeymap,
           ...standardKeymap,
         ]),
+        ...(extraExtensionsRef.current ? [extraExtensionsRef.current] : []),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()

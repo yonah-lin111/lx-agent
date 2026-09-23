@@ -20,10 +20,13 @@ import { LxSelect } from "@/components/ui/LxSelect"
 import { useLxToast } from "@/components/ui/LxToast"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import {
+  buildAgentBlockSource,
+  extractAgentBlockBody,
   injectCustomTemplateBlockIds,
   isInsideMarkdownTemplateBlock,
   normalizeAgentBlockBody,
 } from "@/features/markdown/commands/markdownBlockCommands"
+import { agentBlockPreviewExtensions } from "@/features/markdown/extensions/markdownAgentBlockPreview"
 import { projectApi } from "@/features/project/api/projectApi"
 import { customCommandApi } from "@/features/settings/api/customCommandApi"
 import {
@@ -42,16 +45,31 @@ type CustomCommandView = CustomCommandType | "blocks"
 const draftStore: Record<string, CustomCommandFormState> = {}
 const modifiedStore: Record<string, CustomCommandFormState> = {}
 
-// 表单状态 ← 命令条目。
-const toFormState = (item: CustomCommandDetailItem): CustomCommandFormState => ({
-  name: item.name,
-  description: item.description,
-  content: item.content,
-  argumentHint: item.argumentHint || "",
-  mdScope: item.mdScope || "global",
-  blockType: item.blockType || "template",
-  title: item.title || "",
-})
+// 表单状态 ← 命令条目；模板块正文先规范化（剥离误粘贴的起止行并提取 title）。
+const toFormState = (item: CustomCommandDetailItem): CustomCommandFormState => {
+  if (item.type === "agentBlock") {
+    const normalized = normalizeAgentBlockBody(item.content, item.blockType || "template")
+    return {
+      name: item.name,
+      description: item.description,
+      content: normalized.content,
+      argumentHint: item.argumentHint || "",
+      mdScope: item.mdScope || "global",
+      blockType: item.blockType || "template",
+      title: item.title || normalized.title || "",
+    }
+  }
+
+  return {
+    name: item.name,
+    description: item.description,
+    content: item.content,
+    argumentHint: item.argumentHint || "",
+    mdScope: item.mdScope || "global",
+    blockType: item.blockType || "template",
+    title: item.title || "",
+  }
+}
 
 export const CustomCommandSettings = (): React.JSX.Element => {
   const { t } = useTranslation()
@@ -373,6 +391,28 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     }
   }
 
+  // blocks 视图编辑器内容：完整块源码（起止行由表单驱动、只读；结束行 id 以占位装饰显示）。
+  const blockPreviewContent = useMemo(() => {
+    if (!isBlocksView) return formData.content
+    return buildAgentBlockSource({
+      name: formData.name.trim() || "xxxTemplate",
+      title: formData.title,
+      blockType: formData.blockType,
+      content: formData.content,
+    })
+  }, [isBlocksView, formData.name, formData.title, formData.blockType, formData.content])
+
+  // 编辑器内容变更：blocks 视图从完整源码提取正文（起止行受只读保护，理论上恒可提取）。
+  const handleEditorChange = (text: string): void => {
+    if (!isBlocksView) {
+      handleFormChange((prev) => ({ ...prev, content: text }))
+      return
+    }
+    const body = extractAgentBlockBody(text, formData.blockType)
+    if (body === null) return
+    handleFormChange((prev) => ({ ...prev, content: body }))
+  }
+
   const handleDelete = async (name: string): Promise<void> => {
     try {
       const res = await customCommandApi.delete({
@@ -421,6 +461,9 @@ export const CustomCommandSettings = (): React.JSX.Element => {
 
   // 编辑器工具栏插入下拉：内置骨架 + 我的模板块（按分组列出）；选中即在光标处插入，自动注入唯一 id。
   const toolbarActions = useMemo<MarkdownToolbarAction[]>(() => {
+    // md 模板块视图：编辑器内容由 Block Type / Name / Title 驱动渲染，不提供插入下拉。
+    if (isBlocksView) return []
+
     const requiresTemplateBlock = (context: MarkdownToolbarSelectContext): boolean =>
       isInsideMarkdownTemplateBlock(context.textBeforeCursor)
     // 骨架插入时生成唯一 id，并把光标落在块内空行。
@@ -488,7 +531,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
         },
       },
     ]
-  }, [t, commandType, blockCommands])
+  }, [t, commandType, blockCommands, isBlocksView])
 
   const agentInputInfoDoc = `### ${t("settings.customCommandAgentInputHelpTitle")}
 ${t("settings.customCommandAgentInputHelpDesc")}
@@ -688,9 +731,10 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                 <div className="flex min-h-[240px] flex-1 flex-col @[560px]:min-h-0">
                   <LxMarkdownEditor
                     key={editorKey}
-                    initialContent={formData.content}
+                    initialContent={blockPreviewContent}
                     toolbarActions={toolbarActions}
-                    onChange={(content) => handleFormChange((prev) => ({ ...prev, content }))}
+                    extraExtensions={isBlocksView ? agentBlockPreviewExtensions : undefined}
+                    onChange={handleEditorChange}
                   />
                 </div>
               </div>

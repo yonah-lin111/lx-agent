@@ -6,6 +6,7 @@ import {
   MARKDOWN_TEMPLATE_ID_RE,
   MARKDOWN_TEMPLATE_START_RE,
   MARKDOWN_TEMPLATE_WT_RE,
+  type ParsedMarkdownSubblockStart,
   parseMarkdownLogEndLine,
   parseMarkdownLogStartLine,
   parseMarkdownSuppleStartLine,
@@ -170,6 +171,25 @@ export const injectCustomTemplateBlockIds = (content: string): string =>
     })
     .join("\n")
 
+// 按块类型解析开始行。
+const parseAgentBlockStartLine = (
+  line: string,
+  blockType: CustomCommandBlockType,
+): ParsedMarkdownSubblockStart | null =>
+  blockType === "supple"
+    ? parseMarkdownSuppleStartLine(line)
+    : blockType === "log"
+      ? parseMarkdownLogStartLine(line)
+      : parseMarkdownTemplateStartLine(line)
+
+// 按块类型判断结束行。
+const isAgentBlockEndLine = (line: string, blockType: CustomCommandBlockType): boolean =>
+  blockType === "supple"
+    ? MARKDOWN_SUPPLE_END_RE.test(line)
+    : blockType === "log"
+      ? MARKDOWN_LOG_END_RE.test(line)
+      : parseMarkdownTemplateEndLine(line) !== null
+
 /**
  * 规范化模板块（agentBlock）正文：用户在设置页常直接粘贴编辑器中的完整块源码，
  * 此时剥离最外层块起止行（仅限同一块类型），并提取开始行「title: 标题」作为标题兜底。
@@ -189,22 +209,11 @@ export const normalizeAgentBlockBody = (
   const content = lines.slice(start, end + 1)
   if (content.length < 2) return { content: content.join("\n").trimEnd() }
 
-  const parsedStart =
-    blockType === "supple"
-      ? parseMarkdownSuppleStartLine(content[0])
-      : blockType === "log"
-        ? parseMarkdownLogStartLine(content[0])
-        : parseMarkdownTemplateStartLine(content[0])
+  const parsedStart = parseAgentBlockStartLine(content[0], blockType)
   if (!parsedStart) return { content: content.join("\n").trimEnd() }
-
-  const lastLine = content[content.length - 1]
-  const endMatched =
-    blockType === "supple"
-      ? MARKDOWN_SUPPLE_END_RE.test(lastLine)
-      : blockType === "log"
-        ? MARKDOWN_LOG_END_RE.test(lastLine)
-        : parseMarkdownTemplateEndLine(lastLine) !== null
-  if (!endMatched) return { content: content.join("\n").trimEnd() }
+  if (!isAgentBlockEndLine(content[content.length - 1], blockType)) {
+    return { content: content.join("\n").trimEnd() }
+  }
 
   const inner = content.slice(1, -1)
   while (inner.length > 0 && inner[0].trim() === "") inner.shift()
@@ -212,6 +221,52 @@ export const normalizeAgentBlockBody = (
 
   const title = parsedStart.title?.trim()
   return { content: inner.join("\n"), title: title || undefined }
+}
+
+// 模板块名称统一后缀（与骨架占位名 xxxTemplate 一致）。
+export const MARKDOWN_BLOCK_NAME_SUFFIX = "Template"
+
+// 追加模板块名称后缀（已含后缀或为空时不重复追加）。
+export const withMarkdownBlockNameSuffix = (value: string): string =>
+  value === "" || value.endsWith(MARKDOWN_BLOCK_NAME_SUFFIX)
+    ? value
+    : `${value}${MARKDOWN_BLOCK_NAME_SUFFIX}`
+
+// 剥离模板块名称后缀，供输入框展示。
+export const stripMarkdownBlockNameSuffix = (name: string): string =>
+  name.endsWith(MARKDOWN_BLOCK_NAME_SUFFIX)
+    ? name.slice(0, -MARKDOWN_BLOCK_NAME_SUFFIX.length)
+    : name
+
+/**
+ * 构建模板块完整源码（设置页预览用）：起止行由表单驱动，结束行不带 id（插入文档时统一注入）。
+ */
+export const buildAgentBlockSource = (input: {
+  name: string
+  title: string
+  blockType: CustomCommandBlockType
+  content: string
+}): string => {
+  const marker = input.blockType === "supple" ? "+++" : input.blockType === "log" ? "%%%" : "&&&"
+  const title = input.title.trim()
+  const titlePart = title ? ` 「title: ${title}」` : ""
+  return `${marker} ${input.name} --start${titlePart}\n${input.content}\n${marker} ${input.name} --end`
+}
+
+/**
+ * 从模板块完整源码提取正文（无损：仅剥离首末起止行，保留正文内空行）；
+ * 首行非对应块类型开始行或末行非结束行时返回 null。
+ */
+export const extractAgentBlockBody = (
+  text: string,
+  blockType: CustomCommandBlockType,
+): string | null => {
+  const lines = text.split("\n")
+  if (lines.length < 2) return null
+  if (!parseAgentBlockStartLine(lines[0], blockType)) return null
+  if (!isAgentBlockEndLine(lines[lines.length - 1], blockType)) return null
+
+  return lines.slice(1, -1).join("\n")
 }
 
 /**

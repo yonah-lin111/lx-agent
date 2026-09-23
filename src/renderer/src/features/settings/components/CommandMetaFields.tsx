@@ -2,6 +2,10 @@ import type { CustomCommandBlockType, CustomCommandType } from "@shared/contract
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect } from "@/components/ui/LxSelect"
+import {
+  stripMarkdownBlockNameSuffix,
+  withMarkdownBlockNameSuffix,
+} from "@/features/markdown/commands/markdownBlockCommands"
 import { useTranslation } from "@/i18n"
 
 // 自定义命令表单状态。
@@ -51,8 +55,23 @@ export const CommandMetaFields = ({
         <LxInput
           placeholder="e.g. reviewCode"
           prefix={<span className="text-white/40 font-mono">/</span>}
-          value={formData.name}
-          onChange={(event) => onChange((prev) => ({ ...prev, name: event.target.value }))}
+          suffix={
+            activeTab === "agentBlock" ? (
+              <span className="text-white/40 font-mono">Template</span>
+            ) : undefined
+          }
+          value={
+            activeTab === "agentBlock" ? stripMarkdownBlockNameSuffix(formData.name) : formData.name
+          }
+          onChange={(event) =>
+            onChange((prev) => ({
+              ...prev,
+              name:
+                activeTab === "agentBlock"
+                  ? withMarkdownBlockNameSuffix(event.target.value)
+                  : event.target.value,
+            }))
+          }
         />
       </label>
 
@@ -86,7 +105,10 @@ export const CommandMetaFields = ({
           </label>
 
           <label className="grid gap-1 text-xs text-white/60">
-            <span>{t("settings.customCommandBlockTitle")}</span>
+            <span className="flex items-center gap-1">
+              {t("settings.customCommandBlockTitle")}
+              <LxInfoTooltip markdown={t("settings.customCommandBlockTitleHelp")} />
+            </span>
             <LxInput
               placeholder={t("settings.customCommandBlockTitlePlaceholder")}
               value={formData.title}

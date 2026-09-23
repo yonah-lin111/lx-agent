@@ -1,3 +1,4 @@
+import type { Extension } from "@codemirror/state"
 import type React from "react"
 
 // 表格网格尺寸。
@@ -88,6 +89,8 @@ export interface LxMarkdownEditorProps {
   showToolbar?: boolean
   // 追加到内置撤销/重做之后的工具栏工具项（支持 menu 分组菜单）。
   toolbarActions?: MarkdownToolbarAction[]
+  // 追加到编辑器基础扩展之后的额外扩展（如模板块预览的起止行只读保护与 id 占位装饰）。
+  extraExtensions?: Extension
   // 编辑器整体高度（px）；不设置时随父容器 flex 撑满。
   height?: number
   // 高度自适应内容：编辑区随内容伸缩，不内部滚动，超出时由外层容器滚动。

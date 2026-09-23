@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildAgentBlockSource,
   createMarkdownBlockInsertion,
   createMarkdownTemplateId,
   cycleMarkdownTemplateStatus,
+  extractAgentBlockBody,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   getMarkdownListContinuation,
@@ -31,7 +33,9 @@ import {
   parseMarkdownSuppleStartLine,
   setMarkdownSuppleWorktree,
   setMarkdownTemplateWorktree,
+  stripMarkdownBlockNameSuffix,
   toggleMarkdownTemplateCommentLines,
+  withMarkdownBlockNameSuffix,
 } from "@/features/markdown/commands/markdownBlockCommands"
 
 describe("Markdown 块命令", () => {
@@ -881,5 +885,55 @@ describe("normalizeAgentBlockBody 模板块正文规范化", () => {
 
   it("空正文返回空内容", () => {
     expect(normalizeAgentBlockBody("\n\n", "template")).toEqual({ content: "" })
+  })
+})
+
+describe("buildAgentBlockSource / extractAgentBlockBody / 块名后缀", () => {
+  it("构建完整块源码：三种块类型与 title", () => {
+    expect(
+      buildAgentBlockSource({
+        name: "reviewTemplate",
+        title: "需求评审",
+        blockType: "template",
+        content: "## 需求\n- ",
+      }),
+    ).toBe("&&& reviewTemplate --start 「title: 需求评审」\n## 需求\n- \n&&& reviewTemplate --end")
+
+    expect(
+      buildAgentBlockSource({ name: "addonTemplate", title: "", blockType: "supple", content: "" }),
+    ).toBe("+++ addonTemplate --start\n\n+++ addonTemplate --end")
+
+    expect(
+      buildAgentBlockSource({ name: "logTemplate", title: "", blockType: "log", content: "x" }),
+    ).toBe("%%% logTemplate --start\nx\n%%% logTemplate --end")
+  })
+
+  it("提取正文无损往返（含空行、缩进与空正文）", () => {
+    const bodies = ["", "## 需求\n- ", "\n- item\n", "  - indented\n\n  - more", "11111"]
+    for (const body of bodies) {
+      for (const blockType of ["template", "supple", "log"] as const) {
+        const source = buildAgentBlockSource({
+          name: "xTemplate",
+          title: "",
+          blockType,
+          content: body,
+        })
+        expect(extractAgentBlockBody(source, blockType)).toBe(body)
+      }
+    }
+  })
+
+  it("结构不完整时提取返回 null", () => {
+    expect(extractAgentBlockBody("## 需求", "template")).toBeNull()
+    expect(extractAgentBlockBody("&&& a --start\nbody", "template")).toBeNull()
+    expect(extractAgentBlockBody("&&& a --start\nbody\n+++ b --end", "template")).toBeNull()
+  })
+
+  it("块名称后缀追加与剥离", () => {
+    expect(withMarkdownBlockNameSuffix("review")).toBe("reviewTemplate")
+    expect(withMarkdownBlockNameSuffix("reviewTemplate")).toBe("reviewTemplate")
+    expect(withMarkdownBlockNameSuffix("")).toBe("")
+    expect(stripMarkdownBlockNameSuffix("reviewTemplate")).toBe("review")
+    expect(stripMarkdownBlockNameSuffix("reviewBlock")).toBe("reviewBlock")
   })
 })
