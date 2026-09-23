@@ -23,6 +23,7 @@ import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@cod
 import { GFM } from "@lezer/markdown"
 import { Redo2, Undo2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
 import {
   captureEditorScrollAnchor,
@@ -37,6 +38,7 @@ import {
   markdownFoldGutter,
   markdownHeadingFolding,
 } from "@/components/ui/LxMarkdown/extensions/markdownFolding"
+import { useMarkdownBlockCommandPanel } from "@/components/ui/LxMarkdown/hooks/useMarkdownBlockCommandPanel"
 import type { LxMarkdownEditorProps, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
 import { useLxToast } from "@/components/ui/LxToast"
 import { editorTheme } from "@/features/markdown/extensions/editorTheme"
@@ -63,7 +65,7 @@ export const LxMarkdownEditor = ({
   allowStandaloneSubblocks = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
   // 模板块操作提示与文案：经 ref 读取，避免引用变化触发编辑器重建。
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const toast = useLxToast()
   const markerTRef = useRef(t)
   markerTRef.current = t
@@ -85,6 +87,14 @@ export const LxMarkdownEditor = ({
   // 额外扩展：仅在创建编辑器时读取，避免调用方每次渲染传入新引用导致编辑器重建。
   const extraExtensionsRef = useRef(extraExtensions)
   extraExtensionsRef.current = extraExtensions
+  // 块命令文案语言：经 ref 读取，避免引用变化触发编辑器重建。
+  const localeRef = useRef(locale)
+  localeRef.current = locale
+  // 块命令面板：行首输入 #、-、>、|、``` 等触发标记时提供快捷插入。
+  const blockCommandPanels = useMarkdownBlockCommandPanel({
+    editorViewRef,
+    context: { localeRef },
+  })
 
   useEffect(() => {
     initialContentRef.current = initialContent
@@ -341,11 +351,38 @@ export const LxMarkdownEditor = ({
             run: () => (insertText(createMarkdownTable({ columns: 2, rows: 2 })), true),
           },
           { key: "Mod-Shift-f", run: () => (formatDocument(), true) },
+          { key: "ArrowDown", run: () => blockCommandPanels.handleBlockCommandKey(1) },
+          { key: "ArrowUp", run: () => blockCommandPanels.handleBlockCommandKey(-1) },
+          {
+            key: "Enter",
+            run: () => {
+              const panel = blockCommandPanels.blockCommandPanelRef.current
+              if (!panel) return false
+              blockCommandPanels.selectBlockCommand(
+                panel.commands[blockCommandPanels.activeBlockCommandIndexRef.current] ??
+                  panel.commands[0],
+              )
+              return true
+            },
+          },
+          {
+            key: "Escape",
+            run: () => {
+              if (!blockCommandPanels.blockCommandPanelRef.current) return false
+              blockCommandPanels.blockCommandPanelRef.current = null
+              blockCommandPanels.setBlockCommandPanel(null)
+              return true
+            },
+          },
           ...historyKeymap,
           ...standardKeymap,
         ]),
         ...(extraExtensionsRef.current ? [extraExtensionsRef.current] : []),
         EditorView.updateListener.of((update) => {
+          if (update.docChanged || update.selectionSet || update.viewportChanged) {
+            blockCommandPanels.syncBlockCommandPanel(update.view)
+          }
+
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()
             lastEmittedContentRef.current = nextContent
@@ -409,6 +446,13 @@ export const LxMarkdownEditor = ({
           className={`min-w-0 ${autoHeight ? "" : "custom-scrollbar min-h-0 flex-1"}`}
         />
       </div>
+      <MarkdownBlockCommandMenu
+        activeIndex={blockCommandPanels.activeBlockCommandIndex}
+        commands={blockCommandPanels.blockCommandPanel?.commands}
+        position={blockCommandPanels.blockCommandPanel?.position}
+        visible={Boolean(blockCommandPanels.blockCommandPanel)}
+        onSelect={blockCommandPanels.selectBlockCommand}
+      />
     </section>
   )
 }

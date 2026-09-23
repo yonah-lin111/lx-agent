@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view"
 import type { RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
+import { getMarkdownPanelPosition } from "@/components/ui/LxMarkdown/utils/markdownPanelPosition"
 import type {
   MarkdownSendPromptFlagOption,
   MarkdownSendPromptOption,
@@ -15,7 +16,6 @@ import type {
   MarkdownSendPromptFlagPanelState,
   MarkdownSendPromptPanelState,
 } from "@/features/markdown/hooks/useMarkdownPanels.types"
-import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
 import { launchNewCliTerminal } from "@/features/markdown/utils/markdownSendPromptDispatcher"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 

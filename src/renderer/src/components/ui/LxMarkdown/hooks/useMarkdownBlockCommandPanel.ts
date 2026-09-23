@@ -1,18 +1,25 @@
 import type { EditorView } from "@codemirror/view"
-import type { RefObject } from "react"
+import type { Locale } from "@shared/settings"
+import type { CSSProperties, RefObject } from "react"
 import { useRef, useState } from "react"
-import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
+import type {
+  MarkdownBlockCommand,
+  MarkdownBlockTrigger,
+} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import {
   createMarkdownBlockInsertion,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   isInsideMarkdownCodeFence,
-} from "@/features/markdown/commands/markdownBlockCommands"
-import type {
-  MarkdownBlockCommandPanelState,
-  MarkdownPanelsContextRefs,
-} from "@/features/markdown/hooks/useMarkdownPanels.types"
-import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
+} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
+import { getMarkdownPanelPosition } from "@/components/ui/LxMarkdown/utils/markdownPanelPosition"
+
+// Markdown 块命令面板状态。
+export interface MarkdownBlockCommandPanelState {
+  commands: MarkdownBlockCommand[]
+  position: CSSProperties
+  trigger: MarkdownBlockTrigger
+}
 
 /**
  * Markdown 块命令面板：触发标记同步、模板替换与键盘导航。
@@ -22,7 +29,8 @@ export const useMarkdownBlockCommandPanel = ({
   context,
 }: {
   editorViewRef: RefObject<EditorView | null>
-  context: Pick<MarkdownPanelsContextRefs, "localeRef">
+  // 语言环境 ref：面板文案在回调执行时读取最新值。
+  context: { localeRef: RefObject<Locale> }
 }) => {
   const { localeRef } = context
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)

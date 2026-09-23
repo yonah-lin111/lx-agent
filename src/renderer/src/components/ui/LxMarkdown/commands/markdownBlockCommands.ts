@@ -1,13 +1,116 @@
 import type { Locale } from "@shared/settings"
-import { Code, Heading, List, ListOrdered, ListTodo, Quote, Table2 } from "lucide-react"
+import {
+  Code,
+  Heading,
+  List,
+  ListOrdered,
+  ListTodo,
+  type LucideIcon,
+  Quote,
+  Table2,
+} from "lucide-react"
 import { en } from "@/i18n/locales/en"
 import { zh } from "@/i18n/locales/zh"
-import type {
-  MarkdownBlockCommand,
-  MarkdownBlockCommandId,
-  MarkdownBlockInsertion,
-  MarkdownBlockTriggerKind,
-} from "./types"
+
+// Markdown 块命令标识。
+export type MarkdownBlockCommandId =
+  | "heading1"
+  | "heading2"
+  | "heading3"
+  | "heading4"
+  | "heading5"
+  | "heading6"
+  | "unorderedList"
+  | "taskList"
+  | "orderedList"
+  | "quote"
+  | "codeBlock"
+  | "table"
+
+// Markdown 块触发类型。
+export type MarkdownBlockTriggerKind =
+  | "heading"
+  | "unorderedList"
+  | "orderedList"
+  | "quote"
+  | "codeBlock"
+  | "table"
+
+// Markdown 块命令配置。
+export interface MarkdownBlockCommand {
+  id: MarkdownBlockCommandId
+  label: string
+  preview: string
+  icon: LucideIcon
+}
+
+// Markdown 块触发范围。
+export interface MarkdownBlockTrigger {
+  from: number
+  to: number
+  kind: MarkdownBlockTriggerKind
+}
+
+// Markdown 块命令插入内容。
+export interface MarkdownBlockInsertion {
+  text: string
+  selectionStart: number
+  selectionEnd: number
+}
+
+/**
+ * 解析光标所在行的 Markdown 块触发标记。
+ */
+export const getMarkdownBlockTrigger = (
+  lineText: string,
+  lineFrom: number,
+  cursor: number,
+): MarkdownBlockTrigger | null => {
+  const cursorOffset = cursor - lineFrom
+  if (cursorOffset !== lineText.length) return null
+
+  const matches: [MarkdownBlockTriggerKind, RegExp][] = [
+    ["heading", /^(\s*)#{1,6}\s?$/],
+    ["unorderedList", /^(\s*)[-+*]\s?$/],
+    ["orderedList", /^(\s*)1[.)]\s?$/],
+    ["quote", /^(\s*)>\s?$/],
+    ["codeBlock", /^(\s*)(?:`{3,}|~{3,})$/],
+    ["table", /^(\s*)\|$/],
+  ]
+
+  for (const [kind, pattern] of matches) {
+    const match = lineText.match(pattern)
+    if (match) {
+      return { kind, from: lineFrom + match[1].length, to: cursor }
+    }
+  }
+
+  return null
+}
+
+/**
+ * 判断指定文本末尾是否处于未闭合的 Markdown 代码围栏内。
+ */
+export const isInsideMarkdownCodeFence = (text: string): boolean => {
+  let openingFence: string | null = null
+
+  for (const line of text.split("\n")) {
+    const match = line.match(/^\s*(`{3,}|~{3,})/)
+    if (!match) continue
+
+    const marker = match[1]
+    if (!openingFence) {
+      openingFence = marker
+      continue
+    }
+
+    if (marker[0] === openingFence[0] && marker.length >= openingFence.length) {
+      openingFence = null
+    }
+  }
+
+  return openingFence !== null
+}
 
 const createCommandsByTrigger = (
   locale: Locale,

@@ -4,10 +4,6 @@ import type { Locale } from "@shared/settings"
 import type { CSSProperties, RefObject } from "react"
 import type { GitWorktreeOption } from "@/features/git"
 import type {
-  MarkdownBlockCommand,
-  MarkdownBlockTrigger,
-} from "@/features/markdown/commands/markdownBlockCommands"
-import type {
   MarkdownSendPromptFlagOption,
   MarkdownSendPromptOption,
   MarkdownSlashCommand,
@@ -33,15 +29,6 @@ export interface MarkdownSendPromptFlagPanelState {
   line: MarkdownSlashCommandLine
   target: string
   position: CSSProperties
-}
-
-/**
- * Markdown 块命令面板状态。
- */
-export interface MarkdownBlockCommandPanelState {
-  commands: MarkdownBlockCommand[]
-  position: CSSProperties
-  trigger: MarkdownBlockTrigger
 }
 
 /**

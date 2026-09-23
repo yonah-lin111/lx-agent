@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view"
 import type { RefObject } from "react"
 import { useRef, useState } from "react"
+import { getMarkdownPanelPosition } from "@/components/ui/LxMarkdown/utils/markdownPanelPosition"
 import {
   createMarkdownTemplateId,
   injectCustomTemplateBlockIds,
@@ -24,7 +25,6 @@ import type {
   MarkdownSendPromptPanelState,
   MarkdownSlashCommandPanelState,
 } from "@/features/markdown/hooks/useMarkdownPanels.types"
-import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
 
 /**
  * Markdown 斜杠命令面板：命令匹配、一级选择与二级面板的打开/收起联动。

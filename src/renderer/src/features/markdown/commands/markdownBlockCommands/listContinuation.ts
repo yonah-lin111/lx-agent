@@ -1,38 +1,4 @@
-import type {
-  MarkdownBlockTrigger,
-  MarkdownBlockTriggerKind,
-  MarkdownListContinuation,
-} from "./types"
-
-/**
- * 解析光标所在行的 Markdown 块触发标记。
- */
-export const getMarkdownBlockTrigger = (
-  lineText: string,
-  lineFrom: number,
-  cursor: number,
-): MarkdownBlockTrigger | null => {
-  const cursorOffset = cursor - lineFrom
-  if (cursorOffset !== lineText.length) return null
-
-  const matches: [MarkdownBlockTriggerKind, RegExp][] = [
-    ["heading", /^(\s*)#{1,6}\s?$/],
-    ["unorderedList", /^(\s*)[-+*]\s?$/],
-    ["orderedList", /^(\s*)1[.)]\s?$/],
-    ["quote", /^(\s*)>\s?$/],
-    ["codeBlock", /^(\s*)(?:`{3,}|~{3,})$/],
-    ["table", /^(\s*)\|$/],
-  ]
-
-  for (const [kind, pattern] of matches) {
-    const match = lineText.match(pattern)
-    if (match) {
-      return { kind, from: lineFrom + match[1].length, to: cursor }
-    }
-  }
-
-  return null
-}
+import type { MarkdownListContinuation } from "./types"
 
 /**
  * 解析当前行的 Markdown 列表项或引用块标记，计算回车时的续行前缀或空行退出状态。
@@ -91,28 +57,4 @@ export const getMarkdownListContinuation = (lineText: string): MarkdownListConti
   }
 
   return null
-}
-
-/**
- * 判断指定文本末尾是否处于未闭合的 Markdown 代码围栏内。
- */
-export const isInsideMarkdownCodeFence = (text: string): boolean => {
-  let openingFence: string | null = null
-
-  for (const line of text.split("\n")) {
-    const match = line.match(/^\s*(`{3,}|~{3,})/)
-    if (!match) continue
-
-    const marker = match[1]
-    if (!openingFence) {
-      openingFence = marker
-      continue
-    }
-
-    if (marker[0] === openingFence[0] && marker.length >= openingFence.length) {
-      openingFence = null
-    }
-  }
-
-  return openingFence !== null
 }

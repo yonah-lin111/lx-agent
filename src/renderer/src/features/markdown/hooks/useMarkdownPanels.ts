@@ -4,8 +4,8 @@ import type { ProjectFileEntry, ReferencedProjectFileEntry } from "@shared/proje
 import type { Locale } from "@shared/settings"
 import type { RefObject } from "react"
 import { useRef } from "react"
+import { useMarkdownBlockCommandPanel } from "@/components/ui/LxMarkdown/hooks/useMarkdownBlockCommandPanel"
 import type { MarkdownSlashCommand } from "@/features/markdown/commands/markdownSlashCommands"
-import { useMarkdownBlockCommandPanel } from "@/features/markdown/hooks/useMarkdownBlockCommandPanel"
 import {
   type MarkdownColonPanelState,
   useMarkdownColonPanel,
@@ -19,7 +19,6 @@ import { useMarkdownSlashCommandPanel } from "@/features/markdown/hooks/useMarkd
 export type {
   FileMentionPanelState,
   GitWorktreePanelState,
-  MarkdownBlockCommandPanelState,
   MarkdownLetterPanelState,
   MarkdownSendPromptFlagPanelState,
   MarkdownSendPromptPanelState,

@@ -1,4 +1,18 @@
-export { createMarkdownBlockInsertion, getMarkdownBlockCommands } from "./blockCommands"
+// 通用块命令能力出口：实现位于 components/ui/LxMarkdown，此处转发保持既有消费方导入路径。
+
+export type {
+  MarkdownBlockCommand,
+  MarkdownBlockCommandId,
+  MarkdownBlockInsertion,
+  MarkdownBlockTrigger,
+  MarkdownBlockTriggerKind,
+} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
+export {
+  createMarkdownBlockInsertion,
+  getMarkdownBlockCommands,
+  getMarkdownBlockTrigger,
+  isInsideMarkdownCodeFence,
+} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 export {
   getMarkdownSuppleBlockEndLine,
   getMarkdownTemplateBlockContent,
@@ -6,6 +20,7 @@ export {
   getMarkdownTemplateBlockEndLine,
   getMarkdownTemplateBlockStartLine,
 } from "./blockRead"
+export { getMarkdownListContinuation } from "./listContinuation"
 export type {
   ParsedMarkdownLogEnd,
   ParsedMarkdownSubblockStart,
@@ -60,17 +75,7 @@ export {
   stripMarkdownBlockNameSuffix,
   withMarkdownBlockNameSuffix,
 } from "./metadata"
-export {
-  getMarkdownBlockTrigger,
-  getMarkdownListContinuation,
-  isInsideMarkdownCodeFence,
-} from "./trigger"
 export type {
-  MarkdownBlockCommand,
-  MarkdownBlockCommandId,
-  MarkdownBlockInsertion,
-  MarkdownBlockTrigger,
-  MarkdownBlockTriggerKind,
   MarkdownListContinuation,
   MarkdownTemplateStatus,
   NormalizedAgentBlockBody,

@@ -1,6 +1,6 @@
+import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
 import { GitWorktreeCommandMenu } from "@/features/git"
 import { FileMentionCommandMenu } from "@/features/markdown/components/FileMentionCommandMenu"
-import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
 import { MarkdownColonCommandMenu } from "@/features/markdown/components/MarkdownColonCommandMenu"
 import {
   buildPasteReferenceOptions,

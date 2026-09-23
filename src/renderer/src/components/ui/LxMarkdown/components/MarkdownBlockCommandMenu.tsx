@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react"
 import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPanel"
-import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
+import type { MarkdownBlockCommand } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import { useTranslation } from "@/i18n"
 
 // Markdown 块命令菜单属性。

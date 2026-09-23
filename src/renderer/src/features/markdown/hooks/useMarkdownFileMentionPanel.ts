@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view"
 import type { RefObject } from "react"
 import { useRef, useState } from "react"
+import { getMarkdownPanelPosition } from "@/components/ui/LxMarkdown/utils/markdownPanelPosition"
 import {
   getMarkdownTemplateBlockContent,
   isInsideMarkdownCodeFence,
@@ -29,7 +30,6 @@ import type {
 } from "@/features/markdown/hooks/useMarkdownPanels.types"
 import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
 import { resolveMarkdownContextDirectory } from "@/features/markdown/utils/markdownContextDirectory"
-import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
 
 /**
  * 文件提及面板与字母快捷输入面板：@ 查询、字母候选过滤、插入与键盘导航。

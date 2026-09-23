@@ -1,28 +1,7 @@
 import { foldable, foldEffect, foldedRanges, foldService, unfoldEffect } from "@codemirror/language"
 import { RangeSetBuilder } from "@codemirror/state"
 import { GutterMarker, gutter } from "@codemirror/view"
-
-// 判断文本前缀是否处于未闭合的代码围栏内。
-const isInsideMarkdownCodeFence = (text: string): boolean => {
-  let openingFence: string | null = null
-
-  for (const line of text.split("\n")) {
-    const match = line.match(/^\s*(`{3,}|~{3,})/)
-    if (!match) continue
-
-    const marker = match[1]
-    if (!openingFence) {
-      openingFence = marker
-      continue
-    }
-
-    if (marker[0] === openingFence[0] && marker.length >= openingFence.length) {
-      openingFence = null
-    }
-  }
-
-  return openingFence !== null
-}
+import { isInsideMarkdownCodeFence } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 
 /**
  * 为 ATX 标题提供折叠范围，直到下一个同级或更高层级标题。

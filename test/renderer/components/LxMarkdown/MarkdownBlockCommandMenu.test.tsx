@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   getMarkdownBlockCommands,
   type MarkdownBlockTriggerKind,
-} from "@/features/markdown/commands/markdownBlockCommands"
-import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
+} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
+import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
 
 describe("MarkdownBlockCommandMenu 与块命令国际化", () => {
   afterEach(() => {

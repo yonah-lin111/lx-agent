@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view"
 import type { RefObject } from "react"
 import { useRef, useState } from "react"
+import { getMarkdownPanelPosition } from "@/components/ui/LxMarkdown/utils/markdownPanelPosition"
 import { buildGitWorktreeOptions, type GitWorktreeOption } from "@/features/git"
 import { getMarkdownSlashCommandLine } from "@/features/markdown/commands/markdownSlashCommands"
 import type {
@@ -8,7 +9,6 @@ import type {
   MarkdownPanelsContextRefs,
 } from "@/features/markdown/hooks/useMarkdownPanels.types"
 import { resolveMarkdownContextDirectory } from "@/features/markdown/utils/markdownContextDirectory"
-import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
 
 /**
  * git 工作区选择面板：二级面板的状态、打开、回显与键盘导航。

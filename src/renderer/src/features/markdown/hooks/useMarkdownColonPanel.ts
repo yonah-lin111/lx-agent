@@ -1,12 +1,12 @@
 import type { EditorView } from "@codemirror/view"
 import type React from "react"
 import { type CSSProperties, useCallback, useRef, useState } from "react"
+import { getMarkdownPanelPosition } from "@/components/ui/LxMarkdown/utils/markdownPanelPosition"
 import {
   getMarkdownColonTrigger,
   isInsideMarkdownVariableBlock,
   isInsideMarkdownVarMultilineString,
 } from "@/features/markdown/commands/markdownVariableCommands"
-import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
 
 export type MarkdownColonOptionType = "single" | "multi" | "nestedSingle" | "nestedMulti"
 

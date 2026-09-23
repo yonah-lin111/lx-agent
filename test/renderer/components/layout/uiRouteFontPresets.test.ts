@@ -26,7 +26,6 @@ const uiRouteTreeDirs = [
 const uiRouteTreeFiles = [
   "src/renderer/src/components/layout/LeftSideBar.tsx",
   "src/renderer/src/components/layout/PageContent.tsx",
-  "src/renderer/src/features/markdown/components/MarkdownBlockCommandMenu.tsx",
   "src/renderer/src/features/markdown/components/MarkdownPasteCommandMenu.tsx",
   "src/renderer/src/features/markdown/extensions/editorHighlight.ts",
   "src/renderer/src/features/markdown/extensions/markdownActionWidgets.tsx",
