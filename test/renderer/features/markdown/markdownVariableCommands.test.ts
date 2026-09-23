@@ -218,6 +218,17 @@ $$$ varTemplate --end
 正文内容`
       expect(stripMarkdownVariableBlocks(doc)).toBe("# 标题\n正文内容")
     })
+
+    it("结束行携带注入 id 时仍能剥离变量块", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 变量」",
+        'key: "value"',
+        "$$$ varTemplate --end {id:c7fa918944154ea8aa1ea07d9b871817}",
+        "",
+        "# 标题",
+      ].join("\n")
+      expect(stripMarkdownVariableBlocks(doc)).toBe("# 标题")
+    })
   })
 
   describe("getVariableTag", () => {

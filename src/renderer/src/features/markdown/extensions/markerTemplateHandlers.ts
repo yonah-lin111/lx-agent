@@ -360,7 +360,9 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
   const varStartMatch = ctx.line.match(
     /^(\s*)\$\$\$\s*(?:(varTemplate)(?:\s+(--start))?(?:\s+「title:[^」\n]*」)?)?\s*$/,
   )
-  const varEndMatch = ctx.line.match(/^\s*\$\$\$(?:\s+(?:varTemplate)\s+--end|\s+--end)?\s*$/)
+  const varEndMatch = ctx.line.match(
+    /^\s*\$\$\$(?:\s+(?:varTemplate)\s+--end|\s+--end)?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/,
+  )
 
   if (varStartMatch && !ctx.isInsideVarBlock) {
     const startLine = ctx.i
@@ -471,6 +473,15 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
     const endFlagMatch = ctx.line.match(/--end/)
     if (endFlagMatch?.index !== undefined) {
       ctx.addMarkerAlways(endFlagMatch.index, endFlagMatch.index + 5, "cm-md-var-template-flag")
+    }
+    // 插入时注入的 {id:...} 只读标记高亮（与其他模板块一致）。
+    const varIdMatch = ctx.line.match(/\{id:[0-9a-f]{32}\}/)
+    if (varIdMatch?.index !== undefined) {
+      ctx.addMarkerAlways(
+        varIdMatch.index,
+        varIdMatch.index + varIdMatch[0].length,
+        "cm-md-template-id",
+      )
     }
 
     ctx.allDecos.push({

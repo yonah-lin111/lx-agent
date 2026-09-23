@@ -399,7 +399,7 @@ export const stripMarkdownVariableBlocks = (content: string): string => {
   let stripped = content
   // 移除全部 $$$ varTemplate 块
   stripped = stripped.replace(
-    /^\s*\$\$\$\s*(?:varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?)?\s*[\s\S]*?^\s*\$\$\$(?:\s+varTemplate\s+--end|\s+--end)?\s*$/gm,
+    /^\s*\$\$\$\s*(?:varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?)?\s*[\s\S]*?^\s*\$\$\$(?:\s+varTemplate\s+--end|\s+--end)?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/gm,
     "",
   )
   // 移除旧版 --- Frontmatter

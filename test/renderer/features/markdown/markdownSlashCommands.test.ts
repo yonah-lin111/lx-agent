@@ -105,6 +105,22 @@ describe("Markdown 斜杠命令", () => {
     )
   })
 
+  it("内置模板块内容统一携带「title: 」占位（supple / log / var）", () => {
+    const outside = getMarkdownSlashCommands("/", false, true, [], "en")
+    const inside = getMarkdownSlashCommands("/", true, true, [], "en")
+
+    const expectations: Array<[string, typeof outside]> = [
+      ["varTemplate", outside],
+      ["suppleTemplate", inside],
+      ["logTemplate", inside],
+    ]
+    for (const [id, list] of expectations) {
+      const cmd = list.find((c) => c.id === id)
+      expect(cmd).toBeDefined()
+      expect(cmd!.content.split("\n")[0]).toMatch(/--start 「title: 」$/)
+    }
+  })
+
   it("所有模板的 Notes 均在最下方，且 /bugTemplate 也包含 Notes", () => {
     const templates = getMarkdownSlashCommands("/", false, true, [], "en")
     const checkTemplates = [
