@@ -96,6 +96,7 @@ export const PROMPT_ORDERS = {
   PERSONA: 0,                   // 人格（pragmatic / friendly）+ 核心操作规范
   MODEL_ADAPTIVE: 50,           // 模型自适应指令（按模型家族注入）
   SKILLS: 100,                  // 已激活 Skill 指令正文
+  MCP_GUIDANCE: 110,            // 代码检索 MCP 策略指引（仅已连接且被授权 server）
   INSTRUCTIONS: 200,            // AGENTS.md 级联注入（Git Root -> CWD）
   WORKSPACE_MEMORY: 250,        // MEMORY.md 索引摘要
   RUNTIME_CONTEXT: 300,         // 运行时上下文保留位
@@ -125,6 +126,7 @@ export const PROMPT_ORDERS = {
 ## 4. MCP 扩展集成 (`src/main/agent/mcp/`)
 
 - **传输层标准**：当前采用标准本地 **Stdio MCP Server** 接入规范。
+- **策略指引注入**：已连接且被当前 agent 允许的代码检索 server（`codegraph` / `codebase-memory-mcp`）会向系统提示词注入 `<mcp_guidance>` 分段（`agent:mcp-guidance`，order 110），区分两者职责并声明新项目索引初始化方式；子代理按角色 `permissions.mcp` 白名单收窄注入范围。
 - **生命周期**：由 `McpManager` 单例统一管理，支持连接就绪等待、`ToolListChangedNotification` 动态热重载与退出级联清理。
 - **命名空间与 Schema 映射**：
   - 工具命名自动规整为 `sanitize(serverName)_sanitize(toolName)`（`mcp__` 命名空间），避免与内置工具冲突。

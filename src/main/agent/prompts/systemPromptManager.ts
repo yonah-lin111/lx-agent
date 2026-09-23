@@ -14,6 +14,7 @@ import { formatInstructions, loadInstructions } from "../instructionLoader"
 import { formatMemorySummaryPrompt, loadWorkspaceMemory } from "../memories/memoryManager"
 import { formatSkillsForPrompt, type LoadedSkill } from "../skills/skillLoader"
 import { DEFAULT_BEHAVIOR_PROMPT } from "./behaviorPrompt"
+import { formatMcpGuidancePrompt } from "./mcpGuidance"
 import {
   detectModelFamily,
   formatSandboxPolicyPrompt,
@@ -34,6 +35,7 @@ export const PROMPT_ORDERS = {
   PERSONA: 0,
   MODEL_ADAPTIVE: 50,
   SKILLS: 100,
+  MCP_GUIDANCE: 110,
   INSTRUCTIONS: 200,
   WORKSPACE_MEMORY: 250,
   RUNTIME_CONTEXT: 300,
@@ -53,6 +55,7 @@ export const PROMPT_SECTION_NAMES = {
   PERSONA: "deployment:persona",
   MODEL_ADAPTIVE: "harness:model-adaptive",
   SKILLS: "agent:skills",
+  MCP_GUIDANCE: "agent:mcp-guidance",
   INSTRUCTIONS: "agent:instructions",
   WORKSPACE_MEMORY: "agent:workspace-memory",
   RUNTIME_CONTEXT: "agent:runtime-context",
@@ -75,6 +78,8 @@ export interface AssembleContext {
   contextUsage?: AgentContextUsage | null
   workspaceMemory?: WorkspaceMemorySummary | null
   activeSkills?: LoadedSkill[]
+  /** 当前 agent 实际可用的代码检索 MCP server 名（已按连接状态与角色白名单过滤） */
+  mcpServers?: string[]
   personality?: PersonalityName
   variables?: Record<string, string | undefined>
   [key: string]: unknown
@@ -838,6 +843,13 @@ export function createDefaultSystemPromptManager(
       if (!ctx.activeSkills || ctx.activeSkills.length === 0) return ""
       return formatSkillsForPrompt(ctx.activeSkills).trim()
     },
+  })
+
+  // 110: 代码检索 MCP 策略指引（仅注入已连接且被当前 agent 允许的 server）
+  manager.registerSection({
+    name: PROMPT_SECTION_NAMES.MCP_GUIDANCE,
+    order: PROMPT_ORDERS.MCP_GUIDANCE,
+    text: (ctx) => formatMcpGuidancePrompt(ctx.mcpServers ?? []),
   })
 
   // 200: 项目与用户指令文件（动态根据 context.cwd 加载，外部 AGENTS.md 原样注入）

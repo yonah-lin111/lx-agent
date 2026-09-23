@@ -58,8 +58,11 @@ export interface ChildCallInput {
 export interface SubagentRunnerDeps {
   // 子代理基座系统提示词（已按子代理协作模式渲染；子代理在其后追加子代理前缀）。
   subagentSystemPrompt: string
-  // 按角色技能白名单渲染子代理系统提示词（undefined = 不限制，继承父会话技能集）。
-  renderSubagentSystemPrompt?: (allowedSkills: string[] | undefined) => string
+  // 按角色白名单渲染子代理系统提示词（undefined = 不限制，继承父会话技能集与全部已连接 MCP）。
+  renderSubagentSystemPrompt?: (
+    allowedSkills: string[] | undefined,
+    allowedMcpServers?: string[],
+  ) => string
   // 父会话模型（子代理沿用）。
   model: Model
   // 父会话沙箱策略（继承至子代理）。
@@ -240,12 +243,15 @@ export const runSubagent = async (
   if (!subAgent) {
     const permissions = role?.permissions
     const allowedSkills = permissions?.skills
+    const allowedMcpServers = permissions?.mcp
 
     // 系统提示词追加顺序：子代理基座提示词 → 子代理后缀 → 角色指令。
-    // 角色配置技能白名单时，基座提示词的 available_skills 同步收窄（与工具同源）。
-    const basePrompt = allowedSkills
-      ? (deps.renderSubagentSystemPrompt?.(allowedSkills) ?? deps.subagentSystemPrompt)
-      : deps.subagentSystemPrompt
+    // 角色配置技能或 MCP 白名单时，基座提示词的 available_skills 与 MCP 策略指引同步收窄（与工具同源）。
+    const basePrompt =
+      allowedSkills !== undefined || allowedMcpServers !== undefined
+        ? (deps.renderSubagentSystemPrompt?.(allowedSkills, allowedMcpServers) ??
+          deps.subagentSystemPrompt)
+        : deps.subagentSystemPrompt
     const effectivePrompt = role?.instructions
       ? `${basePrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}\n\n${role.instructions}`
       : `${basePrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}`

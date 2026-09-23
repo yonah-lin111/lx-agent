@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   createDefaultSystemPromptManager,
   interpolateVariables,
+  PROMPT_ORDERS,
   PROMPT_SECTION_NAMES,
   SystemPromptManager,
 } from "@/agent/prompts/systemPromptManager"
@@ -282,6 +283,64 @@ describe("SystemPromptManager", () => {
       expect(assembly.rendered).not.toContain(
         "You are a pragmatic, direct, and high-signal engineering collaborator.",
       )
+    })
+
+    describe("MCP 策略指引注入 (MCP Guidance)", () => {
+      it("未提供 mcpServers 时整段不注入", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({})
+
+        expect(assembly.sections.some((s) => s.name === PROMPT_SECTION_NAMES.MCP_GUIDANCE)).toBe(
+          false,
+        )
+        expect(assembly.rendered).not.toContain("<mcp_guidance>")
+      })
+
+      it("提供 mcpServers 时注入独立分段，且位于 skills 之后、instructions 之前", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          mcpServers: ["codegraph", "codebase-memory-mcp"],
+          activeSkills: [
+            {
+              name: "test-skill",
+              description: "A test skill description",
+              filePath: "/path/to/SKILL.md",
+              baseDir: "/path/to",
+              disableModelInvocation: false,
+            },
+          ],
+        })
+
+        const guidance = assembly.sections.find((s) => s.name === PROMPT_SECTION_NAMES.MCP_GUIDANCE)
+        expect(guidance).toBeDefined()
+        expect(guidance?.text).toContain("<mcp_guidance>")
+        expect(guidance?.text).toContain('<server name="codegraph">')
+        expect(guidance?.text).toContain('<server name="codebase-memory-mcp">')
+        expect(guidance?.text).toContain("PRIMARY strategy")
+        expect(assembly.rendered).toContain("<mcp_guidance>")
+
+        // 分层顺序：SKILLS(100) < MCP_GUIDANCE(110) < INSTRUCTIONS(200)
+        expect(PROMPT_ORDERS.MCP_GUIDANCE).toBeGreaterThan(PROMPT_ORDERS.SKILLS)
+        expect(PROMPT_ORDERS.MCP_GUIDANCE).toBeLessThan(PROMPT_ORDERS.INSTRUCTIONS)
+
+        const guidanceIndex = assembly.sections.findIndex(
+          (s) => s.name === PROMPT_SECTION_NAMES.MCP_GUIDANCE,
+        )
+        const skillsIndex = assembly.sections.findIndex(
+          (s) => s.name === PROMPT_SECTION_NAMES.SKILLS,
+        )
+        expect(skillsIndex).toBeGreaterThan(-1)
+        expect(guidanceIndex).toBeGreaterThan(skillsIndex)
+      })
+
+      it("未知 server 名不产生任何注入", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          mcpServers: ["context7", "unknown-server"],
+        })
+
+        expect(assembly.rendered).not.toContain("<mcp_guidance>")
+      })
     })
 
     describe("上下文容量感知与 Guidance 注入 (Context Window Guidance)", () => {

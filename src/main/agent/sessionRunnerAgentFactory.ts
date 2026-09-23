@@ -6,6 +6,7 @@ import {
   type BuildSystemPromptOptions,
   buildSystemPromptSync,
   createRegistry,
+  resolveConnectedMcpServers,
   resolveCwd,
 } from "./assembly"
 import { createCompactionSummaryMessage } from "./compaction"
@@ -14,6 +15,7 @@ import { Agent } from "./core/agent"
 import type { Model } from "./core/types"
 import { hookResultMessages, hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
+import { sanitizeMcpNameSegment } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
@@ -50,6 +52,13 @@ export interface SessionAgentBuildResult {
   subagentRuntime: SubagentRuntime
 }
 
+// 按角色 MCP 白名单收窄 server 列表（未配置白名单时继承全部已连接 server）。
+const narrowMcpServers = (servers: string[], allowed?: string[]): string[] => {
+  if (allowed === undefined) return servers
+  const allowedNames = new Set(allowed.map((name) => sanitizeMcpNameSegment(name)))
+  return servers.filter((name) => allowedNames.has(sanitizeMcpNameSegment(name)))
+}
+
 /**
  * 构建会话 Agent 与工具注册表：系统提示、能力装配、子代理运行时与工具安全回调在此接线。
  */
@@ -68,6 +77,7 @@ export const buildSessionAgent = (
     personality,
   } = input
 
+  const availableMcpServers = resolveConnectedMcpServers()
   const systemPrompt = buildSystemPromptSync({
     cwd,
     sessionId: host.currentSessionId ?? undefined,
@@ -76,6 +86,7 @@ export const buildSessionAgent = (
     collaborationMode: host.collaborationMode,
     contextUsage,
     activeSkills,
+    mcpServers: availableMcpServers,
     personality,
   })
   // 会话装配时快照子代理设置：设置保存仅对新会话生效。
@@ -90,6 +101,7 @@ export const buildSessionAgent = (
     collaborationMode: subagentMode,
     contextUsage,
     activeSkills,
+    mcpServers: availableMcpServers,
     personality,
   })
   const subagentRuntime =
@@ -102,7 +114,7 @@ export const buildSessionAgent = (
     {
       subagentSystemPrompt,
       // 角色技能白名单收窄 available_skills 注入（与 read_skill 工具同源）。
-      renderSubagentSystemPrompt: (allowedSkills) =>
+      renderSubagentSystemPrompt: (allowedSkills, allowedMcpServers) =>
         buildSystemPromptSync({
           cwd,
           sessionId: host.currentSessionId ?? undefined,
@@ -114,6 +126,7 @@ export const buildSessionAgent = (
             allowedSkills === undefined
               ? activeSkills
               : activeSkills.filter((skill) => allowedSkills.includes(skill.name)),
+          mcpServers: narrowMcpServers(availableMcpServers, allowedMcpServers),
           personality,
         }),
       model,
@@ -230,6 +243,7 @@ export const getPromptAssembly = async (
     collaborationMode: host.collaborationMode,
     contextUsage,
     activeSkills,
+    mcpServers: resolveConnectedMcpServers(),
   })
 
   const activeTools: string[] = host.registry

@@ -263,6 +263,7 @@ export const agent = {
   vendorPrompt: "Model Adaptive Prompt",
   noVendorPrompt: "No vendor-specific prompt injected.",
   systemPrompt: "System Prompt",
+  mcpGuidance: "MCP Guidance",
   injectedInstructions: "Injected Instructions",
   loadedSkills: "Loaded Skills",
   runtimeContext: "Runtime Context",

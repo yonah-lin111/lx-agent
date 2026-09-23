@@ -47,6 +47,8 @@ export interface BuildSystemPromptOptions {
   currentTimeReminder?: string
   contextUsage?: AgentContextUsage | null
   activeSkills?: LoadedSkill[]
+  /** 当前 agent 可用的代码检索 MCP server 名（由调用方按连接状态与角色白名单过滤） */
+  mcpServers?: string[]
   personality?: PersonalityName
   manager?: SystemPromptManager
   variables?: Record<string, string | undefined>
@@ -149,6 +151,13 @@ export const collectEnvironmentVariables = (cwd?: string): Record<string, string
   return vars
 }
 
+/** 当前已连接的 MCP server 名（代码检索策略指引只注入已连接的 server）。 */
+export const resolveConnectedMcpServers = (): string[] =>
+  mcpManager
+    .getStatus()
+    .filter((server) => server.status === "connected")
+    .map((server) => server.name)
+
 // 动态装配系统提示词（异步）。
 export const buildSystemPrompt = async (
   options: BuildSystemPromptOptions = {},
@@ -164,6 +173,7 @@ export const buildSystemPrompt = async (
     currentTimeReminder: options.currentTimeReminder,
     contextUsage: options.contextUsage,
     activeSkills: options.activeSkills,
+    mcpServers: options.mcpServers,
     personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },
   })
@@ -182,6 +192,7 @@ export const buildSystemPromptSync = (options: BuildSystemPromptOptions = {}): s
     currentTimeReminder: options.currentTimeReminder,
     contextUsage: options.contextUsage,
     activeSkills: options.activeSkills,
+    mcpServers: options.mcpServers,
     personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },
   })
