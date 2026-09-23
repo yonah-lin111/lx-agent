@@ -160,11 +160,35 @@ describe("CustomCommandSettings 命令行", () => {
     )
   })
 
+  it("工具栏插入模板块菜单可插入文档块与日志块骨架", async () => {
+    renderComponent()
+    await screen.findByText("alpha")
+    // 等待自动选中首个命令（编辑器按 editorKey 重挂载完成）后再操作工具栏。
+    await screen.findByText("Edit Command /alpha")
+
+    const cm = document.querySelector(".cm-content") as HTMLElement
+    const view = EditorView.findFromDOM(cm)!
+
+    fireEvent.click(screen.getByLabelText("Insert Template Block"))
+    fireEvent.click(await screen.findByText("Basic Block"))
+
+    await waitFor(() => {
+      expect(view.state.doc.toString()).toContain("&&& template\n\n&&& template --end")
+    })
+
+    fireEvent.click(screen.getByLabelText("Insert Template Block"))
+    fireEvent.click(await screen.findByText("Execution Log Block"))
+
+    await waitFor(() => {
+      expect(view.state.doc.toString()).toContain("%%% logTemplate --start")
+    })
+  })
+
   it("agentMD 命令使用 Markdown 编辑器，编辑内容后保存为最新模板内容", async () => {
     renderComponent()
     await screen.findByText("alpha")
 
-    fireEvent.click(screen.getByText("Markdown Template Commands (AgentMD)"))
+    fireEvent.click(screen.getByText("Template Commands"))
     await screen.findByText("md-alpha")
 
     fireEvent.click(screen.getByText("md-alpha").closest('[role="button"]') as Element)

@@ -4,12 +4,13 @@ import type {
   CustomCommandType,
 } from "@shared/contracts/customCommand"
 import type { Project } from "@shared/project"
-import { Folder, Globe, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
+import { Folder, Globe, LayoutTemplate, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMarkdownEditor } from "@/components/ui/LxMarkdown/LxMarkdownEditor"
+import type { MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
 import { LxMenu } from "@/components/ui/LxMenu"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxNavItem } from "@/components/ui/LxNavItem"
@@ -408,6 +409,60 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     void handleDelete(name)
   }
 
+  // 模板块骨架插入菜单：按 文档块 / 补充块 / 日志块 分类，插入后光标落在块内空行。
+  const toolbarActions = useMemo<MarkdownToolbarAction[]>(() => {
+    const bodyOffset = (text: string): number => text.indexOf("\n\n") + 1
+    const basicTemplateBlock = "&&& template\n\n&&& template --end"
+    const titledTemplateBlock = "&&& template --start 「title: 」\n\n&&& template --end"
+    const suppleBlock = "+++ suppleTemplate --start\n\n+++ suppleTemplate --end"
+    const logBlock = "%%% logTemplate --start\n\n%%% logTemplate --end"
+
+    return [
+      {
+        icon: LayoutTemplate,
+        label: t("settings.customCommandInsertBlock"),
+        alignRight: true,
+        menu: [
+          {
+            label: t("settings.customCommandBlockGroupTemplate"),
+            items: [
+              {
+                label: t("settings.customCommandBlockTemplateBasic"),
+                insertText: basicTemplateBlock,
+                selectionOffset: bodyOffset(basicTemplateBlock),
+              },
+              {
+                label: t("settings.customCommandBlockTemplateTitled"),
+                insertText: titledTemplateBlock,
+                selectionOffset: bodyOffset(titledTemplateBlock),
+              },
+            ],
+          },
+          {
+            label: t("settings.customCommandBlockGroupSupple"),
+            items: [
+              {
+                label: t("settings.customCommandBlockSupple"),
+                insertText: suppleBlock,
+                selectionOffset: bodyOffset(suppleBlock),
+              },
+            ],
+          },
+          {
+            label: t("settings.customCommandBlockGroupLog"),
+            items: [
+              {
+                label: t("settings.customCommandBlockLog"),
+                insertText: logBlock,
+                selectionOffset: bodyOffset(logBlock),
+              },
+            ],
+          },
+        ],
+      },
+    ]
+  }, [t])
+
   const agentInputInfoDoc = `### ${t("settings.customCommandAgentInputHelpTitle")}
 ${t("settings.customCommandAgentInputHelpDesc")}
 
@@ -488,33 +543,23 @@ ${t("settings.customCommandAgentMDHelpDesc")}
             </div>
           )}
 
-          <div className="custom-command-tab-group flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              data-active={selectedScope === "user"}
-              className={`flex h-7 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-xs transition-colors ${
-                selectedScope === "user"
-                  ? "bg-white/10 text-white font-medium shadow-xs"
-                  : "text-white/60 hover:text-white"
-              }`}
-              onClick={() => handleScopeChange("user")}
-            >
-              <Globe className="h-3.5 w-3.5 text-sky-400" />
-              {t("settings.customCommandGlobalScope")}
-            </button>
-            <button
-              type="button"
-              data-active={selectedScope === "project"}
-              className={`flex h-7 items-center gap-1.5 whitespace-nowrap rounded-[6px] px-2.5 text-xs transition-colors ${
-                selectedScope === "project"
-                  ? "bg-white/10 text-white font-medium shadow-xs"
-                  : "text-white/60 hover:text-white"
-              }`}
-              onClick={() => handleScopeChange("project")}
-            >
-              <Folder className="h-3.5 w-3.5 text-amber-400" />
-              {t("settings.customCommandProjectScope")}
-            </button>
+          <div className="w-[150px] max-w-full">
+            <LxSelect
+              value={selectedScope}
+              options={[
+                {
+                  value: "user",
+                  label: t("settings.customCommandGlobalScope"),
+                  icon: <Globe className="h-3.5 w-3.5 text-sky-400" />,
+                },
+                {
+                  value: "project",
+                  label: t("settings.customCommandProjectScope"),
+                  icon: <Folder className="h-3.5 w-3.5 text-amber-400" />,
+                },
+              ]}
+              onChange={(val) => handleScopeChange(val)}
+            />
           </div>
         </div>
       </div>
@@ -788,6 +833,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                   <LxMarkdownEditor
                     key={editorKey}
                     initialContent={formData.content}
+                    toolbarActions={toolbarActions}
                     onChange={(content) => handleFormChange((prev) => ({ ...prev, content }))}
                   />
                 </div>

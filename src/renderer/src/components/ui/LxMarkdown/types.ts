@@ -15,14 +15,29 @@ export interface MarkdownShortcut {
   description: string
 }
 
+// 编辑器工具栏菜单项：点击后在光标处插入指定文本，可用 selectionOffset 指定插入后的光标位置。
+export interface MarkdownToolbarMenuItem {
+  label: string
+  insertText: string
+  selectionOffset?: number
+}
+
+// 编辑器工具栏菜单分组：带分组标题的菜单项集合。
+export interface MarkdownToolbarMenuGroup {
+  label: string
+  items: MarkdownToolbarMenuItem[]
+}
+
 // 编辑器工具项配置。
 export interface MarkdownToolbarAction {
   icon: React.ComponentType<{ className?: string }>
   label: string
-  onClick: () => void
+  onClick?: () => void
   alignRight?: boolean
   highlighted?: boolean
   disabled?: boolean
+  // 下拉菜单：提供时按钮展开分组菜单，点击菜单项在光标处插入对应文本（用于插入模板块骨架等）。
+  menu?: MarkdownToolbarMenuGroup[]
 }
 
 // 编辑器视觉滚动锚点。
@@ -45,6 +60,8 @@ export interface LxMarkdownEditorProps {
   showSaveStatus?: boolean
   // 是否显示格式化工具栏，默认显示。
   showToolbar?: boolean
+  // 追加到内置撤销/重做之后的工具栏工具项（支持 menu 分组菜单）。
+  toolbarActions?: MarkdownToolbarAction[]
   // 编辑器整体高度（px）；不设置时随父容器 flex 撑满。
   height?: number
   // 高度自适应内容：编辑区随内容伸缩，不内部滚动，超出时由外层容器滚动。

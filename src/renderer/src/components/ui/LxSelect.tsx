@@ -9,6 +9,8 @@ import { useFloatingLayer, useLayerPresence } from "@/components/ui/useFloatingL
 export interface LxSelectOption<T> {
   value: T
   label: string
+  // 选项前置图标（触发器与列表项同步展示）。
+  icon?: React.ReactNode
   // 是否未导入（用于与导入项目在视觉上进行弱化区分）
   isImported?: boolean
   // 自定义类名
@@ -156,6 +158,7 @@ export const LxSelect = <T extends string>({
           isGrouped ? SIZE_GROUPED_INDENT_CLASSES[LIST_SIZE] : ""
         } ${option.className ?? ""}`}
         data-unimported={isUnimported ? "true" : undefined}
+        leading={option.icon}
         menuRole="option"
         trailing={
           isSelected ? <Check className={isUnimported ? "text-white/40" : "text-white"} /> : null
@@ -193,11 +196,14 @@ export const LxSelect = <T extends string>({
           onClick={() => setIsOpen((current) => !current)}
         >
           <span
-            className={`min-w-0 flex-1 truncate ${
+            className={`flex min-w-0 flex-1 items-center gap-1.5 ${
               isTriggerUnimported ? "text-white/40 font-normal" : ""
             }`}
           >
-            {selectedOption?.label ?? placeholder ?? value}
+            {selectedOption?.icon ? <span className="shrink-0">{selectedOption.icon}</span> : null}
+            <span className="min-w-0 flex-1 truncate">
+              {selectedOption?.label ?? placeholder ?? value}
+            </span>
           </span>
           <ChevronDown
             className={`ml-1.5 shrink-0 transition-transform ${SIZE_CHEVRON_CLASSES[size]} ${isOpen ? "rotate-180" : ""}`}

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import type { MarkdownTableSize, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { isMacOS } from "@/lib/platform"
@@ -14,6 +15,8 @@ interface MarkdownEditorToolbarProps {
   // 是否显示保存状态圆点；隐藏时同步过滤 Cmd/Ctrl+S 快捷键说明。
   showSaveStatus: boolean
   onInsertTable: (size: MarkdownTableSize) => void
+  // 插入菜单项文本（menu 型 action 使用）。
+  onInsertText?: (text: string, selectionOffset?: number) => void
 }
 
 const markdownShortcuts: { keys: string; descKey: TranslationKey }[] = [
@@ -46,6 +49,7 @@ export const MarkdownEditorToolbar = ({
   isSaved,
   showSaveStatus,
   onInsertTable,
+  onInsertText,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
@@ -152,21 +156,60 @@ export const MarkdownEditorToolbar = ({
     firstRightActionIndex === -1 ? actions : actions.slice(0, firstRightActionIndex)
   const rightActions = firstRightActionIndex === -1 ? [] : actions.slice(firstRightActionIndex)
 
+  /**
+   * 渲染工具项：普通项为图标按钮；带 menu 的项包裹弹层，点击菜单项插入对应文本。
+   */
+  const renderAction = (action: MarkdownToolbarAction, className = ""): React.JSX.Element => {
+    const { disabled, highlighted, icon: Icon, label, onClick, menu } = action
+    const button = (
+      <LxIconButton
+        key={label}
+        aria-label={label}
+        className={className}
+        disabled={disabled}
+        highlighted={highlighted}
+        size="small"
+        title={{ content: label }}
+        onClick={onClick}
+      >
+        <Icon />
+      </LxIconButton>
+    )
+    if (!menu || menu.length === 0) return button
+
+    return (
+      <LxTooltip
+        key={label}
+        closeOnContentClick
+        content={
+          <div className="flex w-56 flex-col gap-1" role="menu">
+            {menu.map((group) => (
+              <div key={group.label} className="flex flex-col gap-0.5">
+                <div className="px-1.5 pt-1 text-xs text-white/45">{group.label}</div>
+                {group.items.map((item) => (
+                  <LxMenuItem
+                    key={item.label}
+                    onClick={() => onInsertText?.(item.insertText, item.selectionOffset)}
+                  >
+                    {item.label}
+                  </LxMenuItem>
+                ))}
+              </div>
+            ))}
+          </div>
+        }
+        placement="bottom"
+        trigger="both"
+        contentClassName="!p-1.5"
+      >
+        {button}
+      </LxTooltip>
+    )
+  }
+
   return (
     <div className="flex h-9 flex-none items-center gap-0.5 overflow-x-auto border-b border-white/5 px-1.5">
-      {leftActions.map(({ disabled, highlighted, icon: Icon, label, onClick }) => (
-        <LxIconButton
-          key={label}
-          aria-label={label}
-          disabled={disabled}
-          highlighted={highlighted}
-          size="small"
-          title={{ content: label }}
-          onClick={onClick}
-        >
-          <Icon />
-        </LxIconButton>
-      ))}
+      {leftActions.map((action) => renderAction(action))}
       <LxTooltip
         closeOnContentClick
         content={tablePicker}
@@ -199,20 +242,7 @@ export const MarkdownEditorToolbar = ({
         </LxIconButton>
       </LxTooltip>
 
-      {rightActions.map(({ disabled, highlighted, icon: Icon, label, onClick }, index) => (
-        <LxIconButton
-          key={label}
-          aria-label={label}
-          className={index === 0 ? "ml-auto" : ""}
-          disabled={disabled}
-          highlighted={highlighted}
-          size="small"
-          title={{ content: label }}
-          onClick={onClick}
-        >
-          <Icon />
-        </LxIconButton>
-      ))}
+      {rightActions.map((action, index) => renderAction(action, index === 0 ? "ml-auto" : ""))}
 
       {showSaveStatus && (
         <LxTooltip content={isSaved ? t("common.saved") : t("common.unsaved")} placement="bottom">

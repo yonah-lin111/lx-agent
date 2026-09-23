@@ -52,6 +52,7 @@ export const LxMarkdownEditor = ({
   isSaved = true,
   showSaveStatus = false,
   showToolbar = true,
+  toolbarActions,
   height,
   autoHeight = false,
   showLineNumbers = false,
@@ -343,6 +344,7 @@ export const LxMarkdownEditor = ({
       label: t("common.redo"),
       onClick: () => editorViewRef.current && redo(editorViewRef.current),
     },
+    ...(toolbarActions ?? []),
   ]
 
   return (
@@ -358,6 +360,7 @@ export const LxMarkdownEditor = ({
           isSaved={isSaved}
           showSaveStatus={showSaveStatus}
           onInsertTable={(size) => insertText(createMarkdownTable(size))}
+          onInsertText={insertText}
         />
       )}
       <div className={`min-h-0 flex text-sm ${autoHeight ? "" : "flex-1"}`}>
