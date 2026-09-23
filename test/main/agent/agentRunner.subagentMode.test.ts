@@ -276,7 +276,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
       prompt.includes("You are now a sub-agent"),
     )
     expect(childPrompts.length).toBeGreaterThan(0)
-    expect(childPrompts[0]).toContain("# Collaboration Mode: Build")
+    expect(childPrompts[0]).toContain('<collaboration_mode name="build">')
     expect(childPrompts[0]).not.toContain("# Collaboration Mode: Plan Mode")
 
     expect(holder.gateModes).toContain("build")

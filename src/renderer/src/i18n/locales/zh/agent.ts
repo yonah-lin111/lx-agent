@@ -253,6 +253,7 @@ export const agent = {
   vendorPrompt: "厂商自适应提示词",
   noVendorPrompt: "未注入厂商专有提示词",
   systemPrompt: "系统提示词",
+  mcpGuidance: "MCP 策略指引",
   injectedInstructions: "注入指令规范",
   loadedSkills: "已加载技能",
   runtimeContext: "运行时环境",

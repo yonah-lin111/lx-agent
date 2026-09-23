@@ -159,7 +159,7 @@ describe("Model Switch and Initial Model Entries", () => {
     expect(parsedModel.model).toBe("gpt-4o")
     expect(parsedModel.family).toBe("gpt")
     expect(parsedModel.isInitial).toBe(true)
-    expect(parsedModel.instructions).toContain("Editing constraints")
+    expect(parsedModel.instructions).toContain("<editing_constraints>")
 
     // 验证事件流是否实时推送了初始模型的 model_switch 事件（无需刷新立即展示）
     const initialEvent = events.find((e) => e.type === "model_switch")
@@ -215,7 +215,8 @@ describe("Model Switch and Initial Model Entries", () => {
     expect(switchEvent.message.model).toBe("claude-3-5-sonnet-20241022")
     expect(switchEvent.message.family).toBe("claude")
     expect(switchEvent.message.isInitial).toBe(false)
-    expect(switchEvent.message.instructions).toContain("Anthropic Claude Architecture")
+    expect(switchEvent.message.instructions).toContain('<model_adaptation family="claude"')
+    expect(switchEvent.message.instructions).toContain("Anthropic Claude")
 
     // 检查 DB 中是否有新的 model_change entry
     const entries = agentSessionService.listEntries(sessionId)

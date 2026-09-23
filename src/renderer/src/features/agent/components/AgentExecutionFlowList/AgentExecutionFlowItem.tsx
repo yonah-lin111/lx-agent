@@ -609,7 +609,7 @@ export const AgentExecutionFlowItem = ({
 
           {/* 模型切换/初始模型详情 */}
           {step.modelSwitchContent && (
-            <FlowItemModelSwitchContent content={step.modelSwitchContent} previewRef={previewRef} />
+            <FlowItemModelSwitchContent content={step.modelSwitchContent} />
           )}
 
           {/* 协作模式切换详情 */}

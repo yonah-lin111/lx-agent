@@ -112,8 +112,11 @@ export interface SubagentDetails {
 export interface TaskToolDeps {
   // 子代理基座系统提示词（已按子代理协作模式渲染；子代理在其后追加子代理前缀）。
   subagentSystemPrompt: string
-  // 按角色技能白名单渲染子代理系统提示词（undefined = 不限制，继承父会话技能集）。
-  renderSubagentSystemPrompt?: (allowedSkills: string[] | undefined) => string
+  // 按角色白名单渲染子代理系统提示词（undefined = 不限制，继承父会话技能集与全部已连接 MCP）。
+  renderSubagentSystemPrompt?: (
+    allowedSkills: string[] | undefined,
+    allowedMcpServers?: string[],
+  ) => string
   // 父会话模型（子代理沿用）。
   model: Model
   // 父会话沙箱策略（继承至子代理）。

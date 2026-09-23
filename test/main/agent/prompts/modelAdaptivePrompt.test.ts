@@ -105,8 +105,8 @@ describe("ModelAdapters and Sandbox Policy Prompts", () => {
       sandboxPolicy: "workspace-write",
       cwd: "/test/project",
     })
-    expect(glmPrompt).toContain("Operational Guidelines (Zhipu GLM / CodeGeeX Architecture)")
-    expect(glmPrompt).toContain("Contextual Integrity")
+    expect(glmPrompt).toContain('<model_adaptation family="glm"')
+    expect(glmPrompt).toContain("<contextual_integrity>")
     expect(glmPrompt).toContain("<sandbox_policy>")
 
     // 测试 MiniMax 适配装配
@@ -115,8 +115,8 @@ describe("ModelAdapters and Sandbox Policy Prompts", () => {
       sandboxPolicy: "read-only",
       cwd: "/test/project",
     })
-    expect(minimaxPrompt).toContain("Operational Guidelines (MiniMax Architecture)")
-    expect(minimaxPrompt).toContain("Long-Context Grounding")
+    expect(minimaxPrompt).toContain('<model_adaptation family="minimax"')
+    expect(minimaxPrompt).toContain("<long_context_grounding>")
     expect(minimaxPrompt).toContain("Current policy: read-only")
 
     // 测试 MiMo 适配装配
@@ -125,8 +125,8 @@ describe("ModelAdapters and Sandbox Policy Prompts", () => {
       sandboxPolicy: "danger-full-access",
       cwd: "/test/project",
     })
-    expect(mimoPrompt).toContain("Operational Guidelines (Xiaomi MiMo Architecture)")
-    expect(mimoPrompt).toContain("Agentic Execution Loop")
+    expect(mimoPrompt).toContain('<model_adaptation family="mimo"')
+    expect(mimoPrompt).toContain("<agentic_execution_loop>")
     expect(mimoPrompt).toContain("Current policy: danger-full-access")
 
     // 测试未命中时的 Generic 兜底装配
@@ -135,7 +135,7 @@ describe("ModelAdapters and Sandbox Policy Prompts", () => {
       sandboxPolicy: "workspace-write",
       cwd: "/test/project",
     })
-    expect(fallbackPrompt).toContain("Execution Standards (Universal Agent Guidelines)")
-    expect(fallbackPrompt).toContain("Autonomous & Precise")
+    expect(fallbackPrompt).toContain('<model_adaptation family="generic"')
+    expect(fallbackPrompt).toContain("<autonomous_precise>")
   })
 })

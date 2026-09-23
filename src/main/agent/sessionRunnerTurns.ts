@@ -4,7 +4,7 @@ import { join } from "node:path"
 import type { AgentSendResult, ModelSwitchMessage, UserMessage } from "@shared/contracts/agent"
 import { agentSessionService } from "@/services/agentSessionService"
 import { getAppDataRoot } from "../paths"
-import { buildSystemPromptSync, resolveCwd } from "./assembly"
+import { buildSystemPromptSync, resolveConnectedMcpServers, resolveCwd } from "./assembly"
 import { TurnContext } from "./core/turnContext"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
@@ -103,6 +103,7 @@ export const runSessionTurn = async (
       collaborationMode: host.collaborationMode,
       contextUsage,
       activeSkills: host.activeSkills,
+      mcpServers: resolveConnectedMcpServers(),
       personality: host.personality,
       variables: turnContext.snapshot.variables,
     })

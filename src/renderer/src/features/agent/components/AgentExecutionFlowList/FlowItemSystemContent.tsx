@@ -1,4 +1,4 @@
-import { Layers, Sliders, Wrench } from "lucide-react"
+import { Layers, Plug, Sliders, Wrench } from "lucide-react"
 import type React from "react"
 import {
   BUILTIN_UNDERSCORE_TOOLS,
@@ -12,6 +12,9 @@ import { useTranslation } from "@/i18n"
 export interface FlowItemSystemContentProps {
   content: ExecutionSystemContent
 }
+
+/** MCP 策略指引分段的段名（main 侧 PROMPT_SECTION_NAMES.MCP_GUIDANCE）。 */
+export const MCP_GUIDANCE_SECTION_NAME = "agent:mcp-guidance"
 
 export type ToolSourceCategoryKey = "tool" | "mcp" | "skill" | "webSearch"
 
@@ -104,18 +107,21 @@ export const FlowItemSystemContent = ({
   const visibleSections = content.sections.filter(
     (sec) => !sec.name.toLowerCase().includes("model-adaptive"),
   )
+  // MCP 策略指引独立成折叠项，不再混入通用系统提示词分段列表
+  const mcpGuidanceSection = visibleSections.find((sec) => sec.name === MCP_GUIDANCE_SECTION_NAME)
+  const regularSections = visibleSections.filter((sec) => sec.name !== MCP_GUIDANCE_SECTION_NAME)
 
   return (
     <div className="agent-execution-flow-system-content flex flex-col gap-3 font-mono text-xs">
       {/* 分段概览 */}
-      {visibleSections.length > 0 && (
+      {regularSections.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1 text-indigo-300 font-semibold">
             <Layers className="h-3 w-3" />
             <span>{t("agent.systemPrompt")}</span>
           </div>
           <div className="flex flex-col gap-1">
-            {visibleSections.map((sec) => (
+            {regularSections.map((sec) => (
               <details
                 key={sec.name}
                 className="group rounded border border-white/5 bg-white/[0.02] p-2"
@@ -128,6 +134,26 @@ export const FlowItemSystemContent = ({
                 </div>
               </details>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* MCP 策略指引（System Prompt 下方独立分组，折叠项与其他分段同构，内容为完整 XML 原文） */}
+      {mcpGuidanceSection && (
+        <div className="agent-execution-flow-mcp-guidance flex flex-col gap-1.5">
+          <div className="flex items-center gap-1 text-teal-300 font-semibold">
+            <Plug className="h-3 w-3" />
+            <span>{t("agent.mcpGuidance")}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <details className="group rounded border border-white/5 bg-white/[0.02] p-2">
+              <summary className="cursor-pointer font-semibold text-white/80 select-none">
+                {mcpGuidanceSection.name}
+              </summary>
+              <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-xs leading-relaxed text-white/70">
+                {mcpGuidanceSection.text}
+              </div>
+            </details>
           </div>
         </div>
       )}
@@ -179,11 +205,15 @@ export const FlowItemSystemContent = ({
                     </div>
                     <div className="flex flex-col gap-1.5 pl-3">
                       {serverGroups.map(({ serverName, tools: serverTools }) => (
-                        <div key={serverName} className="flex flex-col gap-1">
-                          <div className="text-xs text-teal-300/70 font-mono">
-                            {serverName} ({serverTools.length})
-                          </div>
-                          <div className="flex flex-wrap gap-1 pl-2">
+                        <details
+                          key={serverName}
+                          className="agent-execution-flow-mcp-server group rounded border border-white/5 bg-white/[0.02] p-1.5"
+                        >
+                          <summary className="cursor-pointer font-mono text-xs text-teal-300/70 select-none">
+                            {serverName}{" "}
+                            <span className="text-white/30">({serverTools.length})</span>
+                          </summary>
+                          <div className="flex flex-wrap gap-1 pl-2 pt-1.5">
                             {serverTools.map((tool) => (
                               <span
                                 key={tool}
@@ -193,7 +223,7 @@ export const FlowItemSystemContent = ({
                               </span>
                             ))}
                           </div>
-                        </div>
+                        </details>
                       ))}
                     </div>
                   </div>

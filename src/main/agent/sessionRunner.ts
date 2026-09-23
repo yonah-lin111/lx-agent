@@ -36,7 +36,7 @@ import { continueChat, runSessionTurn } from "./sessionRunnerTurns"
 
 export type { SessionRunnerOptions } from "./sessionRunner.types"
 
-import { buildSystemPromptSync, resolveCwd } from "./assembly"
+import { buildSystemPromptSync, resolveConnectedMcpServers, resolveCwd } from "./assembly"
 import { ContextCompactor } from "./contextCompactor"
 import { Agent } from "./core/agent"
 import { TurnContext } from "./core/turnContext"
@@ -302,6 +302,7 @@ export class AgentSessionRunner {
         collaborationMode: this.collaborationMode,
         contextUsage,
         activeSkills: this.activeSkills,
+        mcpServers: resolveConnectedMcpServers(),
         personality: this.personality,
       })
     }

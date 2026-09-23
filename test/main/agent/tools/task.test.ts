@@ -746,10 +746,13 @@ describe("task 子代理角色", () => {
     expect(executeSpy).toHaveBeenCalledTimes(1)
   })
 
-  it("skills 白名单收窄子代理系统提示词：只注入允许技能，未配置时沿用父提示词", async () => {
+  it("skills/mcp 白名单收窄子代理系统提示词：只注入允许项，未配置时沿用父提示词", async () => {
     const pool = new SubagentPool()
-    const renderSubagentSystemPrompt = vi.fn((allowed: string[] | undefined) =>
-      allowed === undefined ? "base-prompt" : `base-prompt:${allowed.join(",")}`,
+    const renderSubagentSystemPrompt = vi.fn(
+      (allowed: string[] | undefined, allowedMcp?: string[]) => {
+        if (allowed === undefined && allowedMcp === undefined) return "base-prompt"
+        return `base-prompt:${allowed?.join(",") ?? "*"}|${allowedMcp?.join(",") ?? "*"}`
+      },
     )
     const tool = createTaskTool({
       subagentSystemPrompt: "base-prompt",
@@ -762,6 +765,7 @@ describe("task 子代理角色", () => {
       subagentSettings: {
         roles: {
           "one-skill": { description: "One skill", permissions: { skills: ["code-review"] } },
+          "mcp-only": { description: "MCP only", permissions: { mcp: ["codegraph"] } },
           "no-permissions": { description: "Inherit" },
         },
       },
@@ -774,8 +778,20 @@ describe("task 子代理角色", () => {
       agent_type: "one-skill",
     })
     const restrictedId = (restricted.details as { subagent: SubagentData }).subagent.subagentId!
-    expect(renderSubagentSystemPrompt).toHaveBeenCalledWith(["code-review"])
-    expect(pool.get(restrictedId)?.agent.state.systemPrompt).toContain("base-prompt:code-review")
+    expect(renderSubagentSystemPrompt).toHaveBeenCalledWith(["code-review"], undefined)
+    expect(pool.get(restrictedId)?.agent.state.systemPrompt).toContain("base-prompt:code-review|*")
+
+    renderSubagentSystemPrompt.mockClear()
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const mcpRestricted = await tool.execute("call-prompt-mcp", {
+      description: "MCP 收窄",
+      prompt: "p",
+      agent_type: "mcp-only",
+    })
+    const mcpRestrictedId = (mcpRestricted.details as { subagent: SubagentData }).subagent
+      .subagentId!
+    expect(renderSubagentSystemPrompt).toHaveBeenCalledWith(undefined, ["codegraph"])
+    expect(pool.get(mcpRestrictedId)?.agent.state.systemPrompt).toContain("base-prompt:*|codegraph")
 
     renderSubagentSystemPrompt.mockClear()
     holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))

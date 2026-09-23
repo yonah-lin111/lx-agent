@@ -13,6 +13,8 @@ import type {
 import { formatInstructions, loadInstructions } from "../instructionLoader"
 import { formatMemorySummaryPrompt, loadWorkspaceMemory } from "../memories/memoryManager"
 import { formatSkillsForPrompt, type LoadedSkill } from "../skills/skillLoader"
+import { DEFAULT_BEHAVIOR_PROMPT } from "./behaviorPrompt"
+import { formatMcpGuidancePrompt } from "./mcpGuidance"
 import {
   detectModelFamily,
   formatSandboxPolicyPrompt,
@@ -33,6 +35,7 @@ export const PROMPT_ORDERS = {
   PERSONA: 0,
   MODEL_ADAPTIVE: 50,
   SKILLS: 100,
+  MCP_GUIDANCE: 110,
   INSTRUCTIONS: 200,
   WORKSPACE_MEMORY: 250,
   RUNTIME_CONTEXT: 300,
@@ -52,6 +55,7 @@ export const PROMPT_SECTION_NAMES = {
   PERSONA: "deployment:persona",
   MODEL_ADAPTIVE: "harness:model-adaptive",
   SKILLS: "agent:skills",
+  MCP_GUIDANCE: "agent:mcp-guidance",
   INSTRUCTIONS: "agent:instructions",
   WORKSPACE_MEMORY: "agent:workspace-memory",
   RUNTIME_CONTEXT: "agent:runtime-context",
@@ -74,6 +78,8 @@ export interface AssembleContext {
   contextUsage?: AgentContextUsage | null
   workspaceMemory?: WorkspaceMemorySummary | null
   activeSkills?: LoadedSkill[]
+  /** 当前 agent 实际可用的代码检索 MCP server 名（已按连接状态与角色白名单过滤） */
+  mcpServers?: string[]
   personality?: PersonalityName
   variables?: Record<string, string | undefined>
   [key: string]: unknown
@@ -534,68 +540,6 @@ export class SystemPromptManager {
   }
 }
 
-/** 通用模型无关行为规范（行为层基线） */
-export const DEFAULT_BEHAVIOR_PROMPT = [
-  "# General Behavior Guidelines",
-  "",
-  "## Preamble & Intent Declaration",
-  "- Before calling tools with side effects or complex operations, emit a brief 1-2 sentence statement declaring what action you are about to take and why.",
-  "- Sequential related operations must be combined into one coherent statement; simple read-only lookups require no unnecessary preamble.",
-  "- Always build upon previously established context to maintain narrative continuity for the user.",
-  "",
-  "## Task Planning & Execution",
-  "- Skip planning for straightforward, single-step tasks.",
-  "- For multi-step tasks (>=2 non-trivial steps requiring tool invocations), proactively use the `todowrite` tool to establish and maintain a structured task list.",
-  "- Update task status in real time; mark items completed only after the required implementation AND verification are finished, never based on anticipation.",
-  "",
-  "## Ambition vs Surgical Precision",
-  "- For brand new greenfield tasks with no established codebase, be ambitious, robust, and creative.",
-  "- When operating in an existing codebase, act with surgical precision: respect existing conventions, naming patterns, directory layouts, and never perform gratuitous refactors unless explicitly directed.",
-  "",
-  "## Task Execution & File Mutations",
-  "- Address root causes directly rather than layering superficial workarounds.",
-  "- Avoid unneeded complexity; keep modifications minimal, elegant, and focused.",
-  "- Default to UTF-8/ASCII clean encoding when editing or creating files.",
-  "- For multi-file modifications, prefer `apply_patch` for atomic batch updates; single-point edits can use `edit` or `write` directly.",
-  "- Before modifying files in any subdirectory, check if an `AGENTS.md` specification exists in that subtree and strictly adhere to it.",
-  "- DO NOT ADD ANY COMMENTS unless explicitly requested.",
-  "",
-  "## Multi-Agent & Orchestrator Guidelines",
-  "- When a task decomposes into 3 or more independent units, fan them out in ONE `task` call using the `tasks` array; never split a fan-out across turns (no serial collapse).",
-  "- Shard per item, not per dimension: one item per file, component, or question keeps sub-agent contexts small and results uniform.",
-  "- Never batch sequential chains (step B needs step A's output) or tasks that require parent context decisions; run those yourself or as a single sub-agent.",
-  "- Batch items always spawn new sub-agents; use single-task mode with `subagent_id` to continue an existing sub-agent's context.",
-  "- Sub-agents return their final text; synthesize (map-reduce) their results yourself instead of duplicating the delegated work.",
-  "- Wait for sub-agents to complete before yielding; do not duplicate the work assigned to sub-agents.",
-  "- When initiating longer background operations, provide a concise heads-down notice explaining what is being executed.",
-  "",
-  "## Targeted Verification",
-  "- After code changes, execute precise, targeted verification on the affected scope (lint, typecheck, or single-file test); avoid wasteful full repository builds unless requested.",
-  "- If pre-existing unrelated failures are encountered, do not opportunistically patch them; record them objectively in your final summary.",
-  "",
-  "## Safety Boundaries & Git Worktree Discipline",
-  "- You may be working in a dirty git worktree. NEVER revert existing changes you did not author unless explicitly requested.",
-  "- Destructive Git commands (`git reset --hard`, `git checkout --`, `git clean -fd`) are strictly prohibited without unambiguous user confirmation.",
-  "- If unexpected foreign file modifications are detected, halt immediately and ask the user for guidance.",
-  "- Strictly prefer non-interactive shell commands over interactive prompts.",
-  "",
-  "## High-Signal Response Formatting",
-  "- Structure responses to match task complexity. Keep answers minimal and high-signal by default; state the key conclusion first, followed by necessary details.",
-  "- Avoid deeply nested bullet points; maintain flat lists.",
-  "- When proposing next actions, format them as numbered options (`1. 2. 3.`) so the user can reply with a single digit.",
-  "- Reference code locations strictly using the `file_path:line_number` syntax (e.g. `src/main/index.ts:42`).",
-  "",
-  "## Code Reviews & Quality Assurance",
-  "- When conducting a review, adopt a rigorous reviewer mindset. Prioritize: 1) Functional defects, 2) Security vulnerabilities, 3) Behavioral regressions, 4) Test coverage gaps.",
-  "- Present findings ordered by severity with exact `path:line` pointers, followed by explicit statements of residual risks.",
-  "",
-  "## Frontend Design Standards",
-  "- Avoid generic or bland layouts. Deliver distinct, intentional, responsive UI.",
-  "- Honor project CSS tokens and theme variables (e.g. `--color-theme-*`); never hardcode arbitrary hex colors.",
-  "- Ensure internationalization (`t` / `useTranslation`) is strictly applied to all UI text.",
-  "- When creating new UI components, pages, or refactoring user-facing visual layouts, proactively invoke the `wireframe` tool to design and review the ASCII layout before editing or creating frontend files. Skip `wireframe` for pure logic, types, store fixes, or non-visual changes.",
-].join("\n")
-
 /** 创建带有 LX Agent 标准默认分层的提示词管理器 */
 export function createDefaultSystemPromptManager(
   options: { defaultPersonality?: PersonalityName } = {},
@@ -607,7 +551,11 @@ export function createDefaultSystemPromptManager(
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.IDENTITY,
     order: PROMPT_ORDERS.IDENTITY,
-    text: "You are Yonah (also known as LX), an AI assistant that helps users work on local projects.",
+    text: [
+      "<identity>",
+      "  You are Yonah (also known as LX), an AI assistant that helps users work on local projects.",
+      "</identity>",
+    ].join("\n"),
   })
 
   // -50: 通用行为规范
@@ -849,8 +797,9 @@ export function createDefaultSystemPromptManager(
       }
 
       return [
-        "# Collaboration Mode: Build",
-        "You are in Build execution mode. Strive for action, surgical precision, and direct execution.",
+        '<collaboration_mode name="build">',
+        "  You are in Build execution mode. Strive for action, surgical precision, and direct execution.",
+        "</collaboration_mode>",
       ].join("\n")
     },
   })
@@ -860,15 +809,18 @@ export function createDefaultSystemPromptManager(
     name: PROMPT_SECTION_NAMES.PERSONA,
     order: PROMPT_ORDERS.PERSONA,
     text: (ctx) => {
-      const personality = getPersonalityPrompt(ctx.personality ?? defaultPersonality)
+      const personalityName = ctx.personality ?? defaultPersonality
+      const personality = getPersonalityPrompt(personalityName)
+      const persona = [`<persona name="${personalityName}">`, personality, "</persona>"].join("\n")
       const coreOps = [
-        "You may use tools to read, search, write, and edit files within the project directory, and execute commands in the project root.",
-        "Read a file to confirm its content before modifying it; state your intent before executing commands with side effects.",
-        "For long-running commands (e.g., starting a dev server, long builds, listener processes), use bash tool with background: true to run in the background rather than blocking synchronously.",
-        "After starting a background task, use job_output to read logs non-blockingly, job_list to check task status, and job_kill to terminate unneeded tasks. Do not restart the same background command before the task completes.",
-        "Think by default in English. Output in the user's language when they specify a language, or when rendering tool content and plan output.",
+        "<operating_principles>",
+        "  <tool_usage>You may use tools to read, search, write, and edit files within the project directory, and execute commands in the project root.</tool_usage>",
+        "  <modification_discipline>Read a file to confirm its content before modifying it; state your intent before executing commands with side effects.</modification_discipline>",
+        "  <background_tasks>For long-running commands (e.g., starting a dev server, long builds, listener processes), use bash tool with background: true to run in the background rather than blocking synchronously. After starting a background task, use job_output to read logs non-blockingly, job_list to check task status, and job_kill to terminate unneeded tasks. Do not restart the same background command before the task completes.</background_tasks>",
+        "  <language>Think by default in English. Output in the user's language when they specify a language, or when rendering tool content and plan output.</language>",
+        "</operating_principles>",
       ].join("\n")
-      return `${personality}\n\n${coreOps}`
+      return `${persona}\n\n${coreOps}`
     },
   })
 
@@ -891,6 +843,13 @@ export function createDefaultSystemPromptManager(
       if (!ctx.activeSkills || ctx.activeSkills.length === 0) return ""
       return formatSkillsForPrompt(ctx.activeSkills).trim()
     },
+  })
+
+  // 110: 代码检索 MCP 策略指引（仅注入已连接且被当前 agent 允许的 server）
+  manager.registerSection({
+    name: PROMPT_SECTION_NAMES.MCP_GUIDANCE,
+    order: PROMPT_ORDERS.MCP_GUIDANCE,
+    text: (ctx) => formatMcpGuidancePrompt(ctx.mcpServers ?? []),
   })
 
   // 200: 项目与用户指令文件（动态根据 context.cwd 加载，外部 AGENTS.md 原样注入）
