@@ -23,6 +23,7 @@ import {
   agentBlockPreviewExtensions,
   buildAgentBlockSource,
   extractAgentBlockBody,
+  getTemplateCursorOffset,
   injectCustomTemplateBlockIds,
   isInsideMarkdownTemplateBlock,
   normalizeAgentBlockBody,
@@ -466,10 +467,10 @@ export const CustomCommandSettings = (): React.JSX.Element => {
 
     const requiresTemplateBlock = (context: MarkdownToolbarSelectContext): boolean =>
       isInsideMarkdownTemplateBlock(context.textBeforeCursor)
-    // 骨架插入时生成唯一 id，并把光标落在块内空行。
+    // 骨架插入时生成唯一 id，并把光标统一落在「title: 」占位内。
     const buildSkeleton = (blockText: string) => (): { text: string; selectionOffset: number } => {
       const injected = injectCustomTemplateBlockIds(blockText)
-      return { text: injected, selectionOffset: injected.indexOf("\n\n") + 1 }
+      return { text: injected, selectionOffset: getTemplateCursorOffset(injected) }
     }
 
     const builtinGroup = t("settings.customCommandBlockGroupBuiltin")
@@ -735,6 +736,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                     initialContent={blockPreviewContent}
                     toolbarActions={toolbarActions}
                     extraExtensions={isBlocksView ? agentBlockPreviewExtensions : undefined}
+                    initialLogFolded={false}
                     onChange={handleEditorChange}
                   />
                 </div>

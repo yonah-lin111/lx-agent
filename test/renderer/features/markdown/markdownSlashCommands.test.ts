@@ -682,9 +682,13 @@ describe("Markdown 斜杠命令 CLI 标题识别", () => {
     })
   })
 
-  it("getTemplateCursorOffset 定位列表占位符与空标题冒号", () => {
+  it("getTemplateCursorOffset 优先定位「title: 」占位内，其次列表占位符", () => {
     expect(getTemplateCursorOffset("- 目标: \n- 约束: ")).toBe(6)
     expect(getTemplateCursorOffset("模板标题「title: 」\n- 内容")).toBe(12)
     expect(getTemplateCursorOffset("无占位符内容")).toBe(6)
+    // 标题占位符优先于列表占位符
+    expect(getTemplateCursorOffset("「title: 」\n- 目标: ")).toBe(8)
+    // 已有标题文本时落在标题末尾（」 之前）
+    expect(getTemplateCursorOffset("「title: 需求说明」")).toBe(12)
   })
 })

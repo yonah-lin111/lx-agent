@@ -17,6 +17,13 @@ import type { MarkdownSlashCommand } from "./types"
  * 计算模板插入内容在首个输入占位处的光标偏移量。
  */
 export const getTemplateCursorOffset = (content: string): number => {
+  // 标题占位符「title: 」优先：光标落在 」 之前（空标题即冒号空格后），便于直接输入标题。
+  const titleMatch = /「title:[^」\n]*」/.exec(content)
+  if (titleMatch?.index !== undefined) {
+    return titleMatch.index + titleMatch[0].length - 1
+  }
+
+  // 无标题占位符时兜底到首个列表项占位符（- xxx: ）之后。
   const lines = content.split("\n")
   let offset = 0
   for (const line of lines) {
@@ -24,11 +31,6 @@ export const getTemplateCursorOffset = (content: string): number => {
       return offset + line.length
     }
     offset += line.length + 1
-  }
-  // 如果没有列表项占位符，且包含空标题「title: 」，则将光标精准定位在标题冒号之后
-  const titleEmptyMatch = /「title:\s*」/.exec(content)
-  if (titleEmptyMatch && titleEmptyMatch.index !== undefined) {
-    return titleEmptyMatch.index + "「title: ".length
   }
 
   return content.length

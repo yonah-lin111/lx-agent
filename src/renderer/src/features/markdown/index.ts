@@ -8,6 +8,7 @@ export {
   stripMarkdownBlockNameSuffix,
   withMarkdownBlockNameSuffix,
 } from "@/features/markdown/commands/markdownBlockCommands"
+export { getTemplateCursorOffset } from "@/features/markdown/commands/markdownSlashCommands"
 export { agentBlockPreviewExtensions } from "@/features/markdown/extensions/markdownAgentBlockPreview"
 export { LxMarkdownEditor } from "@/features/markdown/LxMarkdownEditor"
 export { LxMarkdownPreview } from "@/features/markdown/LxMarkdownPreview"

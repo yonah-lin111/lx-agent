@@ -26,6 +26,7 @@ export const markdownMarkerHighlight = (
   getReferencedProjectNames?: () => Set<string>,
   toast?: MarkdownMarkerToast,
   t?: (key: string) => string,
+  initialLogFolded = true,
 ) => {
   const markerPlugin = ViewPlugin.fromClass(
     class {
@@ -40,7 +41,7 @@ export const markdownMarkerHighlight = (
       referencedNamesKey = ""
 
       constructor(view: EditorView) {
-        this.scanInitialLogs(view)
+        if (initialLogFolded) this.scanInitialLogs(view)
         this.decorations = buildMarkdownMarkerDecorations(
           view,
           this.foldedIndices,

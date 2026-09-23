@@ -97,4 +97,6 @@ export interface LxMarkdownEditorProps {
   autoHeight?: boolean
   showLineNumbers?: boolean
   showFolding?: boolean
+  // 初始化时是否将记录块（%%%）默认折叠；预览场景（如设置页模板块预览）传 false 保持内容可见。
+  initialLogFolded?: boolean
 }

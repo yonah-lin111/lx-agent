@@ -21,6 +21,7 @@ import {
   buildAgentBlockSource,
   normalizeAgentBlockBody,
 } from "@/features/markdown/commands/markdownBlockCommands"
+import { getTemplateCursorOffset } from "@/features/markdown/commands/markdownSlashCommands"
 import { parseMarkdownVariables } from "@/features/markdown/commands/markdownVariableCommands"
 import { MarkdownCommandPanels } from "@/features/markdown/components/MarkdownCommandPanels"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
@@ -158,7 +159,7 @@ export const LxMarkdownEditor = ({
           label: `/${cmd.name}`,
           description: cmd.description,
           content,
-          cursorOffset: content.length,
+          cursorOffset: getTemplateCursorOffset(content),
           scope: (cmd.blockType === "template" ? "both" : "template") as "template" | "both",
           kind: "customTemplate" as const,
           source: cmd.source,

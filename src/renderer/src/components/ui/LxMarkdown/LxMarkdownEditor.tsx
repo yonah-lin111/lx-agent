@@ -38,8 +38,9 @@ import {
   markdownFoldGutter,
   markdownHeadingFolding,
 } from "@/components/ui/LxMarkdown/extensions/markdownFolding"
-import { markdownMarkerHighlight } from "@/components/ui/LxMarkdown/extensions/markdownMarkerHighlight"
 import type { LxMarkdownEditorProps, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
+import { useLxToast } from "@/components/ui/LxToast"
+import { markdownMarkerHighlight } from "@/features/markdown/extensions/markerPlugin"
 import { useTranslation } from "@/i18n"
 
 /**
@@ -58,7 +59,15 @@ export const LxMarkdownEditor = ({
   autoHeight = false,
   showLineNumbers = false,
   showFolding = false,
+  initialLogFolded = true,
 }: LxMarkdownEditorProps): React.JSX.Element => {
+  // 模板块操作提示与文案：经 ref 读取，避免引用变化触发编辑器重建。
+  const { t } = useTranslation()
+  const toast = useLxToast()
+  const markerTRef = useRef(t)
+  markerTRef.current = t
+  const markerToastRef = useRef(toast)
+  markerToastRef.current = toast
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const editorViewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
@@ -245,7 +254,16 @@ export const LxMarkdownEditor = ({
               }),
             ]
           : []),
-        markdownMarkerHighlight(showFolding),
+        markdownMarkerHighlight(
+          showFolding,
+          undefined,
+          {
+            success: (msg) => markerToastRef.current.success(msg),
+            warning: (msg) => markerToastRef.current.warning(msg),
+          },
+          (key) => markerTRef.current(key as Parameters<typeof t>[0]),
+          initialLogFolded,
+        ),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
           ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]
@@ -350,9 +368,7 @@ export const LxMarkdownEditor = ({
       editorViewRef.current = null
       view.destroy()
     }
-  }, [showLineNumbers, showFolding])
-
-  const { t } = useTranslation()
+  }, [showLineNumbers, showFolding, initialLogFolded])
 
   const actions: MarkdownToolbarAction[] = [
     {
