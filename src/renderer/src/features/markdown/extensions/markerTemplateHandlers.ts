@@ -26,6 +26,8 @@ export interface MarkerBlockScanContext {
   line: string
   offset: number
   showFolding: boolean
+  // 允许独立子块（+++ / %%% 不在任务块内）参与高亮：设置页块模板预览场景专用。
+  allowStandaloneSubblocks: boolean
   addMarkerAlways: (from: number, to: number, className: string, atomic?: boolean) => void
 
   isInsideCodeFence: boolean

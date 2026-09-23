@@ -164,6 +164,10 @@ describe("LxMarkdownEditor 模板块斜杠命令", () => {
     const doc = view.state.doc.toString()
     expect(doc).toContain("## 需求")
     expect(doc).toMatch(/^&&& reviewBlock --end \{id:[0-9a-f]{32}\}$/m)
+    // 插入后光标落在「title: 」占位内（已有标题时落在标题文本末尾）。
+    expect(view.state.sliceDoc(0, view.state.selection.main.head)).toBe(
+      "&&& reviewBlock --start 「title: 需求评审",
+    )
   })
 })
 

@@ -60,6 +60,7 @@ export const LxMarkdownEditor = ({
   showLineNumbers = false,
   showFolding = false,
   initialLogFolded = true,
+  allowStandaloneSubblocks = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
   // 模板块操作提示与文案：经 ref 读取，避免引用变化触发编辑器重建。
   const { t } = useTranslation()
@@ -263,6 +264,7 @@ export const LxMarkdownEditor = ({
           },
           (key) => markerTRef.current(key as Parameters<typeof t>[0]),
           initialLogFolded,
+          allowStandaloneSubblocks,
         ),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
@@ -368,7 +370,7 @@ export const LxMarkdownEditor = ({
       editorViewRef.current = null
       view.destroy()
     }
-  }, [showLineNumbers, showFolding, initialLogFolded])
+  }, [showLineNumbers, showFolding, initialLogFolded, allowStandaloneSubblocks])
 
   const actions: MarkdownToolbarAction[] = [
     {

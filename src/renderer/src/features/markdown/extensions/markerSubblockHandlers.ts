@@ -19,7 +19,11 @@ import {
 // 处理临时块（+++ <名称> ... +++，仅限任务块内部）的标记与折叠交互。
 export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
   const suppleStart = parseMarkdownSuppleStartLine(ctx.line)
-  if (suppleStart && !ctx.isInsideSuppleBlock && ctx.isInsideTemplateBlock) {
+  if (
+    suppleStart &&
+    !ctx.isInsideSuppleBlock &&
+    (ctx.isInsideTemplateBlock || ctx.allowStandaloneSubblocks)
+  ) {
     const startLine = ctx.i
     const currentSuppleIndex = ctx.suppleBlockIndex++
     ctx.currentSuppleFolded = ctx.suppleFoldedIndices.has(currentSuppleIndex)
@@ -164,7 +168,7 @@ export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
 // 处理记录块（%%% <名称> ... %%%；兼容旧版 +++ log/logTemplate；仅限任务块内部）的标记与折叠交互。
 export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
   const logStart = parseMarkdownLogStartLine(ctx.line)
-  if (logStart && ctx.isInsideTemplateBlock) {
+  if (logStart && (ctx.isInsideTemplateBlock || ctx.allowStandaloneSubblocks)) {
     const startLine = ctx.i
     const currentLogIndex = ctx.logBlockIndex++
     ctx.currentLogFolded = ctx.logFoldedIndices.has(currentLogIndex)

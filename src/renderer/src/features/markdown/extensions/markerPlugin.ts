@@ -27,6 +27,7 @@ export const markdownMarkerHighlight = (
   toast?: MarkdownMarkerToast,
   t?: (key: string) => string,
   initialLogFolded = true,
+  allowStandaloneSubblocks = false,
 ) => {
   const markerPlugin = ViewPlugin.fromClass(
     class {
@@ -67,6 +68,7 @@ export const markdownMarkerHighlight = (
           (startLine, endLine) => this.cleanVarBlock(view, startLine, endLine),
           (startLine, endLine) => this.mergeVarBlock(view, startLine, endLine),
           (startLine, endLine) => this.moveVarBlockToTop(view, startLine, endLine),
+          allowStandaloneSubblocks,
         )
       }
 
@@ -134,6 +136,7 @@ export const markdownMarkerHighlight = (
           (startLine, endLine) => this.cleanVarBlock(update.view, startLine, endLine),
           (startLine, endLine) => this.mergeVarBlock(update.view, startLine, endLine),
           (startLine, endLine) => this.moveVarBlockToTop(update.view, startLine, endLine),
+          allowStandaloneSubblocks,
         )
       }
 

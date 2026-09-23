@@ -156,6 +156,43 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
       expect(plugin!.decorations.size).toBeGreaterThan(0)
     })
 
+    it("allowStandaloneSubblocks 控制独立 +++ / %%% 块高亮（设置页预览场景）", () => {
+      const readDecorationSize = (doc: string, allowStandaloneSubblocks: boolean): number => {
+        const extension = markdownMarkerHighlight(
+          true,
+          undefined,
+          undefined,
+          undefined,
+          true,
+          allowStandaloneSubblocks,
+        )
+        const pluginSpec = extension[0]!
+        const state = EditorState.create({
+          doc,
+          extensions: [markdown({ extensions: [GFM] }), extension],
+        })
+        const view = new EditorView({ state })
+        const size = view.plugin(pluginSpec)!.decorations.size
+        view.destroy()
+        return size
+      }
+
+      const suppleDoc = [
+        "+++ suppleTemplate --start 「title: 」",
+        "内容",
+        "+++ suppleTemplate --end",
+      ].join("\n")
+      const logDoc = ["%%% logTemplate --start 「title: 」", "记录", "%%% logTemplate --end"].join(
+        "\n",
+      )
+
+      // 默认不允许独立子块：任务块外的 +++ / %%% 不参与高亮
+      expect(readDecorationSize(suppleDoc, false)).toBeLessThan(readDecorationSize(suppleDoc, true))
+      expect(readDecorationSize(logDoc, false)).toBeLessThan(readDecorationSize(logDoc, true))
+      expect(readDecorationSize(suppleDoc, true)).toBeGreaterThan(0)
+      expect(readDecorationSize(logDoc, true)).toBeGreaterThan(0)
+    })
+
     it("支持折叠状态切换事务分发", () => {
       const doc = "```js\nconsole.log(1)\n```"
       const { view, plugin } = createTestView(doc)

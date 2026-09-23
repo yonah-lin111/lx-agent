@@ -737,6 +737,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                     toolbarActions={toolbarActions}
                     extraExtensions={isBlocksView ? agentBlockPreviewExtensions : undefined}
                     initialLogFolded={false}
+                    allowStandaloneSubblocks
                     onChange={handleEditorChange}
                   />
                 </div>

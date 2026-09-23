@@ -99,4 +99,6 @@ export interface LxMarkdownEditorProps {
   showFolding?: boolean
   // 初始化时是否将记录块（%%%）默认折叠；预览场景（如设置页模板块预览）传 false 保持内容可见。
   initialLogFolded?: boolean
+  // 是否允许独立子块（+++ / %%% 不在任务块内）参与高亮；设置页块模板预览场景传 true。
+  allowStandaloneSubblocks?: boolean
 }

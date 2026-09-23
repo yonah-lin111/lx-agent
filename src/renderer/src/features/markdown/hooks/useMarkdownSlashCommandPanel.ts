@@ -223,16 +223,19 @@ export const useMarkdownSlashCommandPanel = ({
       return
     }
 
-    // 自定义模板命令：补全内容中 &&& / +++ supple 结束行的块 id 后插入光标行，若包含占位符则默认选中首个占位符。
+    // 自定义模板命令：补全内容中 &&& / +++ supple 结束行的块 id 后插入光标行。
+    // 模板块命令（block:）统一使用 cursorOffset（标题占位优先）；普通 md 命令仍优先选中首个 [xxx] 占位。
     if (command.kind === "customTemplate") {
       const content = injectCustomTemplateBlockIds(command.content)
-      const placeholderRange = getTemplatePlaceholderSelectionRange(content)
+      const placeholderRange = command.id.startsWith("block:")
+        ? null
+        : getTemplatePlaceholderSelectionRange(content)
       const selection = placeholderRange
         ? {
             anchor: panel.line.from + placeholderRange.start,
             head: panel.line.from + placeholderRange.end,
           }
-        : { anchor: panel.line.from + content.length }
+        : { anchor: panel.line.from + command.cursorOffset }
 
       view.dispatch({
         changes: { from: panel.line.from, to: panel.line.to, insert: content },
