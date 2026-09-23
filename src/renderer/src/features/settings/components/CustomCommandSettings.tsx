@@ -12,13 +12,17 @@ import { LxMarkdownEditor } from "@/components/ui/LxMarkdown/LxMarkdownEditor"
 import type {
   MarkdownToolbarAction,
   MarkdownToolbarSelectContext,
+  MarkdownToolbarSelectOption,
 } from "@/components/ui/LxMarkdown/types"
 import { LxMenu } from "@/components/ui/LxMenu"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { useLxToast } from "@/components/ui/LxToast"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
-import { isInsideMarkdownTemplateBlock } from "@/features/markdown/commands/markdownBlockCommands"
+import {
+  injectCustomTemplateBlockIds,
+  isInsideMarkdownTemplateBlock,
+} from "@/features/markdown/commands/markdownBlockCommands"
 import { projectApi } from "@/features/project/api/projectApi"
 import { customCommandApi } from "@/features/settings/api/customCommandApi"
 import {
@@ -27,16 +31,26 @@ import {
   DEFAULT_CUSTOM_COMMAND_FORM,
 } from "@/features/settings/components/CommandMetaFields"
 import { CommandNav } from "@/features/settings/components/CommandNav"
-import { MarkdownBlockGuide } from "@/features/settings/components/MarkdownBlockGuide"
 import { useRegisterSettingsSection } from "@/features/settings/hooks/settingsDraftStore"
 import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 
-// 设置页视图：对话命令 / md 命令 / md 模板块说明。
+// 设置页视图：对话命令 / md 命令 / md 模板块。
 type CustomCommandView = CustomCommandType | "blocks"
 
 const draftStore: Record<string, CustomCommandFormState> = {}
 const modifiedStore: Record<string, CustomCommandFormState> = {}
+
+// 表单状态 ← 命令条目。
+const toFormState = (item: CustomCommandDetailItem): CustomCommandFormState => ({
+  name: item.name,
+  description: item.description,
+  content: item.content,
+  argumentHint: item.argumentHint || "",
+  mdScope: item.mdScope || "global",
+  blockType: item.blockType || "template",
+  title: item.title || "",
+})
 
 export const CustomCommandSettings = (): React.JSX.Element => {
   const { t } = useTranslation()
@@ -47,6 +61,8 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [commands, setCommands] = useState<CustomCommandDetailItem[]>([])
+  // 模板块库（user + project 全部），供编辑器工具栏"插入模板块"下拉使用。
+  const [blockCommands, setBlockCommands] = useState<CustomCommandDetailItem[]>([])
   const [selectedCommandName, setSelectedCommandName] = useState<string | null>(null)
   const [hasDraft, setHasDraft] = useState(false)
   const [isEditingDraft, setIsEditingDraft] = useState(false)
@@ -64,8 +80,8 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   const [isMetaExpanded, setIsMetaExpanded] = useState(false)
 
   const isBlocksView = activeView === "blocks"
-  // 命令视图下对应的命令类型（blocks 视图不加载命令，占位值不会被使用）。
-  const commandType: CustomCommandType = activeView === "blocks" ? "agentInput" : activeView
+  // 当前视图对应的命令类型：blocks 视图管理 agentBlock 类型的模板块条目。
+  const commandType: CustomCommandType = isBlocksView ? "agentBlock" : activeView
 
   // 1. 初始化拉取项目列表（仅包含有效 filesystem path 的项目）
   useEffect(() => {
@@ -108,10 +124,9 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     [commandType, selectedScope, effectiveProjectPath],
   )
 
-  // 2. 加载命令列表
+  // 2. 加载当前视图的命令 / 模板块列表
   const loadCommands = useCallback(
     async (targetSelectName?: string) => {
-      if (isBlocksView) return
       if (selectedScope === "project" && !effectiveProjectPath) {
         setCommands([])
         return
@@ -137,12 +152,20 @@ export const CustomCommandSettings = (): React.JSX.Element => {
         setIsLoading(false)
       }
     },
-    [commandType, isBlocksView, selectedScope, effectiveProjectPath, toast, t],
+    [commandType, selectedScope, effectiveProjectPath, toast, t],
   )
 
   useEffect(() => {
     void loadCommands()
   }, [loadCommands])
+
+  // 2.1 加载全部模板块（user + project）供编辑器工具栏下拉使用。
+  useEffect(() => {
+    customCommandApi
+      .list({ type: "agentBlock", projectPath: effectiveProjectPath })
+      .then(setBlockCommands)
+      .catch(() => {})
+  }, [effectiveProjectPath])
 
   // 3. 检查当前 context 下是否存在 draft
   useEffect(() => {
@@ -151,7 +174,6 @@ export const CustomCommandSettings = (): React.JSX.Element => {
 
   // 4. 当选择的命令变更时同步到表单
   useEffect(() => {
-    if (isBlocksView) return
     if (isEditingDraft) {
       setFormData(draftStore[draftKey] || DEFAULT_CUSTOM_COMMAND_FORM)
       return
@@ -159,18 +181,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     const current = commands.find((c) => c.name === selectedCommandName)
     if (current) {
       const modKey = getCommandKey(current.name)
-      const cachedModified = modifiedStore[modKey]
-      if (cachedModified) {
-        setFormData(cachedModified)
-      } else {
-        setFormData({
-          name: current.name,
-          description: current.description,
-          content: current.content,
-          argumentHint: current.argumentHint || "",
-          mdScope: current.mdScope || "global",
-        })
-      }
+      setFormData(modifiedStore[modKey] ?? toFormState(current))
     } else if (hasDraft && !selectedCommandName) {
       setIsEditingDraft(true)
       setFormData(draftStore[draftKey] || DEFAULT_CUSTOM_COMMAND_FORM)
@@ -178,35 +189,15 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       const first = commands[0]
       setSelectedCommandName(first.name)
       const modKey = getCommandKey(first.name)
-      const cachedModified = modifiedStore[modKey]
-      if (cachedModified) {
-        setFormData(cachedModified)
-      } else {
-        setFormData({
-          name: first.name,
-          description: first.description,
-          content: first.content,
-          argumentHint: first.argumentHint || "",
-          mdScope: first.mdScope || "global",
-        })
-      }
+      setFormData(modifiedStore[modKey] ?? toFormState(first))
     } else {
       setSelectedCommandName(null)
       setFormData(DEFAULT_CUSTOM_COMMAND_FORM)
     }
-  }, [
-    commands,
-    selectedCommandName,
-    isEditingDraft,
-    hasDraft,
-    draftKey,
-    getCommandKey,
-    isBlocksView,
-  ])
+  }, [commands, selectedCommandName, isEditingDraft, hasDraft, draftKey, getCommandKey])
 
   // 5. 脏数据判定 (Dirty State)
   const isDirty = useMemo(() => {
-    if (isBlocksView) return false
     if (isEditingDraft) {
       return (
         Boolean(formData.name.trim()) ||
@@ -222,10 +213,16 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       formData.name.trim() !== orig.name ||
       formData.description.trim() !== (orig.description || "") ||
       formData.content.trimEnd() !== (orig.content || "").trimEnd() ||
-      formData.argumentHint.trim() !== (orig.argumentHint || "") ||
-      (commandType === "agentMD" && (formData.mdScope || "global") !== (orig.mdScope || "global"))
+      (commandType === "agentInput" &&
+        formData.argumentHint.trim() !== (orig.argumentHint || "")) ||
+      (commandType === "agentMD" &&
+        (formData.argumentHint.trim() !== (orig.argumentHint || "") ||
+          (formData.mdScope || "global") !== (orig.mdScope || "global"))) ||
+      (commandType === "agentBlock" &&
+        ((formData.blockType || "template") !== (orig.blockType || "template") ||
+          formData.title.trim() !== (orig.title || "")))
     )
-  }, [isBlocksView, isEditingDraft, selectedCommandName, commands, formData, commandType])
+  }, [isEditingDraft, selectedCommandName, commands, formData, commandType])
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -259,13 +256,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       delete modifiedStore[getCommandKey(selectedCommandName)]
       const orig = commands.find((c) => c.name === selectedCommandName)
       if (orig) {
-        setFormData({
-          name: orig.name,
-          description: orig.description,
-          content: orig.content,
-          argumentHint: orig.argumentHint || "",
-          mdScope: orig.mdScope || "global",
-        })
+        setFormData(toFormState(orig))
       }
     }
   }, [isEditingDraft, draftKey, commands, selectedCommandName, getCommandKey])
@@ -279,7 +270,6 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   })
 
   handleSaveRef.current = async (): Promise<void> => {
-    if (isBlocksView) return
     const trimmedName = formData.name.trim()
     if (!trimmedName) {
       toast.error(t("settings.customCommandNameRequired"))
@@ -300,6 +290,8 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       content: formData.content.trimEnd(),
       argumentHint: formData.argumentHint.trim() ? formData.argumentHint.trim() : undefined,
       mdScope: commandType === "agentMD" ? formData.mdScope : undefined,
+      blockType: commandType === "agentBlock" ? formData.blockType : undefined,
+      title: commandType === "agentBlock" ? formData.title.trim() : undefined,
     })
 
     if (!result.ok) {
@@ -420,14 +412,60 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     void handleDelete(name)
   }
 
-  // 模板块插入下拉：选中即在光标处插入骨架；任务块全局可用，临时块 / 记录块仅限任务块内部。
+  // 编辑器工具栏插入下拉：内置骨架 + 我的模板块（按分组列出）；选中即在光标处插入，自动注入唯一 id。
   const toolbarActions = useMemo<MarkdownToolbarAction[]>(() => {
-    const bodyOffset = (text: string): number => text.indexOf("\n\n") + 1
+    const requiresTemplateBlock = (context: MarkdownToolbarSelectContext): boolean =>
+      isInsideMarkdownTemplateBlock(context.textBeforeCursor)
+    // 骨架插入时生成唯一 id，并把光标落在块内空行。
+    const buildSkeleton = (blockText: string) => (): { text: string; selectionOffset: number } => {
+      const injected = injectCustomTemplateBlockIds(blockText)
+      return { text: injected, selectionOffset: injected.indexOf("\n\n") + 1 }
+    }
+
+    const builtinGroup = t("settings.customCommandBlockGroupBuiltin")
+    const customGroup = t("settings.customCommandBlockGroupCustom")
     const templateBlock = "&&& xxxTemplate --start 「title: 」\n\n&&& xxxTemplate --end"
     const suppleBlock = "+++ xxxTemplate --start 「title: 」\n\n+++ xxxTemplate --end"
     const logBlock = "%%% xxxTemplate --start 「title: 」\n\n%%% xxxTemplate --end"
-    const requiresTemplateBlock = (context: MarkdownToolbarSelectContext): boolean =>
-      isInsideMarkdownTemplateBlock(context.textBeforeCursor)
+
+    const options: MarkdownToolbarSelectOption[] = [
+      {
+        group: builtinGroup,
+        label: t("settings.customCommandBlockTemplateName"),
+        insertText: buildSkeleton(templateBlock),
+      },
+    ]
+    // 临时块 / 记录块仅限任务块内部，故只在 md 命令视图提供。
+    if (commandType === "agentMD") {
+      options.push(
+        {
+          group: builtinGroup,
+          label: t("settings.customCommandBlockSuppleName"),
+          insertText: buildSkeleton(suppleBlock),
+          isAvailable: requiresTemplateBlock,
+        },
+        {
+          group: builtinGroup,
+          label: t("settings.customCommandBlockLogName"),
+          insertText: buildSkeleton(logBlock),
+          isAvailable: requiresTemplateBlock,
+        },
+      )
+    }
+
+    // 我的模板块：任务块全局可用，临时块 / 记录块仅限任务块内部。
+    for (const block of blockCommands) {
+      const marker =
+        block.blockType === "supple" ? "+++" : block.blockType === "log" ? "%%%" : "&&&"
+      const titlePart = block.title?.trim() ? ` 「title: ${block.title.trim()}」` : ""
+      const blockText = `${marker} ${block.name} --start${titlePart}\n${block.content}\n${marker} ${block.name} --end`
+      options.push({
+        group: customGroup,
+        label: block.name,
+        insertText: buildSkeleton(blockText),
+        isAvailable: block.blockType === "template" ? undefined : requiresTemplateBlock,
+      })
+    }
 
     return [
       {
@@ -436,33 +474,11 @@ export const CustomCommandSettings = (): React.JSX.Element => {
         alignRight: true,
         select: {
           placeholder: t("settings.customCommandInsertBlock"),
-          options: [
-            {
-              label: t("settings.customCommandBlockTemplateName"),
-              insertText: templateBlock,
-              selectionOffset: bodyOffset(templateBlock),
-            },
-            ...(commandType === "agentMD"
-              ? [
-                  {
-                    label: t("settings.customCommandBlockSuppleName"),
-                    insertText: suppleBlock,
-                    selectionOffset: bodyOffset(suppleBlock),
-                    isAvailable: requiresTemplateBlock,
-                  },
-                  {
-                    label: t("settings.customCommandBlockLogName"),
-                    insertText: logBlock,
-                    selectionOffset: bodyOffset(logBlock),
-                    isAvailable: requiresTemplateBlock,
-                  },
-                ]
-              : []),
-          ],
+          options,
         },
       },
     ]
-  }, [t, commandType])
+  }, [t, commandType, blockCommands])
 
   const agentInputInfoDoc = `### ${t("settings.customCommandAgentInputHelpTitle")}
 ${t("settings.customCommandAgentInputHelpDesc")}
@@ -487,6 +503,12 @@ ${t("settings.customCommandAgentMDHelpDesc")}
 - \`%%%\`: ${t("settings.customCommandMDLogBlockDesc")}
 `
 
+  const viewInfoDoc = isBlocksView
+    ? t("settings.customBlocksDoc")
+    : commandType === "agentInput"
+      ? agentInputInfoDoc
+      : agentMDInfoDoc
+
   return (
     <div className="@container flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
       {/* 顶部视图切换、说明与作用域选择栏 */}
@@ -503,163 +525,169 @@ ${t("settings.customCommandAgentMDHelpDesc")}
               onChange={(value) => handleViewChange(value)}
             />
           </div>
-          {!isBlocksView && (
-            <LxInfoTooltip
-              markdown={commandType === "agentInput" ? agentInputInfoDoc : agentMDInfoDoc}
-              placement="bottom"
-            />
-          )}
+          <LxInfoTooltip markdown={viewInfoDoc} placement="bottom" />
         </div>
 
-        {!isBlocksView && (
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {selectedScope === "project" && (
-              <div className="w-[180px] max-w-full">
-                <LxSelect
-                  value={selectedProjectId}
-                  options={projects.map((p) => ({
-                    value: p.id,
-                    label: p.name,
-                    isImported: p.isImported !== false,
-                  }))}
-                  placeholder={t("settings.customCommandSelectProject")}
-                  onChange={(value) => {
-                    setSelectedProjectId(value)
-                    setSelectedCommandName(null)
-                    setIsEditingDraft(false)
-                  }}
-                />
-              </div>
-            )}
-
-            <div className="w-[150px] max-w-full">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {selectedScope === "project" && (
+            <div className="w-[180px] max-w-full">
               <LxSelect
-                value={selectedScope}
-                options={[
-                  {
-                    value: "user",
-                    label: t("settings.customCommandGlobalScope"),
-                    icon: <Globe className="h-3.5 w-3.5 text-sky-400" />,
-                  },
-                  {
-                    value: "project",
-                    label: t("settings.customCommandProjectScope"),
-                    icon: <Folder className="h-3.5 w-3.5 text-amber-400" />,
-                  },
-                ]}
-                onChange={(value) => handleScopeChange(value)}
+                value={selectedProjectId}
+                options={projects.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                  isImported: p.isImported !== false,
+                }))}
+                placeholder={t("settings.customCommandSelectProject")}
+                onChange={(value) => {
+                  setSelectedProjectId(value)
+                  setSelectedCommandName(null)
+                  setIsEditingDraft(false)
+                }}
               />
             </div>
+          )}
+
+          <div className="w-[150px] max-w-full">
+            <LxSelect
+              value={selectedScope}
+              options={[
+                {
+                  value: "user",
+                  label: t("settings.customCommandGlobalScope"),
+                  icon: <Globe className="h-3.5 w-3.5 text-sky-400" />,
+                },
+                {
+                  value: "project",
+                  label: t("settings.customCommandProjectScope"),
+                  icon: <Folder className="h-3.5 w-3.5 text-amber-400" />,
+                },
+              ]}
+              onChange={(value) => handleScopeChange(value)}
+            />
           </div>
-        )}
+        </div>
       </div>
 
-      {isBlocksView ? (
-        <MarkdownBlockGuide />
-      ) : (
-        /* 主体两栏布局：左侧命令列表，右侧编辑面板 */
-        <div className="custom-scrollbar grid min-h-0 flex-1 gap-3 overflow-y-auto @[560px]:overflow-hidden @[560px]:grid-cols-[220px_minmax(0,1fr)]">
-          <CommandNav
-            commands={commands}
-            selectedCommandName={selectedCommandName}
-            isEditingDraft={isEditingDraft}
-            hasDraft={hasDraft}
-            draftName={formData.name}
-            isLoading={isLoading}
-            isCommandModified={(name) => Boolean(modifiedStore[getCommandKey(name)])}
-            onSelectCommand={(name) => {
-              setIsEditingDraft(false)
-              setSelectedCommandName(name)
-            }}
-            onSelectDraft={() => {
-              setIsEditingDraft(true)
-              setSelectedCommandName(null)
-            }}
-            onDeleteDraft={handleDeleteDraft}
-            onStartCreate={handleStartCreate}
-            onOpenContextMenu={(commandName, x, y, anchor) =>
-              setMenuState({ commandName, x, y, anchor })
-            }
-          />
+      {/* 主体两栏布局：左侧列表，右侧编辑面板 */}
+      <div className="custom-scrollbar grid min-h-0 flex-1 gap-3 overflow-y-auto @[560px]:overflow-hidden @[560px]:grid-cols-[220px_minmax(0,1fr)]">
+        <CommandNav
+          commands={commands}
+          selectedCommandName={selectedCommandName}
+          isEditingDraft={isEditingDraft}
+          hasDraft={hasDraft}
+          draftName={formData.name}
+          isLoading={isLoading}
+          listLabel={
+            isBlocksView ? t("settings.customBlocksList") : t("settings.customCommandsList")
+          }
+          emptyLabel={
+            isBlocksView ? t("settings.customBlocksEmpty") : t("settings.customCommandsEmpty")
+          }
+          addLabel={isBlocksView ? t("settings.addCustomBlock") : t("settings.addCustomCommand")}
+          isCommandModified={(name) => Boolean(modifiedStore[getCommandKey(name)])}
+          onSelectCommand={(name) => {
+            setIsEditingDraft(false)
+            setSelectedCommandName(name)
+          }}
+          onSelectDraft={() => {
+            setIsEditingDraft(true)
+            setSelectedCommandName(null)
+          }}
+          onDeleteDraft={handleDeleteDraft}
+          onStartCreate={handleStartCreate}
+          onOpenContextMenu={(commandName, x, y, anchor) =>
+            setMenuState({ commandName, x, y, anchor })
+          }
+        />
 
-          {/* 右侧表单编辑区 */}
-          <div className="settings-item-card flex min-h-0 flex-1 flex-col rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
-            {!selectedCommandName && !isEditingDraft && commands.length === 0 && !hasDraft ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-white/40">
-                <p>{t("settings.customCommandsEmptyTip")}</p>
-                <LxIconButton
-                  iconOnly={false}
-                  onClick={handleStartCreate}
-                  textClass="text-white"
-                  hoverBgClass="hover:bg-white/15"
-                  className="rounded-[6px] bg-white/10 cursor-pointer"
-                  icon={<Plus />}
-                >
-                  {t("settings.addCustomCommand")}
-                </LxIconButton>
-              </div>
-            ) : (
-              <div className="flex min-h-0 flex-1 flex-col gap-3">
-                <div className="flex items-center justify-between border-b border-white/8 pb-2">
-                  <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-white">
-                    <span className="truncate">
-                      {isEditingDraft
-                        ? t("settings.createCustomCommandTitle")
+        {/* 右侧表单编辑区 */}
+        <div className="settings-item-card flex min-h-0 flex-1 flex-col rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
+          {!selectedCommandName && !isEditingDraft && commands.length === 0 && !hasDraft ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-white/40">
+              <p>
+                {isBlocksView
+                  ? t("settings.customBlocksEmptyTip")
+                  : t("settings.customCommandsEmptyTip")}
+              </p>
+              <LxIconButton
+                iconOnly={false}
+                onClick={handleStartCreate}
+                textClass="text-white"
+                hoverBgClass="hover:bg-white/15"
+                className="rounded-[6px] bg-white/10 cursor-pointer"
+                icon={<Plus />}
+              >
+                {isBlocksView ? t("settings.addCustomBlock") : t("settings.addCustomCommand")}
+              </LxIconButton>
+            </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
+              <div className="flex items-center justify-between border-b border-white/8 pb-2">
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-medium text-white">
+                  <span className="truncate">
+                    {isEditingDraft
+                      ? isBlocksView
+                        ? t("settings.createCustomBlockTitle")
+                        : t("settings.createCustomCommandTitle")
+                      : isBlocksView
+                        ? t("settings.editCustomBlockTitle", { name: selectedCommandName ?? "" })
                         : t("settings.editCustomCommandTitle", {
                             name: selectedCommandName ?? "",
                           })}
-                    </span>
-                    {isDirty && (
-                      <span
-                        aria-label="Unsaved"
-                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
-                      />
-                    )}
-                  </h3>
-                  <LxIconButton
-                    aria-label={t("settings.customCommandMetaExpand")}
-                    title={{
-                      content: isMetaExpanded
-                        ? t("settings.customCommandMetaCollapse")
-                        : t("settings.customCommandMetaExpand"),
-                      placement: "bottom",
-                    }}
-                    highlighted={isMetaExpanded}
-                    onClick={() => setIsMetaExpanded((prev) => !prev)}
-                  >
-                    <SlidersHorizontal />
-                  </LxIconButton>
-                </div>
-
-                {/* 字段输入区：默认折叠，由头部按钮展开 */}
-                {isMetaExpanded && (
-                  <CommandMetaFields
-                    activeTab={commandType}
-                    formData={formData}
-                    onChange={handleFormChange}
-                  />
-                )}
-
-                {/* 内容编辑区：Markdown 编辑器撑满剩余高度 */}
-                <div className="flex min-h-0 flex-1 flex-col gap-1">
-                  <span className="flex items-center gap-1 text-xs text-white/60">
-                    {t("settings.customCommandContent")}
-                    <span className="text-rose-400">*</span>
                   </span>
-                  <div className="flex min-h-[240px] flex-1 flex-col @[560px]:min-h-0">
-                    <LxMarkdownEditor
-                      key={editorKey}
-                      initialContent={formData.content}
-                      toolbarActions={toolbarActions}
-                      onChange={(content) => handleFormChange((prev) => ({ ...prev, content }))}
+                  {isDirty && (
+                    <span
+                      aria-label="Unsaved"
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
                     />
-                  </div>
+                  )}
+                </h3>
+                <LxIconButton
+                  aria-label={t("settings.customCommandMetaExpand")}
+                  title={{
+                    content: isMetaExpanded
+                      ? t("settings.customCommandMetaCollapse")
+                      : t("settings.customCommandMetaExpand"),
+                    placement: "bottom",
+                  }}
+                  highlighted={isMetaExpanded}
+                  onClick={() => setIsMetaExpanded((prev) => !prev)}
+                >
+                  <SlidersHorizontal />
+                </LxIconButton>
+              </div>
+
+              {/* 字段输入区：默认折叠，由头部按钮展开 */}
+              {isMetaExpanded && (
+                <CommandMetaFields
+                  activeTab={commandType}
+                  formData={formData}
+                  onChange={handleFormChange}
+                />
+              )}
+
+              {/* 内容编辑区：Markdown 编辑器撑满剩余高度 */}
+              <div className="flex min-h-0 flex-1 flex-col gap-1">
+                <span className="flex items-center gap-1 text-xs text-white/60">
+                  {isBlocksView
+                    ? t("settings.customCommandBlockContent")
+                    : t("settings.customCommandContent")}
+                  <span className="text-rose-400">*</span>
+                </span>
+                <div className="flex min-h-[240px] flex-1 flex-col @[560px]:min-h-0">
+                  <LxMarkdownEditor
+                    key={editorKey}
+                    initialContent={formData.content}
+                    toolbarActions={toolbarActions}
+                    onChange={(content) => handleFormChange((prev) => ({ ...prev, content }))}
+                  />
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <LxMenu
         ariaLabel={t("settings.customCommandMenu", { name: menuState?.commandName ?? "" })}

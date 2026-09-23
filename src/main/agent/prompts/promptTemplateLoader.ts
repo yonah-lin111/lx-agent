@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { basename, join, resolve } from "node:path"
 import type { PromptTemplateItem } from "@shared/contracts/agent"
+import type { CustomCommandBlockType } from "@shared/contracts/customCommand"
 import type { MarkdownCommandScope, MarkdownTemplateCommandItem } from "@shared/contracts/markdown"
 import matter from "gray-matter"
 import { getAppDataRoot } from "@/paths"
@@ -22,6 +23,17 @@ export interface LoadedMarkdownTemplateCommand {
   argumentHint?: string
   content: string
   scope: MarkdownCommandScope
+  source: "project" | "user"
+  filePath: string
+}
+
+// 已加载的模板块对象（agentBlock）。
+export interface LoadedMarkdownBlock {
+  name: string
+  description: string
+  blockType: CustomCommandBlockType
+  title?: string
+  content: string
   source: "project" | "user"
   filePath: string
 }
@@ -268,6 +280,43 @@ export function loadTemplateFromFile(
       name,
       description,
       argumentHint,
+      content: body.replace(/^\r?\n+/, "").trimEnd(),
+      source,
+      filePath,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 从单个 .md 文件加载并解析模板块（agentBlock）：frontmatter 携带 block 类型与 title，正文为块内容。
+ */
+export function loadBlockFromFile(
+  filePath: string,
+  source: "project" | "user",
+): LoadedMarkdownBlock | null {
+  try {
+    const fileContent = readFileSync(filePath, "utf8")
+    const { frontmatter, content: body } = parseFrontmatterSafely(fileContent)
+
+    const name = basename(filePath, ".md").trim()
+    if (!name || RESERVED_COMMANDS.has(name) || name.startsWith("skill:")) {
+      return null
+    }
+
+    const rawBlock = String(frontmatter.block ?? "").trim()
+    const blockType: CustomCommandBlockType =
+      rawBlock === "supple" || rawBlock === "log" ? rawBlock : "template"
+    const title = typeof frontmatter.title === "string" ? frontmatter.title.trim() : ""
+    const description =
+      typeof frontmatter.description === "string" ? frontmatter.description.trim() : ""
+
+    return {
+      name,
+      description,
+      blockType,
+      title: title || undefined,
       content: body.replace(/^\r?\n+/, "").trimEnd(),
       source,
       filePath,

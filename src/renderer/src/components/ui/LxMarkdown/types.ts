@@ -37,7 +37,10 @@ export interface MarkdownToolbarSelectContext {
 // 编辑器工具栏 select 型选项：选中后在光标处插入指定文本。
 export interface MarkdownToolbarSelectOption {
   label: string
-  insertText: string
+  // 选项分组标签（同组选项在下拉中聚合展示）。
+  group?: string
+  // 插入内容：静态文本，或每次插入时动态生成（如需要生成唯一 id）。
+  insertText: string | (() => { text: string; selectionOffset?: number })
   selectionOffset?: number
   // 选项可用性判断（如临时块 / 记录块仅限任务块内部）；缺省恒可用。
   isAvailable?: (context: MarkdownToolbarSelectContext) => boolean

@@ -12,6 +12,10 @@ interface CommandNavProps {
   hasDraft: boolean
   draftName: string
   isLoading: boolean
+  // 列表无障碍标签、空态文案与底部新建入口文案（命令 / 模板块两种场景）。
+  listLabel: string
+  emptyLabel: string
+  addLabel: string
   isCommandModified: (name: string) => boolean
   onSelectCommand: (name: string) => void
   onSelectDraft: () => void
@@ -30,6 +34,9 @@ export const CommandNav = ({
   hasDraft,
   draftName,
   isLoading,
+  listLabel,
+  emptyLabel,
+  addLabel,
   isCommandModified,
   onSelectCommand,
   onSelectDraft,
@@ -41,17 +48,12 @@ export const CommandNav = ({
   const isEmpty = commands.length === 0 && !hasDraft
 
   return (
-    <nav
-      className="flex min-h-0 flex-col border-r border-white/8 pr-2"
-      aria-label={t("settings.customCommandsList")}
-    >
+    <nav className="flex min-h-0 flex-col border-r border-white/8 pr-2" aria-label={listLabel}>
       <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {isLoading ? (
           <div className="py-4 text-center text-xs text-white/40">{t("common.loading")}</div>
         ) : isEmpty ? (
-          <div className="py-6 text-center text-xs text-white/40">
-            {t("settings.customCommandsEmpty")}
-          </div>
+          <div className="py-6 text-center text-xs text-white/40">{emptyLabel}</div>
         ) : (
           <>
             {/* 草稿项：只要 hasDraft 存在就常驻列表，不随查看其它命令而消失 */}
@@ -126,13 +128,11 @@ export const CommandNav = ({
         <LxNavItem
           level={2}
           className="w-full text-white/70"
-          aria-label={t("settings.addCustomCommand")}
+          aria-label={addLabel}
           onClick={onStartCreate}
           prefix={<Plus className="h-3.5 w-3.5 shrink-0 text-white/45" />}
         >
-          <span className="min-w-0 flex-1 truncate select-none">
-            {t("settings.addCustomCommand")}
-          </span>
+          <span className="min-w-0 flex-1 truncate select-none">{addLabel}</span>
         </LxNavItem>
       </div>
     </nav>

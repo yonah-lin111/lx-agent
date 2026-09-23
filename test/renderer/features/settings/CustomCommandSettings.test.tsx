@@ -73,6 +73,29 @@ const mdCommands = (): CustomCommandDetailItem[] => [
   },
 ]
 
+const blockCommands = (): CustomCommandDetailItem[] => [
+  {
+    name: "reviewBlock",
+    type: "agentBlock",
+    scope: "user",
+    filePath: "/tmp/reviewBlock.md",
+    description: "需求评审",
+    content: "## 需求\n- ",
+    blockType: "template",
+    title: "需求评审",
+  },
+  {
+    name: "addonBlock",
+    type: "agentBlock",
+    scope: "user",
+    filePath: "/tmp/addonBlock.md",
+    description: "补充需求",
+    content: "## 补充\n- ",
+    blockType: "supple",
+    title: "补充需求",
+  },
+]
+
 const renderComponent = (): ReturnType<typeof render> =>
   render(
     <I18nProvider>
@@ -84,9 +107,11 @@ beforeEach(() => {
   cleanup()
   vi.clearAllMocks()
   useSettingsDraftStore.getState().setActiveSection("custom-commands")
-  listCommands.mockImplementation(async (input) =>
-    input?.type === "agentMD" ? mdCommands() : loadedCommands(),
-  )
+  listCommands.mockImplementation(async (input) => {
+    if (input?.type === "agentMD") return mdCommands()
+    if (input?.type === "agentBlock") return blockCommands()
+    return loadedCommands()
+  })
   saveCommand.mockImplementation(async (input: SaveCustomCommandInput) => ({
     ok: true,
     item: {
@@ -215,7 +240,7 @@ describe("CustomCommandSettings 命令行", () => {
     expect(screen.getByText("Record Block")).toBeTruthy()
   })
 
-  it("md 模板块视图展示固定三项块列表与说明，且不加载命令列表", async () => {
+  it("md 模板块视图：列表展示模板块并可新建保存为 agentBlock 条目", async () => {
     renderComponent()
     await screen.findByText("alpha")
 
@@ -223,16 +248,39 @@ describe("CustomCommandSettings 命令行", () => {
     fireEvent.click(screen.getByText("Chat Commands"))
     fireEvent.mouseDown(await screen.findByText("MD Blocks"))
 
-    // 左侧固定三项块类型（列表项与右侧标题同名，存在多处）。
-    expect((await screen.findAllByText("Task Block")).length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Temporary Block").length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Record Block").length).toBeGreaterThan(0)
-    // 右侧说明与示例。
-    expect(screen.getByText("Available globally")).toBeTruthy()
-    expect(screen.getByText(/xxxTemplate --start/)).toBeTruthy()
-    // 命令列表、新建入口与作用域选择不再展示。
-    expect(screen.queryByText("New Command")).toBeNull()
-    expect(screen.queryByText("Global")).toBeNull()
+    // 列表展示已有模板块，底部为新建入口。
+    await screen.findByText("reviewBlock")
+    fireEvent.click(screen.getByText("New Block"))
+
+    // 草稿表单自动展开，填写名称后保存。
+    const nameInput = await screen.findByPlaceholderText("e.g. reviewCode")
+    fireEvent.change(nameInput, { target: { value: "myAddon" } })
+
+    await useSettingsDraftStore.getState().save()
+
+    expect(saveCommand).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "agentBlock", name: "myAddon", blockType: "template" }),
+    )
+  })
+
+  it("md 模板块视图：已有模板块按自定义分组插入编辑器，子块类型仅在任务块内可用", async () => {
+    renderComponent()
+    await screen.findByText("alpha")
+    await screen.findByText("Edit Command /alpha")
+
+    const cm = document.querySelector(".cm-content") as HTMLElement
+    const view = EditorView.findFromDOM(cm)!
+
+    // 对话命令视图：仅任务块类型模板块可选，临时块类型不出现。
+    fireEvent.click(screen.getByText("Insert Block"))
+    await screen.findByText("My Blocks")
+    expect(screen.getByText("reviewBlock")).toBeTruthy()
+    expect(screen.queryByText("addonBlock")).toBeNull()
+    fireEvent.mouseDown(screen.getByText("reviewBlock"))
+
+    await waitFor(() => {
+      expect(view.state.doc.toString()).toContain("&&& reviewBlock --start 「title: 需求评审」")
+    })
   })
 
   it("agentMD 命令使用 Markdown 编辑器，编辑内容后保存为最新模板内容", async () => {

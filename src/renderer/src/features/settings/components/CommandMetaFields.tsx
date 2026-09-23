@@ -1,4 +1,4 @@
-import type { CustomCommandType } from "@shared/contracts/customCommand"
+import type { CustomCommandBlockType, CustomCommandType } from "@shared/contracts/customCommand"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect } from "@/components/ui/LxSelect"
@@ -11,6 +11,8 @@ export interface CustomCommandFormState {
   content: string
   argumentHint: string
   mdScope: "global" | "template"
+  blockType: CustomCommandBlockType
+  title: string
 }
 
 export const DEFAULT_CUSTOM_COMMAND_FORM: CustomCommandFormState = {
@@ -19,6 +21,8 @@ export const DEFAULT_CUSTOM_COMMAND_FORM: CustomCommandFormState = {
   content: "",
   argumentHint: "",
   mdScope: "global",
+  blockType: "template",
+  title: "",
 }
 
 interface CommandMetaFieldsProps {
@@ -61,7 +65,36 @@ export const CommandMetaFields = ({
         />
       </label>
 
-      {activeTab === "agentInput" ? (
+      {activeTab === "agentBlock" ? (
+        <>
+          <label className="grid gap-1 text-xs text-white/60">
+            <span>{t("settings.customCommandBlockType")}</span>
+            <LxSelect
+              value={formData.blockType}
+              options={[
+                { value: "template", label: t("settings.customCommandBlockTemplateName") },
+                { value: "supple", label: t("settings.customCommandBlockSuppleName") },
+                { value: "log", label: t("settings.customCommandBlockLogName") },
+              ]}
+              onChange={(value) =>
+                onChange((prev) => ({
+                  ...prev,
+                  blockType: value as CustomCommandBlockType,
+                }))
+              }
+            />
+          </label>
+
+          <label className="grid gap-1 text-xs text-white/60">
+            <span>{t("settings.customCommandBlockTitle")}</span>
+            <LxInput
+              placeholder="e.g. 需求说明"
+              value={formData.title}
+              onChange={(event) => onChange((prev) => ({ ...prev, title: event.target.value }))}
+            />
+          </label>
+        </>
+      ) : activeTab === "agentInput" ? (
         <label className="grid gap-1 text-xs text-white/60 @[500px]:col-span-2">
           <span className="flex items-center gap-1">
             {t("settings.customCommandArgumentHint")}

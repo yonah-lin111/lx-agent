@@ -2,9 +2,13 @@ import { Keyboard, Search, Table2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
-import type { MarkdownTableSize, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
+import type {
+  MarkdownTableSize,
+  MarkdownToolbarAction,
+  MarkdownToolbarSelectOption,
+} from "@/components/ui/LxMarkdown/types"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
-import { LxSelect } from "@/components/ui/LxSelect"
+import { LxSelect, type LxSelectGroup, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { isMacOS } from "@/lib/platform"
@@ -172,19 +176,49 @@ export const MarkdownEditorToolbar = ({
       const availableOptions = select.options.filter((option) =>
         option.isAvailable ? option.isAvailable(context) : true,
       )
+      // 按分组标签聚合为下拉分组；无分组的选项平铺在顶层。
+      const groups: { label: string; options: MarkdownToolbarSelectOption[] }[] = []
+      for (const option of availableOptions) {
+        const groupLabel = option.group ?? ""
+        const group = groups.find((item) => item.label === groupLabel)
+        if (group) {
+          group.options.push(option)
+        } else {
+          groups.push({ label: groupLabel, options: [option] })
+        }
+      }
+      const flatOptions = groups.flatMap((group) => group.options)
+      const lxOptions: (LxSelectOption<string> | LxSelectGroup<string>)[] = groups.map((group) =>
+        group.label
+          ? {
+              label: group.label,
+              options: group.options.map((option) => ({
+                value: String(flatOptions.indexOf(option)),
+                label: option.label,
+              })),
+            }
+          : {
+              value: String(flatOptions.indexOf(group.options[0])),
+              label: group.options[0].label,
+            },
+      )
+
       return (
         <div key={label} className={`w-[128px] shrink-0 ${className}`}>
           <LxSelect
             value=""
-            options={availableOptions.map((option, index) => ({
-              value: String(index),
-              label: option.label,
-            }))}
+            options={lxOptions}
             placeholder={select.placeholder}
             size="small"
             onChange={(value) => {
-              const option = availableOptions[Number(value)]
-              if (option) onInsertText?.(option.insertText, option.selectionOffset)
+              const option = flatOptions[Number(value)]
+              if (!option) return
+              if (typeof option.insertText === "function") {
+                const resolved = option.insertText()
+                onInsertText?.(resolved.text, resolved.selectionOffset)
+              } else {
+                onInsertText?.(option.insertText, option.selectionOffset)
+              }
             }}
           />
         </div>

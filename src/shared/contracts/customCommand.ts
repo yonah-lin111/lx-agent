@@ -1,7 +1,10 @@
 // 自定义命令领域类型定义与 IPC 契约
 
-export type CustomCommandType = "agentInput" | "agentMD"
+export type CustomCommandType = "agentInput" | "agentMD" | "agentBlock"
 export type CustomCommandScope = "user" | "project"
+
+// 模板块类型：任务块（&&&）/ 临时块（+++）/ 记录块（%%%）。
+export type CustomCommandBlockType = "template" | "supple" | "log"
 
 // AgentInput 对话命令配置
 export interface AgentInputCommandData {
@@ -30,6 +33,8 @@ export interface CustomCommandDetailItem {
   content: string
   argumentHint?: string
   mdScope?: "global" | "template" // 仅 agentMD
+  blockType?: CustomCommandBlockType // 仅 agentBlock
+  title?: string // 仅 agentBlock
 }
 
 export interface SaveCustomCommandInput {
@@ -42,6 +47,8 @@ export interface SaveCustomCommandInput {
   content: string
   argumentHint?: string
   mdScope?: "global" | "template" // 仅 agentMD
+  blockType?: CustomCommandBlockType // 仅 agentBlock
+  title?: string // 仅 agentBlock
 }
 
 export interface DeleteCustomCommandInput {
