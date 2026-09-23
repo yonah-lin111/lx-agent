@@ -81,6 +81,21 @@ export interface ParsedMarkdownLogEnd {
 }
 
 /**
+ * 解析任务块开始行（&&& <名称> [--start] [「title: 标题」]）；非开始行返回 null。
+ */
+export const parseMarkdownTemplateStartLine = (
+  lineText: string,
+): ParsedMarkdownSubblockStart | null => {
+  if (!MARKDOWN_TEMPLATE_START_RE.test(lineText)) return null
+  const match = lineText.match(
+    /^(\s*)(&&&)\s+([A-Za-z]\w*)(?:\s+--start)?(?:\s+「title:\s*([^」\n]*)」)?\s*$/,
+  )
+  if (!match) return null
+
+  return { indent: match[1], marker: match[2], command: match[3], title: match[4] }
+}
+
+/**
  * 解析临时块开始行（+++ <名称> --start [「title: 标题」]）；非开始行返回 null。
  */
 export const parseMarkdownSuppleStartLine = (

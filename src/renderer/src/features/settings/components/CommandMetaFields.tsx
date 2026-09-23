@@ -88,7 +88,7 @@ export const CommandMetaFields = ({
           <label className="grid gap-1 text-xs text-white/60">
             <span>{t("settings.customCommandBlockTitle")}</span>
             <LxInput
-              placeholder="e.g. 需求说明"
+              placeholder={t("settings.customCommandBlockTitlePlaceholder")}
               value={formData.title}
               onChange={(event) => onChange((prev) => ({ ...prev, title: event.target.value }))}
             />

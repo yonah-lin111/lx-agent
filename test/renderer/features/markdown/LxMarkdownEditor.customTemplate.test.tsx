@@ -166,3 +166,51 @@ describe("LxMarkdownEditor 模板块斜杠命令", () => {
     expect(doc).toMatch(/^&&& reviewBlock --end \{id:[0-9a-f]{32}\}$/m)
   })
 })
+
+describe("LxMarkdownEditor 模板块脏数据容错", () => {
+  it("模板块正文已含起止行时不双重包裹（兼容用户粘贴的完整块）", async () => {
+    listMarkdownCommands.mockResolvedValue([
+      {
+        name: "testTemplate",
+        description: "测试块",
+        content: ["&&& testTemplate --start 「title: 」", "11111", "&&& testTemplate --end"].join(
+          "\n",
+        ),
+        scope: "global",
+        source: "user",
+        filePath: "/tmp/testTemplate.md",
+        blockType: "template",
+      },
+    ])
+
+    render(<LxMarkdownEditor initialContent="" projectPath="/repo" />)
+    await waitFor(() => expect(getCm()).not.toBeNull())
+    await waitFor(() => expect(listMarkdownCommands).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    const view = EditorView.findFromDOM(getCm()!)!
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: "/testTemplate" },
+      selection: { anchor: "/testTemplate".length },
+    })
+    await waitFor(() => expect(document.querySelector('[role="listbox"]')).not.toBeNull())
+
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(view.state.doc.toString()).toContain("11111")
+    })
+
+    const doc = view.state.doc.toString()
+    expect(doc.match(/&&& testTemplate --start/g)).toHaveLength(1)
+    expect(doc.match(/&&& testTemplate --end/g)).toHaveLength(1)
+    expect(doc).not.toContain("「title: 」")
+  })
+})

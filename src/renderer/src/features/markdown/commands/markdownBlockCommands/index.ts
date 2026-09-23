@@ -29,6 +29,7 @@ export {
   parseMarkdownLogEndLine,
   parseMarkdownLogStartLine,
   parseMarkdownSuppleStartLine,
+  parseMarkdownTemplateStartLine,
   toggleMarkdownTemplateCommentLines,
 } from "./markers"
 export {
@@ -43,6 +44,7 @@ export {
   injectCustomTemplateBlockIds,
   MARKDOWN_TEMPLATE_STATUS_LABELS,
   MARKDOWN_TEMPLATE_STATUS_SUFFIX,
+  normalizeAgentBlockBody,
   parseMarkdownSuppleEndLine,
   setMarkdownSuppleWorktree,
   setMarkdownTemplateTitle,
@@ -61,5 +63,6 @@ export type {
   MarkdownBlockTriggerKind,
   MarkdownListContinuation,
   MarkdownTemplateStatus,
+  NormalizedAgentBlockBody,
   ParsedMarkdownSuppleEnd,
 } from "./types"

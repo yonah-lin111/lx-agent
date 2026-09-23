@@ -24,6 +24,7 @@ import {
   isMarkdownLogStartLine,
   isMarkdownSuppleEndLine,
   isMarkdownSuppleStartLine,
+  normalizeAgentBlockBody,
   parseMarkdownLogEndLine,
   parseMarkdownLogStartLine,
   parseMarkdownSuppleEndLine,
@@ -824,5 +825,61 @@ describe("临时块 / 记录块任意名称与 title", () => {
     const ranges = getMarkdownTemplateIdRanges(line)
     expect(ranges).toHaveLength(1)
     expect(ranges[0]).toMatchObject({ from: line.indexOf("{id:") })
+  })
+})
+
+describe("normalizeAgentBlockBody 模板块正文规范化", () => {
+  it("剥离任务块误带入的最外层起止行并提取 title", () => {
+    const body = [
+      "&&& testTemplate --start 「title: 需求评审」",
+      "## 需求",
+      "- 11111",
+      "&&& testTemplate --end",
+    ].join("\n")
+
+    expect(normalizeAgentBlockBody(body, "template")).toEqual({
+      content: "## 需求\n- 11111",
+      title: "需求评审",
+    })
+  })
+
+  it("剥离临时块 / 记录块起止行（含已注入 id 的结束行）", () => {
+    const supple = ["+++ addonTemplate --start", "- 补充", "+++ addonTemplate --end"].join("\n")
+    expect(normalizeAgentBlockBody(supple, "supple")).toEqual({ content: "- 补充" })
+
+    const log = [
+      "%%% execLog --start 「title: 执行记录」",
+      "- 步骤",
+      "%%% execLog --end {id:fc7cbab0429f4ec1abdc82c6a472b8ba}",
+    ].join("\n")
+    expect(normalizeAgentBlockBody(log, "log")).toEqual({
+      content: "- 步骤",
+      title: "执行记录",
+    })
+  })
+
+  it("正文不含起止行时保持原样（保留首行缩进，去除首尾空行）", () => {
+    expect(normalizeAgentBlockBody("  - item 1\n  - item 2", "template")).toEqual({
+      content: "  - item 1\n  - item 2",
+    })
+
+    expect(normalizeAgentBlockBody("\n\n- item\n\n", "supple")).toEqual({ content: "- item" })
+  })
+
+  it("首尾标记类型不匹配时不剥离", () => {
+    const body = ["&&& a --start", "- item", "%%% b --end"].join("\n")
+    expect(normalizeAgentBlockBody(body, "template")).toEqual({
+      content: "&&& a --start\n- item\n%%% b --end",
+    })
+  })
+
+  it("单行正文不剥离（即使形似开始行）", () => {
+    expect(normalizeAgentBlockBody("&&& a --start", "template")).toEqual({
+      content: "&&& a --start",
+    })
+  })
+
+  it("空正文返回空内容", () => {
+    expect(normalizeAgentBlockBody("\n\n", "template")).toEqual({ content: "" })
   })
 })

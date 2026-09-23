@@ -80,7 +80,13 @@ const blockCommands = (): CustomCommandDetailItem[] => [
     scope: "user",
     filePath: "/tmp/reviewBlock.md",
     description: "需求评审",
-    content: "## 需求\n- ",
+    // 用户直接粘贴完整块源码保存的脏数据：正文已含起止行。
+    content: [
+      "&&& reviewBlock --start 「title: 需求评审」",
+      "## 需求",
+      "- ",
+      "&&& reviewBlock --end",
+    ].join("\n"),
     blockType: "template",
     title: "需求评审",
   },
@@ -281,6 +287,50 @@ describe("CustomCommandSettings 命令行", () => {
     await waitFor(() => {
       expect(view.state.doc.toString()).toContain("&&& reviewBlock --start 「title: 需求评审」")
     })
+
+    // 正文已含起止行时不双重包裹：只保留一层起止标记。
+    const doc = view.state.doc.toString()
+    expect(doc.match(/&&& reviewBlock --start/g)).toHaveLength(1)
+    expect(doc.match(/&&& reviewBlock --end/g)).toHaveLength(1)
+    expect(doc).toContain("## 需求")
+  })
+
+  it("md 模板块视图：保存时剥离误粘贴的块起止行并提取 title", async () => {
+    renderComponent()
+    await screen.findByText("alpha")
+
+    fireEvent.click(screen.getByText("Chat Commands"))
+    fireEvent.mouseDown(await screen.findByText("MD Blocks"))
+    await screen.findByText("reviewBlock")
+
+    fireEvent.click(screen.getByText("reviewBlock").closest('[role="button"]') as Element)
+    await screen.findByText("Edit Block /reviewBlock")
+    // 编辑已有块时字段区默认折叠，先展开。
+    fireEvent.click(screen.getByLabelText("Edit Details"))
+
+    // 将正文替换为整段粘贴的完整块源码（含 title 的开始行 + 结束行）。
+    const cm = document.querySelector(".cm-content") as HTMLElement
+    const view = EditorView.findFromDOM(cm)!
+    await act(async () => {
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: "&&& pastedBlock --start 「title: 新标题」\n11111\n&&& pastedBlock --end",
+        },
+      })
+    })
+
+    // 清空 frontmatter 标题，验证从正文提取兜底。
+    fireEvent.change(screen.getByPlaceholderText("e.g. Requirement Notes"), {
+      target: { value: "" },
+    })
+
+    await useSettingsDraftStore.getState().save()
+
+    expect(saveCommand).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "agentBlock", content: "11111", title: "新标题" }),
+    )
   })
 
   it("agentMD 命令使用 Markdown 编辑器，编辑内容后保存为最新模板内容", async () => {

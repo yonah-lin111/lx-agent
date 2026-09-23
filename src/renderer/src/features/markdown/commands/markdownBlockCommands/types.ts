@@ -61,3 +61,9 @@ export interface ParsedMarkdownSuppleEnd {
   id?: string
   wt?: string
 }
+
+// 规范化后的模板块正文与标题兜底。
+export interface NormalizedAgentBlockBody {
+  content: string
+  title?: string
+}

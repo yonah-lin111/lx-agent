@@ -1,3 +1,4 @@
+import type { CustomCommandBlockType } from "@shared/contracts/customCommand"
 import {
   MARKDOWN_LOG_END_RE,
   MARKDOWN_SUPPLE_END_RE,
@@ -6,9 +7,16 @@ import {
   MARKDOWN_TEMPLATE_START_RE,
   MARKDOWN_TEMPLATE_WT_RE,
   parseMarkdownLogEndLine,
+  parseMarkdownLogStartLine,
+  parseMarkdownSuppleStartLine,
   parseMarkdownTemplateEndLine,
+  parseMarkdownTemplateStartLine,
 } from "./markers"
-import type { MarkdownTemplateStatus, ParsedMarkdownSuppleEnd } from "./types"
+import type {
+  MarkdownTemplateStatus,
+  NormalizedAgentBlockBody,
+  ParsedMarkdownSuppleEnd,
+} from "./types"
 
 // 模板块状态标记（源码中的后缀文本）。
 export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
@@ -161,6 +169,50 @@ export const injectCustomTemplateBlockIds = (content: string): string =>
       return line
     })
     .join("\n")
+
+/**
+ * 规范化模板块（agentBlock）正文：用户在设置页常直接粘贴编辑器中的完整块源码，
+ * 此时剥离最外层块起止行（仅限同一块类型），并提取开始行「title: 标题」作为标题兜底。
+ * 正文首行缩进保留，首尾空行移除。
+ */
+export const normalizeAgentBlockBody = (
+  body: string,
+  blockType: CustomCommandBlockType,
+): NormalizedAgentBlockBody => {
+  const lines = body.split("\n")
+  let start = 0
+  let end = lines.length - 1
+  while (start <= end && lines[start].trim() === "") start += 1
+  while (end >= start && lines[end].trim() === "") end -= 1
+  if (start > end) return { content: "" }
+
+  const content = lines.slice(start, end + 1)
+  if (content.length < 2) return { content: content.join("\n").trimEnd() }
+
+  const parsedStart =
+    blockType === "supple"
+      ? parseMarkdownSuppleStartLine(content[0])
+      : blockType === "log"
+        ? parseMarkdownLogStartLine(content[0])
+        : parseMarkdownTemplateStartLine(content[0])
+  if (!parsedStart) return { content: content.join("\n").trimEnd() }
+
+  const lastLine = content[content.length - 1]
+  const endMatched =
+    blockType === "supple"
+      ? MARKDOWN_SUPPLE_END_RE.test(lastLine)
+      : blockType === "log"
+        ? MARKDOWN_LOG_END_RE.test(lastLine)
+        : parseMarkdownTemplateEndLine(lastLine) !== null
+  if (!endMatched) return { content: content.join("\n").trimEnd() }
+
+  const inner = content.slice(1, -1)
+  while (inner.length > 0 && inner[0].trim() === "") inner.shift()
+  while (inner.length > 0 && inner[inner.length - 1].trim() === "") inner.pop()
+
+  const title = parsedStart.title?.trim()
+  return { content: inner.join("\n"), title: title || undefined }
+}
 
 /**
  * 扫描文本中全部任务块、临时块与记录块结束行上的 id 源码范围，供编辑器只读保护使用。

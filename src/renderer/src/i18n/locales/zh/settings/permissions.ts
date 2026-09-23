@@ -115,6 +115,7 @@ export const permissions = {
   customCommandBlockGroupCustom: "我的模板块",
   customCommandBlockType: "块类型",
   customCommandBlockTitle: "块标题 (title)",
+  customCommandBlockTitlePlaceholder: "例如：需求说明",
   customCommandBlockContent: "块内容",
   customBlocksList: "模板块列表",
   customBlocksEmpty: "当前作用域下暂无模板块",

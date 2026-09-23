@@ -22,6 +22,7 @@ import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import {
   injectCustomTemplateBlockIds,
   isInsideMarkdownTemplateBlock,
+  normalizeAgentBlockBody,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import { projectApi } from "@/features/project/api/projectApi"
 import { customCommandApi } from "@/features/settings/api/customCommandApi"
@@ -280,6 +281,12 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       throw new Error("Project path is required")
     }
 
+    // 模板块正文规范化：剥离误粘贴的块起止行并提取 title，避免脏数据在插入时双重包裹。
+    const isAgentBlock = commandType === "agentBlock"
+    const normalized = isAgentBlock
+      ? normalizeAgentBlockBody(formData.content.trimEnd(), formData.blockType)
+      : null
+
     const result = await customCommandApi.save({
       type: commandType,
       scope: selectedScope,
@@ -287,11 +294,11 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       oldName: isEditingDraft ? undefined : (selectedCommandName ?? undefined),
       name: trimmedName,
       description: formData.description.trim(),
-      content: formData.content.trimEnd(),
+      content: normalized ? normalized.content : formData.content.trimEnd(),
       argumentHint: formData.argumentHint.trim() ? formData.argumentHint.trim() : undefined,
       mdScope: commandType === "agentMD" ? formData.mdScope : undefined,
-      blockType: commandType === "agentBlock" ? formData.blockType : undefined,
-      title: commandType === "agentBlock" ? formData.title.trim() : undefined,
+      blockType: isAgentBlock ? formData.blockType : undefined,
+      title: isAgentBlock ? formData.title.trim() || normalized?.title || "" : undefined,
     })
 
     if (!result.ok) {
@@ -457,8 +464,11 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     for (const block of blockCommands) {
       const marker =
         block.blockType === "supple" ? "+++" : block.blockType === "log" ? "%%%" : "&&&"
-      const titlePart = block.title?.trim() ? ` 「title: ${block.title.trim()}」` : ""
-      const blockText = `${marker} ${block.name} --start${titlePart}\n${block.content}\n${marker} ${block.name} --end`
+      // 正文可能已含起止行（用户直接粘贴完整块），先规范化避免双重包裹。
+      const normalized = normalizeAgentBlockBody(block.content, block.blockType || "template")
+      const title = block.title?.trim() || normalized.title || ""
+      const titlePart = title ? ` 「title: ${title}」` : ""
+      const blockText = `${marker} ${block.name} --start${titlePart}\n${normalized.content}\n${marker} ${block.name} --end`
       options.push({
         group: customGroup,
         label: block.name,
