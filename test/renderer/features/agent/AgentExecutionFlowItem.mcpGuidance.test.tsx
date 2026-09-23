@@ -32,10 +32,10 @@ const MCP_GUIDANCE_TEXT = [
   "</mcp_guidance>",
 ].join("\n")
 
-describe("AgentExecutionFlow - MCP 策略指引折叠块", () => {
+describe("AgentExecutionFlow - MCP 策略指引折叠项", () => {
   afterEach(cleanup)
 
-  it("system item 独立渲染 MCP Guidance 折叠块与各 server 子折叠项", () => {
+  it("在 System Prompt 下方独立分组，折叠项与其他分段同构并展示 XML 原文", () => {
     const step = buildSystemStep([
       { name: "harness:identity", text: "<identity>Yonah</identity>" },
       { name: "agent:mcp-guidance", text: MCP_GUIDANCE_TEXT },
@@ -45,31 +45,34 @@ describe("AgentExecutionFlow - MCP 策略指引折叠块", () => {
       <AgentExecutionFlowItem step={step} isExpanded={true} onToggleExpand={vi.fn()} />,
     )
 
-    // 独立折叠块入口与标题
-    expect(container.querySelector(".agent-execution-flow-mcp-guidance")).not.toBeNull()
+    // 独立分组：Plug 图标 + MCP Guidance 文案（与 settings 侧栏 MCP 分区同图标）
+    const mcpGroup = container.querySelector(".agent-execution-flow-mcp-guidance")
+    expect(mcpGroup).not.toBeNull()
+    expect(mcpGroup?.querySelector(".lucide-plug")).not.toBeNull()
     expect(screen.getByText("MCP Guidance")).toBeDefined()
-    expect(screen.getByText("agent:mcp-guidance")).toBeDefined()
 
-    // 各 server 子折叠项
-    expect(screen.getByText("codegraph")).toBeDefined()
-    expect(screen.getByText("codebase-memory-mcp")).toBeDefined()
-    expect(screen.getByText(/Pre-built local code index/)).toBeDefined()
-    expect(screen.getByText(/Persistent repository-level knowledge graph/)).toBeDefined()
-
-    // workspace_hygiene 与 priority 一同展示在折叠块内
-    expect(
-      screen.getByText(/\.gitignore excludes \.codegraph\/ and \.codebase-memory\//),
-    ).toBeDefined()
-
-    // 指引段不在通用 System Prompt 列表中重复出现
+    // 折叠项与其他分段同构：summary 为段名，正文为完整 XML 原文
     expect(screen.getAllByText("agent:mcp-guidance")).toHaveLength(1)
-    expect(screen.getAllByText(/PRIMARY strategy/)).toHaveLength(1)
+    expect(screen.getByText(/<mcp_guidance>/)).toBeDefined()
+    expect(screen.getByText(/<priority>/)).toBeDefined()
+    expect(screen.getByText(/<workspace_hygiene>/)).toBeDefined()
+    expect(screen.getByText(/<server name="codegraph">/)).toBeDefined()
+    expect(screen.getByText(/<server name="codebase-memory-mcp">/)).toBeDefined()
 
-    // 普通分段照常展示
-    expect(screen.getByText("harness:identity")).toBeDefined()
+    // 位置：System Prompt 分组之后
+    const systemPromptHeader = screen
+      .getAllByText("System Prompt")
+      .find((el) => el.closest(".agent-execution-flow-system-content"))
+    if (!systemPromptHeader) {
+      throw new Error("System Prompt group header not found")
+    }
+    expect(
+      systemPromptHeader.compareDocumentPosition(mcpGroup as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
-  it("无 MCP 指引段时不渲染该折叠块", () => {
+  it("无 MCP 指引段时不渲染该分组", () => {
     const step = buildSystemStep([{ name: "harness:identity", text: "<identity>Yonah</identity>" }])
 
     const { container } = render(
@@ -78,19 +81,5 @@ describe("AgentExecutionFlow - MCP 策略指引折叠块", () => {
 
     expect(container.querySelector(".agent-execution-flow-mcp-guidance")).toBeNull()
     expect(screen.queryByText("MCP Guidance")).toBeNull()
-  })
-
-  it("指引段无法解析出 server 子块时回退展示整段原文", () => {
-    const step = buildSystemStep([
-      { name: "agent:mcp-guidance", text: "<mcp_guidance>raw fallback payload</mcp_guidance>" },
-    ])
-
-    const { container } = render(
-      <AgentExecutionFlowItem step={step} isExpanded={true} onToggleExpand={vi.fn()} />,
-    )
-
-    expect(container.querySelector(".agent-execution-flow-mcp-guidance")).not.toBeNull()
-    expect(screen.getByText(/raw fallback payload/)).toBeDefined()
-    expect(screen.queryByText("codegraph")).toBeNull()
   })
 })

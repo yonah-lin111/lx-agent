@@ -1,4 +1,4 @@
-import { Brain, Layers, Sliders, Wrench } from "lucide-react"
+import { Layers, Plug, Sliders, Wrench } from "lucide-react"
 import type React from "react"
 import {
   BUILTIN_UNDERSCORE_TOOLS,
@@ -15,29 +15,6 @@ export interface FlowItemSystemContentProps {
 
 /** MCP 策略指引分段的段名（main 侧 PROMPT_SECTION_NAMES.MCP_GUIDANCE）。 */
 export const MCP_GUIDANCE_SECTION_NAME = "agent:mcp-guidance"
-
-interface McpGuidanceServer {
-  serverName: string
-  text: string
-}
-
-interface McpGuidanceParsed {
-  priority: string
-  workspaceHygiene: string
-  servers: McpGuidanceServer[]
-}
-
-// 解析指引 XML：拆出 priority / workspace_hygiene 与各 server 子块；解析不到 server 时由调用方回退整段原文。
-const parseMcpGuidance = (text: string): McpGuidanceParsed => {
-  const priority = /<priority>([\s\S]*?)<\/priority>/.exec(text)?.[1].trim() ?? ""
-  const workspaceHygiene =
-    /<workspace_hygiene>([\s\S]*?)<\/workspace_hygiene>/.exec(text)?.[1].trim() ?? ""
-  const servers: McpGuidanceServer[] = []
-  for (const match of text.matchAll(/<server name="([^"]+)">([\s\S]*?)<\/server>/g)) {
-    servers.push({ serverName: match[1], text: match[2].trim() })
-  }
-  return { priority, workspaceHygiene, servers }
-}
 
 export type ToolSourceCategoryKey = "tool" | "mcp" | "skill" | "webSearch"
 
@@ -130,61 +107,12 @@ export const FlowItemSystemContent = ({
   const visibleSections = content.sections.filter(
     (sec) => !sec.name.toLowerCase().includes("model-adaptive"),
   )
-  // MCP 策略指引独立成折叠块，不再混入通用系统提示词分段列表
+  // MCP 策略指引独立成折叠项，不再混入通用系统提示词分段列表
   const mcpGuidanceSection = visibleSections.find((sec) => sec.name === MCP_GUIDANCE_SECTION_NAME)
   const regularSections = visibleSections.filter((sec) => sec.name !== MCP_GUIDANCE_SECTION_NAME)
-  const mcpGuidance = mcpGuidanceSection
-    ? parseMcpGuidance(mcpGuidanceSection.text)
-    : { priority: "", workspaceHygiene: "", servers: [] }
 
   return (
     <div className="agent-execution-flow-system-content flex flex-col gap-3 font-mono text-xs">
-      {/* MCP 策略指引（独立折叠块：展开后按 server 逐项折叠） */}
-      {mcpGuidanceSection && (
-        <div className="agent-execution-flow-mcp-guidance flex flex-col gap-1.5">
-          <div className="flex items-center gap-1 text-teal-300 font-semibold">
-            <Brain className="h-3 w-3" />
-            <span>{t("agent.mcpGuidance")}</span>
-          </div>
-          <details className="group rounded border border-white/5 bg-white/[0.02] p-2">
-            <summary className="cursor-pointer font-semibold text-teal-300/90 select-none">
-              {MCP_GUIDANCE_SECTION_NAME}
-            </summary>
-            {mcpGuidance.servers.length > 0 ? (
-              <div className="mt-1.5 flex flex-col gap-1.5">
-                {mcpGuidance.priority && (
-                  <div className="rounded bg-teal-500/[0.04] p-2 leading-relaxed text-teal-100/70">
-                    {mcpGuidance.priority}
-                  </div>
-                )}
-                {mcpGuidance.workspaceHygiene && (
-                  <div className="rounded bg-teal-500/[0.04] p-2 leading-relaxed text-teal-100/70">
-                    {mcpGuidance.workspaceHygiene}
-                  </div>
-                )}
-                {mcpGuidance.servers.map(({ serverName, text }) => (
-                  <details
-                    key={serverName}
-                    className="rounded border border-white/5 bg-black/20 p-2"
-                  >
-                    <summary className="cursor-pointer font-mono text-xs font-semibold text-teal-200/80 select-none">
-                      {serverName}
-                    </summary>
-                    <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-xs leading-relaxed text-white/70">
-                      {text}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            ) : (
-              <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-xs leading-relaxed text-white/70">
-                {mcpGuidanceSection.text}
-              </div>
-            )}
-          </details>
-        </div>
-      )}
-
       {/* 分段概览 */}
       {regularSections.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -206,6 +134,26 @@ export const FlowItemSystemContent = ({
                 </div>
               </details>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* MCP 策略指引（System Prompt 下方独立分组，折叠项与其他分段同构，内容为完整 XML 原文） */}
+      {mcpGuidanceSection && (
+        <div className="agent-execution-flow-mcp-guidance flex flex-col gap-1.5">
+          <div className="flex items-center gap-1 text-teal-300 font-semibold">
+            <Plug className="h-3 w-3" />
+            <span>{t("agent.mcpGuidance")}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <details className="group rounded border border-white/5 bg-white/[0.02] p-2">
+              <summary className="cursor-pointer font-semibold text-white/80 select-none">
+                {mcpGuidanceSection.name}
+              </summary>
+              <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-xs leading-relaxed text-white/70">
+                {mcpGuidanceSection.text}
+              </div>
+            </details>
           </div>
         </div>
       )}
