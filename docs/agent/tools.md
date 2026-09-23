@@ -60,7 +60,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | | `job_list` | `{}` | 查询当前会话内所有存活与已终结后台作业状态 |
 | | `job_kill` | `{ job_id; reason? }` | 发送 SIGTERM 并在超时后升级 SIGKILL 终止目标进程树 |
 | **系统** | `time` | `{}` | 获取当前系统精确时间戳、本地格式化时间与时区 |
-| **记忆与规划** | `memory` | `{ action: "view" \| "save" \| "search" \| "delete"; topic?; name?; description?; type?; content?; query?; path? }` | 项目分层记忆管理（`MEMORY.md` 索引与 Topic Notes；豁免工具） |
+| **记忆与规划** | `memory` | `{ action: "view" \| "save" \| "search" \| "delete"; scope?: "user" \| "project"; type?: "user" \| "workflow"; name?; content?; query? }` | 双作用域 XML 记忆管理（`memory.xml`；只存用户习惯与可复用流程；豁免工具） |
 | | `todowrite` | `{ todos: { content; status }[] }` | 任务清单状态机整表替换；驱动状态栏与执行面板；Plan/Review 模式下被硬拦截 |
 | | `wireframe` | `{ name; layout; description? }` | 记录并展示 ASCII 线框图（Unicode 制表符）辅助 UI 布局评审；design 模式下被硬拦截（布局直接走 `<front_design>`）；参数名不得使用 `title`（见 §1.1） |
 | **语言服务** | `lsp` | `{ operation; filePath; line?; character?; query? }` | 9 种 LSP 语义操作：`goToDefinition` / `findReferences` / `hover` / `documentSymbol` / `workspaceSymbol` / `goToImplementation` / `prepareCallHierarchy` / `incomingCalls` / `outgoingCalls`；支持懒安装 |

@@ -4,14 +4,9 @@
  * 提供有序系统片段、作用域覆盖 (Scope Overrides)、严格模板变量插值、运行时上下文快照与拦截器支持。
  */
 
-import type {
-  AgentContextUsage,
-  CollaborationMode,
-  SandboxPolicy,
-  WorkspaceMemorySummary,
-} from "@shared/contracts/agent"
+import type { AgentContextUsage, CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
 import { formatInstructions, loadInstructions } from "../instructionLoader"
-import { formatMemorySummaryPrompt, loadWorkspaceMemory } from "../memories/memoryManager"
+import { formatMemoryPrompt, loadMemoryStores } from "../memories/memoryManager"
 import { formatSkillsForPrompt, type LoadedSkill } from "../skills/skillLoader"
 import { DEFAULT_BEHAVIOR_PROMPT } from "./behaviorPrompt"
 import { formatMcpGuidancePrompt } from "./mcpGuidance"
@@ -76,7 +71,6 @@ export interface AssembleContext {
   collaborationMode?: CollaborationMode
   currentTimeReminder?: string
   contextUsage?: AgentContextUsage | null
-  workspaceMemory?: WorkspaceMemorySummary | null
   activeSkills?: LoadedSkill[]
   /** 当前 agent 实际可用的代码检索 MCP server 名（已按连接状态与角色白名单过滤） */
   mcpServers?: string[]
@@ -542,7 +536,7 @@ export class SystemPromptManager {
 
 /** 创建带有 LX Agent 标准默认分层的提示词管理器 */
 export function createDefaultSystemPromptManager(
-  options: { defaultPersonality?: PersonalityName } = {},
+  options: { defaultPersonality?: PersonalityName; userMemoryRoot?: string } = {},
 ): SystemPromptManager {
   const defaultPersonality = options.defaultPersonality ?? "pragmatic"
   const manager = new SystemPromptManager()
@@ -863,18 +857,15 @@ export function createDefaultSystemPromptManager(
     },
   })
 
-  // 250: 分层工作区记忆 (MEMORY.md & Citations Guidance，外部记忆原文原样注入)
+  // 250: 分层记忆（user/project 双作用域 XML 原文原样注入，指导语常驻）
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.WORKSPACE_MEMORY,
     order: PROMPT_ORDERS.WORKSPACE_MEMORY,
     literal: true,
     text: (ctx) => {
-      if (ctx.workspaceMemory !== undefined) {
-        return formatMemorySummaryPrompt(ctx.workspaceMemory).trim()
-      }
       if (!ctx.cwd) return ""
-      const summary = loadWorkspaceMemory(ctx.cwd)
-      return formatMemorySummaryPrompt(summary).trim()
+      const stores = loadMemoryStores(ctx.cwd, { userRoot: options.userMemoryRoot })
+      return formatMemoryPrompt(stores).trim()
     },
   })
 

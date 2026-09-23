@@ -1,199 +1,142 @@
-import { readdir, readFile, unlink, writeFile } from "node:fs/promises"
-import { basename, join, relative } from "node:path"
+import { existsSync } from "node:fs"
+import { readFile, writeFile } from "node:fs/promises"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
-import { ensureMemoryWorkspace, truncateMemoryIndex } from "../memories/memoryManager"
-import { resolveToCwd } from "./path-utils"
+import {
+  DEFAULT_MEMORY_SCOPE_FOR_TYPE,
+  ensureMemoryFile,
+  ensureWritableMemoryStore,
+  type MemoryEntry,
+  type MemoryScope,
+  type MemoryStoreOptions,
+  parseMemoryXml,
+  readMemoryStore,
+  resolveMemoryFilePath,
+  serializeMemoryEntries,
+} from "../memories/memoryManager"
 
 // 扁平 object schema：OpenAI 兼容端点要求 function 参数根节点为 type: object，
 // 不接受 discriminatedUnion 生成的 oneOf 根节点；动作级必填约束在 execute 中校验。
 export const memoryInputSchema = z.object({
   action: z
     .enum(["view", "save", "search", "delete"])
-    .describe("Action to perform on long-term project memory"),
-  path: z
-    .string()
+    .describe("Action to perform on long-term agent memory"),
+  scope: z
+    .enum(["user", "project"])
     .optional()
     .describe(
-      "Relative path to a note file under .lx/memory/ (e.g. notes/user_preferences.md). For 'view': omit to view the main MEMORY.md index; for 'delete': alternative to topic.",
+      'Memory scope: "user" stores cross-project habits in ~/.lx/memory, "project" stores repository-specific workflows in <project>/.lx/memory. Defaults to both scopes for view/search/delete, and to the type-based scope for save.',
     ),
-  topic: z
-    .string()
+  type: z
+    .enum(["user", "workflow"])
     .optional()
     .describe(
-      "Topic identifier/filename without extension (e.g. 'user_preferences', 'architecture_rules'). Required for 'save'.",
+      'Memory category. "user": durable habits/preferences of the user. "workflow": repeatable processes (test, build, release, commit). Required for save.',
     ),
   name: z
     .string()
     .optional()
-    .describe("Human readable title of the memory topic. Required for 'save'."),
-  description: z
-    .string()
-    .optional()
-    .describe("Concise 1-line description of what this memory topic covers. Required for 'save'."),
-  type: z
-    .enum(["user", "feedback", "project", "reference"])
-    .optional()
     .describe(
-      "Category of the memory (user: preferences/role, feedback: lessons/corrections, project: context/goals, reference: external info). Defaults to 'project'.",
+      "Unique, self-explanatory memory name. Upsert key for save; target for delete. Required for save and delete.",
     ),
-  content: z
-    .string()
-    .optional()
-    .describe("Detailed markdown body of the topic note. Required for 'save'."),
+  content: z.string().optional().describe("Markdown body of the memory. Required for save."),
   query: z
     .string()
     .optional()
-    .describe("Keywords to search in memory files. Required for 'search'."),
+    .describe("Keywords matched against memory names and contents. Required for search."),
 })
 
-export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchema> => ({
+const ALL_SCOPES: readonly MemoryScope[] = ["user", "project"]
+
+const scopeLabel = (scope: MemoryScope): string =>
+  scope === "user"
+    ? "user scope (~/.lx/memory/memory.xml)"
+    : "project scope (<project>/.lx/memory/memory.xml)"
+
+export const createMemoryTool = (
+  cwd: string,
+  options?: MemoryStoreOptions,
+): AgentTool<typeof memoryInputSchema> => ({
   name: "memory",
-  label: "Project memory",
+  label: "Agent memory",
   description:
-    "Manage long-term project memory. Use this tool to view the memory index/notes, save new learnings or user preferences, search existing memories, or delete outdated memories.",
+    'Manage long-term agent memory. Save ONLY durable user habits/preferences (type "user") and repeatable workflows (type "workflow"); never save one-off fixes, review findings, task progress, or facts derivable from the codebase. Actions: view the stored memories, save (upsert by name), search, or delete stale ones.',
   inputSchema: memoryInputSchema,
   execute: async (_toolCallId, params, signal) => {
     const throwIfAborted = (): void => {
       if (signal?.aborted) throw new Error("Operation aborted")
     }
 
-    const paths = ensureMemoryWorkspace(cwd)
-
     if (params.action === "view") {
       throwIfAborted()
-      const targetRelPath = params.path?.trim()
-      let filePath = paths.memoryFile
+      const scopes = params.scope ? [params.scope] : [...ALL_SCOPES]
+      const sections: string[] = []
 
-      if (targetRelPath) {
-        filePath = resolveToCwd(targetRelPath, paths.root)
+      for (const scope of scopes) {
+        const filePath = ensureMemoryFile(scope, cwd, options)
+        if (!filePath) continue
+        const raw = await readFile(filePath, "utf-8")
+        const isCorrupt = parseMemoryXml(raw) === null
+        sections.push(
+          `## ${scopeLabel(scope)}${isCorrupt ? " [unreadable: save will back it up and reset]" : ""}\n\n${raw.trim()}`,
+        )
       }
 
-      try {
-        const content = await readFile(filePath, "utf-8")
-        const isIndex = filePath === paths.memoryFile
-        const displayContent = isIndex ? truncateMemoryIndex(content) : content
-        const relName = relative(cwd, filePath)
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: `# File: ${relName}\n\n${displayContent}`,
-            },
-          ],
-          details: { path: relName, bytes: Buffer.byteLength(displayContent, "utf-8") },
-        }
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : String(err)
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Failed to read memory file "${params.path ?? "MEMORY.md"}": ${errorMsg}`,
-            },
-          ],
-          details: { error: errorMsg },
-        }
+      throwIfAborted()
+      return {
+        content: [{ type: "text", text: sections.join("\n\n") }],
+        details: { scopes },
       }
     }
 
     if (params.action === "save") {
       throwIfAborted()
-      const topic = params.topic?.trim()
+      const type = params.type
       const name = params.name?.trim()
-      const description = params.description?.trim()
       const content = params.content?.trim()
-      if (!topic || !name || !description || !content) {
+      if (!type || !name || !content) {
         return {
           content: [
             {
               type: "text",
-              text: "Missing required save parameters: topic, name, description and content are required.",
+              text: "Missing required save parameters: type, name and content are required.",
             },
           ],
           details: { error: "Missing required parameters" },
         }
       }
-      const cleanTopic = topic
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]/g, "_")
-        .replace(/^[._]+/, "")
 
-      if (!cleanTopic) {
+      const scope = params.scope ?? DEFAULT_MEMORY_SCOPE_FOR_TYPE[type]
+      const ensured = ensureWritableMemoryStore(scope, cwd, options)
+      if (!ensured) {
         return {
-          content: [{ type: "text", text: "Invalid topic name provided." }],
-          details: { error: "Invalid topic name" },
+          content: [{ type: "text", text: `Failed to initialize the ${scope} memory store.` }],
+          details: { error: "Memory store unavailable", scope },
         }
       }
 
-      const noteFileName = `${cleanTopic}.md`
-      const noteRelPath = `notes/${noteFileName}`
-      const noteFilePath = join(paths.notesDir, noteFileName)
-
-      const frontmatter = [
-        "---",
-        `name: ${name}`,
-        `description: ${description}`,
-        `type: ${params.type ?? "project"}`,
-        "---",
-        "",
-      ].join("\n")
-
-      const fullNoteContent = `${frontmatter}${content}\n`
-      await writeFile(noteFilePath, fullNoteContent, "utf-8")
+      const { store, backupPath } = ensured
+      const entry: MemoryEntry = { type, name, content }
+      const existingIndex = store.entries.findIndex((item) => item.name === name)
+      if (existingIndex >= 0) {
+        store.entries[existingIndex] = entry
+      } else {
+        store.entries.push(entry)
+      }
+      await writeFile(store.path, serializeMemoryEntries(store.entries), "utf-8")
       throwIfAborted()
 
-      // 更新或插入 MEMORY.md 中的索引行
-      let memoryIndexContent = ""
-      try {
-        memoryIndexContent = await readFile(paths.memoryFile, "utf-8")
-      } catch {
-        memoryIndexContent = "# Project Memory Index\n\n"
-      }
-
-      const indexEntryLine = `- [${noteFileName}](${noteRelPath}): ${description}`
-      const lines = memoryIndexContent.split("\n")
-      let replaced = false
-
-      const newLines = lines.map((line) => {
-        if (line.includes(`(${noteRelPath})`) || line.includes(`[${noteFileName}]`)) {
-          replaced = true
-          return indexEntryLine
-        }
-        return line
-      })
-
-      if (!replaced) {
-        // 如果文件纯为空或仅有占位符
-        const placeholderIndex = newLines.findIndex((l) => l.includes("- No memory recorded yet."))
-        if (placeholderIndex !== -1) {
-          newLines.splice(placeholderIndex, 1, indexEntryLine)
-        } else {
-          newLines.push(indexEntryLine)
-        }
-      }
-
-      const updatedIndexContent =
-        newLines
-          .join("\n")
-          .replace(/\n{3,}/g, "\n\n")
-          .trim() + "\n"
-      await writeFile(paths.memoryFile, updatedIndexContent, "utf-8")
-      throwIfAborted()
-
+      const backupNote = backupPath
+        ? ` The previous store was corrupted and was backed up to ${backupPath}.`
+        : ""
       return {
         content: [
           {
             type: "text",
-            text: `Successfully saved memory note to .lx/memory/${noteRelPath} and updated MEMORY.md index.`,
+            text: `Successfully saved memory "${name}" (${type}) to ${scopeLabel(scope)}.${backupNote}`,
           },
         ],
-        details: {
-          notePath: `.lx/memory/${noteRelPath}`,
-          topic: cleanTopic,
-          name,
-        },
+        details: { scope, name, type, backupPath },
       }
     }
 
@@ -207,48 +150,39 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
         }
       }
 
-      const results: { file: string; matchLines: string[] }[] = []
+      const scopes = params.scope ? [params.scope] : [...ALL_SCOPES]
+      const matches: { scope: MemoryScope; entry: MemoryEntry; matchLines: string[] }[] = []
 
-      // 搜索 MEMORY.md
-      try {
-        const indexContent = await readFile(paths.memoryFile, "utf-8")
-        const indexLines = indexContent.split("\n")
-        const matched = indexLines.filter((l) => l.toLowerCase().includes(query))
-        if (matched.length > 0) {
-          results.push({ file: "MEMORY.md", matchLines: matched })
+      for (const scope of scopes) {
+        const store = readMemoryStore(scope, cwd, options)
+        if (!store) continue
+        for (const entry of store.entries) {
+          const matchedLines = entry.content
+            .split("\n")
+            .filter((line) => line.toLowerCase().includes(query))
+          const nameOrTypeHit =
+            entry.name.toLowerCase().includes(query) || entry.type.includes(query)
+          if (matchedLines.length === 0 && !nameOrTypeHit) continue
+          matches.push({ scope, entry, matchLines: matchedLines.slice(0, 5) })
         }
-      } catch {
-        // ignore
       }
 
-      // 搜索 notes/
-      try {
-        const noteFiles = await readdir(paths.notesDir)
-        for (const file of noteFiles) {
-          if (!file.endsWith(".md")) continue
-          const fullPath = join(paths.notesDir, file)
-          const content = await readFile(fullPath, "utf-8")
-          const lines = content.split("\n")
-          const matched = lines.filter((l) => l.toLowerCase().includes(query))
-          if (matched.length > 0) {
-            results.push({ file: `notes/${file}`, matchLines: matched.slice(0, 5) })
-          }
-        }
-      } catch {
-        // ignore
-      }
-
-      if (results.length === 0) {
+      if (matches.length === 0) {
         return {
-          content: [{ type: "text", text: `No memories found matching query "${params.query}".` }],
+          content: [
+            {
+              type: "text",
+              text: `No memories found matching query "${params.query}".`,
+            },
+          ],
           details: { matches: [] },
         }
       }
 
       let output = `Found memory matches for "${params.query}":\n\n`
-      for (const res of results) {
-        output += `### ${res.file}\n`
-        for (const line of res.matchLines) {
+      for (const match of matches) {
+        output += `### [${match.scope}/${match.entry.type}] ${match.entry.name}\n`
+        for (const line of match.matchLines) {
           output += `- ${line.trim()}\n`
         }
         output += "\n"
@@ -256,84 +190,56 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
 
       return {
         content: [{ type: "text", text: output.trim() }],
-        details: { matches: results },
+        details: { matches },
       }
     }
 
     if (params.action === "delete") {
       throwIfAborted()
-      let cleanTopic = params.topic
-        ?.trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]/g, "_")
-        .replace(/^[._]+/, "")
-
-      let noteFileName = cleanTopic ? `${cleanTopic}.md` : ""
-      if (!noteFileName && params.path) {
-        const rawBase = basename(params.path.trim())
-        if (rawBase.endsWith(".md")) {
-          noteFileName = rawBase
-          cleanTopic = rawBase.slice(0, -3)
-        }
-      }
-
-      if (!noteFileName) {
+      const name = params.name?.trim()
+      if (!name) {
         return {
           content: [
             {
               type: "text",
-              text: "Invalid delete parameters: please provide either a topic name or a note path.",
+              text: "Missing required delete parameter: name is required.",
             },
           ],
-          details: { error: "Missing topic or path" },
+          details: { error: "Missing required parameters" },
         }
       }
 
-      const noteRelPath = `notes/${noteFileName}`
-      const noteFilePath = join(paths.notesDir, noteFileName)
+      const scopes = params.scope ? [params.scope] : [...ALL_SCOPES]
+      const deletedScopes: MemoryScope[] = []
+      const unreadableScopes: MemoryScope[] = []
 
-      // 1. 删除磁盘文件
-      let fileDeleted = false
-      try {
-        await unlink(noteFilePath)
-        fileDeleted = true
-      } catch {
-        // file might not exist, proceed to index removal
-      }
-
-      // 2. 从 MEMORY.md 移除索引项
-      let memoryIndexContent = ""
-      let indexModified = false
-      try {
-        memoryIndexContent = await readFile(paths.memoryFile, "utf-8")
-        const lines = memoryIndexContent.split("\n")
-        const filteredLines = lines.filter((line) => {
-          const match = line.includes(`(${noteRelPath})`) || line.includes(`[${noteFileName}]`)
-          if (match) indexModified = true
-          return !match
-        })
-
-        if (indexModified) {
-          const updatedIndex =
-            filteredLines
-              .join("\n")
-              .replace(/\n{3,}/g, "\n\n")
-              .trim() + "\n"
-          await writeFile(paths.memoryFile, updatedIndex, "utf-8")
+      for (const scope of scopes) {
+        const store = readMemoryStore(scope, cwd, options)
+        if (!store) {
+          const filePath = resolveMemoryFilePath(scope, cwd, options)
+          if (filePath && existsSync(filePath)) unreadableScopes.push(scope)
+          continue
         }
-      } catch {
-        // ignore
+        const remaining = store.entries.filter((entry) => entry.name !== name)
+        if (remaining.length === store.entries.length) continue
+        await writeFile(store.path, serializeMemoryEntries(remaining), "utf-8")
+        deletedScopes.push(scope)
       }
 
-      if (!fileDeleted && !indexModified) {
+      throwIfAborted()
+
+      if (deletedScopes.length === 0) {
+        const unreadableNote = unreadableScopes.length
+          ? ` Skipped unreadable store(s): ${unreadableScopes.join(", ")}.`
+          : ""
         return {
           content: [
             {
               type: "text",
-              text: `Memory "${noteFileName}" not found in notes or MEMORY.md index.`,
+              text: `No memory named "${name}" found.${unreadableNote}`,
             },
           ],
-          details: { deleted: false },
+          details: { deleted: false, deletedScopes, unreadableScopes },
         }
       }
 
@@ -341,15 +247,10 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
         content: [
           {
             type: "text",
-            text: `Successfully deleted memory topic "${noteFileName}" from disk and MEMORY.md index.`,
+            text: `Successfully deleted memory "${name}" from: ${deletedScopes.join(", ")}.`,
           },
         ],
-        details: {
-          deleted: true,
-          topic: cleanTopic,
-          fileDeleted,
-          indexModified,
-        },
+        details: { deleted: true, deletedScopes, unreadableScopes },
       }
     }
 
