@@ -28,8 +28,8 @@ export const agentBlockPreviewProtection: Extension = EditorState.transactionFil
 class AgentBlockIdPlaceholderWidget extends WidgetType {
   toDOM(): HTMLElement {
     const span = document.createElement("span")
-    span.className = "cm-md-agent-block-id-placeholder"
-    span.textContent = " {id-xxxxx}"
+    span.className = "cm-md-template-id"
+    span.textContent = ` {id:${"x".repeat(32)}}`
     return span
   }
 
@@ -55,9 +55,14 @@ export const agentBlockIdPlaceholder: Extension = EditorView.decorations.compute
   },
 )
 
+// id 占位样式与文档编辑器（features/markdown/extensions/editorTheme.ts）保持一致；像素主题下由全局 CSS 覆盖。
 const agentBlockPreviewTheme = EditorView.theme({
-  ".cm-md-agent-block-id-placeholder": {
-    color: "var(--color-theme-text-subtle)",
+  ".cm-md-template-id, .cm-md-template-id *": {
+    color: "#f0abfc !important",
+    backgroundColor: "rgba(240, 171, 252, 0.14) !important",
+    padding: "1px 6px !important",
+    borderRadius: "3px !important",
+    fontWeight: "600 !important",
   },
 })
 

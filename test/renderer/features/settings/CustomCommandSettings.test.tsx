@@ -365,8 +365,8 @@ describe("CustomCommandSettings 命令行", () => {
       )
     })
     await waitFor(() => {
-      expect(document.querySelector(".cm-md-agent-block-id-placeholder")?.textContent).toBe(
-        " {id-xxxxx}",
+      expect(document.querySelector(".cm-md-template-id")?.textContent).toBe(
+        ` {id:${"x".repeat(32)}}`,
       )
     })
     expect(view.state.doc.toString()).not.toContain("{id-")
