@@ -13,6 +13,12 @@ export const MCP_GUIDANCE_PRIORITY = [
   "They are complementary, not interchangeable: CodeGraph answers symbol-level and file-level questions in one call; Codebase Memory answers repository-level, structural-graph and cross-project questions.",
 ].join(" ")
 
+/** 工作目录卫生：索引产物不得进入版本控制（按实际产生的目录兜底） */
+export const MCP_GUIDANCE_WORKSPACE_HYGIENE = [
+  "Working directories created by these servers must never enter version control.",
+  "Whenever you initialize a project with `codegraph init` (creating .codegraph/) or export a Codebase Memory persistence artifact (creating .codebase-memory/), check whether the target project is a Git repository; if it is, ensure that directory is excluded in its .gitignore (append the entry only when missing; never rewrite existing ignore rules).",
+].join(" ")
+
 /** server 名 → 指引块（行数组，便于维护与断言；名称按小写匹配） */
 const MCP_GUIDANCE_BLOCKS: Record<string, string[]> = {
   codegraph: [
@@ -64,6 +70,7 @@ export const formatMcpGuidancePrompt = (servers: readonly string[]): string => {
   return [
     "<mcp_guidance>",
     `  <priority>${MCP_GUIDANCE_PRIORITY}</priority>`,
+    `  <workspace_hygiene>${MCP_GUIDANCE_WORKSPACE_HYGIENE}</workspace_hygiene>`,
     ...blocks,
     "</mcp_guidance>",
   ].join("\n")

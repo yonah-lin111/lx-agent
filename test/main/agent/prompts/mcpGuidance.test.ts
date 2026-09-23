@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { formatMcpGuidancePrompt, MCP_GUIDANCE_PRIORITY } from "@/agent/prompts/mcpGuidance"
+import {
+  formatMcpGuidancePrompt,
+  MCP_GUIDANCE_PRIORITY,
+  MCP_GUIDANCE_WORKSPACE_HYGIENE,
+} from "@/agent/prompts/mcpGuidance"
 
 describe("MCP Guidance Prompt (代码检索 MCP 策略指引)", () => {
   it("空列表 / 未知 server 不产生任何注入", () => {
@@ -35,11 +39,17 @@ describe("MCP Guidance Prompt (代码检索 MCP 策略指引)", () => {
     expect(text).not.toContain('<server name="codegraph">')
   })
 
-  it("两者同时注入：各自独立成块且共享 priority", () => {
+  it("两者同时注入：各自独立成块且共享 priority 与 workspace_hygiene", () => {
     const text = formatMcpGuidancePrompt(["codegraph", "codebase-memory-mcp"])
 
     const priorityCount = text.match(/<priority>/g)?.length ?? 0
     expect(priorityCount).toBe(1)
+    expect(text).toContain(
+      `<workspace_hygiene>${MCP_GUIDANCE_WORKSPACE_HYGIENE}</workspace_hygiene>`,
+    )
+    expect(text).toContain(".gitignore")
+    expect(text).toContain(".codegraph/")
+    expect(text).toContain(".codebase-memory/")
     expect(text).toContain('<server name="codegraph">')
     expect(text).toContain('<server name="codebase-memory-mcp">')
     expect(text.indexOf('<server name="codegraph">')).toBeLessThan(

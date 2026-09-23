@@ -21,14 +21,22 @@ interface McpGuidanceServer {
   text: string
 }
 
-// 解析指引 XML：拆出 priority 与各 server 子块；解析不到 server 时由调用方回退整段原文。
-const parseMcpGuidance = (text: string): { priority: string; servers: McpGuidanceServer[] } => {
+interface McpGuidanceParsed {
+  priority: string
+  workspaceHygiene: string
+  servers: McpGuidanceServer[]
+}
+
+// 解析指引 XML：拆出 priority / workspace_hygiene 与各 server 子块；解析不到 server 时由调用方回退整段原文。
+const parseMcpGuidance = (text: string): McpGuidanceParsed => {
   const priority = /<priority>([\s\S]*?)<\/priority>/.exec(text)?.[1].trim() ?? ""
+  const workspaceHygiene =
+    /<workspace_hygiene>([\s\S]*?)<\/workspace_hygiene>/.exec(text)?.[1].trim() ?? ""
   const servers: McpGuidanceServer[] = []
   for (const match of text.matchAll(/<server name="([^"]+)">([\s\S]*?)<\/server>/g)) {
     servers.push({ serverName: match[1], text: match[2].trim() })
   }
-  return { priority, servers }
+  return { priority, workspaceHygiene, servers }
 }
 
 export type ToolSourceCategoryKey = "tool" | "mcp" | "skill" | "webSearch"
@@ -127,7 +135,7 @@ export const FlowItemSystemContent = ({
   const regularSections = visibleSections.filter((sec) => sec.name !== MCP_GUIDANCE_SECTION_NAME)
   const mcpGuidance = mcpGuidanceSection
     ? parseMcpGuidance(mcpGuidanceSection.text)
-    : { priority: "", servers: [] }
+    : { priority: "", workspaceHygiene: "", servers: [] }
 
   return (
     <div className="agent-execution-flow-system-content flex flex-col gap-3 font-mono text-xs">
@@ -147,6 +155,11 @@ export const FlowItemSystemContent = ({
                 {mcpGuidance.priority && (
                   <div className="rounded bg-teal-500/[0.04] p-2 leading-relaxed text-teal-100/70">
                     {mcpGuidance.priority}
+                  </div>
+                )}
+                {mcpGuidance.workspaceHygiene && (
+                  <div className="rounded bg-teal-500/[0.04] p-2 leading-relaxed text-teal-100/70">
+                    {mcpGuidance.workspaceHygiene}
                   </div>
                 )}
                 {mcpGuidance.servers.map(({ serverName, text }) => (

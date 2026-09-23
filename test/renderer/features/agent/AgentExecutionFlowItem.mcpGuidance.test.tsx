@@ -22,6 +22,7 @@ const buildSystemStep = (sections: { name: string; text: string }[]): ExecutionS
 const MCP_GUIDANCE_TEXT = [
   "<mcp_guidance>",
   "  <priority>These MCP servers are the PRIMARY strategy for researching and locating code.</priority>",
+  "  <workspace_hygiene>Ensure .gitignore excludes .codegraph/ and .codebase-memory/ when they are created.</workspace_hygiene>",
   '  <server name="codegraph">',
   "    <role>Pre-built local code index.</role>",
   "  </server>",
@@ -54,6 +55,11 @@ describe("AgentExecutionFlow - MCP 策略指引折叠块", () => {
     expect(screen.getByText("codebase-memory-mcp")).toBeDefined()
     expect(screen.getByText(/Pre-built local code index/)).toBeDefined()
     expect(screen.getByText(/Persistent repository-level knowledge graph/)).toBeDefined()
+
+    // workspace_hygiene 与 priority 一同展示在折叠块内
+    expect(
+      screen.getByText(/\.gitignore excludes \.codegraph\/ and \.codebase-memory\//),
+    ).toBeDefined()
 
     // 指引段不在通用 System Prompt 列表中重复出现
     expect(screen.getAllByText("agent:mcp-guidance")).toHaveLength(1)
