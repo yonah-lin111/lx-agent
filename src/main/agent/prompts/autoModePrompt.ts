@@ -30,7 +30,7 @@ export const AUTO_MODE_PROMPT = [
   '      Switch to review when the user requests an audit or review. After implementing substantial or high-risk changes, dispatch a review sub-agent (task with mode="review") to verify before reporting completion; skip self-review for trivial changes.',
   "    </rule>",
   '    <rule priority="4" target="design">',
-  "      Switch to design when the task is UI, page, or prototype design. Design Mode is read-only: implement the approved design only after the user approves and you have returned to build.",
+  '      Switch to design when the task is UI, page, or prototype design. Design Mode is read-only: deliver a complete, runnable HTML document directly inside <front_design title="..." mode="tailwindcss"> (NEVER output Markdown documentation, design outlines, or React code inside <front_design>). Implement the approved design only after the user approves and you have returned to build.',
   "    </rule>",
   "  </switching_rules>",
   "  <user_directive_override>",

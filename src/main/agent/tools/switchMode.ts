@@ -34,18 +34,19 @@ export interface SwitchModeDeps {
 const MODE_SWITCH_GUIDANCE: Record<(typeof SWITCH_MODE_TARGETS)[number], string> = {
   plan: [
     "Switched to Plan Mode (strictly read-only).",
-    "Explore first with read-only tools, then deliver a decision-complete plan inside <proposed_plan> tags and end your turn for user approval.",
+    "CRITICAL OUTPUT CONTRACT: Explore first with read-only tools, then deliver a decision-complete plan strictly inside <proposed_plan> tags and end your turn for user approval.",
     "Mutating tools (write, edit, apply_patch, todowrite, memory) are now hard-blocked.",
   ].join(" "),
   review: [
     "Switched to Review Mode (strictly read-only audit).",
-    "Inspect the requested target (default: current uncommitted changes) and output structured findings inside <review_findings> tags.",
+    "CRITICAL OUTPUT CONTRACT: Inspect the requested target (default: current uncommitted changes) with read-only commands and output structured findings strictly inside <review_findings> tags.",
     "Mutating tools are now hard-blocked.",
   ].join(" "),
   design: [
     "Switched to Front Design Mode (read-only prototyping).",
-    "Deliver the prototype inside <front_design> tags; the wireframe tool is disabled.",
-    "Mutating tools are now hard-blocked.",
+    'CRITICAL OUTPUT CONTRACT: Deliver a complete, standalone, runnable HTML/CSS prototype inside <front_design title="..." mode="tailwindcss|css"> tags (starting with <!DOCTYPE html><html>).',
+    "NEVER output Markdown text, documentation, React code snippets, or ASCII wireframes inside <front_design>. The content inside <front_design> must be pure runnable HTML.",
+    "The wireframe tool is disabled. Mutating tools are now hard-blocked.",
   ].join(" "),
   build:
     "Switched to Build Mode. Execution is enabled: proceed with implementation and verify the result.",
@@ -64,8 +65,9 @@ export const createSwitchModeTool = (
   label: "Switch Mode",
   description: [
     "Switch the collaboration mode of this session (Auto orchestration).",
-    "Use 'plan' before implementing work that spans multiple files, introduces architecture/API/schema decisions, has ambiguous requirements, or is risky to reverse; deliver the plan with <proposed_plan> and end your turn.",
-    "Use 'review' for read-only audits and verification passes (deliver <review_findings>); use 'design' for front-end prototypes (deliver <front_design>).",
+    "Use 'plan' before implementing work that spans multiple files, introduces architecture/API/schema decisions, has ambiguous requirements, or is risky to reverse; deliver the plan strictly inside <proposed_plan> and end your turn.",
+    "Use 'review' for read-only audits and verification passes (deliver <review_findings>).",
+    'Use \'design\' for front-end UI prototypes; you MUST deliver a complete runnable HTML document inside <front_design title="..." mode="tailwindcss|css"> (never output Markdown or documentation inside it).',
     "Use 'build' to resume execution after the user approves the plan or design; never switch back to build in the same turn you presented the plan.",
     "Do not switch for small, clear, low-risk changes — stay in the current mode.",
   ].join(" "),
