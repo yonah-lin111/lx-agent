@@ -89,6 +89,7 @@ vi.mock("@/agent/skills/skillLoader", () => ({
 vi.mock("@/agent/mcp/mcpManager", () => ({
   mcpManager: {
     ensureConnected: async () => {},
+    getStatus: () => [],
     getTools: () =>
       mcpHolder.handles.map((handle) => ({
         server: handle.server,

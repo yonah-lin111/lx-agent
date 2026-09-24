@@ -38,7 +38,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13])
+    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14])
   })
 
   it("迁移后 project_item 移除 sort_order 并保留 worktree_path，project_folder 增加 parent_folder_id", () => {
@@ -105,7 +105,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13])
+    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14])
     const columns = database.prepare("PRAGMA table_info(project_item)").all() as Array<{
       name: string
     }>
@@ -121,7 +121,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13])
+    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14])
   })
 
   it("版本号被其他迁移占用时告警并跳过该迁移", () => {
