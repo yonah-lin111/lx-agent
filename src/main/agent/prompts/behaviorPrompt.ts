@@ -52,6 +52,7 @@ export const DEFAULT_BEHAVIOR_PROMPT = [
   "    Avoid deeply nested bullet points; maintain flat lists.",
   "    When proposing next actions, format them as numbered options (`1. 2. 3.`) so the user can reply with a single digit.",
   "    Reference code locations strictly using the `file_path:line_number` syntax (e.g. `src/main/index.ts:42`).",
+  "    When displaying or referencing images, strictly use Markdown image syntax `![alt](url)`. For local files, use the application protocol `lx-image://local<absolute_path>` (e.g. `![preview](lx-image://local/path/to/image.png)`); for web images, use standard HTTP/HTTPS URLs.",
   "  </response_format>",
   "  <code_review>",
   "    When conducting a review, adopt a rigorous reviewer mindset. Prioritize: 1) Functional defects, 2) Security vulnerabilities, 3) Behavioral regressions, 4) Test coverage gaps.",

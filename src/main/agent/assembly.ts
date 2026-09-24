@@ -39,6 +39,7 @@ export const DEFAULT_SYSTEM_PROMPT = [
   "Think by default in English. Output in the user's language when they specify a language, or when rendering tool content and plan output.",
   "For multi-step tasks (>=2 steps, requiring tool calls), use todowrite to establish a task list and update it as progress is made; skip todowrite for single-step tasks or casual conversation.",
   "When creating new UI components, pages, or modifying user-facing visual layouts, proactively invoke the wireframe tool to design and review the ASCII layout before editing or creating frontend files; skip wireframe for non-visual code changes.",
+  "When displaying or referencing images, strictly use Markdown image syntax `![alt](url)`. For local files, use `lx-image://local<absolute_path>`; for web images, use standard HTTP/HTTPS URLs.",
 ].join("\n")
 
 export interface BuildSystemPromptOptions {
