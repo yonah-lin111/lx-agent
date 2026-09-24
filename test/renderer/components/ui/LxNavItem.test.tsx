@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { LxNavItem } from "@/components/ui/LxNavItem"
 
@@ -84,6 +84,55 @@ describe("LxNavItem", () => {
     expect(levelThree.container.querySelector<HTMLElement>(".lx-nav-item")?.dataset.itemLevel).toBe(
       "3",
     )
+  })
+
+  it("label 渲染为占满剩余宽度的单行省略文本", () => {
+    const { container } = render(<LxNavItem label="Capabilities & Extensions" suffix={<span />} />)
+    const row = container.querySelector<HTMLElement>(".lx-nav-item")!
+    const label = row.querySelector<HTMLElement>("span")!
+
+    expect(label.textContent).toBe("Capabilities & Extensions")
+    expect(label.className).toContain("min-w-0")
+    expect(label.className).toContain("flex-1")
+    expect(label.className).toContain("truncate")
+    // 未 hover 时不渲染 Tooltip
+    expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull()
+  })
+
+  it("label 被省略号截断时 hover 在右侧展示完整内容 Tooltip", () => {
+    vi.useFakeTimers()
+    const { container } = render(<LxNavItem label="Capabilities & Extensions" />)
+    const row = container.querySelector<HTMLElement>(".lx-nav-item")!
+    const label = row.querySelector<HTMLElement>("span")!
+    // jsdom 不做布局，直接伪造截断度量
+    Object.defineProperty(label, "scrollWidth", { value: 200, configurable: true })
+    Object.defineProperty(label, "clientWidth", { value: 100, configurable: true })
+
+    fireEvent.mouseEnter(row)
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+
+    const tooltip = screen.getByRole("tooltip", { hidden: true })
+    expect(within(tooltip).getByText("Capabilities & Extensions")).toBeTruthy()
+    vi.useRealTimers()
+  })
+
+  it("label 未被截断时 hover 不展示 Tooltip", () => {
+    vi.useFakeTimers()
+    const { container } = render(<LxNavItem label="Hooks" />)
+    const row = container.querySelector<HTMLElement>(".lx-nav-item")!
+    const label = row.querySelector<HTMLElement>("span")!
+    Object.defineProperty(label, "scrollWidth", { value: 40, configurable: true })
+    Object.defineProperty(label, "clientWidth", { value: 120, configurable: true })
+
+    fireEvent.mouseEnter(row)
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+
+    expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull()
+    vi.useRealTimers()
   })
 
   it("透传 data-*/aria-* 与自定义 className", () => {

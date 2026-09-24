@@ -1,5 +1,6 @@
 import type React from "react"
-import { forwardRef } from "react"
+import { forwardRef, useRef, useState } from "react"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 
 // 导航行尺寸类型。
 export type LxNavItemSize = "small" | "medium" | "large"
@@ -10,6 +11,8 @@ export type LxNavItemLevel = 1 | 2 | 3
 // 导航行属性。
 export interface LxNavItemProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "prefix"> {
   children?: React.ReactNode
+  // 截断标签：以单行省略号渲染并占满剩余宽度；实际被截断时 hover 展示完整内容的右侧 Tooltip。
+  label?: React.ReactNode
   size?: LxNavItemSize
   level?: LxNavItemLevel
   prefix?: React.ReactNode
@@ -34,6 +37,7 @@ const sizeStyles: Record<LxNavItemSize, string> = {
 export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxNavItem(
   {
     children,
+    label,
     size = "medium",
     level = 1,
     prefix,
@@ -43,14 +47,17 @@ export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxN
     className = "",
     style,
     onClick,
+    onMouseEnter,
     onKeyDown,
     ...restProps
   },
   ref,
 ): React.JSX.Element {
   const indent = depth > 0 ? 10 + (depth - 1) * 12 : 0
+  const labelRef = useRef<HTMLSpanElement>(null)
+  const [isLabelTruncated, setIsLabelTruncated] = useState(false)
 
-  return (
+  const row = (
     <div
       ref={ref}
       role="button"
@@ -60,6 +67,13 @@ export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxN
         sizeStyles[size]
       } ${hoverable ? "hover:bg-white/10" : ""} ${className}`}
       onClick={onClick}
+      onMouseEnter={(event) => {
+        if (label != null) {
+          const element = labelRef.current
+          setIsLabelTruncated(Boolean(element && element.scrollWidth > element.clientWidth + 1))
+        }
+        onMouseEnter?.(event)
+      }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault()
@@ -71,8 +85,22 @@ export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxN
       data-item-level={String(level)}
     >
       {prefix}
+      {label != null ? (
+        <span ref={labelRef} className="min-w-0 flex-1 truncate">
+          {label}
+        </span>
+      ) : null}
       {children}
       {suffix}
     </div>
+  )
+
+  if (label == null) return row
+
+  // 未截断时不渲染气泡内容（content 为空时 LxTooltip 不出现）。
+  return (
+    <LxTooltip content={isLabelTruncated ? label : undefined} placement="right">
+      {row}
+    </LxTooltip>
   )
 })

@@ -73,6 +73,7 @@ src/renderer/src/
 
 - 优先复用 `src/renderer/src/components/ui/` 的共享组件；确认没有可用组件后，才允许自定义组件或直接编写标签代码。
 - 工具操作优先使用熟悉的图标按钮，并提供可访问名称和 Tooltip。
+- 文本被截断（显示省略号）的行必须提供完整内容的 Tooltip（默认右侧展示），禁止使用原生 `title` 属性。
 - 按钮默认不要使用高亮或高对比色背景，保持克制中性风格；仅在用户明确要求时才允许使用高亮样式。
 - 使用 lucide 图标，不手写等价 SVG 图标，除非指定。
 - 基础 UI 组件不得依赖 feature、page、route 或 `window.api`。

@@ -155,6 +155,7 @@ export const SettingsLeftSideBar = ({
             <div key={group.id} className="space-y-0.5">
               <LxNavItem
                 level={1}
+                label={t(group.labelKey)}
                 aria-expanded={isGroupExpanded}
                 className={`font-semibold ${groupHasActive ? "text-white" : "text-white/45"}`}
                 onClick={() => toggleGroup(group.id)}
@@ -166,9 +167,7 @@ export const SettingsLeftSideBar = ({
                     }`}
                   />
                 }
-              >
-                <span className="min-w-0 flex-1 truncate">{t(group.labelKey)}</span>
-              </LxNavItem>
+              />
               {isGroupExpanded
                 ? group.sections.map((section) => {
                     const isActive = activeSection === section.id
@@ -179,13 +178,12 @@ export const SettingsLeftSideBar = ({
                         key={section.id}
                         level={3}
                         depth={1}
+                        label={label}
                         aria-current={isActive ? "page" : undefined}
                         className={isActive ? "bg-white/5 text-white" : "text-white/70"}
                         onClick={() => handleSectionClick(section.id)}
                         prefix={<Icon className="h-3.5 w-3.5 shrink-0" />}
-                      >
-                        <span className="min-w-0 flex-1 truncate">{label}</span>
-                      </LxNavItem>
+                      />
                     )
                   })
                 : null}
