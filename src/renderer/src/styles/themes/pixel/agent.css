@@ -1534,7 +1534,7 @@
 
 /* Agent 输入框底栏按键像素化与配色 */
 [data-theme="pixel"] .agent-input-add-btn {
-  background-color: #2e2e42 !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
   color: #c4c4d6 !important;
   border: 2px solid #000000 !important;
   box-shadow:
@@ -1544,7 +1544,7 @@
 }
 
 [data-theme="pixel"] .agent-input-add-btn:hover {
-  background-color: #3e3e58 !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
   color: #ffffff !important;
 }
 

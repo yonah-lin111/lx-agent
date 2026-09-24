@@ -1269,12 +1269,12 @@ select {
 }
 
 /* 输入区控件同步模式色：底纹叠加在控件自身底色之上，与容器同色；
-   下拉弹层与 Tooltip 渲染在浮层（portal / 独立固定层），不在此范围，保持默认外观。 */
+   下拉弹层与 Tooltip 渲染在浮层（portal / 独立固定层），不在此范围，保持默认外观；
+   上下文用量胶囊保持透明，不加底纹。 */
 .agent-input-container .agent-input-add-btn,
 .agent-input-container .agent-input-voice-btn,
 .agent-input-container .agent-input-action-btn,
-.agent-input-container .lx-select-trigger,
-.agent-input-container .agent-status-context-pill {
+.agent-input-container .lx-select-trigger {
   background-image: linear-gradient(
     var(--agent-mode-tint, transparent),
     var(--agent-mode-tint, transparent)
