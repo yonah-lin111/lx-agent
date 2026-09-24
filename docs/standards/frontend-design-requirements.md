@@ -59,7 +59,7 @@ src/renderer/src/
 ### 新组件适配
 
 - 优先使用语义化 Token 或 Tailwind 类名（`bg-[#212121]`、`border-white/10`），确保主题无感适配。
-- 多层结构（树形导航、列表项）可挂 `data-item-level="project" | "folder" | "item"`，供特定主题精确分派色阶。
+- 多层结构（树形导航、列表项）经 `LxNavItem` 的 `level` 挂数字 `data-item-level="1" | "2" | "3"`（1 根容器、2 中间容器、3 叶子行），供特定主题精确分派色阶。
 - 下拉菜单、命令面板统一挂 `role="listbox"` / `role="option"`，自动继承主题阴影、立体槽与高亮样式。
 
 ## 交互与布局

@@ -6,6 +6,11 @@ export const general = {
   voice: "语音设置",
   permissions: "权限",
   collaboration: "Agent 模式",
+  groupGeneral: "通用与界面",
+  groupModels: "模型与成本",
+  groupAgent: "智能体行为",
+  groupCapabilities: "能力与扩展",
+  groupIntegrations: "集成与运行时",
   generalDesc: "配置界面语言和通用偏好设置",
   generalDoc: `### 通用偏好设置
 

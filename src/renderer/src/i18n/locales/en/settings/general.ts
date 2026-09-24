@@ -6,6 +6,11 @@ export const general = {
   voice: "Voice Input",
   permissions: "Permissions",
   collaboration: "Agent Mode",
+  groupGeneral: "General & UI",
+  groupModels: "Models & Cost",
+  groupAgent: "Agent Behavior",
+  groupCapabilities: "Capabilities & Extensions",
+  groupIntegrations: "Integrations & Runtime",
   generalDesc: "Configure interface language and general application preferences",
   generalDoc: `### General Preferences
 
