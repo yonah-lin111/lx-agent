@@ -181,6 +181,10 @@ describe("SettingsLeftSideBar 分组导航", () => {
 
     const modelsIcon = nav.getByRole("button", { name: "Models" })
     expect(modelsIcon.getAttribute("data-item-level")).toBe("3")
+    // 度量对齐底部导航的 LxIconButton size="small"（h-6 w-6，图标 h-3.5）
+    expect(modelsIcon.className).toContain("h-6")
+    expect(modelsIcon.className).toContain("w-6")
+    expect(modelsIcon.className).not.toContain("w-full")
     fireEvent.click(modelsIcon)
     expect(mockNavigate).toHaveBeenCalledWith("/settings?section=models")
   })
