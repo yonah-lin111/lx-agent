@@ -85,6 +85,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
                     className={`h-3.5 w-3.5 shrink-0 ${groupHasActive ? "text-white" : ""}`}
                   />
                 }
+                label={t(group.labelKey)}
                 suffix={
                   <ChevronDown
                     className={`h-3.5 w-3.5 shrink-0 transition-transform duration-150 ${
@@ -92,9 +93,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
                     }`}
                   />
                 }
-              >
-                <span className="min-w-0 flex-1 truncate">{t(group.labelKey)}</span>
-              </LxNavItem>
+              />
               {isGroupExpanded ? (
                 <div className="space-y-1">
                   {group.sections.map((section) => {
@@ -105,13 +104,12 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
                         key={section.id}
                         level={3}
                         depth={1}
+                        label={section.label}
                         aria-current={isActive ? "page" : undefined}
                         className={isActive ? "bg-white/5 text-white" : "text-white/70"}
                         onClick={() => navigate(`${PAGE_ROUTES.ui}?section=${section.id}`)}
                         prefix={<Icon className="h-3.5 w-3.5 shrink-0" />}
-                      >
-                        <span className="min-w-0 flex-1 truncate">{section.label}</span>
-                      </LxNavItem>
+                      />
                     )
                   })}
                 </div>

@@ -99,6 +99,17 @@ describe("LxNavItem", () => {
     expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull()
   })
 
+  it("labelClassName 叠加到自动渲染的截断标签上", () => {
+    const { container } = render(
+      <LxNavItem label="Design 1" labelClassName="text-white/40 line-through" />,
+    )
+    const label = container.querySelector<HTMLElement>(".lx-nav-item span")!
+    expect(label.className).toContain("min-w-0")
+    expect(label.className).toContain("truncate")
+    expect(label.className).toContain("text-white/40")
+    expect(label.className).toContain("line-through")
+  })
+
   it("label 被省略号截断时 hover 在右侧展示完整内容 Tooltip", () => {
     vi.useFakeTimers()
     const { container } = render(<LxNavItem label="Capabilities & Extensions" />)

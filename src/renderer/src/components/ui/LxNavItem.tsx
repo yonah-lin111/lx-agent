@@ -13,6 +13,8 @@ export interface LxNavItemProps extends Omit<React.HTMLAttributes<HTMLDivElement
   children?: React.ReactNode
   // 截断标签：以单行省略号渲染并占满剩余宽度；实际被截断时 hover 展示完整内容的右侧 Tooltip。
   label?: React.ReactNode
+  // 追加到自动渲染的截断标签上的样式类（状态/字体等修饰）。
+  labelClassName?: string
   size?: LxNavItemSize
   level?: LxNavItemLevel
   prefix?: React.ReactNode
@@ -38,6 +40,7 @@ export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxN
   {
     children,
     label,
+    labelClassName = "",
     size = "medium",
     level = 1,
     prefix,
@@ -86,7 +89,7 @@ export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxN
     >
       {prefix}
       {label != null ? (
-        <span ref={labelRef} className="min-w-0 flex-1 truncate">
+        <span ref={labelRef} className={`min-w-0 flex-1 truncate ${labelClassName}`}>
           {label}
         </span>
       ) : null}
