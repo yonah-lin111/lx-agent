@@ -5,7 +5,6 @@ import type {
   SandboxPolicy,
 } from "@shared/contracts/agent"
 import { GitStatusBar } from "@/features/git"
-import { resolveDisplayCollaborationMode } from "@/lib/collaborationModes"
 import { CollaborationModeButton } from "./CollaborationModeButton"
 import { JobStatusButton } from "./JobStatusButton"
 import { PermissionStatusButton } from "./PermissionStatusButton"
@@ -72,11 +71,8 @@ export const AgentStatusBar = ({
   pendingRequest,
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
-  // 模式底纹跟随展示模式（auto 下按有效模式着色），与标签配色同一规则。
-  const displayMode = resolveDisplayCollaborationMode(collaborationMode ?? "build", effectiveMode)
-
   return (
-    <div className="agent-status-bar flex min-w-0 items-center" data-agent-mode={displayMode}>
+    <div className="agent-status-bar flex min-w-0 items-center">
       <div className="min-w-0 flex-1">
         <GitStatusBar
           projectPath={projectPath}

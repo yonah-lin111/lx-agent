@@ -1259,14 +1259,24 @@ select {
   user-select: none;
 }
 
-/* Agent 协作模式底纹：状态栏与输入框按当前展示模式叠加主题色（令牌见各主题文件）。
+/* Agent 协作模式底纹：整个输入容器按当前展示模式叠加主题色（令牌见各主题文件）。
    data-agent-mode 由渲染层按 resolveDisplayCollaborationMode 标注；build 为 transparent，保持默认观感。 */
-.agent-input-container,
-.agent-status-bar {
+.agent-input-container {
   background-image: linear-gradient(
     var(--agent-mode-tint, transparent),
     var(--agent-mode-tint, transparent)
   );
+}
+
+/* 模式底纹不穿透输入区控件：圆形按钮使用不透明表面色（含 hover），切换模式时按钮不变色。 */
+.agent-input-container .agent-input-add-btn,
+.agent-input-container .agent-input-voice-btn {
+  background-color: var(--agent-input-control-bg, rgba(255, 255, 255, 0.05));
+}
+
+.agent-input-container .agent-input-add-btn:hover,
+.agent-input-container .agent-input-voice-btn:hover {
+  background-color: var(--agent-input-control-bg-hover, rgba(255, 255, 255, 0.1));
 }
 
 [data-agent-mode="build"] {

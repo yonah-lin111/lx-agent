@@ -19,6 +19,9 @@
   --agent-mode-review-tint: rgba(168, 85, 247, 0.12);
   --agent-mode-design-tint: rgba(236, 72, 153, 0.12);
   --agent-mode-minimal-tint: rgba(16, 185, 129, 0.12);
+  /* 输入区控件表面色（模式底纹不穿透按钮；含 hover）。 */
+  --agent-input-control-bg: #353535;
+  --agent-input-control-bg-hover: #3f3f3f;
   /* 用量图表配色：系列语义色 + Provider 循环色板（主题级定义，图表仅引用变量）。 */
   --color-usage-chart-fresh-input: #38bdf8;
   --color-usage-chart-output: #22c55e;
