@@ -95,7 +95,6 @@ export const CollaborationModeButton = ({
             key={item}
             role="option"
             aria-selected={isActive}
-            size="small"
             className={isActive ? "bg-white/10" : ""}
             prefix={<itemMeta.Icon className={`h-3.5 w-3.5 shrink-0 ${itemMeta.iconClass}`} />}
             suffix={isActive ? <Check className="h-3.5 w-3.5 shrink-0 text-white/70" /> : null}
