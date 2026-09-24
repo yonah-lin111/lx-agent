@@ -77,6 +77,7 @@ export const agent = {
   modeExitReject: "留在当前模式",
   modeExitAllowed: "已批准退出「{{mode}}」",
   modeExitDenied: "已拒绝退出「{{mode}}」",
+  modeExitRequestedToast: "模型请求退出「{{mode}}」并开始执行，请在消息流中点击「退出并执行」确认",
   modeExitResolved: "模式切换请求已处理",
   modeSwitchViaAuto: "Auto 编排",
   review: {

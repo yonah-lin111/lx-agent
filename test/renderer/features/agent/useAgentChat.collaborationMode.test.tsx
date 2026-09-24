@@ -5,6 +5,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { useAgentChat } from "@/features/agent/hooks/useAgentChat"
 
+const toastHolder = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  warning: vi.fn(),
+}))
+
+vi.mock("@/components/ui/LxToast", () => ({
+  useLxAgentToast: () => toastHolder,
+}))
+
 vi.mock("@/features/agent/api/agentApi", () => ({
   agentApi: {
     onEvent: vi.fn(),
@@ -44,6 +54,7 @@ describe("useAgentChat 协作模式切换", () => {
       todos: [],
     } as unknown as Awaited<ReturnType<typeof agentApi.restoreSession>>)
     vi.mocked(agentApi.setCollaborationMode).mockClear()
+    toastHolder.warning.mockClear()
   })
 
   it("循环切换覆盖 Minimal 并回到 Build", async () => {
@@ -67,5 +78,27 @@ describe("useAgentChat 协作模式切换", () => {
 
     act(() => result.current.selectCollaborationMode("minimal"))
     expect(agentApi.setCollaborationMode).toHaveBeenCalledWith("minimal", "session-1", "tab-1")
+  })
+
+  it("mode_exit_request 触发 warning toast（确认块在消息流中，避免用户漏看导致回合挂起）", async () => {
+    renderHook(() => useAgentChat(undefined, "tab-1", "session-1"))
+    await act(async () => {})
+
+    act(() => {
+      eventHandler({
+        type: "mode_exit_request",
+        sessionId: "session-1",
+        tabId: "tab-1",
+        request: {
+          requestId: "session-1:1",
+          toolCallId: "call-1",
+          fromMode: "plan",
+          toMode: "build",
+          sessionId: "session-1",
+        },
+      })
+    })
+
+    expect(toastHolder.warning).toHaveBeenCalledTimes(1)
   })
 })

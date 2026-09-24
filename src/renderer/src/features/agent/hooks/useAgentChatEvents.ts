@@ -15,6 +15,7 @@ import {
   upsertSwitchMessage,
 } from "@/features/agent/utils"
 import { synthesizeDesignUpdate } from "@/features/agent/utils/designSynthesizer"
+import { COLLABORATION_MODE_META } from "@/lib/collaborationModes"
 
 /**
  * 分发 main 进程推送的 AgentEvent，支持基于 sessionId 与 tabId 的精准路由。
@@ -424,8 +425,14 @@ export const useAgentChatEvents = ({
           break
 
         case "mode_exit_request":
-          // 模式退出审批挂起：把请求回填到对应 switch_mode 工具调用块，驱动内联确认。
+          // 模式退出审批挂起：把请求回填到对应 switch_mode 工具调用块，驱动内联确认；
+          // 同时 warning toast 提醒（确认块在消息流中，用户可能未注意到导致回合看似卡住）。
           patchToolCallBlocks(new Map([[event.request.toolCallId, { modeExit: event.request }]]))
+          warningToast(
+            t("agent.modeExitRequestedToast", {
+              mode: t(COLLABORATION_MODE_META[event.request.fromMode].labelKey),
+            }),
+          )
           break
 
         case "context_usage":

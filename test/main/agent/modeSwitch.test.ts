@@ -304,4 +304,20 @@ describe("Collaboration Mode Switch Entries", () => {
     expect(event.effectiveMode).toBe("review")
     expect(event.message?.viaAuto).toBeUndefined()
   })
+
+  it("auto 有效模式下每轮系统提示词保留有效模式契约（回归：runSessionTurn 曾漏传 effective）", async () => {
+    const { agentRunner } = await importModules()
+    const sessionId = await createSession(agentRunner)
+
+    agentRunner.setCollaborationMode("auto", sessionId)
+    agentRunner.setEffectiveMode("plan", sessionId)
+
+    const res = await agentRunner.send("下一步", undefined, { cwd: tmpWorkspace })
+    expect(res.ok).toBe(true)
+
+    const prompt = agentRunner.getRunner(sessionId)?.agent?.state.systemPrompt ?? ""
+    expect(prompt).toContain("# Collaboration Mode: Auto Orchestration")
+    expect(prompt).toContain("# Collaboration Mode: Plan Mode (Strictly Non-Mutating)")
+    expect(prompt).not.toContain('<collaboration_mode name="build">')
+  })
 })

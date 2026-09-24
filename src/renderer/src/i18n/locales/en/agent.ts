@@ -81,6 +81,8 @@ export const agent = {
   modeExitReject: "Stay in Current Mode",
   modeExitAllowed: "Approved exiting {{mode}}",
   modeExitDenied: "Declined exiting {{mode}}",
+  modeExitRequestedToast:
+    'The model requests to exit {{mode}} and start executing — click "Exit & Execute" in the message stream to confirm',
   modeExitResolved: "Mode switch request resolved",
   modeSwitchViaAuto: "via Auto",
   review: {

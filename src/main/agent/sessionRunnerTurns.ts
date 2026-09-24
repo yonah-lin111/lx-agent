@@ -101,6 +101,7 @@ export const runSessionTurn = async (
       modelId: agent.state.model.id,
       sandboxPolicy: currentSandboxPolicy,
       collaborationMode: host.collaborationMode,
+      effectiveCollaborationMode: host.effectiveMode,
       contextUsage,
       activeSkills: host.activeSkills,
       mcpServers: resolveConnectedMcpServers(),
