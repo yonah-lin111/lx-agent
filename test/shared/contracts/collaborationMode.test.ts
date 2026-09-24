@@ -6,21 +6,34 @@ import {
   nextCollaborationMode,
   normalizeCollaborationMode,
   roleBlockedTools,
+  SWITCH_MODE_TARGETS,
   withModePermissionDefaults,
 } from "@shared/contracts/agent"
 import { describe, expect, it } from "vitest"
 
 describe("协作模式契约", () => {
-  it("模式顺序与循环切换：build → plan → review → design → minimal → build", () => {
-    expect(COLLABORATION_MODE_ORDER).toEqual(["build", "plan", "review", "design", "minimal"])
-    expect(nextCollaborationMode("build")).toBe("plan")
+  it("模式顺序与循环切换：build → auto → plan → review → design → minimal → build", () => {
+    expect(COLLABORATION_MODE_ORDER).toEqual([
+      "build",
+      "auto",
+      "plan",
+      "review",
+      "design",
+      "minimal",
+    ])
+    expect(nextCollaborationMode("build")).toBe("auto")
+    expect(nextCollaborationMode("auto")).toBe("plan")
     expect(nextCollaborationMode("plan")).toBe("review")
     expect(nextCollaborationMode("review")).toBe("design")
     expect(nextCollaborationMode("design")).toBe("minimal")
     expect(nextCollaborationMode("minimal")).toBe("build")
   })
 
-  it("归一化：合法模式保留（含 minimal），历史 default 与非法值回退 build", () => {
+  it("switch_mode 目标集合：minimal / auto 不可达", () => {
+    expect(SWITCH_MODE_TARGETS).toEqual(["build", "plan", "review", "design"])
+  })
+
+  it("归一化：合法模式保留（含 auto / minimal），历史 default 与非法值回退 build", () => {
     for (const mode of COLLABORATION_MODE_ORDER) {
       expect(normalizeCollaborationMode(mode)).toBe(mode)
     }
@@ -61,7 +74,9 @@ describe("协作模式契约", () => {
     }
   })
 
-  it("黑名单模式保持原语义：build 不拦截，plan/review 拦写操作，design 另拦 wireframe", () => {
+  it("黑名单模式保持原语义：build / auto 不拦截，plan/review 拦写操作，design 另拦 wireframe", () => {
+    expect(isToolBlockedByMode("auto", "write")).toBe(false)
+    expect([...getModeBlockedTools("auto")]).toEqual([])
     expect(isToolBlockedByMode("build", "write")).toBe(false)
     expect([...getModeBlockedTools("plan")].sort()).toEqual([
       "apply_patch",
@@ -91,5 +106,8 @@ describe("协作模式契约", () => {
   it("Minimal 无子代理缺省：能力权限缺省不注入 subagents", () => {
     expect(withModePermissionDefaults("minimal", undefined)).toBeUndefined()
     expect(withModePermissionDefaults("plan", undefined)).toEqual({ subagents: ["explorer"] })
+    // auto 与 build 同级：缺省不注入子代理白名单。
+    expect(withModePermissionDefaults("auto", undefined)).toBeUndefined()
+    expect(roleBlockedTools(undefined, "auto")).toEqual([])
   })
 })

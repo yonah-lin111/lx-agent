@@ -46,7 +46,7 @@ describe("我的世界主题导航层级词表", () => {
     )
   })
 
-  it("solid LxTag 对齐按钮级浮雕，高亮态保持凸起不凹陷", () => {
+  it("solid LxTag 对齐按钮级浮雕，高亮态凹陷并叠加外发光", () => {
     const readBlock = (selector: string): string => {
       const start = pixelCss.indexOf(selector)
       expect(start).toBeGreaterThanOrEqual(0)
@@ -58,13 +58,14 @@ describe("我的世界主题导航层级词表", () => {
     expect(baseBlock).toContain("inset -2px -2px 0px 0px")
     expect(baseBlock).toContain("2px 2px 0px 0px #000000")
 
-    // 高亮标签只覆盖底色与文字色：抬升浮雕由基础 .lx-tag 规则继承，不得改为凹陷。
+    // 高亮标签：不改底色与文字色，矿石槽由凸起转为凹陷并叠加外发光（f7e024b7 有意改版）。
     const highlightedTagBlock = readBlock(
       '.lx-tag[data-highlighted="true"]:not([data-variant="ghost"])',
     )
-    expect(highlightedTagBlock).toContain("background-color: #14141c !important")
-    expect(highlightedTagBlock).not.toContain("box-shadow")
-    expect(highlightedTagBlock).not.toMatch(/inset 2px 2px 0px 0px rgba\(0, 0, 0, 0\.9/)
+    expect(highlightedTagBlock).toContain("box-shadow")
+    expect(highlightedTagBlock).toContain("inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95)")
+    expect(highlightedTagBlock).toContain("0px 0px 8px rgba(255, 255, 255, 0.2)")
+    expect(highlightedTagBlock).not.toContain("background-color")
 
     for (const selector of [
       '.project-recent-tag[data-color="default"][data-highlighted="true"] {',

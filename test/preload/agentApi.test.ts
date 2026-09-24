@@ -121,4 +121,30 @@ describe("preload agent API", () => {
       undefined,
     )
   })
+  it("模式编排通道转发：setCollaborationMode / setEffectiveMode / questionRespond", async () => {
+    const api = exposeInMainWorld.mock.calls[0]?.[1]
+
+    await api.agent.setCollaborationMode("auto", "sess-1", "tab-1")
+    await api.agent.setEffectiveMode("plan", "sess-1", "tab-1")
+    await api.agent.questionRespond({ requestId: "q-1", answers: [] })
+
+    expect(invoke).toHaveBeenNthCalledWith(
+      1,
+      AGENT_CHANNELS.setCollaborationMode,
+      "auto",
+      "sess-1",
+      "tab-1",
+    )
+    expect(invoke).toHaveBeenNthCalledWith(
+      2,
+      AGENT_CHANNELS.setEffectiveMode,
+      "plan",
+      "sess-1",
+      "tab-1",
+    )
+    expect(invoke).toHaveBeenNthCalledWith(3, AGENT_CHANNELS.questionResponse, {
+      requestId: "q-1",
+      answers: [],
+    })
+  })
 })

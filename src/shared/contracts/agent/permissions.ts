@@ -9,17 +9,22 @@ import {
 // 权限确认模式（default / acceptEdits / bypassPermissions 三态）。
 export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions"
 
-// 协作模式（build / plan / review / design / minimal，支持向后兼容 "default" 归一化为 "build"）。
-export type CollaborationMode = "build" | "plan" | "review" | "design" | "minimal"
+// 协作模式（build / auto / plan / review / design / minimal，支持向后兼容 "default" 归一化为 "build"）。
+// auto 为编排基础模式：模型经 switch_mode 工具自行切出有效模式（effectiveMode），退出只读模式需用户批准。
+export type CollaborationMode = "build" | "auto" | "plan" | "review" | "design" | "minimal"
 
 // 协作模式循环顺序（Shift+Tab 循环、设置页展示与默认模式选择共用同一来源）。
 export const COLLABORATION_MODE_ORDER: readonly CollaborationMode[] = [
   "build",
+  "auto",
   "plan",
   "review",
   "design",
   "minimal",
 ]
+
+// switch_mode 工具可达的目标模式（auto 不可达自身，minimal 永久排除在 auto 编排之外）。
+export const SWITCH_MODE_TARGETS = ["build", "plan", "review", "design"] as const
 
 // 计算循环切换的下一个模式（末位回到首位）。
 export const nextCollaborationMode = (mode: CollaborationMode): CollaborationMode => {
@@ -64,7 +69,7 @@ export const MODE_BLOCKED_TOOLS: readonly string[] = [
 const DESIGN_BLOCKED_TOOLS: readonly string[] = ["wireframe"]
 
 // Minimal Mode 工具白名单：终端 + 文件读写；搜索/列目录走 bash，其余工具一律硬拦截
-// （fail-closed，新增工具默认被拦截）。有意偏离 dsh minimal 的 shell-only 基线（见 docs/agent/modes.md §5）。
+// （fail-closed，新增工具默认被拦截）。有意偏离 dsh minimal 的 shell-only 基线（见 docs/agent/modes.md §6）。
 const MINIMAL_ALLOWED_TOOLS: readonly string[] = ["bash", "read", "write", "edit"]
 
 // 模式工具白名单集合（缺省 = 不限制）。
@@ -83,6 +88,8 @@ const EMPTY_TOOL_SET: ReadonlySet<string> = new Set()
 const BASE_MODE_BLOCKED_TOOLS: ReadonlySet<string> = new Set(MODE_BLOCKED_TOOLS)
 const MODE_BLOCKED_TOOL_SETS: Record<CollaborationMode, ReadonlySet<string>> = {
   build: EMPTY_TOOL_SET,
+  // Auto 为编排基础模式，自身无模式硬基线（有效模式的门禁在切换后各自生效）。
+  auto: EMPTY_TOOL_SET,
   plan: BASE_MODE_BLOCKED_TOOLS,
   review: BASE_MODE_BLOCKED_TOOLS,
   design: new Set([...MODE_BLOCKED_TOOLS, ...DESIGN_BLOCKED_TOOLS]),

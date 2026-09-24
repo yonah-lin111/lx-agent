@@ -215,7 +215,7 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 ### 5.3 子代理系统提示词与审查路径
 
 - 子代理系统提示词按「子代理基座提示词（按 `agent.subagents.mode` 渲染，缺省 Build，不注入主 Agent 协作模式）→ `SUBAGENT_PROMPT_SUFFIX` → `role.instructions`」顺序追加（适用于 `explorer` / `worker` 与用户角色）；`SubagentStart` / `SubagentStop` hook payload 的 `agent_type` 使用解析后的角色名。
-- 代码审查的唯一路径是协作模式 Review Mode（只读审计 + `<review_findings>` 输出契约），不存在 `review` 子代理角色；处于 Review 模式且用户未指定审查目标时，默认审查当前未提交变更。输出协议与卡片见 [modes.md](./modes.md) §3。
+- 代码审查的唯一路径是协作模式 Review Mode（只读审计 + `<review_findings>` 输出契约），不存在 `review` 子代理角色；处于 Review 模式且用户未指定审查目标时，默认审查当前未提交变更。输出协议与卡片见 [modes.md](./modes.md) §4。
 
 ---
 

@@ -1,6 +1,6 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
 import type { LucideIcon } from "lucide-react"
-import { Compass, Palette, ShieldAlert, Terminal, Zap } from "lucide-react"
+import { Compass, Palette, ShieldAlert, Terminal, Workflow, Zap } from "lucide-react"
 import type { LxTagColor } from "@/components/ui/LxTag"
 import type { TranslationKey } from "@/i18n"
 
@@ -25,6 +25,14 @@ export const COLLABORATION_MODE_META: Record<
     color: "default",
     iconClass: "text-white/45",
     Icon: Zap,
+  },
+  auto: {
+    shortName: "Auto",
+    labelKey: "agent.collaborationModeAuto",
+    descKey: "agent.collaborationModeAutoDesc",
+    color: "indigo",
+    iconClass: "text-indigo-400/80",
+    Icon: Workflow,
   },
   plan: {
     shortName: "Plan",
@@ -58,4 +66,17 @@ export const COLLABORATION_MODE_META: Record<
     iconClass: "text-emerald-400/80",
     Icon: Terminal,
   },
+}
+
+/**
+ * 解析展示模式：auto 下按有效模式展示（有效 build 时回退 auto 自身）；
+ * 状态栏标签配色与输入框/状态栏模式底纹共用同一规则，避免两侧分叉。
+ */
+export const resolveDisplayCollaborationMode = (
+  mode: CollaborationMode,
+  effectiveMode?: CollaborationMode,
+): CollaborationMode => {
+  if (mode !== "auto") return mode
+  const active = effectiveMode ?? "build"
+  return active === "build" ? "auto" : active
 }

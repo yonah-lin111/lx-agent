@@ -535,6 +535,44 @@ describe("SystemPromptManager", () => {
         expect(assembly.rendered).not.toContain("<env>")
       })
 
+      it("auto 基础模式注入编排策略；有效模式为只读时叠加对应模式契约", async () => {
+        const manager = createDefaultSystemPromptManager()
+
+        const autoBuild = await manager.assemble({ collaborationMode: "auto" })
+        expect(autoBuild.rendered).toContain("# Collaboration Mode: Auto Orchestration")
+        expect(autoBuild.rendered).toContain("switch_mode")
+        expect(autoBuild.rendered).not.toContain("# Collaboration Mode: Plan Mode")
+
+        const autoPlan = await manager.assemble({
+          collaborationMode: "auto",
+          effectiveCollaborationMode: "plan",
+        })
+        expect(autoPlan.rendered).toContain("# Collaboration Mode: Auto Orchestration")
+        expect(autoPlan.rendered).toContain(
+          "# Collaboration Mode: Plan Mode (Strictly Non-Mutating)",
+        )
+
+        const autoReview = await manager.assemble({
+          collaborationMode: "auto",
+          effectiveCollaborationMode: "review",
+        })
+        expect(autoReview.rendered).toContain(
+          "# Collaboration Mode: Review Mode (Strictly Read-Only Audit)",
+        )
+      })
+
+      it("auto 的有效模式不触发 minimal 独占段（minimal 不在编排目标内）", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "auto",
+          effectiveCollaborationMode: "design",
+        })
+        expect(
+          assembly.sections.some((section) => section.name === PROMPT_SECTION_NAMES.MINIMAL_MODE),
+        ).toBe(false)
+        expect(assembly.rendered).toContain("# Collaboration Mode: Front Design Mode")
+      })
+
       it("非 minimal 模式不注入独占段，常规分层与各模式互不影响", async () => {
         const manager = createDefaultSystemPromptManager()
         for (const mode of ["build", "plan", "review", "design"] as const) {

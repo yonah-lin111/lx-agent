@@ -1,3 +1,4 @@
+import type { CollaborationMode } from "@shared/contracts/agent"
 import { Loader2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
@@ -71,6 +72,8 @@ export interface AgentInputProps {
   selectedFiles: AgentInputFile[]
   onFilesChange: (files: AgentInputFile[]) => void
   supportsImages: boolean
+  // 展示协作模式（auto 已解析为有效模式；驱动输入区模式底纹）。缺省 build = 无底纹。
+  agentMode?: CollaborationMode
   // 语音输入按钮引用（供外部快捷键调用 toggleRecording）
   voiceButtonRef?: React.Ref<AgentVoiceInputButtonRef>
 }
@@ -115,6 +118,7 @@ export const AgentInput = ({
   selectedFiles,
   onFilesChange,
   supportsImages,
+  agentMode = "build",
   voiceButtonRef,
 }: AgentInputProps): React.JSX.Element => {
   const markdownInputRef = useRef<AgentMarkdownInputRef>(null)
@@ -395,6 +399,7 @@ export const AgentInput = ({
       <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
       <div
         ref={containerRef}
+        data-agent-mode={agentMode}
         className={`agent-input-container relative flex flex-col justify-between rounded-[6px] border bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow] duration-150 focus-within:border-white/20 focus-within:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] ${
           voiceRecordingState === "recording"
             ? "border-rose-500/40 shadow-[0_0_8px_rgba(244,63,94,0.15)]"

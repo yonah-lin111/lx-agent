@@ -39,6 +39,7 @@ export const formatPreview = (text: string, maxLength = 80): string => {
 // 模式切换步骤标题（与模型切换步骤同风格，使用英文展示名）。
 const MODE_STEP_TITLES: Record<CollaborationMode, string> = {
   build: "Build Mode",
+  auto: "Auto Mode",
   plan: "Plan Mode",
   review: "Review Mode",
   design: "Design Mode",
@@ -300,6 +301,7 @@ export const buildExecutionSteps = (
         modeSwitchContent: {
           mode,
           isInitial: message.isInitial,
+          viaAuto: message.viaAuto,
         },
       })
       continue

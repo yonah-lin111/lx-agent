@@ -4,7 +4,11 @@ import type {
   SubagentData,
   TextContent,
 } from "@shared/contracts/agent"
-import { roleBlockedTools, withModePermissionDefaults } from "@shared/contracts/agent"
+import {
+  roleBlockedTools,
+  SWITCH_MODE_TARGETS,
+  withModePermissionDefaults,
+} from "@shared/contracts/agent"
 import type { ModelSelection, SubagentSettings } from "@shared/settings"
 import { DEFAULT_SUBAGENT_SETTINGS } from "@shared/settings"
 import { z } from "zod"
@@ -47,6 +51,12 @@ const TASK_ITEM_SCHEMA = z.object({
     .string()
     .describe("Complete task prompt to delegate to the sub-agent, must include sufficient context"),
   agent_type: z.string().optional().describe("Agent role name from the Available agent types list"),
+  mode: z
+    .enum(SWITCH_MODE_TARGETS)
+    .optional()
+    .describe(
+      "Delegation mode (Auto orchestration only): 'build' (default), 'plan' (read-only planning draft), 'review' (read-only audit), 'design' (read-only prototyping).",
+    ),
   name: z.string().optional().describe("Sub-agent name or role (e.g., 'code-explorer' / 'coder')"),
 })
 
@@ -67,6 +77,12 @@ const TASK_INPUT_SCHEMA = z
       .string()
       .optional()
       .describe("Single-task mode: agent role name from the Available agent types list"),
+    mode: z
+      .enum(SWITCH_MODE_TARGETS)
+      .optional()
+      .describe(
+        "Single-task mode: delegation mode (Auto orchestration only): 'build' (default), 'plan' (read-only planning draft), 'review' (read-only audit), 'design' (read-only prototyping).",
+      ),
     name: z
       .string()
       .optional()
@@ -112,10 +128,11 @@ export interface SubagentDetails {
 export interface TaskToolDeps {
   // 子代理基座系统提示词（已按子代理协作模式渲染；子代理在其后追加子代理前缀）。
   subagentSystemPrompt: string
-  // 按角色白名单渲染子代理系统提示词（undefined = 不限制，继承父会话技能集与全部已连接 MCP）。
+  // 按角色白名单与按次模式渲染子代理系统提示词（undefined = 不限制，继承父会话技能集与全部已连接 MCP）。
   renderSubagentSystemPrompt?: (
     allowedSkills: string[] | undefined,
     allowedMcpServers?: string[],
+    modeOverride?: CollaborationMode,
   ) => string
   // 父会话模型（子代理沿用）。
   model: Model
@@ -123,10 +140,11 @@ export interface TaskToolDeps {
   sandboxPolicy?: SandboxPolicy
   // 会话级子代理池（跨轮次复用 Agent 实例）。
   subagentPool?: SubagentPool
-  // 子代理权限门控（复用父 permissionManager.gate；协作模式按子代理配置绑定，不继承主 agent）。
+  // 子代理权限门控（复用父 permissionManager.gate；协作模式按子代理绑定，modeOverride 为本次派发模式）。
   beforeToolCall: (
     context: BeforeToolCallContext,
     signal?: AbortSignal,
+    modeOverride?: CollaborationMode,
   ) => Promise<BeforeToolCallResult | undefined>
   // 子代理工具结果收尾（重复调用提醒附加；与主代理一致）。
   afterToolCall?: (
@@ -157,8 +175,12 @@ export interface TaskToolDeps {
   depth?: number
   // 角色模型解析器（默认复用 modelFactory.resolveModelSelection）。
   resolveModelSelection?: (selection: ModelSelection) => { model: Model } | { error: string }
-  // 当前协作模式（缺省 build）：用于把不可派发角色从工具描述中裁掉。
+  // 当前有效协作模式（缺省 build）：用于把不可派发角色从工具描述中裁掉。
   collaborationMode?: CollaborationMode
+  // auto 编排基础模式：task 的 mode 参数仅在此时可用。
+  autoModeEnabled?: boolean
+  // 子代理缺省模式（agent.subagents.mode 快照）；mode 参数逐项覆盖。
+  defaultSubagentMode?: CollaborationMode
 }
 
 // task 工具基础描述（角色目录与并发治理在装配时追加）。
@@ -167,6 +189,38 @@ const BASE_DESCRIPTION =
   "Single-task mode (description + prompt) runs one sub-agent; batch mode (tasks array) fans out multiple NEW sub-agents in PARALLEL and returns their results in input order. " +
   "Use batch mode when a task decomposes into 3+ independent units: shard per item (one item per file/component/question), never split a fan-out across turns, and never batch sequential chains (step B needs step A's output) or tasks that require parent context decisions. " +
   "Use single-task mode with subagent_id to continue an existing sub-agent instead of spawning new ones."
+
+// auto 编排下的派发模式说明（仅在基础模式为 auto 时追加到工具描述）。
+const AUTO_MODE_DESCRIPTION = [
+  "Available delegation modes (Auto orchestration): 'build' executes work (default), 'plan' runs a read-only planning draft, 'review' runs a read-only audit with the 4-dimension rubric, 'design' runs a read-only front-end prototyping discipline.",
+  "Sub-agents run under the selected mode's tool restrictions and return plain text only: their output never renders as a UI card, so switch yourself inline (switch_mode) when the user must approve or interact with the artifact.",
+].join(" ")
+
+// 解析本次派发的子代理模式：mode 参数仅在 auto 编排基础模式下可用，缺省取设置快照。
+const resolveDelegationMode = (
+  deps: Pick<TaskToolDeps, "autoModeEnabled" | "defaultSubagentMode">,
+  requested: CollaborationMode | undefined,
+): { mode: CollaborationMode } | { error: string } => {
+  if (requested === undefined) return { mode: deps.defaultSubagentMode ?? "build" }
+  if (deps.autoModeEnabled !== true) {
+    return {
+      error:
+        'The "mode" parameter is only available in Auto Mode; remove it or run the task in the current mode.',
+    }
+  }
+  return { mode: requested }
+}
+
+// 角色能力集与子代理模式硬基线的兼容校验：冲突时拒绝派发（与门控 / UI 锁定同一语义）。
+const checkRoleForMode = (
+  role: ResolvedAgentRole | undefined,
+  mode: CollaborationMode,
+): string | undefined => {
+  if (!role) return undefined
+  const blocked = roleBlockedTools(role.permissions, mode)
+  if (blocked.length === 0) return undefined
+  return `Role "${role.name}" cannot run in ${mode} mode because its capability set includes tools blocked by that mode: ${blocked.join(", ")}.`
+}
 
 // 批量扇出单项结果（含未启动项）。
 type BatchItemOutcome =
@@ -256,6 +310,7 @@ export const createTaskTool = (
     dispatchableRoles.length > 0
       ? buildAgentTypesDescription(dispatchableRoles)
       : "Available agent types: none — the current collaboration mode does not allow sub-agent dispatch."
+  const modeSection = deps.autoModeEnabled === true ? `\n\n${AUTO_MODE_DESCRIPTION}` : ""
   const runtime = deps.subagentRuntime ?? new SubagentRuntime(settings.maxConcurrent)
   // 仅顶层会话允许排队：嵌套子代理占着槽位等待子代理会形成循环等待。
   const isTopLevel = (deps.depth ?? 0) === 0
@@ -266,13 +321,16 @@ export const createTaskTool = (
   // runner 依赖：注入工具集读取与嵌套 task 工厂（工厂回调避免 runner → task 循环依赖）。
   const runnerDeps: SubagentRunnerDeps = {
     ...deps,
-    createNestedTaskTool: ({ systemPrompt, model, depth, getTools }) =>
+    createNestedTaskTool: ({ systemPrompt, model, depth, getTools, mode }) =>
       createTaskTool({
         ...deps,
         subagentSystemPrompt: systemPrompt,
         model,
         depth,
         subagentRuntime: runtime,
+        collaborationMode: mode ?? deps.collaborationMode,
+        autoModeEnabled: false,
+        defaultSubagentMode: mode ?? deps.defaultSubagentMode,
         getTools,
       }),
   }
@@ -314,6 +372,17 @@ export const createTaskTool = (
 
     const roleName = role?.name ?? existingManaged?.roleName
 
+    // 续接子代理保持创建时的模式：不接受 mode 参数（避免中途换挡）。
+    if (existingManaged && params.mode !== undefined) {
+      return textResult(
+        `mode cannot be changed when resuming subagent "${subagentId}". Existing subagents keep their mode for their lifetime.`,
+      )
+    }
+    const modeResult = resolveDelegationMode(deps, existingManaged ? undefined : params.mode)
+    if ("error" in modeResult) return textResult(modeResult.error)
+    const roleModeError = checkRoleForMode(role, modeResult.mode)
+    if (roleModeError) return textResult(roleModeError)
+
     // 展示名回退顺序：显式 name → 池内旧名 → 角色名 → "task"。
     const subagentName = params.name?.trim() || existingManaged?.name || roleName || "task"
 
@@ -350,6 +419,7 @@ export const createTaskTool = (
           ...(role ? { role } : {}),
           ...(roleName ? { roleName } : {}),
           ...(existingManaged ? { existing: existingManaged } : {}),
+          ...(params.mode !== undefined ? { mode: modeResult.mode } : {}),
           depth: deps.depth ?? 0,
         },
         signal,
@@ -404,6 +474,14 @@ export const createTaskTool = (
           )
         }
       }
+      const modeResult = resolveDelegationMode(deps, item.mode)
+      if ("error" in modeResult) {
+        return textResult(`tasks[${index}]: ${modeResult.error}`)
+      }
+      const roleModeError = checkRoleForMode(role, modeResult.mode)
+      if (roleModeError) {
+        return textResult(`tasks[${index}]: ${roleModeError}`)
+      }
       requests.push({
         toolCallId,
         subagentId: generateSubagentId(),
@@ -412,6 +490,7 @@ export const createTaskTool = (
         name: item.name?.trim() || role?.name || "task",
         ...(role ? { role } : {}),
         ...(role ? { roleName: role.name } : {}),
+        ...(item.mode !== undefined ? { mode: modeResult.mode } : {}),
         depth: deps.depth ?? 0,
       })
     }
@@ -486,7 +565,7 @@ export const createTaskTool = (
   return {
     name: "task",
     label: "Subagent",
-    description: `${BASE_DESCRIPTION}\n\n${agentTypesSection}${concurrencyNote}`,
+    description: `${BASE_DESCRIPTION}\n\n${agentTypesSection}${modeSection}${concurrencyNote}`,
     inputSchema: TASK_INPUT_SCHEMA,
     execute: async (toolCallId, params, signal, onUpdate) => {
       if (params.tasks !== undefined && params.tasks.length > 0) {

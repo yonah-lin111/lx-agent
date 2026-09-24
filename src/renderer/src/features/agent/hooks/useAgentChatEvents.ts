@@ -37,6 +37,7 @@ export const useAgentChatEvents = ({
     | "setIsCompactingManual"
     | "setTodos"
     | "setCollaborationMode"
+    | "setEffectiveMode"
     | "setQueuedCount"
     | "setQueuedMessages"
     | "setContextUsage"
@@ -67,6 +68,7 @@ export const useAgentChatEvents = ({
     setIsCompactingManual,
     setTodos,
     setCollaborationMode,
+    setEffectiveMode,
     setQueuedCount,
     setQueuedMessages,
     setContextUsage,
@@ -376,8 +378,9 @@ export const useAgentChatEvents = ({
           break
 
         case "collaboration_mode_changed":
-          // 协作模式更新（驱动状态栏指示器并 Toast 提示用户）。
+          // 协作模式更新（基础模式 + auto 有效模式；驱动状态栏指示器并 Toast 提示用户）。
           setCollaborationMode(event.mode)
+          setEffectiveMode(event.effectiveMode)
           if (event.message) {
             const item = toChatMessage(
               event.message,
@@ -387,12 +390,14 @@ export const useAgentChatEvents = ({
             )
             setMessages((prev) => upsertSwitchMessage(prev, item))
           }
-          if (event.mode === "plan") {
+          if (event.effectiveMode === "plan") {
             successToast(t("agent.collaborationModeSwitchedToPlan"))
-          } else if (event.mode === "review") {
+          } else if (event.effectiveMode === "review") {
             successToast(t("agent.collaborationModeSwitchedToReview"))
-          } else if (event.mode === "design") {
+          } else if (event.effectiveMode === "design") {
             successToast(t("agent.collaborationModeSwitchedToDesign"))
+          } else if (event.mode === "auto") {
+            successToast(t("agent.collaborationModeSwitchedToAuto"))
           } else if (event.mode === "minimal") {
             successToast(t("agent.collaborationModeSwitchedToMinimal"))
           } else {

@@ -1460,3 +1460,68 @@ describe("permissionManager PermissionRequest hook", () => {
     expect(await pending).toEqual({ block: true, reason: "Action denied by user." })
   })
 })
+
+describe("permissionManager auto 编排门控", () => {
+  it("switch_mode 仅 auto 基础模式可用：非 auto 拒绝，auto 放行", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+
+    expect(
+      permissionManager.evaluate("switch_mode", { mode: "plan" }, { collaborationMode: "build" }),
+    ).toBe("deny")
+    expect(
+      permissionManager.evaluate(
+        "switch_mode",
+        { mode: "plan" },
+        { collaborationMode: "build", baseMode: "auto" },
+      ),
+    ).toBe("allow")
+  })
+
+  it("auto 模式下 modes.auto 作为附加收紧层与有效模式白名单求交（只能收紧）", () => {
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { auto: { tools: ["read"] } },
+    })
+
+    // auto 基础模式：白名单外的 bash 被拒（即使有效模式为 build）。
+    expect(
+      permissionManager.evaluate(
+        "bash",
+        { command: "ls" },
+        { collaborationMode: "build", baseMode: "auto" },
+      ),
+    ).toBe("deny")
+    // 白名单内工具放行。
+    expect(
+      permissionManager.evaluate(
+        "read",
+        { path: "a.ts" },
+        { collaborationMode: "build", baseMode: "auto" },
+      ),
+    ).toBe("allow")
+    // 非 auto 基础模式：同一配置不影响回归行为。
+    expect(
+      permissionManager.evaluate("bash", { command: "ls" }, { collaborationMode: "build" }),
+    ).not.toBe("deny")
+  })
+
+  it("switch_mode 不受 modes.auto 工具白名单约束（禁用 auto 应切换基础模式而非阉割编排）", () => {
+    applySettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { auto: { tools: [] } },
+    })
+    expect(
+      permissionManager.evaluate(
+        "switch_mode",
+        { mode: "plan" },
+        { collaborationMode: "build", baseMode: "auto" },
+      ),
+    ).toBe("allow")
+  })
+})

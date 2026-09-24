@@ -315,6 +315,22 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     },
   )
 
+  ipcMain.handle(
+    AGENT_CHANNELS.setEffectiveMode,
+    (_, mode: unknown, sessionId?: unknown, tabId?: unknown) => {
+      const requestedMode =
+        typeof mode === "string"
+          ? COLLABORATION_MODE_ORDER.find((item) => item === mode)
+          : undefined
+      if (requestedMode === undefined) {
+        return { ok: false, error: "协作模式参数无效。" }
+      }
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      return agentRunner.setEffectiveMode(requestedMode, sId, tId)
+    },
+  )
+
   ipcMain.handle(AGENT_CHANNELS.abort, (_, sessionId?: unknown, tabId?: unknown) => {
     const sId = typeof sessionId === "string" ? sessionId : undefined
     const tId = typeof tabId === "string" ? tabId : undefined

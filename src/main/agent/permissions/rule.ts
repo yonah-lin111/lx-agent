@@ -27,6 +27,8 @@ export const EXEMPT_TOOLS = new Set([
   "view_image",
   "memory",
   "wireframe",
+  // 模式编排工具：纯会话状态切换（退出只读模式仍需用户批准），无文件/命令副作用。
+  "switch_mode",
 ])
 
 // 规则类别。

@@ -212,6 +212,8 @@ export interface ChatMessage {
   isInitial?: boolean
   // 协作模式切换消息的模式值（modeSwitch 专用）。
   collaborationMode?: CollaborationMode
+  // 该模式切换是否由 auto 编排产生（modeSwitch 专用）。
+  viaAuto?: boolean
   // hook 运行产物属性（hookContext 专用；驱动 FlowList hook 步骤）。
   hookEvent?: HookEventName
   hookName?: string
@@ -354,6 +356,8 @@ export interface ExecutionModelSwitchContent {
 export interface ExecutionModeSwitchContent {
   mode: CollaborationMode
   isInitial?: boolean
+  // 该切换是否由 auto 编排的有效模式切换产生。
+  viaAuto?: boolean
 }
 
 export interface ExecutionHookContent {

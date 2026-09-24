@@ -15,6 +15,7 @@ describe("capabilityService", () => {
         "bash",
         "time",
         "todowrite",
+        "wireframe",
         "switch_mode",
         "web_search",
         "webfetch",

@@ -107,6 +107,8 @@ export interface CollaborationModeSwitchMessage {
   timestamp: number
   // 是否为会话创建时的初始模式条目
   isInitial?: boolean
+  // 该切换是否由 auto 编排的有效模式切换产生（区别于用户手动切换基础模式）。
+  viaAuto?: boolean
 }
 
 // 上下文压缩摘要消息：可见的非交互块，标注"此处已压缩"。

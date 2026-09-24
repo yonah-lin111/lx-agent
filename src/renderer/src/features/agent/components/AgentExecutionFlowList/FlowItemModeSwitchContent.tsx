@@ -25,6 +25,11 @@ export const FlowItemModeSwitchContent = ({
           <LxTag size="small" color={meta.color}>
             {t(meta.labelKey)}
           </LxTag>
+          {content.viaAuto && (
+            <LxTag size="small" color="indigo">
+              {t("agent.modeSwitchViaAuto")}
+            </LxTag>
+          )}
         </div>
       </div>
       <div className="text-white/45">{t(meta.descKey)}</div>

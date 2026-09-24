@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { PermissionRequest } from "@shared/contracts/agent"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AgentStatusBar } from "@/features/agent"
 
@@ -117,5 +117,23 @@ describe("AgentStatusBar", () => {
     const passedProps = mockGitStatusBar.mock.calls[0]?.[0] as Record<string, unknown>
     expect(passedProps.alwaysShowWorktree).toBeUndefined()
     expect(passedProps.interactive).toBe(true)
+  })
+
+  it("生成中禁用模式切换：不渲染可点击的模式按钮，点击不回调", () => {
+    const onCollaborationModeChange = vi.fn()
+    const { container } = render(
+      <AgentStatusBar
+        collaborationMode="plan"
+        isStreaming={true}
+        onCollaborationModeChange={onCollaborationModeChange}
+        pendingRequest={null}
+        onPermissionRespond={vi.fn()}
+      />,
+    )
+
+    expect(container.querySelector("[aria-haspopup='listbox']")).toBeNull()
+    fireEvent.click(screen.getByText("Plan"))
+    expect(onCollaborationModeChange).not.toHaveBeenCalled()
+    expect(screen.queryByRole("listbox")).toBeNull()
   })
 })

@@ -49,6 +49,8 @@ export interface SessionRunnerHost {
   activeMcp: string[]
   activeSkills: LoadedSkill[]
   collaborationMode: CollaborationMode
+  // auto 编排下模型切出的有效模式；非 auto 恒等于 collaborationMode。
+  effectiveMode: CollaborationMode
   builtSignature: string
   subagentPool: SubagentPool
   subagentRuntime?: SubagentRuntime
@@ -68,6 +70,8 @@ export interface SessionRunnerHost {
   getEffectiveCwd(): string | undefined
   abort(): void
   ensureReady(): { agent: Agent } | { error: string }
+  // auto 编排下重置有效模式；非 auto 等价于基础模式切换。
+  setEffectiveMode(mode: CollaborationMode): { ok: true } | { ok: false; error: string }
   // 轮次执行（实现见 sessionRunnerTurns.ts）：队列 drain 与 send 共用，经类委托避免模块循环依赖。
   runOne(text: string, files?: AttachedFile[], overrideCwd?: string): Promise<AgentSendResult>
 }

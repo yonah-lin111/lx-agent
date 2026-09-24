@@ -35,6 +35,8 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.switchModel, selection, sessionId, tabId),
   setCollaborationMode: (mode, sessionId?: string, tabId?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.setCollaborationMode, mode, sessionId, tabId),
+  setEffectiveMode: (mode, sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.setEffectiveMode, mode, sessionId, tabId),
   restore: (messages, sessionId?: string, tabId?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.restore, messages, sessionId, tabId),
   listSessions: () => ipcRenderer.invoke(AGENT_CHANNELS.listSessions),

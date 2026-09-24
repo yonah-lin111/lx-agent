@@ -126,19 +126,27 @@ describe("useAgentChat 事件路由剩余分支", () => {
     expect(result.current.messages.at(-1)?.isQueuedDrain).toBeUndefined()
   })
 
-  it("collaboration_mode_changed 同步当前协作模式", async () => {
+  it("collaboration_mode_changed 同步当前协作模式（基础模式 + 有效模式）", async () => {
     const { result } = await renderAgentChat()
     expect(result.current.collaborationMode).toBe("build")
 
     act(() => {
-      eventHandler({ type: "collaboration_mode_changed", mode: "plan" })
+      eventHandler({ type: "collaboration_mode_changed", mode: "plan", effectiveMode: "plan" })
     })
     expect(result.current.collaborationMode).toBe("plan")
+    expect(result.current.effectiveMode).toBe("plan")
 
     act(() => {
-      eventHandler({ type: "collaboration_mode_changed", mode: "design" })
+      eventHandler({ type: "collaboration_mode_changed", mode: "design", effectiveMode: "design" })
     })
     expect(result.current.collaborationMode).toBe("design")
+
+    // auto 编排：基础模式保持 auto，有效模式独立更新。
+    act(() => {
+      eventHandler({ type: "collaboration_mode_changed", mode: "auto", effectiveMode: "plan" })
+    })
+    expect(result.current.collaborationMode).toBe("auto")
+    expect(result.current.effectiveMode).toBe("plan")
   })
 
   it("collaboration_mode_changed 携带 message 时落位 FlowList 条目，连续切换原地合并", async () => {
@@ -148,6 +156,7 @@ describe("useAgentChat 事件路由剩余分支", () => {
       eventHandler({
         type: "collaboration_mode_changed",
         mode: "plan",
+        effectiveMode: "plan",
         message: { role: "modeSwitch", mode: "plan", timestamp: 100 },
       })
     })
@@ -157,6 +166,7 @@ describe("useAgentChat 事件路由剩余分支", () => {
       eventHandler({
         type: "collaboration_mode_changed",
         mode: "review",
+        effectiveMode: "review",
         message: { role: "modeSwitch", mode: "review", timestamp: 200 },
       })
     })

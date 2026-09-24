@@ -29,8 +29,12 @@ export interface AgentStatusBarProps {
   onOpenJobs?: () => void
   // 当前全局沙箱策略。
   sandboxPolicy?: SandboxPolicy
-  // 当前协作模式。
+  // 当前协作模式（基础模式；auto = 自动编排）。
   collaborationMode?: CollaborationMode
+  // auto 编排下的有效模式（展示用）。
+  effectiveMode?: CollaborationMode
+  // Agent 生成/执行中：协作模式按钮禁止切换（仅 hover 提示）。
+  isStreaming?: boolean
   // 切换协作模式（点击状态栏模式标签弹层选择；缺省时仅展示）。
   onCollaborationModeChange?: (mode: CollaborationMode) => void
   // 挂起的权限请求（非空时状态栏展示权限 icon 与常驻 tooltip）。
@@ -61,6 +65,8 @@ export const AgentStatusBar = ({
   onOpenJobs,
   sandboxPolicy,
   collaborationMode,
+  effectiveMode,
+  isStreaming = false,
   onCollaborationModeChange,
   pendingRequest,
   onPermissionRespond,
@@ -78,7 +84,12 @@ export const AgentStatusBar = ({
           onWorktreeChange={onWorktreeChange}
         />
       </div>
-      <CollaborationModeButton mode={collaborationMode} onModeChange={onCollaborationModeChange} />
+      <CollaborationModeButton
+        mode={collaborationMode}
+        effectiveMode={effectiveMode}
+        disabled={isStreaming}
+        onModeChange={onCollaborationModeChange}
+      />
       <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />
       <PermissionStatusButton
         request={pendingRequest}

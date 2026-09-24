@@ -72,8 +72,14 @@ export interface AgentApi {
       sessionId?: string,
       tabId?: string,
     ) => Promise<{ ok: true; message?: ModelSwitchMessage } | { ok: false; error: string }>
-    // 切换协作模式（default / plan）。
+    // 切换协作模式（基础模式：build / auto / plan / review / design / minimal）。
     setCollaborationMode: (
+      mode: CollaborationMode,
+      sessionId?: string,
+      tabId?: string,
+    ) => Promise<{ ok: true } | { ok: false; error: string }>
+    // 重置 auto 编排的有效模式（仅基础模式为 auto 时生效；计划/审查卡片采纳路径使用）。
+    setEffectiveMode: (
       mode: CollaborationMode,
       sessionId?: string,
       tabId?: string,

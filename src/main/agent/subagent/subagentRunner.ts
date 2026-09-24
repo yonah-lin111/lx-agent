@@ -1,6 +1,7 @@
 import type {
   AgentMessage,
   AssistantMessage,
+  CollaborationMode,
   InterAgentCommunication,
   SandboxPolicy,
   SubagentData,
@@ -8,6 +9,7 @@ import type {
   TextContent,
   Usage,
 } from "@shared/contracts/agent"
+import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { ModelSelection, SubagentSettings } from "@shared/settings"
 import { DEFAULT_SUBAGENT_SETTINGS } from "@shared/settings"
 import { Agent } from "../core/agent"
@@ -58,10 +60,11 @@ export interface ChildCallInput {
 export interface SubagentRunnerDeps {
   // 子代理基座系统提示词（已按子代理协作模式渲染；子代理在其后追加子代理前缀）。
   subagentSystemPrompt: string
-  // 按角色白名单渲染子代理系统提示词（undefined = 不限制，继承父会话技能集与全部已连接 MCP）。
+  // 按角色白名单与按次模式渲染子代理系统提示词（undefined = 不限制，继承父会话技能集与全部已连接 MCP）。
   renderSubagentSystemPrompt?: (
     allowedSkills: string[] | undefined,
     allowedMcpServers?: string[],
+    modeOverride?: CollaborationMode,
   ) => string
   // 父会话模型（子代理沿用）。
   model: Model
@@ -69,10 +72,11 @@ export interface SubagentRunnerDeps {
   sandboxPolicy?: SandboxPolicy
   // 会话级子代理池（跨轮次复用 Agent 实例）。
   subagentPool?: SubagentPool
-  // 子代理权限门控（复用父 permissionManager.gate；协作模式按子代理配置绑定，不继承主 agent）。
+  // 子代理权限门控（复用父 permissionManager.gate；协作模式按子代理绑定，modeOverride 为本次派发模式）。
   beforeToolCall: (
     context: BeforeToolCallContext,
     signal?: AbortSignal,
+    modeOverride?: CollaborationMode,
   ) => Promise<BeforeToolCallResult | undefined>
   // 子代理工具结果收尾（重复调用提醒附加；与主代理一致）。
   afterToolCall?: (
@@ -107,6 +111,8 @@ export interface SubagentRunnerDeps {
     model: Model
     depth: number
     getTools: () => AgentTool<any>[]
+    // 子代理自身的模式：嵌套派发继承该模式且不再接受 mode 参数（禁止嵌套编排）。
+    mode?: CollaborationMode
   }) => AgentTool<any>
 }
 
@@ -123,6 +129,8 @@ export interface SubagentRunRequest {
   role?: ResolvedAgentRole
   // 固定角色名（续接沿用创建时角色）。
   roleName?: string
+  // 本次派发的子代理模式（缺省 = 子代理设置快照；新建时生效，续接沿用创建时模式）。
+  mode?: CollaborationMode
   // 续接：池内已有实例（复用 Agent 与角色，继续追加通信信元）。
   existing?: ManagedSubagent
   // 调用方深度（根会话为 0）；子代理深度 = depth + 1。
@@ -235,6 +243,8 @@ export const runSubagent = async (
   const resolveSelection = deps.resolveModelSelection ?? defaultResolveModelSelection
   const maxDepth = settings.maxDepth ?? 1
   const { subagentId, existing, role } = request
+  // 子代理本次生效模式：按次 mode 覆盖设置快照（续接复用创建时的 Agent 与守卫闭包，不受影响）。
+  const childMode = request.mode ?? normalizeCollaborationMode(settings.mode)
   const roleName = role?.name ?? request.roleName
   const subagentName = request.name
 
@@ -246,10 +256,10 @@ export const runSubagent = async (
     const allowedMcpServers = permissions?.mcp
 
     // 系统提示词追加顺序：子代理基座提示词 → 子代理后缀 → 角色指令。
-    // 角色配置技能或 MCP 白名单时，基座提示词的 available_skills 与 MCP 策略指引同步收窄（与工具同源）。
+    // 角色配置技能/MCP 白名单或按次模式覆盖时，基座提示词同步按对应模式与白名单渲染（与工具同源）。
     const basePrompt =
-      allowedSkills !== undefined || allowedMcpServers !== undefined
-        ? (deps.renderSubagentSystemPrompt?.(allowedSkills, allowedMcpServers) ??
+      request.mode !== undefined || allowedSkills !== undefined || allowedMcpServers !== undefined
+        ? (deps.renderSubagentSystemPrompt?.(allowedSkills, allowedMcpServers, request.mode) ??
           deps.subagentSystemPrompt)
         : deps.subagentSystemPrompt
     const effectivePrompt = role?.instructions
@@ -294,6 +304,7 @@ export const runSubagent = async (
           model: childModel,
           depth: childDepth,
           getTools: () => childTools,
+          mode: childMode,
         }),
       )
     }
@@ -303,7 +314,7 @@ export const runSubagent = async (
         purpose: "subagent",
         getSessionId: () => deps.getSessionId?.() ?? null,
       }),
-      beforeToolCall: deps.beforeToolCall,
+      beforeToolCall: (context, signal) => deps.beforeToolCall(context, signal, childMode),
       afterToolCall: deps.afterToolCall,
       preToolUse: deps.preToolUse,
       postToolUse: deps.postToolUse,

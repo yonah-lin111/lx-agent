@@ -18,6 +18,7 @@ import { createMemoryTool } from "./tools/memory"
 import { createQuestionTool, type QuestionToolDeps } from "./tools/question"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
+import { createSwitchModeTool, type SwitchModeDeps } from "./tools/switchMode"
 import { createTaskTool, type TaskToolDeps } from "./tools/task"
 import { createTimeTool } from "./tools/time"
 import { createTodoTool } from "./tools/todowrite"
@@ -45,6 +46,8 @@ export interface BuildSystemPromptOptions {
   modelId?: string
   sandboxPolicy?: SandboxPolicy
   collaborationMode?: CollaborationMode
+  // auto 编排下模型切出的有效模式（缺省 = 与 collaborationMode 相同）。
+  effectiveCollaborationMode?: CollaborationMode
   currentTimeReminder?: string
   contextUsage?: AgentContextUsage | null
   activeSkills?: LoadedSkill[]
@@ -171,6 +174,7 @@ export const buildSystemPrompt = async (
     modelId: options.modelId,
     sandboxPolicy: options.sandboxPolicy,
     collaborationMode: options.collaborationMode,
+    effectiveCollaborationMode: options.effectiveCollaborationMode,
     currentTimeReminder: options.currentTimeReminder,
     contextUsage: options.contextUsage,
     activeSkills: options.activeSkills,
@@ -190,6 +194,7 @@ export const buildSystemPromptSync = (options: BuildSystemPromptOptions = {}): s
     modelId: options.modelId,
     sandboxPolicy: options.sandboxPolicy,
     collaborationMode: options.collaborationMode,
+    effectiveCollaborationMode: options.effectiveCollaborationMode,
     currentTimeReminder: options.currentTimeReminder,
     contextUsage: options.contextUsage,
     activeSkills: options.activeSkills,
@@ -211,6 +216,7 @@ export const ALL_TOOL_NAMES = new Set([
   "bash",
   "time",
   "todowrite",
+  "switch_mode",
   "wireframe",
   "web_search",
   "webfetch",
@@ -265,6 +271,7 @@ export const createRegistry = (
   questionDeps?: QuestionToolDeps,
   lspDeps?: LspToolDeps,
   sessionDeps?: SessionToolDeps,
+  switchModeDeps?: SwitchModeDeps,
 ): ToolRegistry => {
   const effectiveSessionDeps =
     sessionDeps ?? (lspDeps ? { getSessionId: lspDeps.getSessionId } : undefined)
@@ -298,6 +305,10 @@ export const createRegistry = (
   }
   if (questionDeps) {
     registry.register(createQuestionTool(questionDeps))
+  }
+  // switch_mode：仅 auto 编排基础模式装配时注入（激活列表由调用方收窄）。
+  if (switchModeDeps) {
+    registry.register(createSwitchModeTool(switchModeDeps))
   }
   // task 子代理工具：execute 时从注册表当前激活集派生子代理工具集（去掉 task 斩断递归）。
   if (taskDeps) {

@@ -143,12 +143,15 @@ export const useAgentChatSend = ({
             onSessionBound?.(result.sessionId)
             void sessionListStore.refresh()
           }
-        } else if (contentToSend === undefined) {
-          // 发送失败（如队列已满）：回显输入，便于修改后重发。
-          setInputText(cleanUserPrompt(text))
-          setSelectedFiles(
-            sendContext.files ? sendContext.files.map((f, i) => ({ id: `err-${i}`, ...f })) : [],
-          )
+        } else {
+          // 发送失败（如队列已满）：始终 toast 提示（卡片采纳等携带内容的发送失败不得静默）；
+          // 用户手输的消息额外回显输入，便于修改后重发。
+          if (contentToSend === undefined) {
+            setInputText(cleanUserPrompt(text))
+            setSelectedFiles(
+              sendContext.files ? sendContext.files.map((f, i) => ({ id: `err-${i}`, ...f })) : [],
+            )
+          }
           errorToast(result.error)
         }
       })

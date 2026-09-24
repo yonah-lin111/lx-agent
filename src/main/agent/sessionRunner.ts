@@ -28,6 +28,7 @@ import {
   restoreMessages,
   restoreSessionData,
   switchCollaborationMode,
+  switchEffectiveMode,
   switchModel,
   switchProject,
   switchWorktree,
@@ -83,6 +84,8 @@ export class AgentSessionRunner {
   public activeMcp: string[] = []
   public activeSkills: LoadedSkill[] = []
   public collaborationMode: CollaborationMode = "build"
+  // auto 编排下模型切出的有效模式；非 auto 恒等于 collaborationMode。
+  public effectiveMode: CollaborationMode = "build"
   public builtSignature = ""
   // 内部协作面：SessionStart 每个会话只派发一次（会话切换/销毁后重置）。
   public sessionStartFired = false
@@ -112,6 +115,7 @@ export class AgentSessionRunner {
     // 新会话启动协作模式：读取权限配置默认值（缺省 build）。
     permissionManager.load()
     this.collaborationMode = permissionManager.getDefaultCollaborationMode()
+    this.effectiveMode = this.collaborationMode === "auto" ? "build" : this.collaborationMode
 
     this.compactor = new ContextCompactor({
       getAgent: () => this.agent,
@@ -256,6 +260,7 @@ export class AgentSessionRunner {
       this.activeSkills.map((skill) => skill.name),
       this.personality,
       this.collaborationMode,
+      this.effectiveMode,
     ])
     if (
       !this.agent ||
@@ -303,6 +308,7 @@ export class AgentSessionRunner {
         modelId: modelResult.model.id,
         sandboxPolicy: currentSandboxPolicy,
         collaborationMode: this.collaborationMode,
+        effectiveCollaborationMode: this.effectiveMode,
         contextUsage,
         activeSkills: this.activeSkills,
         mcpServers: resolveConnectedMcpServers(),
@@ -449,6 +455,10 @@ export class AgentSessionRunner {
 
   public setCollaborationMode(mode: CollaborationMode): { ok: true } {
     return switchCollaborationMode(this, mode)
+  }
+
+  public setEffectiveMode(mode: CollaborationMode): { ok: true } | { ok: false; error: string } {
+    return switchEffectiveMode(this, mode)
   }
 
   public getContextUsage(selection?: ModelSelection): AgentContextUsage {

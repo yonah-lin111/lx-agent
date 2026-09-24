@@ -46,7 +46,34 @@ describe("CollaborationModeButton 模式展示与点击选择", () => {
     expect(screen.queryByRole("listbox")).toBeNull()
   })
 
-  it("点击弹出五种模式列表：当前项勾选，选择后回调并关闭", async () => {
+  it("auto 基础模式展示「Auto · 有效模式」组合短名", () => {
+    render(<CollaborationModeButton mode="auto" effectiveMode="plan" />)
+    expect(screen.getByText("Auto · Plan")).toBeTruthy()
+  })
+
+  it("auto 基础模式且有效模式为 build 时展示 Auto · Build", () => {
+    render(<CollaborationModeButton mode="auto" effectiveMode="build" />)
+    expect(screen.getByText("Auto · Build")).toBeTruthy()
+  })
+
+  it("生成中禁用：不渲染可点击按钮，点击不切换，hover 提示运行中不可切换", async () => {
+    const onModeChange = vi.fn()
+    const { container } = render(
+      <CollaborationModeButton mode="plan" disabled onModeChange={onModeChange} />,
+    )
+
+    expect(container.querySelector("[aria-haspopup='listbox']")).toBeNull()
+    fireEvent.click(screen.getByText("Plan"))
+    expect(onModeChange).not.toHaveBeenCalled()
+    expect(screen.queryByRole("listbox")).toBeNull()
+
+    fireEvent.mouseEnter(screen.getByText("Plan"))
+    expect(
+      await screen.findByText("Mode switching is unavailable while the agent is running"),
+    ).toBeTruthy()
+  })
+
+  it("点击弹出六种模式列表（含 Auto）：当前项勾选，选择后回调并关闭", async () => {
     const onModeChange = vi.fn()
     render(<CollaborationModeButton mode="design" onModeChange={onModeChange} />)
 
@@ -57,6 +84,7 @@ describe("CollaborationModeButton 模式展示与点击选择", () => {
     const options = screen.getAllByRole("option")
     expect(options.map((option) => option.textContent)).toEqual([
       "Build Mode",
+      "Auto Mode",
       "Plan Mode",
       "Review Mode",
       "Design Mode",

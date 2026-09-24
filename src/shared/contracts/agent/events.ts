@@ -87,7 +87,10 @@ export type AgentEvent =
       type: "collaboration_mode_changed"
       sessionId?: string
       tabId?: string
+      // 基础模式（用户选择；auto = 编排模式）。
       mode: CollaborationMode
+      // 有效模式（auto 下模型切出的受约束态；非 auto 恒等于 mode）。
+      effectiveMode: CollaborationMode
       // 模式切换历史条目（会话尾部连续切换时原地更新，renderer 直接保证不刷屏）。
       message?: CollaborationModeSwitchMessage
     }
