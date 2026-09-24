@@ -23,9 +23,6 @@
   --agent-mode-review-tint: rgba(168, 85, 247, 0.24);
   --agent-mode-design-tint: rgba(236, 72, 153, 0.22);
   --agent-mode-minimal-tint: rgba(16, 185, 129, 0.22);
-  /* 输入区控件表面色（与像素养加号按钮同色，模式底纹不穿透）。 */
-  --agent-input-control-bg: #2e2e42;
-  --agent-input-control-bg-hover: #3e3e58;
   /* 用量图表配色：压暗矿物色板（钻石 / 绿宝石 / 紫水晶 / 金 / 红石 / 青金石 + 羊皮 / 安山岩）。 */
   --color-usage-chart-fresh-input: #4ec5c5;
   --color-usage-chart-output: #4fc94f;

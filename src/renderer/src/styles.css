@@ -1268,15 +1268,17 @@ select {
   );
 }
 
-/* 模式底纹不穿透输入区控件：圆形按钮使用不透明表面色（含 hover），切换模式时按钮不变色。 */
+/* 输入区控件同步模式色：底纹叠加在控件自身底色之上，与容器同色；
+   下拉弹层与 Tooltip 渲染在浮层（portal / 独立固定层），不在此范围，保持默认外观。 */
 .agent-input-container .agent-input-add-btn,
-.agent-input-container .agent-input-voice-btn {
-  background-color: var(--agent-input-control-bg, rgba(255, 255, 255, 0.05));
-}
-
-.agent-input-container .agent-input-add-btn:hover,
-.agent-input-container .agent-input-voice-btn:hover {
-  background-color: var(--agent-input-control-bg-hover, rgba(255, 255, 255, 0.1));
+.agent-input-container .agent-input-voice-btn,
+.agent-input-container .agent-input-action-btn,
+.agent-input-container .lx-select-trigger,
+.agent-input-container .agent-status-context-pill {
+  background-image: linear-gradient(
+    var(--agent-mode-tint, transparent),
+    var(--agent-mode-tint, transparent)
+  );
 }
 
 [data-agent-mode="build"] {
