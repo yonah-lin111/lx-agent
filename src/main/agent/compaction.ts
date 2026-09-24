@@ -154,10 +154,11 @@ export const estimateContextTokens = (messages: AgentMessage[]): number => {
     const message = messages[index]
     if (message.role === "assistant") {
       const rawTokens = message.usage?.totalTokens
-      anchor =
-        typeof rawTokens === "number" && Number.isFinite(rawTokens) ? Math.max(0, rawTokens) : 0
-      anchorIndex = index
-      break
+      if (typeof rawTokens === "number" && Number.isFinite(rawTokens) && rawTokens > 0) {
+        anchor = rawTokens
+        anchorIndex = index
+        break
+      }
     }
   }
   if (anchorIndex < 0) {

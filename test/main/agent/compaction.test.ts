@@ -102,6 +102,30 @@ describe("estimateContextTokens", () => {
     expect(estimateContextTokens(messages)).toBe(1000 + estimateMessageTokens(messages[2]))
   })
 
+  it("跳过 totalTokens<=0 的流式进行中 assistant 消息，回溯到有效锚点并累加后续消息", () => {
+    const messages: AgentMessage[] = [
+      user("上一轮问题"),
+      assistant("上一轮回答", {
+        input: 800,
+        output: 200,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 1000,
+      }),
+      user("本轮新问题"),
+      assistant("本轮正在输出的流式内容", {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+      }),
+    ]
+    expect(estimateContextTokens(messages)).toBe(
+      1000 + estimateMessageTokens(messages[2]) + estimateMessageTokens(messages[3]),
+    )
+  })
+
   it("无 assistant 时纯字符估计", () => {
     const messages: AgentMessage[] = [user("abcdefgh"), toolResult("grep", "1234")]
     expect(estimateContextTokens(messages)).toBe(

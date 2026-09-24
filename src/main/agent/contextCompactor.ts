@@ -91,13 +91,23 @@ export class ContextCompactor {
   }
 
   // 当前会话待发送上下文的 token 估计：有压缩边界按摘要+保留尾部（char/4），否则全量估计。
+  // 流式输出期间包含 streamingMessage，使得输出过程中也能反映增长的 token 估算。
   currentTokens(): number {
-    const messages = this.deps.getAgent()?.state.messages ?? []
+    const agent = this.deps.getAgent()
+    const baseMessages = agent?.state.messages ?? []
+    const streamingMessage = agent?.state.streamingMessage
+    const messages =
+      streamingMessage && agent?.state.isStreaming
+        ? [...baseMessages, streamingMessage]
+        : baseMessages
     const boundary = this.boundary
     if (!boundary) return estimateContextTokens(messages)
-    const kept = messages.filter(
-      (_, index) => (this.deps.getMessageSeqs()[index] ?? -1) >= boundary.firstKeptSeq,
-    )
+    const seqs = this.deps.getMessageSeqs()
+    const kept = messages.filter((_, index) => {
+      const seq = seqs[index] ?? -1
+      // 未落库的新消息（seq < 0 且 index >= 已落库数）及流式消息自然在压缩边界之后，必须保留。
+      return seq >= boundary.firstKeptSeq || (seq < 0 && index >= seqs.length)
+    })
     return estimateCompactedContextTokens(
       createCompactionSummaryMessage(
         boundary.summary,

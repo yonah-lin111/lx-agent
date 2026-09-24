@@ -134,6 +134,8 @@ export class TurnStore {
   private overflowDetected = false
   // MCP 工具全名 → server 名反查（flushTurn 落库 mcp_server/kind 分类用；随装配刷新）。
   private mcpServerByToolName = new Map<string, string>()
+  // 运行期 5 秒定时用量推送定时器。
+  private usageTimer: NodeJS.Timeout | null = null
   // 增量事件投影状态机（可观测、确定性内存真相源）。
   private readonly projection = new SessionProjectionStore()
 
@@ -151,6 +153,7 @@ export class TurnStore {
 
   // run 开始：重置缓冲并捕获本次落盘输入。
   beginTurn(input: BeginTurnInput): void {
+    this.stopUsageTimer()
     this.currentRunGeneration += 1
     this.runMessages = []
     this.pendingCalls.clear()
@@ -170,6 +173,7 @@ export class TurnStore {
 
   // 丢弃未落盘的 turn（恢复/新建/失败时调用；残留事件不再落盘）。
   discardTurn(): void {
+    this.stopUsageTimer()
     this.sessionInput = null
     this.runMessages = []
     this.pendingCalls.clear()
@@ -224,6 +228,7 @@ export class TurnStore {
 
   // 清空 seq 对齐（新会话从空上下文开始）。
   resetSeqs(): void {
+    this.stopUsageTimer()
     this.messageSeqs = []
   }
 
@@ -320,6 +325,10 @@ export class TurnStore {
     this.projection.apply(event)
     if (this.currentRunGeneration < 0) return
     switch (event.type) {
+      case "agent_start":
+        this.startUsageTimer()
+        break
+
       case "message_start":
         if (event.message.role === "user" && this.pendingCopiedFiles) {
           event.message.files = this.pendingCopiedFiles
@@ -373,6 +382,7 @@ export class TurnStore {
       }
 
       case "agent_end":
+        this.stopUsageTimer()
         this.flushTurn()
         // turn 结束（正常/错误/中止均触发）：上下文定型后推送容量快照。
         this.deps.emitUsage()
@@ -479,6 +489,7 @@ export class TurnStore {
 
   // 一个 turn 落库：会话创建（含能力/模型快照）+ 消息 entries + 调用记录 + todo 清单，一个事务。
   flushTurn(): void {
+    this.stopUsageTimer()
     const input = this.sessionInput
     const messages = this.runMessages
     const calls = [...this.pendingCalls.values()]
@@ -704,5 +715,21 @@ export class TurnStore {
       }
     }
     return []
+  }
+
+  // 运行期 5 秒定时用量推送
+  private startUsageTimer(): void {
+    this.stopUsageTimer()
+    this.usageTimer = setInterval(() => {
+      this.deps.emitUsage()
+    }, 5000)
+    this.usageTimer.unref?.()
+  }
+
+  private stopUsageTimer(): void {
+    if (this.usageTimer !== null) {
+      clearInterval(this.usageTimer)
+      this.usageTimer = null
+    }
   }
 }
