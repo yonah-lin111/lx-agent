@@ -30,26 +30,14 @@ export interface SwitchModeDeps {
   getAllowedTargets?: () => readonly (typeof SWITCH_MODE_TARGETS)[number][]
 }
 
-// 切换后的即时引导（系统提示词在下一轮才重建，本轮靠工具结果同步契约）。
+// 切换后的即时确认信息（系统提示词同轮立即同步重构生效）。
 const MODE_SWITCH_GUIDANCE: Record<(typeof SWITCH_MODE_TARGETS)[number], string> = {
-  plan: [
-    "Switched to Plan Mode (strictly read-only).",
-    "CRITICAL OUTPUT CONTRACT: Explore first with read-only tools, then deliver a decision-complete plan strictly inside <proposed_plan> tags and end your turn for user approval.",
-    "Mutating tools (write, edit, apply_patch, todowrite, memory) are now hard-blocked.",
-  ].join(" "),
-  review: [
-    "Switched to Review Mode (strictly read-only audit).",
-    "CRITICAL OUTPUT CONTRACT: Inspect the requested target (default: current uncommitted changes) with read-only commands and output structured findings strictly inside <review_findings> tags.",
-    "Mutating tools are now hard-blocked.",
-  ].join(" "),
-  design: [
-    "Switched to Front Design Mode (read-only prototyping).",
-    'CRITICAL OUTPUT CONTRACT: Deliver a complete, standalone, runnable HTML/CSS prototype inside <front_design title="..." mode="tailwindcss|css"> tags (starting with <!DOCTYPE html><html>).',
-    "NEVER output Markdown text, documentation, React code snippets, or ASCII wireframes inside <front_design>. The content inside <front_design> must be pure runnable HTML.",
-    "The wireframe tool is disabled. Mutating tools are now hard-blocked.",
-  ].join(" "),
-  build:
-    "Switched to Build Mode. Execution is enabled: proceed with implementation and verify the result.",
+  plan: "Switched to Plan Mode (strictly read-only). System prompt updated to Plan Mode contract (<proposed_plan>). Mutating tools are now hard-blocked.",
+  review:
+    "Switched to Review Mode (strictly read-only audit). System prompt updated to Review Mode contract (<review_findings>). Mutating tools are now hard-blocked.",
+  design:
+    "Switched to Front Design Mode (read-only prototyping). System prompt updated to Front Design contract (<front_design>). Pure runnable HTML required; mutating tools and wireframe are hard-blocked.",
+  build: "Switched to Build Mode. Execution is enabled: proceed with implementation.",
 }
 
 /**

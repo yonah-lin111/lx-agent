@@ -137,6 +137,9 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
   /** 每轮请求前将 AgentMessage[] 转换为 LLM 协议消息；不得 throw。 */
   convertToLlm: (messages: AgentMessage[]) => LlmMessage[] | Promise<LlmMessage[]>
 
+  /** 动态获取最新系统提示词（支持同轮工具调用中即时重构）；不得 throw。 */
+  getSystemPrompt?: () => string
+
   /** 上下文变换（AgentMessage 级）；不得 throw。 */
   transformContext?: (messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>
 

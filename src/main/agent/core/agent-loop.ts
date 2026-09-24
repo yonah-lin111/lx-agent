@@ -263,9 +263,13 @@ async function streamAssistantResponse(
     (config.getApiKey ? await config.getApiKey(config.model.provider) : undefined) || config.apiKey
 
   const requestStartTime = Date.now()
+  const effectiveSystemPrompt = config.getSystemPrompt
+    ? config.getSystemPrompt()
+    : context.systemPrompt
+  context.systemPrompt = effectiveSystemPrompt
   const response = await streamFunction(
     config.model,
-    { systemPrompt: context.systemPrompt, messages: llmMessages, tools: context.tools },
+    { systemPrompt: effectiveSystemPrompt, messages: llmMessages, tools: context.tools },
     {
       ...config,
       apiKey: resolvedApiKey,

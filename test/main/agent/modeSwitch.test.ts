@@ -320,4 +320,26 @@ describe("Collaboration Mode Switch Entries", () => {
     expect(prompt).toContain('<collaboration_mode name="plan"')
     expect(prompt).not.toContain('<collaboration_mode name="build">')
   })
+
+  it("切换模式时立即动态重构 agent 内部 systemPrompt，同轮即时生效", async () => {
+    const { agentRunner } = await importModules()
+    const sessionId = await createSession(agentRunner)
+
+    agentRunner.setCollaborationMode("auto", sessionId)
+    const runner = agentRunner.getRunner(sessionId)
+    expect(runner).toBeDefined()
+
+    // 初始处于 auto 模式（effective build）
+    const initialPrompt = runner!.agent?.state.systemPrompt ?? ""
+    expect(initialPrompt).toContain('<collaboration_mode name="auto">')
+    expect(initialPrompt).not.toContain('<collaboration_mode name="design"')
+
+    // 动态调用 setEffectiveMode("design")
+    runner!.setEffectiveMode("design")
+
+    // 验证 systemPrompt 立即被动态重构为包含 design 模式契约
+    const updatedPrompt = runner!.agent?.state.systemPrompt ?? ""
+    expect(updatedPrompt).toContain('<collaboration_mode name="auto">')
+    expect(updatedPrompt).toContain('<collaboration_mode name="design"')
+  })
 })

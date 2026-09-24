@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs"
+import { homedir } from "node:os"
 import type {
   AgentCompactResult,
   AgentContextUsage,
@@ -299,24 +300,35 @@ export class AgentSessionRunner {
       this.cwd = cwd
       this.builtSignature = capabilitiesSignature
     } else {
-      const currentSandboxPolicy = permissionManager.getSandboxPolicy()
-      const contextUsage = this.compactor.getUsage()
       this.agent.state.model = modelResult.model
-      this.agent.state.systemPrompt = buildSystemPromptSync({
-        cwd,
-        sessionId: this.currentSessionId ?? undefined,
-        modelId: modelResult.model.id,
-        sandboxPolicy: currentSandboxPolicy,
-        collaborationMode: this.collaborationMode,
-        effectiveCollaborationMode: this.effectiveMode,
-        contextUsage,
-        activeSkills: this.activeSkills,
-        mcpServers: resolveConnectedMcpServers(),
-        personality: this.personality,
-      })
+      this.rebuildSystemPrompt()
     }
 
     return { agent: this.agent }
+  }
+
+  public rebuildSystemPrompt(): string {
+    const cwd = this.cwd ?? this.requestedCwd ?? resolveCwd() ?? homedir()
+    const currentSandboxPolicy = permissionManager.getSandboxPolicy()
+    const contextUsage = this.compactor.getUsage()
+    const turnContext = this.currentTurnContext
+    const prompt = buildSystemPromptSync({
+      cwd: turnContext?.snapshot.cwd ?? cwd,
+      sessionId: this.currentSessionId ?? undefined,
+      modelId: this.agent?.state.model.id,
+      sandboxPolicy: currentSandboxPolicy,
+      collaborationMode: this.collaborationMode,
+      effectiveCollaborationMode: this.effectiveMode,
+      contextUsage,
+      activeSkills: this.activeSkills,
+      mcpServers: resolveConnectedMcpServers(),
+      personality: this.personality,
+      variables: turnContext?.snapshot.variables,
+    })
+    if (this.agent) {
+      this.agent.state.systemPrompt = prompt
+    }
+    return prompt
   }
 
   public freezeNewSession(context: AgentSendContext): void {

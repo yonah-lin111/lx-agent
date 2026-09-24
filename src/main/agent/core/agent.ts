@@ -498,6 +498,7 @@ export class Agent {
     return {
       model: this._state.model,
       variant: this._state.model.variant,
+      getSystemPrompt: () => this._state.systemPrompt,
       reasoning: this._state.thinkingLevel === "off" ? undefined : this._state.thinkingLevel,
       toolExecution: this.toolExecution,
       beforeToolCall: this.beforeToolCall,
