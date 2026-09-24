@@ -284,6 +284,66 @@ describe("AgentExecutionFlowList", () => {
     expect(questionContent?.hasAttribute("hidden")).toBe(false)
   })
 
+  it("switch_mode 退出审批挂起时默认展开并可内联确认，完成后确认区消失", async () => {
+    const modeExit = {
+      requestId: "session-1:1",
+      toolCallId: "call-switch",
+      fromMode: "plan" as const,
+      toMode: "build" as const,
+      sessionId: "session-1",
+    }
+    const respondSpy = vi.spyOn(agentApi, "modeExitRespond").mockResolvedValue({ ok: true })
+    const pendingMessages: ChatMessage[] = [
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "call-switch",
+            toolName: "switch_mode",
+            args: { mode: "build" },
+            modeExit,
+            status: "running",
+          },
+        ],
+        isStreaming: true,
+      },
+    ]
+    const completedMessages: ChatMessage[] = [
+      {
+        ...pendingMessages[0]!,
+        blocks: [
+          {
+            ...(pendingMessages[0]!.blocks[0] as Extract<ChatBlock, { kind: "toolCall" }>),
+            modeExit: undefined,
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { rerender } = render(<AgentExecutionFlowList messages={pendingMessages} />)
+    // 挂起：默认展开，确认提示可见。
+    expect(
+      screen.getByText(/requests to exit Plan Mode and start executing/).closest("[hidden]"),
+    ).toBeNull()
+
+    fireEvent.click(screen.getByText("Exit & Execute"))
+    expect(respondSpy).toHaveBeenCalledWith({ requestId: "session-1:1", decision: "allow" })
+
+    rerender(<AgentExecutionFlowList messages={completedMessages} />)
+    expect(screen.queryByText("Exit & Execute")).toBeNull()
+
+    // 拒绝路径：全新渲染（按钮在首次点击后禁用，需重置组件状态）。
+    cleanup()
+    render(<AgentExecutionFlowList messages={pendingMessages} />)
+    fireEvent.click(screen.getByText("Stay in Current Mode"))
+    expect(respondSpy).toHaveBeenCalledWith({ requestId: "session-1:1", decision: "deny" })
+    respondSpy.mockRestore()
+  })
+
   it("进入时默认展开全部用户 item 与每个已完成 turn 的最后一个 step，手动折叠状态保持且发送新消息后不再自动折叠", () => {
     const messages: ChatMessage[] = [
       // 第一轮

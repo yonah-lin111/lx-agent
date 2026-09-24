@@ -12,6 +12,36 @@ describe("executionFlow", () => {
   })
 
   describe("buildExecutionSteps", () => {
+    it("switch_mode 工具步骤透传 modeExit 挂起审批", () => {
+      const modeExit = {
+        requestId: "session-1:1",
+        toolCallId: "call-switch",
+        fromMode: "plan" as const,
+        toMode: "build" as const,
+        sessionId: "session-1",
+      }
+      const messages: ChatMessage[] = [
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "call-switch",
+              toolName: "switch_mode",
+              args: { mode: "build" },
+              modeExit,
+              status: "running",
+            },
+          ],
+          isStreaming: true,
+        },
+      ]
+      const steps = buildExecutionSteps(messages)
+      const step = steps.find((item) => item.toolContent?.toolName === "switch_mode")
+      expect(step?.toolContent?.modeExit).toEqual(modeExit)
+    })
+
     it("空消息列表返回空步骤", () => {
       expect(buildExecutionSteps([])).toEqual([])
     })

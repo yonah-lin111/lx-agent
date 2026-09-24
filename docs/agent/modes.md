@@ -43,7 +43,7 @@ Auto 是编排基础模式：会话的门禁 / 提示词 / 子代理白名单始
 
 - **激活**：`switch_mode` 仅在 auto 基础模式装配进激活工具集（`ALL_TOOL_NAMES` + `sessionRunnerAgentFactory` 激活收窄）；工具描述内嵌判定规则与退出约束。
 - **即时性**：进入只读模式（plan / review / design）即时生效（当轮门控立即生效）；工具结果同步返回目标模式的契约与退出约束（系统提示词在下一轮 `ensureReady` 重建时才更新）。
-- **退出审批（用户动作）**：退出只读模式回 `build` 时 `ModeExitManager` 挂起 → `mode_exit_request` 事件 → renderer 在对应 `switch_mode` 工具调用块内联渲染确认（`AgentModeExitBlock`，[退出并执行] / [留在当前模式]）→ `agent:modeExitResponse` 回灌；拒绝 / abort / 会话切换 / 用户手动切换模式一律按拒绝解除（fail-safe，无推送目标也不放行）；计划/审查卡片的采纳按钮是用户点击直达，宿主直接把有效模式置回 `build`，不弹确认框。
+- **退出审批（用户动作）**：退出只读模式回 `build` 时 `ModeExitManager` 挂起 → `mode_exit_request` 事件 → renderer 在**聊天消息流**（`AgentModeExitBlock`）与**执行流程视图**（`FlowItemModeExitContent`，挂起时该步骤默认展开）双入口内联渲染确认（[退出并执行] / [留在当前模式]），并伴随 warning toast → `agent:modeExitResponse` 回灌；拒绝 / abort / 会话切换 / 用户手动切换模式一律按拒绝解除（fail-safe，无推送目标也不放行）；计划/审查卡片的采纳按钮是用户点击直达，宿主直接把有效模式置回 `build`，不弹确认框。
 - **提示词约束**：输出 `<proposed_plan>` 的计划轮不得同轮调用 `switch_mode("build")`，避免卡片与确认框同屏双审批。
 
 ### 2.4 模式子代理派发（`task` 的 `mode` 参数）

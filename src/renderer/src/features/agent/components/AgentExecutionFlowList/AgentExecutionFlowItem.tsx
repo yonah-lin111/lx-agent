@@ -32,6 +32,7 @@ import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
 import { FlowItemCompactionContent } from "./FlowItemCompactionContent"
 import { FlowItemErrorContent } from "./FlowItemErrorContent"
+import { FlowItemModeExitContent } from "./FlowItemModeExitContent"
 import { FlowItemModelSwitchContent } from "./FlowItemModelSwitchContent"
 import { FlowItemModeSwitchContent } from "./FlowItemModeSwitchContent"
 import { FlowItemQuestionContent } from "./FlowItemQuestionContent"
@@ -508,6 +509,16 @@ export const AgentExecutionFlowItem = ({
           className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-xs"
         >
           <FlowItemQuestionContent content={step.toolContent} />
+        </div>
+      )}
+
+      {/* switch_mode 退出审批：挂起时默认展开内联确认（流程视图下同样可完成审批，避免工具挂起无入口）。 */}
+      {step.toolContent?.modeExit !== undefined && (
+        <div
+          hidden={!isExpanded}
+          className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-xs"
+        >
+          <FlowItemModeExitContent content={step.toolContent} />
         </div>
       )}
 
