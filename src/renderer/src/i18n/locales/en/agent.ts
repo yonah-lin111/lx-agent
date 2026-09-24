@@ -63,12 +63,12 @@ export const agent = {
     "Frontend design mode. Disables embedded render tools and hot-reloads output code in Design page.",
   collaborationModeMinimal: "Minimal Mode",
   collaborationModeMinimalDesc:
-    "Minimal mode that completes tasks with the terminal tool only, useful for testing and comparing basic model performance.",
+    "Minimal mode with terminal and file read/write tools only (bash / read / write / edit), useful for testing and comparing basic model performance.",
   collaborationModeSwitchedToBuild: "Switched to Build Mode",
   collaborationModeSwitchedToPlan: "Switched to Plan Mode (Read-Only)",
   collaborationModeSwitchedToReview: "Switched to Review Mode (Read-Only Audit)",
   collaborationModeSwitchedToDesign: "Switched to Design Mode (Frontend Design)",
-  collaborationModeSwitchedToMinimal: "Switched to Minimal Mode (Terminal Only)",
+  collaborationModeSwitchedToMinimal: "Switched to Minimal Mode (Terminal + Read/Write)",
   collaborationModeShortcutHint: "Press Shift + Tab to cycle mode, click to open the mode list",
   review: {
     badge: "Code Review Report",

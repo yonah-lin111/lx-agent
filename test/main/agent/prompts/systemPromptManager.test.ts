@@ -507,7 +507,7 @@ describe("SystemPromptManager", () => {
         expect(assembly.rendered).toContain("Never call it")
       })
 
-      it("minimal 模式独占提示词：仅注入终端约定，压掉其余全部段与上下文", async () => {
+      it("minimal 模式独占提示词：仅注入最小工具约定，压掉其余全部段与上下文", async () => {
         const manager = createDefaultSystemPromptManager()
         const assembly = await manager.assemble({
           collaborationMode: "minimal",
@@ -539,7 +539,7 @@ describe("SystemPromptManager", () => {
         const manager = createDefaultSystemPromptManager()
         for (const mode of ["build", "plan", "review", "design"] as const) {
           const assembly = await manager.assemble({ collaborationMode: mode })
-          expect(assembly.rendered).not.toContain("You have exactly one tool: bash")
+          expect(assembly.rendered).not.toContain("Available tools: bash")
           expect(
             assembly.sections.some((section) => section.name === PROMPT_SECTION_NAMES.MINIMAL_MODE),
           ).toBe(false)

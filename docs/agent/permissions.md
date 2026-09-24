@@ -68,12 +68,12 @@ export type CollaborationMode = "build" | "plan" | "review" | "design" | "minima
 | **`plan`** | `write` / `edit` / `apply_patch` / `todowrite` / `memory` | 缺省仅 `explorer`；白名单覆盖缺省，空数组 = 全禁 | 只读工具正常；可经白名单再收紧 | 见 modes.md §2 |
 | **`review`** | 同 `plan` | 同 `plan` | 只读工具正常；可经白名单再收紧 | 见 modes.md §3 |
 | **`design`** | 同 `plan` + `wireframe` | 同 `plan` | 只读工具正常；可经白名单再收紧 | `<front_design>` / `<front_design_update>`，见 modes.md §4 |
-| **`minimal`** | **白名单模式**：仅 `bash` 放行，其余全部工具 fail-closed 拦截；`bash` 的 `background: true` 参数亦拒绝 | 无（`task` 不在白名单，无法派发） | 仅 `bash`（含 `session` 持久会话）；可经 `modes.minimal` 白名单再收紧 | 无 |
+| **`minimal`** | **白名单模式**：仅 `bash` / `read` / `write` / `edit` 放行，其余全部工具 fail-closed 拦截；`bash` 的 `background: true` 参数亦拒绝 | 无（`task` 不在白名单，无法派发） | 上述四工具（`bash` 含 `session` 持久会话）；可经 `modes.minimal` 白名单再收紧 | 无 |
 
 - 非 build 模式的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`MODE_MUTATION_REASONS`）；`memory` 会写 `<project>/.lx/memory/memory.xml` 与 `~/.lx/memory/memory.xml`，因此同样纳入基线。
-- **Minimal 白名单（dsh 同构）**：注册表激活层同步收窄（模型只看到 `bash`），提示词以 `complete` 独占段压掉其余全部内容（见 modes.md §5）；`background: true` 单独拒绝（`MINIMAL_BACKGROUND_REASON`），引导改用 shell 后台（`command &`）或 `bash.session` 持久会话。该模式无 `write` / `edit` / `apply_patch`，`bash` 即唯一写文件通道：门控向 `CommandSafetyGuard` 传 `allowShellFileWrites`，放行重定向与内容改写类硬拦，破坏性指令不受影响。
+- **Minimal 白名单**：注册表激活层同步收窄（模型只看到 `bash` / `read` / `write` / `edit`），提示词以 `complete` 独占段压掉其余全部内容（见 modes.md §5）；`background: true` 单独拒绝（`MINIMAL_BACKGROUND_REASON`），引导改用 shell 后台（`command &`）或 `bash.session` 持久会话。在 dsh shell-only 基线上额外开放 `read` / `write` / `edit`（有意偏离，见 modes.md §5）；shell 重定向与内容改写仍由 Security Guard 硬拦，写文件走 `write` / `edit`。
 - **子代理派发**：`task` 不再属于硬基线，由 `modes.<mode>.subagents` 白名单控制（按 `agent_type` 判定，批量 `tasks[]` 逐项校验，未携带角色视为未命中）。非 build 模式缺省白名单 = `["explorer"]`（内置只读探索子代理），`build` 缺省 = 不限制；显式配置覆盖缺省，显式空数组 = 该模式完全禁止派发；`minimal` 无缺省白名单且 `task` 不在工具白名单内。
-- **父模式基线穿透**：子代理按 `agent.subagents.mode`（缺省 `build`）装配提示词与门控，但父会话的硬基线会以 `parentMode` 叠加到子代理的每次工具调用上——`plan` / `review` / `design` 下派发的子代理同样不能写文件，`design` 下还不能用 `wireframe`，`minimal` 下只能使用 `bash`，派发无法绕过模式约束。
+- **父模式基线穿透**：子代理按 `agent.subagents.mode`（缺省 `build`）装配提示词与门控，但父会话的硬基线会以 `parentMode` 叠加到子代理的每次工具调用上——`plan` / `review` / `design` 下派发的子代理同样不能写文件，`design` 下还不能用 `wireframe`，`minimal` 下只能使用 `bash` / `read` / `write` / `edit`，派发无法绕过模式约束。
 - **角色兼容性**：角色能力集与模式硬基线有交集时（含 `tools` 未限制的角色，如内置 `worker`），该角色在此非 build 模式**永久禁用**——设置页锁定为不可勾选，门控层同时拒绝派发（白名单列出也不放行），避免派发一个写操作必然被拒的残废子代理；`build` 无硬基线，因此不锁定任何角色。角色被改动后与已保存白名单失配时，权限页模式行会提示「永久禁用角色：…」，打开编辑弹窗即自动剔除该角色并在确认后落盘；`minimal` 行为只读展示（白名单外角色永久禁用，不提供编辑入口）。
 - **提示词层（缓存友好）**：Plan / Review / Design 的模式段声明子代理派发限制（引用 `task` 工具描述中的 `Available agent types`，并把 `memory` 补入禁用清单）；`task` 工具描述在会话装配与模式切换（registry 重建）时按模式裁剪角色目录——白名单未命中或能力集冲突的角色不再出现在模型可见的目录里，模型无需靠一次被拒绝来发现限制。两处内容只随模式 / 能力集重建，不含轮次级易变数据，不额外破坏提示词前缀缓存（易变上下文如 `<current_time>` 本就在系统提示词尾部）。
 - **模式能力白名单**（`agent.permissions.modes`）：`tools` / `mcp` / `skills` / `websearch` / `subagents` 五组，缺省 = 不限制（`subagents` 在非 build 模式除外）；硬基线工具在保存时被剥离、运行时二次兜底拒绝，配置只能收紧、永不放开。
@@ -111,7 +111,7 @@ Guardian 在工具执行前进行实时四维风险评估：
 
 ### 5.1 判定顺序（`permissionManager.evaluate()`）
 
-1. 模式硬基线：`write` / `edit` / `apply_patch` / `memory` / `todowrite`（`design` 另含 `wireframe`）→ `deny`；`minimal` 为白名单模式（仅 `bash`，`background: true` 参数亦拒绝）；子代理调用（`parentMode`）时父模式基线同样生效；
+1. 模式硬基线：`write` / `edit` / `apply_patch` / `memory` / `todowrite`（`design` 另含 `wireframe`）→ `deny`；`minimal` 为白名单模式（仅 `bash` / `read` / `write` / `edit`，`background: true` 参数亦拒绝）；子代理调用（`parentMode`）时父模式基线同样生效；
 2. 模式能力白名单（`agent.permissions.modes`，五组未命中；非 build 的 `subagents` 缺省回退 `["explorer"]`）→ `deny`（build 也可收紧；派发未命中时附允许角色清单；嵌套派发同时校验父模式的角色白名单）；
 3. 子代理角色兼容性：能力集与模式硬基线有交集（含 `tools` 未限制）的角色 → `deny`（该模式下永久禁用）；
 4. `read-only` 沙箱的 `write` / `edit` / `apply_patch` → `deny`；
@@ -184,8 +184,8 @@ Esc 仅收起面板，请求保持挂起；决策经 IPC `permissionResponse` �
         },
         "plan": { "subagents": ["explorer", "custom-role"] },
         "review": { "tools": ["read", "grep", "lsp"], "websearch": ["web_search"] },
-        // minimal 只能在其白名单（bash）内再收紧，配置不会放开其余工具
-        "minimal": { "tools": ["bash"] }
+        // minimal 只能在其白名单（bash / read / write / edit）内再收紧，配置不会放开其余工具
+        "minimal": { "tools": ["bash", "read", "write", "edit"] }
       }
     }
   }

@@ -43,7 +43,7 @@ const MODE_MUTATION_REASONS: Record<Exclude<CollaborationMode, "build">, string>
   design:
     "Action denied: Current collaboration mode is Front Design Mode. Mutating actions (write, edit, apply_patch, todowrite, memory) and the wireframe tool are strictly prohibited in Design Mode. Sub-agent dispatch is limited to the configured role allow-list. Deliver prototypes using <front_design> tags instead.",
   minimal:
-    "Action denied: Current collaboration mode is Minimal Mode. Only the bash terminal tool is available: perform all file reads, searches, and edits through shell commands. Other tools (file, search, sub-agent, web, skill, and MCP tools) are strictly prohibited.",
+    "Action denied: Current collaboration mode is Minimal Mode. Only the bash terminal and the read/write/edit file tools are available: use bash for directory listing, searching, and commands, and read/write/edit for file contents. Sub-agent, web, skill, todo, memory, and MCP tools are strictly prohibited.",
 }
 // Minimal 模式后台作业拒绝 reason（job 工具不在白名单内，引导改用 shell 后台与持久会话）。
 const MINIMAL_BACKGROUND_REASON =
@@ -337,13 +337,9 @@ class PermissionManager {
       return { decision: "deny", reason: READ_ONLY_SANDBOX_REASON }
     }
 
-    // 3. 指令安全检测：破坏性高危指令绝对阻断 (Deny)。
-    //    Minimal 模式没有 write/edit/apply_patch，shell 是唯一写文件通道：
-    //    放行重定向与内容改写（如 cat <<'EOF' > file、tee、sed -i），破坏性指令仍然阻断。
+    // 3. 指令安全检测：破坏性高危指令绝对阻断 (Deny)
     if (toolName === "bash" && typeof record.command === "string") {
-      const safety = evaluateCommandSafety(record.command, {
-        allowShellFileWrites: collaborationMode === "minimal",
-      })
+      const safety = evaluateCommandSafety(record.command)
       if (safety.level === "dangerous") {
         return { decision: "deny", reason: safety.reason ?? DENY_RULE_REASON }
       }
@@ -387,9 +383,7 @@ class PermissionManager {
 
     // 8. 敏感指令提升为 ask
     if (toolName === "bash" && typeof record.command === "string") {
-      const safety = evaluateCommandSafety(record.command, {
-        allowShellFileWrites: collaborationMode === "minimal",
-      })
+      const safety = evaluateCommandSafety(record.command)
       if (safety.level === "sensitive") {
         return { decision: "ask" }
       }

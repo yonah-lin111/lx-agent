@@ -51,7 +51,7 @@ export const permissions = {
 新建会话（新标签页 / 应用重启后）启动时使用的协作模式，可在状态栏点击模式标签或使用 Shift + Tab 临时切换。
 
 - **Build / Plan / Review / Design**：与状态栏协作模式一致。
-- **Minimal**：仅终端工具（\`bash\`）的极简模式，适合测试与对比模型基础表现。
+- **Minimal**：仅开放终端与文件读写工具（\`bash\` / \`read\` / \`write\` / \`edit\`）的极简模式，适合测试与对比模型基础表现。
 - **生效时机**：仅对新建会话生效；当前会话的临时切换不会被覆盖。`,
   ruleGroups: "规则组",
   allowRules: "允许规则 (Allow)",
@@ -78,7 +78,7 @@ export const permissions = {
 为五种协作模式（Build / Plan / Review / Design / Minimal）独立配置能力白名单。
 
 - **非 Build 模式硬基线**：\`write\` / \`edit\` / \`apply_patch\` / \`todowrite\` / \`memory\` 永久禁用，权限配置无法放开。
-- **Minimal 模式白名单**：仅允许终端工具 \`bash\`（后台作业参数与其余全部工具永久禁用），不可编辑。
+- **Minimal 模式白名单**：仅允许 \`bash\` / \`read\` / \`write\` / \`edit\`（后台作业参数与其余全部工具永久禁用），不可编辑。
 - **子代理派发**：\`task\` 由 \`subagents\` 组控制；非 Build 模式缺省仅允许内置探索子代理 \`explorer\`，可另行勾选其他或自定义角色；子代理的工具调用同样继承父模式硬基线。
 - **Design 模式**：在上述基线之外额外禁用 \`wireframe\`（原型交付走 \`<front_design>\` 协议）。
 - **配置语义**：每组关闭 = 不限制（仅受硬基线约束）；打开后勾选白名单，一项都不勾 = 该组全禁。

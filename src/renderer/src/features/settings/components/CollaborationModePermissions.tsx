@@ -43,7 +43,7 @@ export interface CollaborationModePermissionsProps {
 /**
  * 设置页"协作模式权限"卡片：Build / Plan / Review / Design / Minimal 五行能力权限覆盖。
  * 非 build 模式的写操作硬基线不可放开（UI 锁定、保存时由主进程规范化剥离）；
- * Minimal 为白名单模式（仅终端工具），只读展示、不可编辑。
+ * Minimal 为白名单模式（bash + read/write/edit），只读展示、不可编辑。
  */
 export const CollaborationModePermissions = ({
   settings,

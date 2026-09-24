@@ -30,18 +30,18 @@ describe("协作模式契约", () => {
     expect(normalizeCollaborationMode(null)).toBe("build")
   })
 
-  it("Minimal 白名单：仅 bash 放行，其余工具 fail-closed 拦截", () => {
-    expect(getModeAllowedTools("minimal")).toEqual(new Set(["bash"]))
+  it("Minimal 白名单：bash 与 read/write/edit 放行，其余工具 fail-closed 拦截", () => {
+    expect(getModeAllowedTools("minimal")).toEqual(new Set(["bash", "read", "write", "edit"]))
     expect(getModeAllowedTools("build")).toBeUndefined()
-    expect(isToolBlockedByMode("minimal", "bash")).toBe(false)
+
+    for (const toolName of ["bash", "read", "write", "edit"]) {
+      expect(isToolBlockedByMode("minimal", toolName)).toBe(false)
+    }
 
     for (const toolName of [
-      "read",
       "ls",
       "grep",
       "find",
-      "write",
-      "edit",
       "apply_patch",
       "task",
       "question",
@@ -53,6 +53,7 @@ describe("协作模式契约", () => {
       "read_skill",
       "lsp",
       "view_image",
+      "job_output",
       "future_tool",
       "mcp__server__tool",
     ]) {
@@ -75,12 +76,15 @@ describe("协作模式契约", () => {
     expect(isToolBlockedByMode("plan", "read")).toBe(false)
   })
 
-  it("角色兼容：Minimal 下仅 bash 白名单角色可用，缺省能力集角色永久禁用", () => {
+  it("角色兼容：Minimal 下白名单外工具的角色永久禁用，纯白名单能力集角色可用", () => {
     const blocked = roleBlockedTools(undefined, "minimal")
-    expect(blocked).toContain("read")
-    expect(blocked).not.toContain("bash")
-    expect(roleBlockedTools({ tools: ["bash"] }, "minimal")).toEqual([])
-    expect(roleBlockedTools({ tools: ["read", "bash"] }, "minimal")).toEqual(["read"])
+    expect(blocked).toContain("ls")
+    expect(blocked).toContain("grep")
+    expect(blocked).not.toContain("read")
+    expect(blocked).not.toContain("write")
+    expect(roleBlockedTools({ tools: ["bash", "read", "write", "edit"] }, "minimal")).toEqual([])
+    expect(roleBlockedTools({ tools: ["read", "bash"] }, "minimal")).toEqual([])
+    expect(roleBlockedTools({ tools: ["read", "grep"] }, "minimal")).toEqual(["grep"])
     expect(roleBlockedTools({ tools: ["read"] }, "build")).toEqual([])
   })
 

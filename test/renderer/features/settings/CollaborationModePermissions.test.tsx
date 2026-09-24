@@ -84,7 +84,7 @@ describe("CollaborationModePermissions", () => {
     renderComponent(baseSettings())
 
     expect(await screen.findByText("Minimal Mode")).toBeTruthy()
-    expect(screen.getByText("Allowed only: bash")).toBeTruthy()
+    expect(screen.getByText("Allowed only: bash, read, write, edit")).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Edit permissions Minimal Mode" })).toBeNull()
     // 其余模式仍有编辑入口。
     expect(screen.getByRole("button", { name: "Edit permissions Build Mode" })).toBeTruthy()

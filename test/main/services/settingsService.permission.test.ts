@@ -81,13 +81,16 @@ describe("settingsService 权限配置", () => {
       agent: {
         permissions: {
           modes: {
-            minimal: { tools: ["bash", "read", "task"], websearch: ["web_search"] },
+            minimal: {
+              tools: ["bash", "read", "write", "edit", "task"],
+              websearch: ["web_search"],
+            },
           },
         },
       },
     })
     expect(getPermissionSettings().modes?.minimal).toEqual({
-      tools: ["bash"],
+      tools: ["bash", "read", "write", "edit"],
       websearch: ["web_search"],
     })
   })
@@ -100,12 +103,12 @@ describe("settingsService 权限配置", () => {
       allow: [],
       deny: [],
       ask: [],
-      modes: { minimal: { tools: ["bash", "write"] } },
+      modes: { minimal: { tools: ["bash", "write", "grep"] } },
     })
 
     const settings = getPermissionSettings()
     expect(settings.collaborationMode).toBe("minimal")
-    expect(settings.modes?.minimal).toEqual({ tools: ["bash"] })
+    expect(settings.modes?.minimal).toEqual({ tools: ["bash", "write"] })
   })
 
   it("保存合并 agent.permissions 并保留 agent.mcp 与其他节点", () => {

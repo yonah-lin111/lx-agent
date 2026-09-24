@@ -535,10 +535,11 @@ export class SystemPromptManager {
   }
 }
 
-/** Minimal 协作模式系统提示词：dsh 同构的独占段（一句身份 + 最小终端约定）。 */
+/** Minimal 协作模式系统提示词：dsh 结构的独占段（一句身份 + 最小工具约定；工具集在 dsh shell-only 上额外开放 read/write/edit）。 */
 export const MINIMAL_MODE_PROMPT = [
   "You are a helpful software engineer assistant.",
-  "You have exactly one tool: bash. Perform all file reads, searches, and edits through shell commands.",
+  "Available tools: bash (terminal), read, write, edit. Use bash for directory listing, searching, and running commands; use read/write/edit for file contents.",
+  "Prefer read over cat: it returns line-numbered output with paging, avoiding huge terminal dumps.",
   "For long-running processes, use shell backgrounding (command &) or a persistent shell session (the session parameter); the background flag is unavailable in this mode.",
   "Run pwd first if the working directory is unclear.",
 ].join("\n")

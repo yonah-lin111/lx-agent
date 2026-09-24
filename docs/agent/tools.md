@@ -104,7 +104,7 @@ export const PROMPT_ORDERS = {
   CURRENT_TIME: 355,            // <current_time> 动态时间感知
   CONTEXT_WINDOW_GUIDANCE: 358, // <context_window_guidance> 容量双阈值告警
   SANDBOX_POLICY: 360,          // <sandbox_policy> 沙箱级别声明
-  COLLABORATION_MODE: 380,      // 四模式模板（build / plan / review / design；minimal 为 complete 独占段）
+  COLLABORATION_MODE: 380,      // 模式模板（build / plan / review / design；minimal 为 complete 独占段）
   INTERCEPTOR: 400,             // 拦截器保留位
 } as const
 ```

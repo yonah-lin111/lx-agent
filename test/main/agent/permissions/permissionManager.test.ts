@@ -832,18 +832,17 @@ describe("permissionManager 永久决策写回（G5）", () => {
   })
 
   describe("极简模式 (Minimal Mode 门禁)", () => {
-    it("仅放行 bash：其余工具全部硬拦截，bypassPermissions 也不可绕过", () => {
+    it("仅放行 bash 与 read/write/edit：其余工具全部硬拦截，bypassPermissions 也不可绕过", () => {
       applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
       const minimal = { collaborationMode: "minimal" as const }
 
-      expect(permissionManager.evaluate("bash", { command: "ls" }, minimal)).toBe("allow")
+      for (const toolName of ["bash", "read", "write", "edit"]) {
+        expect(permissionManager.evaluate(toolName, {}, minimal)).toBe("allow")
+      }
       for (const toolName of [
-        "read",
         "ls",
         "grep",
         "find",
-        "write",
-        "edit",
         "apply_patch",
         "task",
         "question",
@@ -855,6 +854,7 @@ describe("permissionManager 永久决策写回（G5）", () => {
         "read_skill",
         "lsp",
         "view_image",
+        "job_output",
         "mcp__codegraph__search",
       ]) {
         expect(permissionManager.evaluate(toolName, {}, minimal)).toBe("deny")
@@ -893,7 +893,8 @@ describe("permissionManager 永久决策写回（G5）", () => {
       applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
       const child = { collaborationMode: "build" as const, parentMode: "minimal" as const }
 
-      expect(permissionManager.evaluate("read", {}, child)).toBe("deny")
+      expect(permissionManager.evaluate("grep", {}, child)).toBe("deny")
+      expect(permissionManager.evaluate("read", {}, child)).toBe("allow")
       expect(permissionManager.evaluate("bash", { command: "ls" }, child)).toBe("allow")
     })
 
@@ -911,42 +912,28 @@ describe("permissionManager 永久决策写回（G5）", () => {
       ).toBe("deny")
     })
 
-    it("shell 写文件通道放行：重定向与内容改写不再硬拦，破坏性指令仍拒绝", () => {
+    it("写文件走 write/edit：shell 重定向与内容改写仍被硬拦，破坏性指令同样拒绝", () => {
       applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+      const minimal = { collaborationMode: "minimal" as const }
 
+      // shell 写文件通道维持封死（Guard 文案引导使用 write/edit）
       expect(
         permissionManager.evaluate(
           "bash",
-          { command: "cat <<'EOF' > /Users/yonah/Desktop/snake.html\nbody\nEOF" },
-          { collaborationMode: "minimal" },
-        ),
-      ).toBe("allow")
-      expect(
-        permissionManager.evaluate(
-          "bash",
-          { command: "sed -i 's/a/b/' src/a.ts" },
-          { collaborationMode: "minimal" },
-        ),
-      ).toBe("allow")
-      // 破坏性指令不受写通道放行影响
-      expect(
-        permissionManager.evaluate(
-          "bash",
-          { command: "rm -rf /" },
-          { collaborationMode: "minimal" },
+          { command: "cat <<'EOF' > /tmp/lx-out.txt\nbody\nEOF" },
+          minimal,
         ),
       ).toBe("deny")
+      expect(
+        permissionManager.evaluate("bash", { command: "sed -i 's/a/b/' src/a.ts" }, minimal),
+      ).toBe("deny")
+      expect(permissionManager.evaluate("bash", { command: "rm -rf /" }, minimal)).toBe("deny")
 
-      // 其余模式维持既有判定（无 write 工具但语义只读的 plan/review/design 仍封死 shell 写）
-      for (const collaborationMode of ["build", "plan", "review", "design"] as const) {
-        expect(
-          permissionManager.evaluate(
-            "bash",
-            { command: "echo hi > /tmp/lx-out.txt" },
-            { collaborationMode },
-          ),
-        ).toBe("deny")
-      }
+      // 文件内容读写由专用工具承担
+      expect(permissionManager.evaluate("write", { path: "/tmp/lx-out.txt" }, minimal)).toBe(
+        "allow",
+      )
+      expect(permissionManager.evaluate("edit", { path: "src/a.ts" }, minimal)).toBe("allow")
     })
   })
 })

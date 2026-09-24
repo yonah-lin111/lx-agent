@@ -104,7 +104,7 @@ describe("narrowActivationByMode 模式白名单收窄", () => {
 
   it("minimal：仅保留白名单内工具，MCP 与 skill 一律关闭", () => {
     expect(narrowActivationByMode("minimal", tools, mcp, true)).toEqual({
-      tools: ["bash"],
+      tools: ["read", "bash", "write"],
       mcp: [],
       withReadSkill: false,
     })

@@ -208,24 +208,6 @@ describe("CommandSafetyGuard", () => {
     expect(evaluateCommandSafety('sh -c "ls; git reset --hard"').level).toBe("dangerous")
   })
 
-  it("allowShellFileWrites 放行 shell 写文件通道（Minimal 模式），破坏性与敏感性不变", () => {
-    const allow = { allowShellFileWrites: true }
-
-    expect(evaluateCommandSafety("cat <<'EOF' > out.txt\nbody\nEOF", allow).level).toBe("safe")
-    expect(evaluateCommandSafety("pnpm test | tee test.log", allow).level).toBe("safe")
-    expect(evaluateCommandSafety("sed -i 's/a/b/' src/a.ts", allow).level).toBe("safe")
-    expect(evaluateCommandSafety("truncate -s 0 logs.txt", allow).level).toBe("safe")
-    expect(evaluateCommandSafety("sh -c 'echo p > /tmp/lx-out.txt'", allow).level).toBe("safe")
-
-    // 破坏性与敏感性判定不受该选项影响
-    expect(evaluateCommandSafety("rm -rf /", allow).level).toBe("dangerous")
-    expect(evaluateCommandSafety("git reset --hard", allow).level).toBe("dangerous")
-    expect(evaluateCommandSafety("git push --force origin main", allow).level).toBe("sensitive")
-
-    // 默认（有 write/edit 工具的模式）仍然拦截
-    expect(evaluateCommandSafety("echo hello > out.txt").level).toBe("dangerous")
-  })
-
   it("常见文件操作指令不做硬拦截，交由权限确认流程", () => {
     expect(evaluateCommandSafety("touch index.ts").level).toBe("safe")
     expect(evaluateCommandSafety("mkdir -p src/features").level).toBe("safe")
