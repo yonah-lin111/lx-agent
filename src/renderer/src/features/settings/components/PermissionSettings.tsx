@@ -1,10 +1,8 @@
 import type {
-  CollaborationMode,
   PermissionMode,
   PermissionSettings as PermissionSettingsConfig,
   SandboxPolicy,
 } from "@shared/contracts/agent"
-import { COLLABORATION_MODE_ORDER } from "@shared/contracts/agent"
 import { AlertCircle, Plus, ShieldCheck } from "lucide-react"
 import type React from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -13,8 +11,6 @@ import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { type TranslationKey, useTranslation } from "@/i18n"
-import { COLLABORATION_MODE_META } from "@/lib/collaborationModes"
-import { CollaborationModePermissions } from "./CollaborationModePermissions"
 
 // 规则组配置（按优先级展示）。
 const RULE_GROUPS: Array<{
@@ -36,7 +32,7 @@ export interface PermissionSettingsProps {
 }
 
 /**
- * 设置页"权限与沙箱"分区：沙箱三态选择 + 权限模式三选一 + 协作模式权限 + allow/deny/ask 规则编辑器。
+ * 设置页"权限与沙箱"分区：沙箱三态选择 + 权限模式三选一 + allow/deny/ask 规则编辑器。
  * 仅维护编辑态，保存由设置页统一处理（写入 agent.permissions）。
  */
 export const PermissionSettings = ({
@@ -71,24 +67,12 @@ export const PermissionSettings = ({
     bypassPermissions: t("settings.modeBypassDesc"),
   }
 
-  // 默认协作模式（新会话启动值；缺省 build）。
-  const currentCollaborationMode: CollaborationMode = settings.collaborationMode ?? "build"
-  const collaborationModeOptions: LxSelectOption<CollaborationMode>[] =
-    COLLABORATION_MODE_ORDER.map((mode) => ({
-      value: mode,
-      label: t(COLLABORATION_MODE_META[mode].labelKey),
-    }))
-
   const updateSandboxPolicy = (sandboxPolicy: SandboxPolicy): void => {
     setSettings({ ...settings, sandboxPolicy })
   }
 
   const updateMode = (defaultMode: PermissionMode): void => {
     setSettings({ ...settings, defaultMode })
-  }
-
-  const updateCollaborationMode = (collaborationMode: CollaborationMode): void => {
-    setSettings({ ...settings, collaborationMode })
   }
 
   const updateRules = (key: "allow" | "deny" | "ask", rules: string[]): void => {
@@ -157,30 +141,6 @@ export const PermissionSettings = ({
           </p>
         ) : null}
       </div>
-
-      {/* 默认协作模式 */}
-      <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
-        <div className="flex items-center gap-1.5">
-          <h3 className="text-sm font-semibold text-white/90">
-            {t("settings.defaultCollaborationMode")}
-          </h3>
-          <LxInfoTooltip markdown={t("settings.defaultCollaborationModeDoc")} placement="right" />
-        </div>
-        <p className="text-xs text-white/45">{t("settings.defaultCollaborationModeDesc")}</p>
-        <div className="w-80">
-          <LxSelect
-            value={currentCollaborationMode}
-            onChange={updateCollaborationMode}
-            options={collaborationModeOptions}
-          />
-        </div>
-        <p className="text-xs text-white/45">
-          {t(COLLABORATION_MODE_META[currentCollaborationMode].descKey)}
-        </p>
-      </div>
-
-      {/* 协作模式权限 */}
-      <CollaborationModePermissions settings={settings} setSettings={setSettings} />
 
       {/* 规则组 */}
       <div className="flex flex-col gap-3">

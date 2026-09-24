@@ -6,6 +6,7 @@ import { useLxToast } from "@/components/ui/LxToast"
 import {
   AgentsMdSettings,
   CliSettings,
+  CollaborationModeSettings,
   CustomCommandSettings,
   GeneralSettings,
   HooksSettings,
@@ -44,6 +45,7 @@ const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   "token-saver": "settings.tokenSaverDesc",
   voice: "settings.voiceDesc",
   permissions: "settings.permissionsDesc",
+  collaboration: "settings.collaborationDesc",
   hooks: "settings.hooksDesc",
   subagents: "settings.subagentsDesc",
   "custom-commands": "settings.customCommandsDesc",
@@ -153,6 +155,14 @@ export const SettingsPage = (): React.JSX.Element => {
     onReset: resetPermissions,
   })
 
+  // collaboration 与 permissions 共用同一份 agent.permissions 草稿与保存流程
+  useRegisterSettingsSection({
+    section: "collaboration",
+    isDirty: activeSection === "collaboration" && isPermissionsDirty,
+    onSave: savePermissions,
+    onReset: resetPermissions,
+  })
+
   const descKey = SECTION_DESCRIPTION_KEYS[activeSection]
   const currentDescription = descKey ? t(descKey) : ""
 
@@ -214,6 +224,12 @@ export const SettingsPage = (): React.JSX.Element => {
           {activeSection === "token-saver" ? <TokenSaverSettings /> : null}
           {activeSection === "permissions" && permissionSettings ? (
             <PermissionSettings settings={permissionSettings} setSettings={setPermissionSettings} />
+          ) : null}
+          {activeSection === "collaboration" && permissionSettings ? (
+            <CollaborationModeSettings
+              settings={permissionSettings}
+              setSettings={setPermissionSettings}
+            />
           ) : null}
           {activeSection === "hooks" ? <HooksSettings /> : null}
           {activeSection === "subagents" ? <SubagentSettings /> : null}

@@ -3,6 +3,7 @@ import {
   Code,
   Code2,
   Coins,
+  Compass,
   FileText,
   type LucideIcon,
   Mic,
@@ -24,6 +25,7 @@ export interface SettingsSection {
     | "settings.models"
     | "settings.providers"
     | "settings.permissions"
+    | "settings.collaboration"
     | "settings.hooks"
     | "settings.subagents"
     | "settings.customCommands"
@@ -52,6 +54,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "token-saver", labelKey: "settings.tokenSaver", icon: Coins },
   { id: "voice", labelKey: "settings.voice", icon: Mic },
   { id: "permissions", labelKey: "settings.permissions", icon: Shield },
+  { id: "collaboration", labelKey: "settings.collaboration", icon: Compass },
   { id: "hooks", labelKey: "settings.hooks", icon: Webhook },
   { id: "subagents", labelKey: "settings.subagents", icon: Users },
   { id: "custom-commands", labelKey: "settings.customCommands", icon: Code },

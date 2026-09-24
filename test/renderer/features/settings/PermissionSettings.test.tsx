@@ -22,20 +22,9 @@ const baseSettings = (): PermissionSettingsConfig => ({
   ask: [],
 })
 
-// 协作模式权限卡片加载能力目录（此处仅需返回空目录）。
-const getSubagentCapabilities = vi.fn(async () => ({
-  tools: [] as string[],
-  mcp: [] as { name: string; connected: boolean }[],
-  skills: [] as { name: string; disabled: boolean }[],
-  subagents: [] as { name: string; builtIn: boolean }[],
-}))
-
 describe("PermissionSettings", () => {
   beforeEach(() => {
     cleanup()
-    window.api = {
-      settings: { getSubagentCapabilities },
-    } as unknown as typeof window.api
   })
 
   it("切换权限模式触发 setSettings", () => {
@@ -116,27 +105,5 @@ describe("PermissionSettings", () => {
     render(<PermissionSettings settings={settings} setSettings={vi.fn()} />)
 
     expect(screen.queryAllByText(/bypassPermissions/).length).toBeGreaterThan(0)
-  })
-
-  it("默认协作模式选择器：展示当前模式并可切换到 Minimal", () => {
-    const setSettings = vi.fn()
-    render(<PermissionSettings settings={baseSettings()} setSettings={setSettings} />)
-
-    // 选择器触发器按当前值展示 Build Mode（协作模式权限卡片同文案，用 aria-haspopup 定位）。
-    const trigger = screen
-      .getAllByRole("button")
-      .find(
-        (button) =>
-          button.getAttribute("aria-haspopup") === "listbox" &&
-          button.textContent?.includes("Build Mode"),
-      )
-    expect(trigger).toBeTruthy()
-
-    fireEvent.click(trigger as HTMLButtonElement)
-    fireEvent.mouseDown(screen.getByRole("option", { name: "Minimal Mode" }))
-
-    expect(setSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ collaborationMode: "minimal" }),
-    )
   })
 })

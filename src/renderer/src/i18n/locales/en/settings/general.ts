@@ -5,6 +5,7 @@ export const general = {
   providers: "Model Providers",
   voice: "Voice Input",
   permissions: "Permissions",
+  collaboration: "Collaboration Mode",
   generalDesc: "Configure interface language and general application preferences",
   generalDoc: `### General Preferences
 
@@ -48,6 +49,8 @@ Ultra-fast speech-to-text transcription powered by Whisper on Groq.
   voiceLanguage: "Audio Language",
   voiceLanguageDesc: "Primary language spoken in audio; select Auto or a specific language",
   permissionsDesc: "Configure agent tool execution permissions and confirmation modes",
+  collaborationDesc:
+    "Configure the default collaboration mode for new sessions and per-mode capability permissions",
   completionNotify: "Completion Notifications",
   completionNotifyDesc:
     "Send a system notification when a task completes; alerts only appear while the app window is unfocused",

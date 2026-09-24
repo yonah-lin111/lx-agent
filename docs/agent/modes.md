@@ -274,7 +274,7 @@ generateElementSelector(element): { selector, description, injectedAttr? }
 - **工具白名单**：仅 `bash` / `read` / `write` / `edit`（fail-closed）——注册表激活层只注册/激活这四个工具，MCP、skill、子代理与其余内置工具（含 `ls` / `grep` / `find` / `apply_patch` / `todowrite` / `memory`）对模型不可见；门控层对白名单外工具直接 deny（`MODE_MUTATION_REASONS.minimal`），`bash` 的 `background: true` 参数单独拒绝（`MINIMAL_BACKGROUND_REASON`，引导改用 `command &` 或 `bash.session` 持久会话）。
 - **独占提示词**：`MINIMAL_MODE_PROMPT` 以 `complete: true` 段注册（`SystemPromptManager` 的 `harness:minimal-mode`）——一句身份 + 最小工具约定（bash 负责列目录/搜索/命令，read 优先于 cat，读写走专用工具），渲染时压掉其余全部 section 与 context（不注入 AGENTS.md、MEMORY、skills、环境变量与模式段），与 dsh persona `complete: true` + `includeRuntimeContext: false` 同构；非 minimal 模式该段渲染为空、不参与压制。
 - **shell 写文件**：Security Guard 对重定向（`>` / `>>`）与内容改写（tee file、sed -i、truncate）的硬拦在所有模式一致生效——写文件走 `write` / `edit`（结构化参数、经 Guardian 路径评估），`bash` 负责列目录、搜索与执行命令；破坏性指令（rm 受保护目标、mkfs、dd、git reset --hard 等）照旧绝对阻断。
-- **能力配置**：`agent.permissions.modes.minimal` 只能在其白名单内再收紧（例如 `tools: []` 全禁）；设置页模式行只读展示「仅允许：bash, read, write, edit」，不提供编辑入口。
+- **能力配置**：`agent.permissions.modes.minimal` 只能在其白名单内再收紧（例如 `tools: []` 全禁）；设置页「协作模式」分区中该模式行只读展示「仅允许：bash, read, write, edit」，不提供编辑入口。
 - **子代理模式**：`agent.subagents.mode` 不接受 `minimal`（子代理工具集由角色权限决定，与 Minimal 白名单语义不匹配；非法值保存拒绝、读时告警并回退 `build`）。
 
 ---
