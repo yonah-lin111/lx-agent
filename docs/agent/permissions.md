@@ -74,11 +74,11 @@ export type CollaborationMode = "build" | "plan" | "review" | "design" | "minima
 - **Minimal 白名单**：注册表激活层同步收窄（模型只看到 `bash` / `read` / `write` / `edit`），提示词以 `complete` 独占段压掉其余全部内容（见 modes.md §5）；`background: true` 单独拒绝（`MINIMAL_BACKGROUND_REASON`），引导改用 shell 后台（`command &`）或 `bash.session` 持久会话。在 dsh shell-only 基线上额外开放 `read` / `write` / `edit`（有意偏离，见 modes.md §5）；shell 重定向与内容改写仍由 Security Guard 硬拦，写文件走 `write` / `edit`。
 - **子代理派发**：`task` 不再属于硬基线，由 `modes.<mode>.subagents` 白名单控制（按 `agent_type` 判定，批量 `tasks[]` 逐项校验，未携带角色视为未命中）。非 build 模式缺省白名单 = `["explorer"]`（内置只读探索子代理），`build` 缺省 = 不限制；显式配置覆盖缺省，显式空数组 = 该模式完全禁止派发；`minimal` 无缺省白名单且 `task` 不在工具白名单内。
 - **父模式基线穿透**：子代理按 `agent.subagents.mode`（缺省 `build`）装配提示词与门控，但父会话的硬基线会以 `parentMode` 叠加到子代理的每次工具调用上——`plan` / `review` / `design` 下派发的子代理同样不能写文件，`design` 下还不能用 `wireframe`，`minimal` 下只能使用 `bash` / `read` / `write` / `edit`，派发无法绕过模式约束。
-- **角色兼容性**：角色能力集与模式硬基线有交集时（含 `tools` 未限制的角色，如内置 `worker`），该角色在此非 build 模式**永久禁用**——设置页锁定为不可勾选，门控层同时拒绝派发（白名单列出也不放行），避免派发一个写操作必然被拒的残废子代理；`build` 无硬基线，因此不锁定任何角色。角色被改动后与已保存白名单失配时，权限页模式行会提示「永久禁用角色：…」，打开编辑弹窗即自动剔除该角色并在确认后落盘；`minimal` 行（设置页「协作模式」分区）为只读展示（白名单外角色永久禁用，不提供编辑入口）。
+- **角色兼容性**：角色能力集与模式硬基线有交集时（含 `tools` 未限制的角色，如内置 `worker`），该角色在此非 build 模式**永久禁用**——设置页锁定为不可勾选，门控层同时拒绝派发（白名单列出也不放行），避免派发一个写操作必然被拒的残废子代理；`build` 无硬基线，因此不锁定任何角色。角色被改动后与已保存白名单失配时，权限页模式行会提示「永久禁用角色：…」，打开编辑弹窗即自动剔除该角色并在确认后落盘；`minimal` 行（设置页「Agent 模式」分区）为只读展示（白名单外角色永久禁用，不提供编辑入口）。
 - **提示词层（缓存友好）**：Plan / Review / Design 的模式段声明子代理派发限制（引用 `task` 工具描述中的 `Available agent types`，并把 `memory` 补入禁用清单）；`task` 工具描述在会话装配与模式切换（registry 重建）时按模式裁剪角色目录——白名单未命中或能力集冲突的角色不再出现在模型可见的目录里，模型无需靠一次被拒绝来发现限制。两处内容只随模式 / 能力集重建，不含轮次级易变数据，不额外破坏提示词前缀缓存（易变上下文如 `<current_time>` 本就在系统提示词尾部）。
 - **模式能力白名单**（`agent.permissions.modes`）：`tools` / `mcp` / `skills` / `websearch` / `subagents` 五组，缺省 = 不限制（`subagents` 在非 build 模式除外）；硬基线工具在保存时被剥离、运行时二次兜底拒绝，配置只能收紧、永不放开。
 - `design` 模式的工具级门禁与 plan/review 共享同一只读基线并额外禁用 `wireframe`（原型交付走 `<front_design>` 协议，原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
-- 模式切换：`Shift + Tab` 在 `build → plan → review → design → minimal → build` 间循环（状态栏模式标签点击弹出列表可定向切换，或经 IPC `setCollaborationMode` 定向切换）；卡片一键采纳也会切回 `build`。新会话启动模式取 `agent.permissions.collaborationMode`（缺省 `build`，设置页「协作模式」分区可配置）。
+- 模式切换：`Shift + Tab` 在 `build → plan → review → design → minimal → build` 间循环（状态栏模式标签点击弹出列表可定向切换，或经 IPC `setCollaborationMode` 定向切换）；卡片一键采纳也会切回 `build`。新会话启动模式取 `agent.permissions.collaborationMode`（缺省 `build`，设置页「Agent 模式」分区可配置）。
 
 ---
 
