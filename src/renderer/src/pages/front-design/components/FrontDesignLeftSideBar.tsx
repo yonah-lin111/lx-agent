@@ -326,18 +326,15 @@ export const FrontDesignLeftSideBar = ({
                       />
                     </>
                   }
+                  label={item.tabLabel}
+                  labelClassName="text-xs font-semibold text-white/80"
                   suffix={
                     /* 下属设计原型数量角标 */
                     <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-xs text-white/50 shrink-0 font-mono">
                       {item.designs.length}
                     </span>
                   }
-                >
-                  {/* Tab 标题 */}
-                  <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white/80">
-                    {item.tabLabel}
-                  </span>
-                </LxNavItem>
+                />
 
                 {/* 子级：设计原型列表（按设计族与版本聚合） */}
                 {!isTabCollapsed && (
@@ -373,6 +370,8 @@ export const FrontDesignLeftSideBar = ({
                                 ? "bg-white/5 text-white font-medium"
                                 : "text-white/70"
                             }
+                            label={root.title || t("frontDesign.title")}
+                            labelClassName="select-none"
                             prefix={
                               currentVersionItem.isStreaming ? (
                                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-pink-400" />
@@ -410,11 +409,7 @@ export const FrontDesignLeftSideBar = ({
                                 </div>
                               </>
                             }
-                          >
-                            <span className="min-w-0 flex-1 truncate select-none">
-                              {root.title || t("frontDesign.title")}
-                            </span>
-                          </LxNavItem>
+                          />
                         )
                       })
                     )}

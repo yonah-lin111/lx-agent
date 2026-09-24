@@ -10,6 +10,7 @@ vi.mock("node:child_process", async (importOriginal) => {
 import {
   clearGitEnvCache,
   collectEnvironmentVariables,
+  narrowActivationByMode,
   setGitEnvCacheClock,
 } from "@/agent/assembly"
 
@@ -94,5 +95,28 @@ describe("collectEnvironmentVariables git 短 TTL 缓存", () => {
 
     collectEnvironmentVariables("/plain")
     expect(cpMock.execSync).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe("narrowActivationByMode 模式白名单收窄", () => {
+  const tools = ["read", "bash", "write", "grep", "task"]
+  const mcp = ["mcp__codegraph__search"]
+
+  it("minimal：仅保留白名单内工具，MCP 与 skill 一律关闭", () => {
+    expect(narrowActivationByMode("minimal", tools, mcp, true)).toEqual({
+      tools: ["read", "bash", "write"],
+      mcp: [],
+      withReadSkill: false,
+    })
+  })
+
+  it("其余模式原样透传激活集", () => {
+    for (const mode of ["build", "plan", "review", "design"] as const) {
+      expect(narrowActivationByMode(mode, tools, mcp, true)).toEqual({
+        tools,
+        mcp,
+        withReadSkill: true,
+      })
+    }
   })
 })

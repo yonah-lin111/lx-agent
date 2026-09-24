@@ -5,6 +5,12 @@ export const general = {
   providers: "模型 Provider",
   voice: "语音设置",
   permissions: "权限",
+  collaboration: "Agent 模式",
+  groupGeneral: "通用与界面",
+  groupModels: "模型与成本",
+  groupAgent: "智能体行为",
+  groupCapabilities: "能力与扩展",
+  groupIntegrations: "集成与运行时",
   generalDesc: "配置界面语言和通用偏好设置",
   generalDoc: `### 通用偏好设置
 
@@ -48,6 +54,7 @@ export const general = {
   voiceLanguage: "音频语言",
   voiceLanguageDesc: "语音说话的主要语言，选择自动检测或固定语言以优化识别准确率",
   permissionsDesc: "配置 Agent 工具执行权限与确认模式",
+  collaborationDesc: "配置新会话默认 Agent 模式与各模式能力权限",
   completionNotify: "完成通知",
   completionNotifyDesc: "任务完成时发送系统通知；仅在应用窗口未聚焦时提醒",
   agentNotifyLabel: "Agent 任务完成时提醒我",

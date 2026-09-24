@@ -9,7 +9,7 @@ import type {
   SandboxPolicy,
 } from "@shared/contracts/agent"
 import {
-  getModeBlockedTools,
+  isToolBlockedByMode,
   MCP_TOOL_NAMESPACE,
   normalizeCollaborationMode,
   roleBlockedTools,
@@ -42,7 +42,12 @@ const MODE_MUTATION_REASONS: Record<Exclude<CollaborationMode, "build">, string>
     "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite, memory) are strictly prohibited in Review Mode. Sub-agent dispatch is limited to the configured role allow-list. Please output structured findings using <review_findings> tags.",
   design:
     "Action denied: Current collaboration mode is Front Design Mode. Mutating actions (write, edit, apply_patch, todowrite, memory) and the wireframe tool are strictly prohibited in Design Mode. Sub-agent dispatch is limited to the configured role allow-list. Deliver prototypes using <front_design> tags instead.",
+  minimal:
+    "Action denied: Current collaboration mode is Minimal Mode. Only the bash terminal and the read/write/edit file tools are available: use bash for directory listing, searching, and commands, and read/write/edit for file contents. Sub-agent, web, skill, todo, memory, and MCP tools are strictly prohibited.",
 }
+// Minimal 模式后台作业拒绝 reason（job 工具不在白名单内，引导改用 shell 后台与持久会话）。
+const MINIMAL_BACKGROUND_REASON =
+  "Action denied: Minimal Mode does not support background jobs. Run long-lived processes with shell backgrounding (command &) or a persistent shell session (the session parameter) instead."
 // 模式能力权限白名单未命中 reason。
 const MODE_TOOL_NOT_ALLOWED_REASON =
   "Action denied: This tool is not allowed in the current collaboration mode by permission configuration."
@@ -61,6 +66,7 @@ const MODE_LABELS: Record<CollaborationMode, string> = {
   plan: "Plan Mode",
   review: "Review Mode",
   design: "Design Mode",
+  minimal: "Minimal Mode",
 }
 
 // read-only 沙箱策略下硬拦截的工具。
@@ -190,6 +196,13 @@ class PermissionManager {
   }
 
   /**
+   * 获取默认协作模式（新会话启动值；缺省 build）
+   */
+  getDefaultCollaborationMode(): CollaborationMode {
+    return normalizeCollaborationMode(this.settings.collaborationMode)
+  }
+
+  /**
    * 设置权限确认模式
    */
   setPermissionMode(mode: PermissionMode): void {
@@ -272,17 +285,20 @@ class PermissionManager {
 
     const record = isRecord(args) ? args : {}
 
-    // 1. 协作模式硬基线：非 build 模式严禁写操作、todowrite 任务清单与 memory 写入；design 另禁 wireframe。
+    // 1. 协作模式硬基线：非 build 模式严禁写操作、todowrite 任务清单与 memory 写入；design 另禁 wireframe；
+    //    minimal 为白名单模式（仅 bash，fail-closed），并额外拒绝后台作业参数。
     //    该基线为模式身份约束，权限配置不可放开；子代理调用传入 parentMode 时父模式基线同样生效。
     for (const baselineMode of [collaborationMode, parentMode]) {
       if (baselineMode === undefined || baselineMode === "build") continue
-      if (getModeBlockedTools(baselineMode).has(toolName)) {
-        const reason =
-          baselineMode === collaborationMode
-            ? MODE_MUTATION_REASONS[baselineMode]
-            : `${PARENT_BASELINE_PREFIX}${MODE_MUTATION_REASONS[baselineMode]}`
-        return { decision: "deny", reason }
-      }
+      const isMinimalBackground =
+        baselineMode === "minimal" && toolName === "bash" && record.background === true
+      if (!isMinimalBackground && !isToolBlockedByMode(baselineMode, toolName)) continue
+      const baseReason = isMinimalBackground
+        ? MINIMAL_BACKGROUND_REASON
+        : MODE_MUTATION_REASONS[baselineMode]
+      const reason =
+        baselineMode === collaborationMode ? baseReason : `${PARENT_BASELINE_PREFIX}${baseReason}`
+      return { decision: "deny", reason }
     }
 
     // 1.1 模式能力权限白名单：五组独立判定，配置只能收紧、永不新增能力

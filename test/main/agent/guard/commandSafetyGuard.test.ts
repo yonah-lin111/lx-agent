@@ -191,6 +191,23 @@ describe("CommandSafetyGuard", () => {
     expect(evaluateCommandSafety("sh -c 'echo x > /dev/null'").level).toBe("safe")
   })
 
+  it("多行引号参数不被肢解：引号内的 > 不是写文件重定向", () => {
+    // 回归：python3 -c "多行 HTML" 里的 <title>x</title> 曾被顶层盲拆后误判为写文件重定向
+    expect(
+      evaluateCommandSafety(
+        `python3 -c "\nhtml = '<title>x</title>'\nopen('f.html','w').write(html)\n"`,
+      ).level,
+    ).toBe("safe")
+    expect(evaluateCommandSafety(`python3 -c "\nif 10 > 5:\n    print('ok')"`).level).toBe("safe")
+    // 引号内的真实写操作仍按命令评估（sh -c 载荷递归检查）
+    expect(evaluateCommandSafety(`sh -c "echo a > b" && echo ok`).level).toBe("dangerous")
+  })
+
+  it("引号内的分隔符载荷仍纳入评估，不因拆分修复而漏判", () => {
+    expect(evaluateCommandSafety('sh -c "cd /tmp && rm -rf /"').level).toBe("dangerous")
+    expect(evaluateCommandSafety('sh -c "ls; git reset --hard"').level).toBe("dangerous")
+  })
+
   it("常见文件操作指令不做硬拦截，交由权限确认流程", () => {
     expect(evaluateCommandSafety("touch index.ts").level).toBe("safe")
     expect(evaluateCommandSafety("mkdir -p src/features").level).toBe("safe")

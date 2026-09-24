@@ -64,6 +64,53 @@ describe("settingsService 权限配置", () => {
     expect(getPermissionSettings().defaultMode).toBe("default")
   })
 
+  it("collaborationMode 合法值保留（含 minimal），非法值丢弃", () => {
+    writeConfigTree(holder.configPath, {
+      agent: { permissions: { collaborationMode: "minimal" } },
+    })
+    expect(getPermissionSettings().collaborationMode).toBe("minimal")
+
+    writeConfigTree(holder.configPath, {
+      agent: { permissions: { collaborationMode: "bogus" } },
+    })
+    expect(getPermissionSettings().collaborationMode).toBeUndefined()
+  })
+
+  it("modes.minimal 能力配置只能收紧：白名单外工具与联网/子代理组按原语义保留", () => {
+    writeConfigTree(holder.configPath, {
+      agent: {
+        permissions: {
+          modes: {
+            minimal: {
+              tools: ["bash", "read", "write", "edit", "task"],
+              websearch: ["web_search"],
+            },
+          },
+        },
+      },
+    })
+    expect(getPermissionSettings().modes?.minimal).toEqual({
+      tools: ["bash", "read", "write", "edit"],
+      websearch: ["web_search"],
+    })
+  })
+
+  it("保存后回读保留 collaborationMode 与 modes.minimal", () => {
+    writeConfigTree(holder.configPath, {})
+    savePermissionSettings({
+      defaultMode: "default",
+      collaborationMode: "minimal",
+      allow: [],
+      deny: [],
+      ask: [],
+      modes: { minimal: { tools: ["bash", "write", "grep"] } },
+    })
+
+    const settings = getPermissionSettings()
+    expect(settings.collaborationMode).toBe("minimal")
+    expect(settings.modes?.minimal).toEqual({ tools: ["bash", "write"] })
+  })
+
   it("保存合并 agent.permissions 并保留 agent.mcp 与其他节点", () => {
     writeConfigTree(holder.configPath, {
       ai: { defaultModel: { provider: "p", model: "m" } },

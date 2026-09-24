@@ -112,13 +112,13 @@ export const HomeLeftSideBar = ({
             <LxNavItem
               key={item.view}
               level={1}
+              label={t(item.labelKey)}
+              labelClassName="select-none"
               aria-current={isActive ? "page" : undefined}
               className={isActive ? "bg-white/5 text-white" : "text-white/70"}
               onClick={() => handleSelect(item.view)}
               prefix={<Icon className={`h-3.5 w-3.5 shrink-0 ${item.iconClassName}`} />}
-            >
-              <span className="min-w-0 flex-1 truncate select-none">{t(item.labelKey)}</span>
-            </LxNavItem>
+            />
           )
         })}
       </nav>

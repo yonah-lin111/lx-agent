@@ -31,6 +31,8 @@ export interface AgentStatusBarProps {
   sandboxPolicy?: SandboxPolicy
   // 当前协作模式。
   collaborationMode?: CollaborationMode
+  // 切换协作模式（点击状态栏模式标签弹层选择；缺省时仅展示）。
+  onCollaborationModeChange?: (mode: CollaborationMode) => void
   // 挂起的权限请求（非空时状态栏展示权限 icon 与常驻 tooltip）。
   pendingRequest: PermissionRequest | null
   // 权限决策回传（主进程挂起请求的内部语义；由 AgentPage 提供）。
@@ -59,6 +61,7 @@ export const AgentStatusBar = ({
   onOpenJobs,
   sandboxPolicy,
   collaborationMode,
+  onCollaborationModeChange,
   pendingRequest,
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
@@ -75,7 +78,7 @@ export const AgentStatusBar = ({
           onWorktreeChange={onWorktreeChange}
         />
       </div>
-      <CollaborationModeButton mode={collaborationMode} />
+      <CollaborationModeButton mode={collaborationMode} onModeChange={onCollaborationModeChange} />
       <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />
       <PermissionStatusButton
         request={pendingRequest}

@@ -109,6 +109,9 @@ export class AgentSessionRunner {
     this.tabId = options.tabId
     this.eventSink = options.eventSink
     this.onSessionCreatedCallback = options.onSessionCreated
+    // 新会话启动协作模式：读取权限配置默认值（缺省 build）。
+    permissionManager.load()
+    this.collaborationMode = permissionManager.getDefaultCollaborationMode()
 
     this.compactor = new ContextCompactor({
       getAgent: () => this.agent,

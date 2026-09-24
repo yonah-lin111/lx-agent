@@ -58,11 +58,15 @@ export const agent = {
   collaborationModeReviewDesc: "严格只读代码审查，聚焦缺陷、安全漏洞、性能瓶颈与代码品味。",
   collaborationModeDesign: "Design 模式",
   collaborationModeDesignDesc: "前端设计专属模式，禁用内嵌 render 工具，输出代码热更新至设计看板。",
+  collaborationModeMinimal: "Minimal 模式",
+  collaborationModeMinimalDesc:
+    "仅开放终端与文件读写工具（bash / read / write / edit）的极简模式，适合测试与对比模型基础表现。",
   collaborationModeSwitchedToBuild: "已切换至 Build 模式",
   collaborationModeSwitchedToPlan: "已切换至 Plan 模式（只读）",
   collaborationModeSwitchedToReview: "已切换至 Review 模式（只读审查）",
   collaborationModeSwitchedToDesign: "已切换至 Design 模式（前端设计）",
-  collaborationModeShortcutHint: "使用 Shift + Tab 可循环切换模式",
+  collaborationModeSwitchedToMinimal: "已切换至 Minimal 模式（终端 + 读写）",
+  collaborationModeShortcutHint: "使用 Shift + Tab 可循环切换模式，点击可展开模式列表",
   review: {
     badge: "代码审查报告",
     findingsCount: "个发现项",

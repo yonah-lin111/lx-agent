@@ -59,7 +59,7 @@ src/renderer/src/
 ### 新组件适配
 
 - 优先使用语义化 Token 或 Tailwind 类名（`bg-[#212121]`、`border-white/10`），确保主题无感适配。
-- 多层结构（树形导航、列表项）可挂 `data-item-level="project" | "folder" | "item"`，供特定主题精确分派色阶。
+- 多层结构（树形导航、列表项）经 `LxNavItem` 的 `level` 挂数字 `data-item-level="1" | "2" | "3"`（1 根容器、2 中间容器、3 叶子行），供特定主题精确分派色阶。
 - 下拉菜单、命令面板统一挂 `role="listbox"` / `role="option"`，自动继承主题阴影、立体槽与高亮样式。
 
 ## 交互与布局
@@ -73,6 +73,7 @@ src/renderer/src/
 
 - 优先复用 `src/renderer/src/components/ui/` 的共享组件；确认没有可用组件后，才允许自定义组件或直接编写标签代码。
 - 工具操作优先使用熟悉的图标按钮，并提供可访问名称和 Tooltip。
+- 文本被截断（显示省略号）的行必须提供完整内容的 Tooltip（默认右侧展示），禁止使用原生 `title` 属性。
 - 按钮默认不要使用高亮或高对比色背景，保持克制中性风格；仅在用户明确要求时才允许使用高亮样式。
 - 使用 lucide 图标，不手写等价 SVG 图标，除非指定。
 - 基础 UI 组件不得依赖 feature、page、route 或 `window.api`。

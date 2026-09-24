@@ -1,17 +1,35 @@
 // 权限与协作模式契约：权限三态、沙箱策略、请求/决策/响应与模式归一化。
 
+import {
+  SUBAGENT_PERMISSION_TOOL_NAMES,
+  SUBAGENT_SKILL_TOOL_NAME,
+  SUBAGENT_WEBSEARCH_TOOL_NAMES,
+} from "@shared/settings"
+
 // 权限确认模式（default / acceptEdits / bypassPermissions 三态）。
 export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions"
 
-// 协作模式（build / plan / review / design，支持向后兼容 "default" 归一化为 "build"）。
-export type CollaborationMode = "build" | "plan" | "review" | "design"
+// 协作模式（build / plan / review / design / minimal，支持向后兼容 "default" 归一化为 "build"）。
+export type CollaborationMode = "build" | "plan" | "review" | "design" | "minimal"
+
+// 协作模式循环顺序（Shift+Tab 循环、设置页展示与默认模式选择共用同一来源）。
+export const COLLABORATION_MODE_ORDER: readonly CollaborationMode[] = [
+  "build",
+  "plan",
+  "review",
+  "design",
+  "minimal",
+]
+
+// 计算循环切换的下一个模式（末位回到首位）。
+export const nextCollaborationMode = (mode: CollaborationMode): CollaborationMode => {
+  const index = COLLABORATION_MODE_ORDER.indexOf(mode)
+  return COLLABORATION_MODE_ORDER[(index + 1) % COLLABORATION_MODE_ORDER.length]
+}
 
 // 协作模式向后兼容与归一化辅助函数
 export const normalizeCollaborationMode = (mode?: string | null): CollaborationMode => {
-  if (mode === "plan" || mode === "review" || mode === "build" || mode === "design") {
-    return mode
-  }
-  return "build"
+  return COLLABORATION_MODE_ORDER.find((item) => item === mode) ?? "build"
 }
 
 // 沙箱策略（read-only / workspace-write / danger-full-access 三态）。
@@ -45,6 +63,22 @@ export const MODE_BLOCKED_TOOLS: readonly string[] = [
 // 模式附加硬拦截：Design Mode 禁用 wireframe（原型交付走 <front_design> 协议）。
 const DESIGN_BLOCKED_TOOLS: readonly string[] = ["wireframe"]
 
+// Minimal Mode 工具白名单：终端 + 文件读写；搜索/列目录走 bash，其余工具一律硬拦截
+// （fail-closed，新增工具默认被拦截）。有意偏离 dsh minimal 的 shell-only 基线（见 docs/agent/modes.md §5）。
+const MINIMAL_ALLOWED_TOOLS: readonly string[] = ["bash", "read", "write", "edit"]
+
+// 模式工具白名单集合（缺省 = 不限制）。
+const MODE_ALLOWED_TOOL_SETS: Partial<Record<CollaborationMode, ReadonlySet<string>>> = {
+  minimal: new Set(MINIMAL_ALLOWED_TOOLS),
+}
+
+// 角色能力集的工具全集（tools 组 + 联网组 + skill 工具）：白名单模式判定缺省能力集冲突用。
+const ROLE_TOOL_UNIVERSE: readonly string[] = [
+  ...SUBAGENT_PERMISSION_TOOL_NAMES,
+  ...SUBAGENT_WEBSEARCH_TOOL_NAMES,
+  SUBAGENT_SKILL_TOOL_NAME,
+]
+
 const EMPTY_TOOL_SET: ReadonlySet<string> = new Set()
 const BASE_MODE_BLOCKED_TOOLS: ReadonlySet<string> = new Set(MODE_BLOCKED_TOOLS)
 const MODE_BLOCKED_TOOL_SETS: Record<CollaborationMode, ReadonlySet<string>> = {
@@ -52,13 +86,31 @@ const MODE_BLOCKED_TOOL_SETS: Record<CollaborationMode, ReadonlySet<string>> = {
   plan: BASE_MODE_BLOCKED_TOOLS,
   review: BASE_MODE_BLOCKED_TOOLS,
   design: new Set([...MODE_BLOCKED_TOOLS, ...DESIGN_BLOCKED_TOOLS]),
+  // Minimal 为白名单模式，无黑名单；限制由 getModeAllowedTools 承担。
+  minimal: EMPTY_TOOL_SET,
 }
 
 /**
- * 计算某协作模式的硬拦截工具集合（build 为空集）。
+ * 计算某协作模式的硬拦截工具集合（黑名单语义；build / minimal 为空集）。
  */
 export const getModeBlockedTools = (mode: CollaborationMode): ReadonlySet<string> =>
   MODE_BLOCKED_TOOL_SETS[mode]
+
+/**
+ * 计算某协作模式的工具白名单集合（缺省 = 不限制）。
+ */
+export const getModeAllowedTools = (mode: CollaborationMode): ReadonlySet<string> | undefined =>
+  MODE_ALLOWED_TOOL_SETS[mode]
+
+/**
+ * 判定工具是否被协作模式硬基线拦截：白名单模式按白名单 fail-closed，其余按黑名单。
+ * 该基线是模式身份的一部分：权限配置只能在此基础上收紧，永远不可放开。
+ */
+export const isToolBlockedByMode = (mode: CollaborationMode, toolName: string): boolean => {
+  const allowed = MODE_ALLOWED_TOOL_SETS[mode]
+  if (allowed) return !allowed.has(toolName)
+  return MODE_BLOCKED_TOOL_SETS[mode].has(toolName)
+}
 
 // 非 build 模式缺省的子代理白名单：仅内置探索子代理（只读）；build 缺省不限制。
 export const DEFAULT_MODE_SUBAGENT_ROLES: Partial<Record<CollaborationMode, readonly string[]>> = {
@@ -88,11 +140,15 @@ export const roleBlockedTools = (
   permissions: CapabilityPermissions | undefined,
   mode: CollaborationMode,
 ): string[] => {
-  const blocked = getModeBlockedTools(mode)
-  if (blocked.size === 0) return []
+  const allowed = getModeAllowedTools(mode)
   const tools = permissions?.tools
-  if (tools === undefined) return [...blocked]
-  return [...new Set(tools.filter((tool) => blocked.has(tool)))]
+  if (tools === undefined) {
+    // 白名单模式：缺省能力集（含白名单外工具）与模式冲突，冲突集为白名单之外的工具全集。
+    if (allowed) return ROLE_TOOL_UNIVERSE.filter((tool) => !allowed.has(tool))
+    const blocked = getModeBlockedTools(mode)
+    return blocked.size === 0 ? [] : [...blocked]
+  }
+  return [...new Set(tools.filter((tool) => isToolBlockedByMode(mode, tool)))]
 }
 
 // 权限配置（~/.lx/config/agent.json 的 agent.permissions 节点）。

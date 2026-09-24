@@ -222,7 +222,7 @@ describe("agent IPC handlers", () => {
     )
   })
 
-  it("setCollaborationMode handler 校验模式（允许 build/plan/review/design/default）并转发到 agentRunner", async () => {
+  it("setCollaborationMode handler 校验模式（允许 build/plan/review/design/minimal/default）并转发到 agentRunner", async () => {
     vi.resetModules()
     const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
     const { agentRunner } = await import("@/agent/agentRunner")
@@ -242,6 +242,10 @@ describe("agent IPC handlers", () => {
     // 合法模式（design）被放行并转发
     await handler(undefined, "design", "sess-1", "tab-1")
     expect(agentRunner.setCollaborationMode).toHaveBeenCalledWith("design", "sess-1", "tab-1")
+
+    // 合法模式（minimal）被放行并转发
+    await handler(undefined, "minimal", "sess-1", "tab-1")
+    expect(agentRunner.setCollaborationMode).toHaveBeenCalledWith("minimal", "sess-1", "tab-1")
 
     // default 归一化为 build
     await handler(undefined, "default")

@@ -1,4 +1,5 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
+import { nextCollaborationMode } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { useCallback } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
@@ -29,20 +30,22 @@ export const useAgentChatCollaboration = ({
   const { collaborationMode, currentSessionIdRef, messagesRef, tabId } = core
   const { setCollaborationMode, setMessages, setContextUsage } = core
 
-  // 主动切换协作模式（build -> plan -> review -> design 循环切换）。
-  const toggleCollaborationMode = useCallback(() => {
-    let nextMode: CollaborationMode = "build"
-    if (collaborationMode === "build") nextMode = "plan"
-    else if (collaborationMode === "plan") nextMode = "review"
-    else if (collaborationMode === "review") nextMode = "design"
-    else if (collaborationMode === "design") nextMode = "build"
+  // 直接切换到指定协作模式（点击状态栏模式列表选择）。
+  const selectCollaborationMode = useCallback(
+    (mode: CollaborationMode) => {
+      void agentApi
+        .setCollaborationMode(mode, currentSessionIdRef.current ?? undefined, tabId)
+        .catch((err) => {
+          console.error("Failed to set collaboration mode:", err)
+        })
+    },
+    [tabId],
+  )
 
-    void agentApi
-      .setCollaborationMode(nextMode, currentSessionIdRef.current ?? undefined, tabId)
-      .catch((err) => {
-        console.error("Failed to set collaboration mode:", err)
-      })
-  }, [collaborationMode, tabId])
+  // 主动切换协作模式（按共享循环顺序切换到下一个模式）。
+  const toggleCollaborationMode = useCallback(() => {
+    selectCollaborationMode(nextCollaborationMode(collaborationMode))
+  }, [collaborationMode, selectCollaborationMode])
 
   // 采纳并执行实施方案（若处于 plan 或 review 模式自动切换至 build 模式并发送标准执行提示词）。
   const acceptAndExecutePlan = useCallback(
@@ -135,6 +138,7 @@ export const useAgentChatCollaboration = ({
   }, [])
 
   return {
+    selectCollaborationMode,
     toggleCollaborationMode,
     acceptAndExecutePlan,
     acceptAndExecuteReviewFixes,

@@ -128,32 +128,34 @@ export const ProjectNavigationList = ({
   }
 
   /**
-   * 渲染名称或对应的行内编辑输入框。
+   * 构造名称单元格：非编辑态交给 LxNavItem 的截断标签（超宽时 hover 展示全文），编辑态渲染行内输入框。
    */
-  const renderItemName = (
+  const buildNameCell = (
     item: { id: string; name: string },
-    className: string,
-  ): React.JSX.Element => {
-    if (editingItem?.id !== item.id) {
-      return <span className={`${className} select-none`}>{item.name}</span>
+    labelClassName: string,
+  ): { label?: React.ReactNode; labelClassName?: string; children?: React.ReactNode } => {
+    if (editingItem?.id === item.id) {
+      return {
+        children: (
+          <input
+            autoFocus
+            className="min-w-0 flex-1 border-b border-white/20 bg-transparent px-0 text-sm text-white/80 outline-none"
+            value={editingItem.name}
+            onBlur={onEditingItemCommit}
+            onChange={(event) => onEditingItemChange({ ...editingItem, name: event.target.value })}
+            onClick={(event) => event.stopPropagation()}
+            onFocus={(event) => event.target.select()}
+            onKeyDown={(event) => {
+              event.stopPropagation()
+              if (event.key === "Escape") onEditingItemCancel()
+              if (event.key === "Enter" && !event.nativeEvent.isComposing) onEditingItemCommit()
+            }}
+          />
+        ),
+      }
     }
 
-    return (
-      <input
-        autoFocus
-        className="min-w-0 flex-1 border-b border-white/20 bg-transparent px-0 text-sm text-white/80 outline-none"
-        value={editingItem.name}
-        onBlur={onEditingItemCommit}
-        onChange={(event) => onEditingItemChange({ ...editingItem, name: event.target.value })}
-        onClick={(event) => event.stopPropagation()}
-        onFocus={(event) => event.target.select()}
-        onKeyDown={(event) => {
-          event.stopPropagation()
-          if (event.key === "Escape") onEditingItemCancel()
-          if (event.key === "Enter" && !event.nativeEvent.isComposing) onEditingItemCommit()
-        }}
-      />
-    )
+    return { label: item.name, labelClassName }
   }
 
   /**
@@ -187,11 +189,11 @@ export const ProjectNavigationList = ({
             }`}
           />
         }
-      >
-        <span className="min-w-0 flex-1 truncate select-none font-medium">
-          {t("project.temporaryPrompt")}
-        </span>
-      </LxNavItem>
+        {...buildNameCell(
+          { id: tempPromptId, name: t("project.temporaryPrompt") },
+          "select-none font-medium",
+        )}
+      />
     )
   }
 
@@ -223,14 +225,11 @@ export const ProjectNavigationList = ({
           />
         }
         suffix={renderStatusIcon(prompt)}
-      >
-        {renderItemName(
+        {...buildNameCell(
           prompt,
-          prompt.status === "completed"
-            ? "min-w-0 flex-1 truncate text-white/40 line-through"
-            : "min-w-0 flex-1 truncate",
+          prompt.status === "completed" ? "text-white/40 line-through" : "",
         )}
-      </LxNavItem>
+      />
     )
   }
 
@@ -271,9 +270,8 @@ export const ProjectNavigationList = ({
               <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
             )
           }
-        >
-          {renderItemName(folder, "min-w-0 flex-1 truncate")}
-        </LxNavItem>
+          {...buildNameCell(folder, "")}
+        />
         {!isFolderCollapsed && (
           <>
             {folder.projectFolders.map((childFolder) =>
@@ -321,14 +319,13 @@ export const ProjectNavigationList = ({
                     <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
                   )
                 }
-              >
-                {renderItemName(
+                {...buildNameCell(
                   project,
-                  `min-w-0 flex-1 truncate font-semibold uppercase transition-colors ${
+                  `font-semibold uppercase transition-colors ${
                     project.isImported === false ? "text-white/40 font-normal" : "text-white/55"
                   }`,
                 )}
-              </LxNavItem>
+              />
 
               {!isProjectCollapsed && (
                 <div className="space-y-0.5">

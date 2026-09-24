@@ -1,76 +1,111 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
-import { Compass, Palette, ShieldAlert, Zap } from "lucide-react"
+import { COLLABORATION_MODE_ORDER } from "@shared/contracts/agent"
+import { Check } from "lucide-react"
 import type React from "react"
+import { useState } from "react"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
+import { COLLABORATION_MODE_META } from "@/lib/collaborationModes"
 
 interface CollaborationModeButtonProps {
   mode?: CollaborationMode
+  // 点击弹层选择模式（缺省时退化为纯 hover 提示）。
+  onModeChange?: (mode: CollaborationMode) => void
 }
 
 /**
- * Agent 状态栏协作模式指示（Build / Plan / Review / Design Mode 展示）
+ * Agent 状态栏协作模式指示（Build / Plan / Review / Design / Minimal 展示与点击选择）。
  */
 export const CollaborationModeButton = ({
   mode = "build",
+  onModeChange,
 }: CollaborationModeButtonProps): React.JSX.Element => {
   const { t } = useTranslation()
-  const isPlan = mode === "plan"
-  const isReview = mode === "review"
-  const isDesign = mode === "design"
-  const displayName = isPlan ? "Plan" : isReview ? "Review" : isDesign ? "Design" : "Build"
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const meta = COLLABORATION_MODE_META[mode]
 
-  const title = isPlan
-    ? t("agent.collaborationModePlan")
-    : isReview
-      ? t("agent.collaborationModeReview")
-      : isDesign
-        ? t("agent.collaborationModeDesign")
-        : t("agent.collaborationModeBuild")
+  const hoverContent = (
+    <div className="flex flex-col gap-1 text-xs">
+      <div className="flex flex-col gap-0.5">
+        <span className="font-semibold text-white/90">{t(meta.labelKey)}</span>
+        <span className="text-white/60">{t(meta.descKey)}</span>
+      </div>
+      <div className="border-t border-white/10 pt-1 text-xs text-white/45">
+        {t("agent.collaborationModeShortcutHint")}
+      </div>
+    </div>
+  )
 
-  const desc = isPlan
-    ? t("agent.collaborationModePlanDesc")
-    : isReview
-      ? t("agent.collaborationModeReviewDesc")
-      : isDesign
-        ? t("agent.collaborationModeDesignDesc")
-        : t("agent.collaborationModeBuildDesc")
+  const tag = (
+    <LxTag
+      size="small"
+      variant="ghost"
+      color={meta.color}
+      className="shrink-0"
+      prefix={<meta.Icon className="h-3.5 w-3.5 shrink-0" />}
+    >
+      {meta.shortName}
+    </LxTag>
+  )
+
+  if (!onModeChange) {
+    return (
+      <LxTooltip placement="top" content={hoverContent}>
+        {tag}
+      </LxTooltip>
+    )
+  }
+
+  // 点击弹层：模式列表（当前模式勾选标记，选中即切换并关闭）。
+  const menuContent = (
+    <div className="flex w-56 flex-col gap-0.5 p-1" role="listbox">
+      {COLLABORATION_MODE_ORDER.map((item) => {
+        const itemMeta = COLLABORATION_MODE_META[item]
+        const isActive = item === mode
+        return (
+          <LxNavItem
+            key={item}
+            role="option"
+            aria-selected={isActive}
+            size="small"
+            className={isActive ? "bg-white/10" : ""}
+            prefix={<itemMeta.Icon className={`h-3.5 w-3.5 shrink-0 ${itemMeta.iconClass}`} />}
+            suffix={isActive ? <Check className="h-3.5 w-3.5 shrink-0 text-white/70" /> : null}
+            onClick={() => {
+              onModeChange(item)
+              setIsMenuOpen(false)
+            }}
+          >
+            <span className="min-w-0 flex-1 truncate">{t(itemMeta.labelKey)}</span>
+          </LxNavItem>
+        )
+      })}
+    </div>
+  )
 
   return (
     <LxTooltip
-      placement="top"
-      content={
-        <div className="flex flex-col gap-1 text-xs">
-          <div className="flex flex-col gap-0.5">
-            <span className="font-semibold text-white/90">{title}</span>
-            <span className="text-white/60">{desc}</span>
-          </div>
-          <div className="border-t border-white/10 pt-1 text-xs text-white/45">
-            {t("agent.collaborationModeShortcutHint")}
-          </div>
-        </div>
-      }
+      hover={{ content: hoverContent, placement: "top" }}
+      click={{
+        content: menuContent,
+        placement: "top",
+        multiline: true,
+        closeOnOutsideClick: true,
+        closeOnContentClick: false,
+        open: isMenuOpen,
+        onOpenChange: setIsMenuOpen,
+      }}
     >
-      <LxTag
-        size="small"
-        variant="ghost"
-        color={isPlan ? "sky" : isReview ? "purple" : isDesign ? "pink" : "default"}
-        className="shrink-0"
-        prefix={
-          isPlan ? (
-            <Compass className="h-3.5 w-3.5 shrink-0" />
-          ) : isReview ? (
-            <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-          ) : isDesign ? (
-            <Palette className="h-3.5 w-3.5 shrink-0" />
-          ) : (
-            <Zap className="h-3.5 w-3.5 shrink-0" />
-          )
-        }
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isMenuOpen}
+        className="shrink-0 cursor-pointer rounded-[6px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50"
       >
-        {displayName}
-      </LxTag>
+        {tag}
+      </button>
     </LxTooltip>
   )
 }

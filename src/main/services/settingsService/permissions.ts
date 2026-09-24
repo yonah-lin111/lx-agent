@@ -3,7 +3,7 @@ import type {
   CollaborationMode,
   PermissionSettings,
 } from "@shared/contracts/agent"
-import { getModeBlockedTools } from "@shared/contracts/agent"
+import { COLLABORATION_MODE_ORDER, isToolBlockedByMode } from "@shared/contracts/agent"
 import { SUBAGENT_PERMISSION_TOOL_NAMES, SUBAGENT_WEBSEARCH_TOOL_NAMES } from "@shared/settings"
 
 import { getConfigPath } from "@/paths"
@@ -19,8 +19,6 @@ const DEFAULT_PERMISSION_SETTINGS: PermissionSettings = {
   ask: [],
 }
 
-// 合法协作模式（其余键丢弃）。
-const COLLABORATION_MODES: readonly CollaborationMode[] = ["build", "plan", "review", "design"]
 // 合法内置工具名与联网工具名（未知名称丢弃）。
 const SUBAGENT_TOOL_NAMES: ReadonlySet<string> = new Set<string>(SUBAGENT_PERMISSION_TOOL_NAMES)
 const WEBSEARCH_TOOL_NAMES: ReadonlySet<string> = new Set<string>(SUBAGENT_WEBSEARCH_TOOL_NAMES)
@@ -51,11 +49,10 @@ const normalizeModePermissions = (
   mode: CollaborationMode,
 ): CapabilityPermissions | undefined => {
   if (!isRecord(raw)) return undefined
-  const blockedTools = getModeBlockedTools(mode)
   const permissions: CapabilityPermissions = {}
   const tools = normalizeList(
     raw.tools,
-    (name) => SUBAGENT_TOOL_NAMES.has(name) && !blockedTools.has(name),
+    (name) => SUBAGENT_TOOL_NAMES.has(name) && !isToolBlockedByMode(mode, name),
   )
   if (tools !== undefined) permissions.tools = tools
   const mcp = normalizeList(raw.mcp, () => true)
@@ -75,7 +72,7 @@ const normalizeModePermissionsMap = (
 ): Partial<Record<CollaborationMode, CapabilityPermissions>> | undefined => {
   if (!isRecord(raw)) return undefined
   const modes: Partial<Record<CollaborationMode, CapabilityPermissions>> = {}
-  for (const mode of COLLABORATION_MODES) {
+  for (const mode of COLLABORATION_MODE_ORDER) {
     const permissions = normalizeModePermissions(raw[mode], mode)
     if (permissions) modes[mode] = permissions
   }
@@ -102,6 +99,9 @@ const normalizePermissionSettings = (raw: unknown): PermissionSettings => {
     deny: toStringArray(raw.deny),
     ask: toStringArray(raw.ask),
   }
+  // 默认协作模式：合法枚举保留，非法/缺省不落盘（读取侧回退 build）。
+  const collaborationMode = COLLABORATION_MODE_ORDER.find((mode) => mode === raw.collaborationMode)
+  if (collaborationMode) settings.collaborationMode = collaborationMode
   const modes = normalizeModePermissionsMap(raw.modes)
   if (modes) settings.modes = modes
   return settings

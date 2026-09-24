@@ -393,6 +393,8 @@ export const useAgentChatEvents = ({
             successToast(t("agent.collaborationModeSwitchedToReview"))
           } else if (event.mode === "design") {
             successToast(t("agent.collaborationModeSwitchedToDesign"))
+          } else if (event.mode === "minimal") {
+            successToast(t("agent.collaborationModeSwitchedToMinimal"))
           } else {
             successToast(t("agent.collaborationModeSwitchedToBuild"))
           }
