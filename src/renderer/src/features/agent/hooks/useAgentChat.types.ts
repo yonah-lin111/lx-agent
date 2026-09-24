@@ -72,9 +72,12 @@ export interface AgentChatCore {
   // 任务清单。
   todos: TodoList
   setTodos: Dispatch<SetStateAction<TodoList>>
-  // 协作模式。
+  // 协作模式（基础模式；auto = 自动编排）。
   collaborationMode: CollaborationMode
   setCollaborationMode: Dispatch<SetStateAction<CollaborationMode>>
+  // auto 编排下的有效模式（非 auto 恒等于基础模式）。
+  effectiveMode: CollaborationMode
+  setEffectiveMode: Dispatch<SetStateAction<CollaborationMode>>
   // 上下文容量快照。
   contextUsage: AgentChatContextUsage | null
   setContextUsage: Dispatch<SetStateAction<AgentChatContextUsage | null>>

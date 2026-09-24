@@ -19,6 +19,7 @@ export const useAgentChatCollaboration = ({
     AgentChatCore,
     | "collaborationMode"
     | "setCollaborationMode"
+    | "setEffectiveMode"
     | "currentSessionIdRef"
     | "messagesRef"
     | "setMessages"
@@ -28,7 +29,7 @@ export const useAgentChatCollaboration = ({
   sendMessage: (contentToSend?: string) => void
 }) => {
   const { collaborationMode, currentSessionIdRef, messagesRef, tabId } = core
-  const { setCollaborationMode, setMessages, setContextUsage } = core
+  const { setCollaborationMode, setEffectiveMode, setMessages, setContextUsage } = core
 
   // 直接切换到指定协作模式（点击状态栏模式列表选择）。
   const selectCollaborationMode = useCallback(
@@ -47,25 +48,27 @@ export const useAgentChatCollaboration = ({
     selectCollaborationMode(nextCollaborationMode(collaborationMode))
   }, [collaborationMode, selectCollaborationMode])
 
-  // 采纳并执行实施方案（若处于 plan 或 review 模式自动切换至 build 模式并发送标准执行提示词）。
+  // 退出只读模式回 build：auto 下仅重置有效模式并保持编排（主进程按基础模式判定）。
+  const exitToBuild = useCallback(async (): Promise<void> => {
+    try {
+      await agentApi.setEffectiveMode("build", currentSessionIdRef.current ?? undefined, tabId)
+      setEffectiveMode("build")
+      if (collaborationMode !== "auto") setCollaborationMode("build")
+    } catch (err) {
+      console.error("Failed to switch collaboration mode to build:", err)
+    }
+  }, [collaborationMode, setCollaborationMode, setEffectiveMode, tabId])
+
+  // 采纳并执行实施方案（只读模式下自动退出回 build 并发送标准执行提示词）。
   const acceptAndExecutePlan = useCallback(
     async (_plan: ProposedPlanData) => {
-      if (collaborationMode === "plan" || collaborationMode === "review") {
-        try {
-          await agentApi.setCollaborationMode(
-            "build",
-            currentSessionIdRef.current ?? undefined,
-            tabId,
-          )
-          setCollaborationMode("build")
-        } catch (err) {
-          console.error("Failed to switch collaboration mode to build:", err)
-        }
+      if (collaborationMode !== "build") {
+        await exitToBuild()
       }
       const prompt = "Plan approved. Proceed with implementation step-by-step using todowrite."
       await sendMessage(prompt)
     },
-    [collaborationMode, sendMessage, tabId],
+    [collaborationMode, exitToBuild, sendMessage],
   )
 
   // 采纳并执行代码审查修复（切换至 build 模式并自动发送结构化修复任务指令）。
@@ -77,16 +80,7 @@ export const useAgentChatCollaboration = ({
         suggestion?: string
       }[],
     ) => {
-      try {
-        await agentApi.setCollaborationMode(
-          "build",
-          currentSessionIdRef.current ?? undefined,
-          tabId,
-        )
-        setCollaborationMode("build")
-      } catch (err) {
-        console.error("Failed to switch collaboration mode to build:", err)
-      }
+      await exitToBuild()
 
       const issuesList = selectedFindings
         .map(
@@ -98,7 +92,7 @@ export const useAgentChatCollaboration = ({
       const prompt = `Please fix the following issues identified during code review:\n\n${issuesList}\n\nProceed with precision and verify the fixes.`
       await sendMessage(prompt)
     },
-    [sendMessage, tabId],
+    [exitToBuild, sendMessage],
   )
 
   // 主动刷新上下文容量（模型切换后调用；selection 指定目标模型窗口，不必等下一 turn 推送）。

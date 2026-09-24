@@ -36,7 +36,7 @@ const USER_DENY_REASON = "Action denied by user."
 const READ_ONLY_SANDBOX_REASON =
   "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
 // 非 build 模式的写操作硬拦截 reason（模式身份约束，配置不可放开）。
-const MODE_MUTATION_REASONS: Record<Exclude<CollaborationMode, "build">, string> = {
+const MODE_MUTATION_REASONS: Record<Exclude<CollaborationMode, "build" | "auto">, string> = {
   plan: "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite, memory) are strictly prohibited in Plan Mode. Sub-agent dispatch is limited to the configured role allow-list. Please finalize your plan using <proposed_plan> tags.",
   review:
     "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite, memory) are strictly prohibited in Review Mode. Sub-agent dispatch is limited to the configured role allow-list. Please output structured findings using <review_findings> tags.",
@@ -63,6 +63,7 @@ const PARENT_BASELINE_PREFIX =
 // 模式展示名（Guardian 拒绝文案）。
 const MODE_LABELS: Record<CollaborationMode, string> = {
   build: "Build Mode",
+  auto: "Auto Mode",
   plan: "Plan Mode",
   review: "Review Mode",
   design: "Design Mode",
@@ -251,6 +252,7 @@ class PermissionManager {
     args: unknown,
     contextOptions?: {
       collaborationMode?: CollaborationMode
+      baseMode?: CollaborationMode
       parentMode?: CollaborationMode
       sessionId?: string
     },
@@ -269,6 +271,7 @@ class PermissionManager {
     contextOptions:
       | {
           collaborationMode?: CollaborationMode
+          baseMode?: CollaborationMode
           parentMode?: CollaborationMode
           sessionId?: string
         }
@@ -280,10 +283,19 @@ class PermissionManager {
     const collaborationMode = normalizeCollaborationMode(
       contextOptions?.collaborationMode ?? this.settings.collaborationMode,
     )
+    const baseMode = contextOptions?.baseMode
     const parentMode = contextOptions?.parentMode
     const sessionId = contextOptions?.sessionId
 
     const record = isRecord(args) ? args : {}
+
+    // 0. switch_mode 仅存在于 auto 编排基础模式（工具激活集已收窄，此处为防御纵深）。
+    if (toolName === "switch_mode" && baseMode !== "auto") {
+      return {
+        decision: "deny",
+        reason: "Action denied: switch_mode is only available in Auto Mode.",
+      }
+    }
 
     // 1. 协作模式硬基线：非 build 模式严禁写操作、todowrite 任务清单与 memory 写入；design 另禁 wireframe；
     //    minimal 为白名单模式（仅 bash，fail-closed），并额外拒绝后台作业参数。
@@ -304,13 +316,21 @@ class PermissionManager {
     // 1.1 模式能力权限白名单：五组独立判定，配置只能收紧、永不新增能力
     //     （非 build 模式的 subagents 组缺省回退探索子代理）
     //     子代理派发时父模式的角色白名单同样生效：嵌套派发不能绕过父模式约束。
-    const whitelistModes =
+    // auto 编排基础模式下 modes.auto 作为附加收紧层与有效模式白名单求交（只能收紧，不可放开）。
+    const whitelistModes: CollaborationMode[] = [collaborationMode]
+    if (baseMode === "auto" && baseMode !== collaborationMode) {
+      whitelistModes.push(baseMode)
+    }
+    if (
       toolName === SUBAGENT_TASK_TOOL_NAME &&
       parentMode !== undefined &&
       parentMode !== collaborationMode
-        ? [collaborationMode, parentMode]
-        : [collaborationMode]
+    ) {
+      whitelistModes.push(parentMode)
+    }
     for (const whitelistMode of whitelistModes) {
+      // switch_mode 为 auto 编排的会话级工具，不受模式能力白名单约束（要禁用 auto 请直接切换基础模式）。
+      if (toolName === "switch_mode") break
       const permissions = withModePermissionDefaults(
         whitelistMode,
         this.settings.modes?.[whitelistMode],
@@ -442,6 +462,7 @@ class PermissionManager {
     signal?: AbortSignal,
     options?: {
       collaborationMode?: CollaborationMode
+      baseMode?: CollaborationMode
       parentMode?: CollaborationMode
       cwd?: string
     },
@@ -451,6 +472,7 @@ class PermissionManager {
     const collaborationMode = normalizeCollaborationMode(
       options?.collaborationMode ?? this.settings.collaborationMode,
     )
+    const baseMode = options?.baseMode
     const parentMode = options?.parentMode
     const record = isRecord(args) ? args : {}
 
@@ -462,6 +484,7 @@ class PermissionManager {
       args,
       {
         collaborationMode,
+        ...(baseMode !== undefined ? { baseMode } : {}),
         ...(parentMode !== undefined ? { parentMode } : {}),
         sessionId: sessionId ?? undefined,
       },

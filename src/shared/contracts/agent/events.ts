@@ -7,6 +7,7 @@ import type {
   CompactionSummaryMessage,
   ModelSwitchMessage,
 } from "./messages"
+import type { ModeExitRequest } from "./modeExit"
 import type { CollaborationMode, PermissionRequest } from "./permissions"
 import type { StopReason, ToolCall } from "./primitives"
 import type { QuestionRequest } from "./questions"
@@ -87,13 +88,17 @@ export type AgentEvent =
       type: "collaboration_mode_changed"
       sessionId?: string
       tabId?: string
+      // 基础模式（用户选择；auto = 编排模式）。
       mode: CollaborationMode
+      // 有效模式（auto 下模型切出的受约束态；非 auto 恒等于 mode）。
+      effectiveMode: CollaborationMode
       // 模式切换历史条目（会话尾部连续切换时原地更新，renderer 直接保证不刷屏）。
       message?: CollaborationModeSwitchMessage
     }
   | { type: "session_title"; sessionId: string; tabId?: string; title: string | null }
   | { type: "permission_request"; sessionId?: string; tabId?: string; request: PermissionRequest }
   | { type: "question_request"; sessionId?: string; tabId?: string; request: QuestionRequest }
+  | { type: "mode_exit_request"; sessionId?: string; tabId?: string; request: ModeExitRequest }
   // 上下文压缩完成：同一次压缩以 compactionId 关联 loading 占位与可见摘要（摘要不落 message entry）。
   | {
       type: "compaction_summary"

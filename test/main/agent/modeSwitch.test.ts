@@ -223,4 +223,85 @@ describe("Collaboration Mode Switch Entries", () => {
     expect(after).toHaveLength(2)
     expect(JSON.parse(after[1].payload).mode).toBe("review")
   })
+
+  it("auto 基础模式：setEffectiveMode 只改有效模式并把 viaAuto 条目并入尾部切换消息", async () => {
+    const { agentRunner, agentSessionService } = await importModules()
+    const events: AgentEvent[] = []
+    agentRunner.attachEventSink((ev) => events.push(ev as AgentEvent))
+    const sessionId = await createSession(agentRunner)
+
+    agentRunner.setCollaborationMode("auto", sessionId)
+    const autoEvent = events.at(-1) as Extract<AgentEvent, { type: "collaboration_mode_changed" }>
+    expect(autoEvent.mode).toBe("auto")
+    expect(autoEvent.effectiveMode).toBe("build")
+
+    const res = agentRunner.setEffectiveMode("plan", sessionId)
+    expect(res.ok).toBe(true)
+    const planEvent = events.at(-1) as Extract<AgentEvent, { type: "collaboration_mode_changed" }>
+    expect(planEvent.mode).toBe("auto")
+    expect(planEvent.effectiveMode).toBe("plan")
+    expect(planEvent.message?.mode).toBe("plan")
+    expect(planEvent.message?.viaAuto).toBe(true)
+
+    // 尾部连续切换合并为同一条 mode_change entry（payload 为有效模式 + viaAuto）。
+    const modeEntries = agentSessionService
+      .listEntries(sessionId)
+      .filter((entry) => entry.type === "mode_change")
+    expect(modeEntries).toHaveLength(1)
+    const payload = JSON.parse(modeEntries[0].payload) as { mode: string; viaAuto?: boolean }
+    expect(payload.mode).toBe("plan")
+    expect(payload.viaAuto).toBe(true)
+
+    // 会话恢复后还原为带 viaAuto 的 modeSwitch 消息。
+    const restored = await agentRunner.restoreSession(sessionId)
+    const restoredMode = restored.messages.find((message) => message.role === "modeSwitch")
+    if (restoredMode?.role === "modeSwitch") {
+      expect(restoredMode.mode).toBe("plan")
+      expect(restoredMode.viaAuto).toBe(true)
+    } else {
+      throw new Error("restored modeSwitch message missing")
+    }
+  })
+
+  it("非 auto 基础模式下 setEffectiveMode 等价于基础模式切换（卡片采纳统一入口）", async () => {
+    const { agentRunner } = await importModules()
+    const events: AgentEvent[] = []
+    agentRunner.attachEventSink((ev) => events.push(ev as AgentEvent))
+    const sessionId = await createSession(agentRunner)
+
+    agentRunner.setCollaborationMode("plan", sessionId)
+    const res = agentRunner.setEffectiveMode("build", sessionId)
+    expect(res.ok).toBe(true)
+
+    const event = events.at(-1) as Extract<AgentEvent, { type: "collaboration_mode_changed" }>
+    expect(event.mode).toBe("build")
+    expect(event.effectiveMode).toBe("build")
+  })
+
+  it("setEffectiveMode 拒绝 minimal / auto 等不可达目标", async () => {
+    const { agentRunner } = await importModules()
+    const sessionId = await createSession(agentRunner)
+    agentRunner.setCollaborationMode("auto", sessionId)
+
+    const minimal = agentRunner.setEffectiveMode("minimal", sessionId)
+    expect(minimal.ok).toBe(false)
+    const auto = agentRunner.setEffectiveMode("auto", sessionId)
+    expect(auto.ok).toBe(false)
+  })
+
+  it("切换基础模式重置有效模式：auto + plan 有效模式下切到 review", async () => {
+    const { agentRunner } = await importModules()
+    const events: AgentEvent[] = []
+    agentRunner.attachEventSink((ev) => events.push(ev as AgentEvent))
+    const sessionId = await createSession(agentRunner)
+
+    agentRunner.setCollaborationMode("auto", sessionId)
+    agentRunner.setEffectiveMode("plan", sessionId)
+    agentRunner.setCollaborationMode("review", sessionId)
+
+    const event = events.at(-1) as Extract<AgentEvent, { type: "collaboration_mode_changed" }>
+    expect(event.mode).toBe("review")
+    expect(event.effectiveMode).toBe("review")
+    expect(event.message?.viaAuto).toBeUndefined()
+  })
 })

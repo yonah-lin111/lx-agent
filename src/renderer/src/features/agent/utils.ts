@@ -717,6 +717,7 @@ export const toChatMessage = (
       isStreaming: false,
       timestamp: message.timestamp,
       collaborationMode: message.mode,
+      viaAuto: message.viaAuto,
       isInitial: message.isInitial,
     }
   }

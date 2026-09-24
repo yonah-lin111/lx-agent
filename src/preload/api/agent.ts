@@ -3,6 +3,7 @@ import type {
   AgentEvent,
   AgentSendContext,
   AgentSendOptions,
+  ModeExitResponse,
   PermissionResponse,
   QuestionResponse,
   SuggestedQuestionContextMessage,
@@ -35,6 +36,8 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.switchModel, selection, sessionId, tabId),
   setCollaborationMode: (mode, sessionId?: string, tabId?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.setCollaborationMode, mode, sessionId, tabId),
+  setEffectiveMode: (mode, sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.setEffectiveMode, mode, sessionId, tabId),
   restore: (messages, sessionId?: string, tabId?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.restore, messages, sessionId, tabId),
   listSessions: () => ipcRenderer.invoke(AGENT_CHANNELS.listSessions),
@@ -89,6 +92,8 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.permissionResponse, response),
   questionRespond: (response: QuestionResponse) =>
     ipcRenderer.invoke(AGENT_CHANNELS.questionResponse, response),
+  modeExitRespond: (response: ModeExitResponse) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.modeExitResponse, response),
   openFileAt: (filePath: string, line: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.openFileAt, filePath, line),
   showItemInFolder: (filePath: string) =>

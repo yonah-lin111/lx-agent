@@ -20,6 +20,7 @@ import type {
   LspInstallResult,
   LspServerStatusItem,
   McpServerStatusItem,
+  ModeExitResponse,
   ModelSwitchMessage,
   PermissionResponse,
   PromptAssembly,
@@ -98,6 +99,15 @@ export const agentApi = {
     window?.api?.agent?.setCollaborationMode
       ? window.api.agent.setCollaborationMode(mode, sessionId, tabId)
       : Promise.resolve({ ok: true }),
+  // auto 编排下重置有效模式（非 auto 等价于基础模式切换；卡片采纳路径统一入口）。
+  setEffectiveMode: (
+    mode: CollaborationMode,
+    sessionId?: string,
+    tabId?: string,
+  ): Promise<{ ok: true } | { ok: false; error: string }> =>
+    window?.api?.agent?.setEffectiveMode
+      ? window.api.agent.setEffectiveMode(mode, sessionId, tabId)
+      : Promise.resolve({ ok: true }),
   abort: (sessionId?: string, tabId?: string): Promise<void> =>
     window.api.agent.abort(sessionId, tabId),
   restore: (messages: AgentMessage[], sessionId?: string, tabId?: string): Promise<void> =>
@@ -147,6 +157,8 @@ export const agentApi = {
     window.api.agent.permissionRespond(response),
   questionRespond: (response: QuestionResponse): Promise<{ ok: boolean }> =>
     window.api.agent.questionRespond(response),
+  modeExitRespond: (response: ModeExitResponse): Promise<{ ok: boolean }> =>
+    window.api.agent.modeExitRespond(response),
   openFileAt: (filePath: string, line: number): Promise<{ ok: boolean }> =>
     window.api.agent.openFileAt(filePath, line),
   showItemInFolder: (filePath: string): Promise<{ ok: boolean }> =>

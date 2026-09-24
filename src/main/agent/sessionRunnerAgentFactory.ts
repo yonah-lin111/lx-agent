@@ -1,4 +1,9 @@
-import type { AgentMessage, PromptAssembly, SandboxPolicy } from "@shared/contracts/agent"
+import type {
+  AgentMessage,
+  CollaborationMode,
+  PromptAssembly,
+  SandboxPolicy,
+} from "@shared/contracts/agent"
 import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import { getSubagentSettings } from "@/services/settingsService"
 import {
@@ -17,6 +22,7 @@ import type { Model } from "./core/types"
 import { hookResultMessages, hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
 import { sanitizeMcpNameSegment } from "./mcp/mcpManager"
+import { modeExitManager } from "./mode/modeExitManager"
 import { permissionManager } from "./permissions/permissionManager"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
@@ -78,13 +84,16 @@ export const buildSessionAgent = (
     personality,
   } = input
 
+  const baseMode = host.collaborationMode
+  const effectiveMode = host.effectiveMode
   const availableMcpServers = resolveConnectedMcpServers()
   const systemPrompt = buildSystemPromptSync({
     cwd,
     sessionId: host.currentSessionId ?? undefined,
     modelId: model.id,
     sandboxPolicy,
-    collaborationMode: host.collaborationMode,
+    collaborationMode: baseMode,
+    effectiveCollaborationMode: effectiveMode,
     contextUsage,
     activeSkills,
     mcpServers: availableMcpServers,
@@ -107,44 +116,65 @@ export const buildSessionAgent = (
   })
   const subagentRuntime =
     host.subagentRuntime ?? new SubagentRuntime(subagentSettings.maxConcurrent)
-  // 白名单模式收窄激活工具集：Minimal 仅暴露终端工具（模型不可见其余工具）。
+  // 子代理系统提示词基座：mode 覆盖（auto 的 task mode 参数）优先于设置快照。
+  const renderSubagentSystemPrompt = (
+    allowedSkills: string[] | undefined,
+    allowedMcpServers: string[] | undefined,
+    modeOverride: CollaborationMode | undefined,
+  ): string =>
+    buildSystemPromptSync({
+      cwd,
+      sessionId: host.currentSessionId ?? undefined,
+      modelId: model.id,
+      sandboxPolicy,
+      collaborationMode: modeOverride ?? subagentMode,
+      effectiveCollaborationMode: modeOverride ?? subagentMode,
+      contextUsage,
+      activeSkills:
+        allowedSkills === undefined
+          ? activeSkills
+          : activeSkills.filter((skill) => allowedSkills.includes(skill.name)),
+      mcpServers: narrowMcpServers(availableMcpServers, allowedMcpServers),
+      personality,
+    })
+  // 白名单模式收窄激活工具集：Minimal 仅暴露终端工具（模型不可见其余工具）；
+  // switch_mode 仅在 auto 编排基础模式下激活（其余模式模型不可见）。
   const activation = narrowActivationByMode(
-    host.collaborationMode,
+    baseMode,
     activeCapabilities,
     activeMcp,
     activeSkills.length > 0,
   )
+  const activeTools = activation.tools.filter((name) => name !== "switch_mode")
+  if (baseMode === "auto") {
+    activeTools.push("switch_mode")
+  }
   const registry = createRegistry(
     cwd,
-    activation.tools,
+    activeTools,
     activation.mcp,
     activation.withReadSkill,
     {
       subagentSystemPrompt,
-      // 角色技能白名单收窄 available_skills 注入（与 read_skill 工具同源）。
-      renderSubagentSystemPrompt: (allowedSkills, allowedMcpServers) =>
-        buildSystemPromptSync({
-          cwd,
-          sessionId: host.currentSessionId ?? undefined,
-          modelId: model.id,
-          sandboxPolicy,
-          collaborationMode: subagentMode,
-          contextUsage,
-          activeSkills:
-            allowedSkills === undefined
-              ? activeSkills
-              : activeSkills.filter((skill) => allowedSkills.includes(skill.name)),
-          mcpServers: narrowMcpServers(availableMcpServers, allowedMcpServers),
-          personality,
-        }),
+      // 角色技能白名单收窄 available_skills 注入（与 read_skill 工具同源）；mode 覆盖优先。
+      renderSubagentSystemPrompt,
       model,
       sandboxPolicy,
       subagentPool: host.subagentPool,
       subagentSettings,
       subagentRuntime,
-      collaborationMode: host.collaborationMode,
-      beforeToolCall: (context, signal) =>
-        beforeToolCallWithGuard(host, context, signal, subagentMode, cwd, host.collaborationMode),
+      collaborationMode: effectiveMode,
+      autoModeEnabled: baseMode === "auto",
+      defaultSubagentMode: subagentMode,
+      beforeToolCall: (context, signal, modeOverride) =>
+        beforeToolCallWithGuard(
+          host,
+          context,
+          signal,
+          modeOverride ?? subagentMode,
+          cwd,
+          effectiveMode,
+        ),
       afterToolCall: async (context) => afterToolCallWithGuard(host, context),
       preToolUse: (context, signal) => dispatchPreToolUse(host, context, cwd, signal),
       postToolUse: (context, signal) => dispatchPostToolUse(host, context, cwd, signal),
@@ -165,6 +195,20 @@ export const buildSessionAgent = (
       getSessionId: () => host.currentSessionId,
       supportsImages: () => modelSupportsImageInput(model.provider, model.id),
     },
+    baseMode === "auto"
+      ? {
+          getBaseMode: () => host.collaborationMode,
+          getEffectiveMode: () => host.effectiveMode,
+          switchEffectiveMode: (mode) => host.setEffectiveMode(mode),
+          requestExitApproval: ({ toolCallId, fromMode }) =>
+            modeExitManager.request({
+              sessionId: host.currentSessionId,
+              toolCallId,
+              fromMode,
+              toMode: "build",
+            }),
+        }
+      : undefined,
   )
   const agent = new Agent({
     streamFn: createAiSdkStreamFn({
@@ -173,7 +217,9 @@ export const buildSessionAgent = (
     }),
     beforeToolCall: async (context, signal) => {
       host.currentTurnContext?.recordToolCall()
-      return beforeToolCallWithGuard(host, context, signal, host.collaborationMode, cwd)
+      return beforeToolCallWithGuard(host, context, signal, host.effectiveMode, cwd, undefined, {
+        baseMode: host.collaborationMode,
+      })
     },
     afterToolCall: async (context) => afterToolCallWithGuard(host, context),
     preToolUse: (context, signal) => dispatchPreToolUse(host, context, cwd, signal),
@@ -249,6 +295,7 @@ export const getPromptAssembly = async (
     modelId,
     sandboxPolicy: currentSandboxPolicy,
     collaborationMode: host.collaborationMode,
+    effectiveCollaborationMode: host.effectiveMode,
     contextUsage,
     activeSkills,
     mcpServers: resolveConnectedMcpServers(),

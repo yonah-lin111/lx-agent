@@ -92,6 +92,9 @@ const createTestTool = (options: {
   tools?: AgentTool<any>[]
   depth?: number
   collaborationMode?: NonNullable<TaskToolDeps["collaborationMode"]>
+  autoModeEnabled?: boolean
+  defaultSubagentMode?: NonNullable<TaskToolDeps["defaultSubagentMode"]>
+  renderSubagentSystemPrompt?: NonNullable<TaskToolDeps["renderSubagentSystemPrompt"]>
   resolveModelSelection?: NonNullable<TaskToolDeps["resolveModelSelection"]>
 }): ReturnType<typeof createTaskTool> => {
   return createTaskTool({
@@ -105,6 +108,13 @@ const createTestTool = (options: {
     ...(options.settings ? { subagentSettings: options.settings } : {}),
     ...(options.depth !== undefined ? { depth: options.depth } : {}),
     ...(options.collaborationMode ? { collaborationMode: options.collaborationMode } : {}),
+    ...(options.autoModeEnabled !== undefined ? { autoModeEnabled: options.autoModeEnabled } : {}),
+    ...(options.defaultSubagentMode !== undefined
+      ? { defaultSubagentMode: options.defaultSubagentMode }
+      : {}),
+    ...(options.renderSubagentSystemPrompt !== undefined
+      ? { renderSubagentSystemPrompt: options.renderSubagentSystemPrompt }
+      : {}),
     ...(options.resolveModelSelection
       ? { resolveModelSelection: options.resolveModelSelection }
       : {}),
@@ -778,7 +788,7 @@ describe("task 子代理角色", () => {
       agent_type: "one-skill",
     })
     const restrictedId = (restricted.details as { subagent: SubagentData }).subagent.subagentId!
-    expect(renderSubagentSystemPrompt).toHaveBeenCalledWith(["code-review"], undefined)
+    expect(renderSubagentSystemPrompt).toHaveBeenCalledWith(["code-review"], undefined, undefined)
     expect(pool.get(restrictedId)?.agent.state.systemPrompt).toContain("base-prompt:code-review|*")
 
     renderSubagentSystemPrompt.mockClear()
@@ -790,7 +800,7 @@ describe("task 子代理角色", () => {
     })
     const mcpRestrictedId = (mcpRestricted.details as { subagent: SubagentData }).subagent
       .subagentId!
-    expect(renderSubagentSystemPrompt).toHaveBeenCalledWith(undefined, ["codegraph"])
+    expect(renderSubagentSystemPrompt).toHaveBeenCalledWith(undefined, ["codegraph"], undefined)
     expect(pool.get(mcpRestrictedId)?.agent.state.systemPrompt).toContain("base-prompt:*|codegraph")
 
     renderSubagentSystemPrompt.mockClear()
@@ -1409,5 +1419,111 @@ describe("task 子代理推流节流与中止竞态", () => {
     expect(resultText(result)).toContain("aborted before start")
     // 未消费任何模型响应。
     expect(holder.streamResponses).toHaveLength(1)
+  })
+})
+
+describe("task 子代理派发模式（auto 编排）", () => {
+  it("非 auto 基础模式传 mode 参数：整单拒绝且不启动子代理", async () => {
+    const pool = new SubagentPool()
+    const tool = createTestTool({ pool })
+    const result = await tool.execute("call-mode-1", {
+      description: "模式越权",
+      prompt: "p",
+      agent_type: "explorer",
+      mode: "plan",
+    })
+    expect(resultText(result)).toContain('The "mode" parameter is only available in Auto Mode')
+    expect(pool.list()).toHaveLength(0)
+  })
+
+  it("auto 下 mode 覆盖子代理提示词渲染模式（显式覆盖传入 renderer）", async () => {
+    const pool = new SubagentPool()
+    const renderSubagentSystemPrompt = vi.fn(
+      (_allowed: string[] | undefined, _mcp: string[] | undefined, mode?: string) =>
+        "子代理基座提示词" + (mode ? `:${mode}` : ""),
+    )
+    const tool = createTestTool({
+      pool,
+      autoModeEnabled: true,
+      renderSubagentSystemPrompt,
+    })
+    holder.streamResponses.push(assistant([{ type: "text", text: "plan draft" }]))
+    const result = await tool.execute("call-mode-2", {
+      description: "计划草拟",
+      prompt: "p",
+      agent_type: "explorer",
+      mode: "plan",
+    })
+    const subagentId = (result.details as { subagent: SubagentData }).subagent.subagentId!
+    // explorer 角色显式 skills 白名单为空数组（[] 表示禁技能），模式覆盖为第三参。
+    expect(renderSubagentSystemPrompt).toHaveBeenCalledWith([], undefined, "plan")
+    expect(pool.get(subagentId)?.agent.state.systemPrompt).toContain(":plan")
+  })
+
+  it("auto 下未传 mode：不触发覆盖渲染，沿用子代理设置快照", async () => {
+    const pool = new SubagentPool()
+    const renderSubagentSystemPrompt = vi.fn(() => "narrowed")
+    const tool = createTestTool({
+      pool,
+      autoModeEnabled: true,
+      renderSubagentSystemPrompt,
+    })
+    holder.streamResponses.push(assistant([{ type: "text", text: "ok" }]))
+    const result = await tool.execute("call-mode-3", {
+      description: "默认模式",
+      prompt: "p",
+    })
+    const subagentId = (result.details as { subagent: SubagentData }).subagent.subagentId!
+    expect(renderSubagentSystemPrompt).not.toHaveBeenCalled()
+    expect(pool.get(subagentId)?.agent.state.systemPrompt).toContain("子代理基座提示词")
+  })
+
+  it("auto 下角色能力集与派发模式硬基线冲突：拒绝派发（worker 不可进 plan）", async () => {
+    const pool = new SubagentPool()
+    const tool = createTestTool({ pool, autoModeEnabled: true })
+    const result = await tool.execute("call-mode-4", {
+      description: "角色冲突",
+      prompt: "p",
+      agent_type: "worker",
+      mode: "plan",
+    })
+    const text = resultText(result)
+    expect(text).toContain('Role "worker" cannot run in plan mode')
+    expect(pool.list()).toHaveLength(0)
+  })
+
+  it("auto 下批量扇出逐项校验：任一项角色冲突整批早退", async () => {
+    const pool = new SubagentPool()
+    const tool = createTestTool({ pool, autoModeEnabled: true })
+    const result = await tool.execute("call-mode-5", {
+      tasks: [
+        { description: "合法项", prompt: "p", agent_type: "explorer", mode: "review" },
+        { description: "冲突项", prompt: "p", agent_type: "worker", mode: "design" },
+      ],
+    })
+    expect(resultText(result)).toContain("tasks[1]")
+    expect(pool.list()).toHaveLength(0)
+  })
+
+  it("续接子代理不接受 mode 参数（角色与模式随创建时固定）", async () => {
+    const pool = new SubagentPool()
+    const tool = createTestTool({ pool, autoModeEnabled: true })
+    holder.streamResponses.push(assistant([{ type: "text", text: "first" }]))
+    const first = await tool.execute("call-mode-6", {
+      description: "首轮",
+      prompt: "p",
+      agent_type: "explorer",
+      mode: "plan",
+      name: "planner",
+    })
+    const subagentId = (first.details as { subagent: SubagentData }).subagent.subagentId!
+
+    const resumed = await tool.execute("call-mode-7", {
+      description: "续接",
+      prompt: "继续",
+      subagent_id: subagentId,
+      mode: "build",
+    })
+    expect(resultText(resumed)).toContain("mode cannot be changed when resuming")
   })
 })

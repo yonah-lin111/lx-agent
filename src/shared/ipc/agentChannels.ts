@@ -9,6 +9,7 @@ export const AGENT_CHANNELS = {
   switchProject: "agent:switchProject",
   switchModel: "agent:switchModel",
   setCollaborationMode: "agent:setCollaborationMode",
+  setEffectiveMode: "agent:setEffectiveMode",
   restore: "agent:restore",
   listSessions: "agent:listSessions",
   restoreSession: "agent:restoreSession",
@@ -44,6 +45,8 @@ export const AGENT_CHANNELS = {
   permissionResponse: "agent:permissionResponse",
   // 提问请求经 event 通道以 question_request 事件推送（见 AgentEvent）。
   questionResponse: "agent:questionResponse",
+  // 模式退出审批请求经 event 通道以 mode_exit_request 事件推送（见 AgentEvent）。
+  modeExitResponse: "agent:modeExitResponse",
   // LSP 结果跳转：系统默认编辑器打开文件并定位行。
   openFileAt: "agent:openFileAt",
   // 在资源管理器中显示文件（多平台原生支持）。

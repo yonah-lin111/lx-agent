@@ -62,6 +62,7 @@ export const beforeToolCallWithGuard = (
   collaborationMode: CollaborationMode,
   cwd: string,
   parentMode?: CollaborationMode,
+  options?: { baseMode?: CollaborationMode },
 ): Promise<BeforeToolCallResult | undefined> => {
   if (host.currentSessionId) {
     const guardResult = repeatToolGuard.record(
@@ -78,6 +79,7 @@ export const beforeToolCallWithGuard = (
   }
   return permissionManager.gate(context, host.currentSessionId, signal, {
     collaborationMode,
+    ...(options?.baseMode !== undefined ? { baseMode: options.baseMode } : {}),
     ...(parentMode !== undefined ? { parentMode } : {}),
     cwd,
   })

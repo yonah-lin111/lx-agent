@@ -67,8 +67,10 @@ export const useAgentChat = (
   const [isCompactingManual, setIsCompactingManual] = useState(false)
   // 任务清单（状态栏 todo 指示数据源：订阅 todo_updated / 恢复时提取；空数组 = 指示不渲染）。
   const [todos, setTodos] = useState<TodoList>([])
-  // 当前协作模式（订阅 collaboration_mode_changed 事件同步；默认为 build）。
+  // 当前协作模式（基础模式；订阅 collaboration_mode_changed 事件同步；默认为 build）。
   const [collaborationMode, setCollaborationMode] = useState<CollaborationMode>("build")
+  // auto 编排下的有效模式（subscription 同源；非 auto 恒等于基础模式）。
+  const [effectiveMode, setEffectiveMode] = useState<CollaborationMode>("build")
   // 当前会话上下文容量（订阅 context_usage：估计 token / 压缩窗口，驱动状态栏百分比）。
   const [contextUsage, setContextUsage] = useState<AgentChatContextUsage | null>(null)
   const messagesRef = useRef(messages)
@@ -115,6 +117,8 @@ export const useAgentChat = (
     setTodos,
     collaborationMode,
     setCollaborationMode,
+    effectiveMode,
+    setEffectiveMode,
     contextUsage,
     setContextUsage,
     streamingRef,
@@ -147,6 +151,7 @@ export const useAgentChat = (
     messages,
     todos,
     collaborationMode,
+    effectiveMode,
     selectCollaborationMode,
     toggleCollaborationMode,
     queuedCount,

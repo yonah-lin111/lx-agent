@@ -549,6 +549,15 @@ export class SessionRunnerManager {
     return runner.setCollaborationMode(mode)
   }
 
+  public setEffectiveMode(
+    mode: CollaborationMode,
+    sessionId?: string,
+    tabId?: string,
+  ): { ok: true } | { ok: false; error: string } {
+    const runner = this.getOrCreateRunner(sessionId, tabId)
+    return runner.setEffectiveMode(mode)
+  }
+
   public deleteSession(sessionId: string): void {
     const key = `sess:${sessionId}`
     const runner = this.runners.get(key)

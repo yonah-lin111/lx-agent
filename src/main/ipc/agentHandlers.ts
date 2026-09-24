@@ -10,6 +10,7 @@ import type {
   CopySessionOptions,
   ExportSessionOptions,
   McpServerStatusItem,
+  ModeExitResponse,
   PermissionResponse,
   QuestionResponse,
   SuggestedQuestionContextMessage,
@@ -21,6 +22,7 @@ import { ipcMain, shell, type WebContents } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
 import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
+import { modeExitManager } from "@/agent/mode/modeExitManager"
 import { permissionManager } from "@/agent/permissions/permissionManager"
 import { promptTemplateLoader } from "@/agent/prompts/promptTemplateLoader"
 import { questionManager } from "@/agent/question/questionManager"
@@ -150,6 +152,15 @@ const isValidQuestionResponse = (value: unknown): value is QuestionResponse => {
   })
 }
 
+// 校验模式退出审批响应为合法 ModeExitResponse（IPC 输入边界）。
+const isValidModeExitResponse = (value: unknown): value is ModeExitResponse => {
+  if (!value || typeof value !== "object") return false
+  const response = value as Record<string, unknown>
+  if (typeof response.requestId !== "string" || !response.requestId) return false
+  if (response.dismissed === true) return true
+  return response.decision === "allow" || response.decision === "deny"
+}
+
 // 命令是否存在于 PATH（跨平台分隔符）。
 const isExecutableOnPath = (command: string): boolean => {
   const separator = process.platform === "win32" ? ";" : ":"
@@ -209,6 +220,14 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   questionManager.attachSender((request) =>
     sendToRenderer({
       type: "question_request",
+      sessionId: request.sessionId ?? undefined,
+      request,
+    }),
+  )
+  // 模式退出审批请求经事件流推送到 renderer（挂在 switch_mode 工具调用块上的内联确认）。
+  modeExitManager.attachSender((request) =>
+    sendToRenderer({
+      type: "mode_exit_request",
       sessionId: request.sessionId ?? undefined,
       request,
     }),
@@ -312,6 +331,22 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       const sId = typeof sessionId === "string" ? sessionId : undefined
       const tId = typeof tabId === "string" ? tabId : undefined
       return agentRunner.setCollaborationMode(requestedMode, sId, tId)
+    },
+  )
+
+  ipcMain.handle(
+    AGENT_CHANNELS.setEffectiveMode,
+    (_, mode: unknown, sessionId?: unknown, tabId?: unknown) => {
+      const requestedMode =
+        typeof mode === "string"
+          ? COLLABORATION_MODE_ORDER.find((item) => item === mode)
+          : undefined
+      if (requestedMode === undefined) {
+        return { ok: false, error: "协作模式参数无效。" }
+      }
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      return agentRunner.setEffectiveMode(requestedMode, sId, tId)
     },
   )
 
@@ -500,6 +535,12 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     if (!isValidQuestionResponse(response)) return { ok: false }
     const answers = "answers" in response ? response.answers : null
     return { ok: questionManager.respond(response.requestId, answers) }
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.modeExitResponse, (_, response: unknown) => {
+    if (!isValidModeExitResponse(response)) return { ok: false }
+    const allowed = "decision" in response && response.decision === "allow"
+    return { ok: modeExitManager.respond(response.requestId, allowed) }
   })
 
   ipcMain.handle(AGENT_CHANNELS.openFileAt, (_, filePath: unknown, line: unknown) => {

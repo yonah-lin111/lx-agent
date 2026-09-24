@@ -7,11 +7,12 @@ import type {
   ModelSwitchMessage,
   TodoList,
 } from "@shared/contracts/agent"
-import { normalizeCollaborationMode } from "@shared/contracts/agent"
+import { normalizeCollaborationMode, SWITCH_MODE_TARGETS } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { mcpManager } from "./mcp/mcpManager"
+import { modeExitManager } from "./mode/modeExitManager"
 import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
 import type { SessionRunnerHost } from "./sessionRunner.types"
 import { resolveInjectedSkills, resolveMcpTools } from "./sessionRunnerInput"
@@ -87,40 +88,97 @@ export const restoreSessionData = async (
   host.compactor.emitUsage()
 }
 
-// 切换协作模式：更新运行时模式并把 modeSwitch 消息落库（mode_change entry），
-// 会话尾部连续的切换消息中已有模式条目时原地更新，不新建。
+// 切换协作模式（基础模式，用户动作）：同步有效模式（auto 缺省 build）、清除挂起审批并落 mode_change 条目。
 export const switchCollaborationMode = (
   host: SessionRunnerHost,
   mode: CollaborationMode,
 ): { ok: true } => {
   const normalized = normalizeCollaborationMode(mode)
-  const modeChanged = host.collaborationMode !== normalized
+  const nextEffective = normalized === "auto" ? "build" : normalized
+  const changed = host.collaborationMode !== normalized || host.effectiveMode !== nextEffective
   host.collaborationMode = normalized
+  host.effectiveMode = nextEffective
   host.builtSignature = ""
+  modeExitManager.clearSession(host.currentSessionId)
+  if (!changed) {
+    emitModeChanged(host)
+    return { ok: true }
+  }
+  commitModeChange(host, normalized, {})
+  return { ok: true }
+}
 
+/**
+ * auto 编排下重置有效模式（卡片采纳路径统一入口）：
+ * 基础模式为 auto 时仅更新有效模式并落 viaAuto 条目；非 auto 时等价于基础模式切换。
+ */
+export const switchEffectiveMode = (
+  host: SessionRunnerHost,
+  mode: CollaborationMode,
+): { ok: true } | { ok: false; error: string } => {
+  const normalized = normalizeCollaborationMode(mode)
+  if (!SWITCH_MODE_TARGETS.includes(normalized as (typeof SWITCH_MODE_TARGETS)[number])) {
+    return { ok: false, error: `Collaboration mode "${mode}" cannot be set as an effective mode.` }
+  }
+  if (host.collaborationMode !== "auto") {
+    return switchCollaborationMode(host, normalized)
+  }
+  const changed = host.effectiveMode !== normalized
+  host.effectiveMode = normalized
+  host.builtSignature = ""
+  modeExitManager.clearSession(host.currentSessionId)
+  if (!changed) {
+    emitModeChanged(host)
+    return { ok: true }
+  }
+  commitModeChange(host, normalized, { viaAuto: true })
+  return { ok: true }
+}
+
+// 广播模式状态（基础模式 + 有效模式）。
+const emitModeChanged = (
+  host: SessionRunnerHost,
+  options?: { message?: CollaborationModeSwitchMessage },
+): void => {
+  host.emitEvent({
+    type: "collaboration_mode_changed",
+    mode: host.collaborationMode,
+    effectiveMode: host.effectiveMode,
+    ...(options?.message ? { message: options.message } : {}),
+  })
+}
+
+// 落 mode_change 条目并广播：会话尾部连续切换消息原地合并（同 v1），草稿态只广播。
+const commitModeChange = (
+  host: SessionRunnerHost,
+  mode: CollaborationMode,
+  options: { viaAuto?: boolean },
+): void => {
   const sessionId = host.currentSessionId
-  // 会话尚未落库（草稿态仅持有 id）或模式未变化时不写历史：只更新运行时状态并广播模式事件。
   const sessionPersisted = sessionId
     ? agentSessionService.getSession(sessionId) !== undefined
     : false
-  if (!sessionId || !sessionPersisted || !modeChanged) {
-    host.emitEvent({ type: "collaboration_mode_changed", mode: normalized })
-    return { ok: true }
+  if (!sessionId || !sessionPersisted) {
+    emitModeChanged(host)
+    return
   }
 
   const message: CollaborationModeSwitchMessage = {
     role: "modeSwitch",
-    mode: normalized,
+    mode,
     timestamp: Date.now(),
+    ...(options.viaAuto ? { viaAuto: true } : {}),
   }
 
   const trailing = findTrailingSwitchMessage(host, "modeSwitch")
   if (trailing && trailing.role === "modeSwitch") {
     const previousTimestamp = trailing.timestamp
     Object.assign(trailing, { ...message, isInitial: trailing.isInitial })
+    // Object.assign 不删除键：基础模式切换不得残留上一条 viaAuto 标记。
+    if (message.viaAuto === undefined) delete trailing.viaAuto
     updateSwitchEntryPayload(sessionId, "mode_change", "modeSwitch", previousTimestamp, trailing)
-    host.emitEvent({ type: "collaboration_mode_changed", mode: normalized, message: trailing })
-    return { ok: true }
+    emitModeChanged(host, { message: trailing })
+    return
   }
 
   const now = new Date().toISOString()
@@ -143,8 +201,7 @@ export const switchCollaborationMode = (
     host.turnStore.getMessageSeqs().push(insertedSeq)
   }
   host.agent?.state.appendMessage(message)
-  host.emitEvent({ type: "collaboration_mode_changed", mode: normalized, message })
-  return { ok: true }
+  emitModeChanged(host, { message })
 }
 
 // 切换工作区目录：清理排队消息并同步会话 cwd。

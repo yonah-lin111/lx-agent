@@ -188,6 +188,7 @@ export const useFlowSteps = ({
       toolName === "todowrite" ||
       toolName === "wireframe" ||
       toolName === "question" ||
+      toolName === "switch_mode" ||
       toolName === "write" ||
       toolName === "edit" ||
       toolName === "apply_patch"

@@ -19,11 +19,15 @@ vi.mock("@/features/agent/api/agentApi", () => ({
 type EventHandler = (event: AgentEvent) => void
 let eventHandler: EventHandler
 
-// 主进程模式事件（驱动渲染层模式状态）。
-const emitMode = (mode: "build" | "plan" | "review" | "design" | "minimal"): void => {
+// 主进程模式事件（驱动渲染层基础模式与 auto 有效模式状态）。
+const emitMode = (
+  mode: "build" | "auto" | "plan" | "review" | "design" | "minimal",
+  effectiveMode: typeof mode = mode,
+): void => {
   eventHandler({
     type: "collaboration_mode_changed",
     mode,
+    effectiveMode,
     sessionId: "session-1",
     tabId: "tab-1",
   })
