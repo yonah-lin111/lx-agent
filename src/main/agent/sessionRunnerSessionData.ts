@@ -12,7 +12,6 @@ import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { mcpManager } from "./mcp/mcpManager"
-import { modeExitManager } from "./mode/modeExitManager"
 import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
 import type { SessionRunnerHost } from "./sessionRunner.types"
 import { resolveInjectedSkills, resolveMcpTools } from "./sessionRunnerInput"
@@ -99,7 +98,6 @@ export const switchCollaborationMode = (
   host.collaborationMode = normalized
   host.effectiveMode = nextEffective
   host.builtSignature = ""
-  modeExitManager.clearSession(host.currentSessionId)
   if (!changed) {
     emitModeChanged(host)
     return { ok: true }
@@ -126,7 +124,6 @@ export const switchEffectiveMode = (
   const changed = host.effectiveMode !== normalized
   host.effectiveMode = normalized
   host.builtSignature = ""
-  modeExitManager.clearSession(host.currentSessionId)
   if (!changed) {
     emitModeChanged(host)
     return { ok: true }

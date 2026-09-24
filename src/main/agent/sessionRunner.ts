@@ -44,7 +44,6 @@ import { TurnContext } from "./core/turnContext"
 import type { AgentTool } from "./core/types"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
-import { modeExitManager } from "./mode/modeExitManager"
 import { permissionManager } from "./permissions/permissionManager"
 import type { PersonalityName } from "./prompts/personalities"
 import { questionManager } from "./question/questionManager"
@@ -160,7 +159,6 @@ export class AgentSessionRunner {
     if (this.currentSessionId) {
       permissionManager.clearSession(this.currentSessionId)
       questionManager.clearSession(this.currentSessionId)
-      modeExitManager.clearSession(this.currentSessionId)
       lspManager.clearSession(this.currentSessionId)
       unifiedExecManager.clearSession(this.currentSessionId)
       this.subagentPool.clear()

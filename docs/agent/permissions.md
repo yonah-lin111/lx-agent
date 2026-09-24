@@ -62,7 +62,7 @@
 export type CollaborationMode = "build" | "auto" | "plan" | "review" | "design" | "minimal"
 ```
 
-> **auto 与有效模式**：auto 为编排基础模式（无硬基线）。会话门禁按**有效模式**（`host.effectiveMode`，auto 下由 `switch_mode` 切换 / `setEffectiveMode` 重置）计算——auto + 有效 `plan/review/design` 时同样命中对应硬基线；`modes.auto` 作为附加收紧层与有效模式白名单求交（只能收紧），但不约束 `switch_mode`（详见 modes.md §2）。
+> **auto 与有效模式**：auto 为编排基础模式（无硬基线）。会话门禁按**有效模式**（`host.effectiveMode`，auto 下由 `switch_mode` 切换 / `setEffectiveMode` 重置）计算——auto + 有效 `plan/review/design` 时同样命中对应硬基线；退出只读模式由模型在用户批准后自行完成并落审计条目；`modes.auto` 作为附加收紧层与有效模式白名单求交（只能收紧），但不约束 `switch_mode`（详见 modes.md §2）。
 
 | 模式 | 硬基线（`deny`，配置不可放开） | 子代理派发（`task`） | 其他工具 | 输出契约 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -81,7 +81,7 @@ export type CollaborationMode = "build" | "auto" | "plan" | "review" | "design" 
 - **提示词层（缓存友好）**：Plan / Review / Design 的模式段声明子代理派发限制（引用 `task` 工具描述中的 `Available agent types`，并把 `memory` 补入禁用清单）；`task` 工具描述在会话装配与模式切换（registry 重建）时按模式裁剪角色目录——白名单未命中或能力集冲突的角色不再出现在模型可见的目录里，模型无需靠一次被拒绝来发现限制。两处内容只随模式 / 能力集重建，不含轮次级易变数据，不额外破坏提示词前缀缓存（易变上下文如 `<current_time>` 本就在系统提示词尾部）。
 - **模式能力白名单**（`agent.permissions.modes`）：`tools` / `mcp` / `skills` / `websearch` / `subagents` 五组，缺省 = 不限制（`subagents` 在非 build 模式除外）；硬基线工具在保存时被剥离、运行时二次兜底拒绝，配置只能收紧、永不放开。
 - `design` 模式的工具级门禁与 plan/review 共享同一只读基线并额外禁用 `wireframe`（原型交付走 `<front_design>` 协议，原 `render_svg` / `render_ascii` / `render_html` 工具已从代码中整体移除）。
-- 模式切换：`Shift + Tab` 在 `build → auto → plan → review → design → minimal → build` 间循环（状态栏模式标签点击弹出列表可定向切换，或经 IPC `setCollaborationMode` 定向切换）；auto 下模型经 `switch_mode` 切换有效模式，退出只读有效模式需用户批准（`mode_exit_request` 内联确认，见 modes.md §2.3）；卡片一键采纳经 `setEffectiveMode` 退出只读模式。新会话启动模式取 `agent.permissions.collaborationMode`（缺省 `build`，设置页「Agent 模式」分区可配置）。
+- 模式切换：`Shift + Tab` 在 `build → auto → plan → review → design → minimal → build` 间循环（状态栏模式标签点击弹出列表可定向切换，或经 IPC `setCollaborationMode` 定向切换）；auto 下模型经 `switch_mode` 切换有效模式（用户批准后自行退出只读模式并落 `viaAuto` 审计条目，见 modes.md §2.3）；卡片一键采纳经 `setEffectiveMode` 退出只读模式。新会话启动模式取 `agent.permissions.collaborationMode`（缺省 `build`，设置页「Agent 模式」分区可配置）。
 
 ---
 

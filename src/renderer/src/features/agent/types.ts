@@ -9,7 +9,6 @@ import type {
   HookEventName,
   HookRunStatus,
   LspToolDetails,
-  ModeExitRequest,
   QuestionAnswer,
   QuestionRequest,
   StopReason,
@@ -143,8 +142,6 @@ export type ChatBlock =
       question?: QuestionRequest
       // question 工具的用户作答（随消息落库/事件回填，只读展示用）。
       answers?: QuestionAnswer[]
-      // 挂起的模式退出审批（switch_mode 工具；mode_exit_request 事件回填，审批后清除）。
-      modeExit?: ModeExitRequest
     }
   | {
       kind: "toolResult"
@@ -410,8 +407,6 @@ export interface ExecutionToolContent {
   question?: QuestionRequest
   // question 工具的用户作答（随消息落库/事件回填，只读展示用）。
   answers?: QuestionAnswer[]
-  // 挂起的模式退出审批（switch_mode 工具；mode_exit_request 事件回填，审批后清除）。
-  modeExit?: ModeExitRequest
 }
 
 export interface ExecutionSubagentContent {

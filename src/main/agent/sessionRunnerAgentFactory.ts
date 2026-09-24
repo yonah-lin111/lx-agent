@@ -22,7 +22,6 @@ import type { Model } from "./core/types"
 import { hookResultMessages, hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
 import { sanitizeMcpNameSegment } from "./mcp/mcpManager"
-import { modeExitManager } from "./mode/modeExitManager"
 import { permissionManager } from "./permissions/permissionManager"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
@@ -200,13 +199,6 @@ export const buildSessionAgent = (
           getBaseMode: () => host.collaborationMode,
           getEffectiveMode: () => host.effectiveMode,
           switchEffectiveMode: (mode) => host.setEffectiveMode(mode),
-          requestExitApproval: ({ toolCallId, fromMode }) =>
-            modeExitManager.request({
-              sessionId: host.currentSessionId,
-              toolCallId,
-              fromMode,
-              toMode: "build",
-            }),
         }
       : undefined,
   )

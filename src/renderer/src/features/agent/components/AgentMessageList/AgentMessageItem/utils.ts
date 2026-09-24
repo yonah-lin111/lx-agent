@@ -4,7 +4,6 @@ import {
   QUESTION_TOOL_NAME,
   SKILL_TOOL_NAME,
   SUBAGENT_TOOL_NAME,
-  SWITCH_MODE_TOOL_NAME,
   TODO_TOOL_NAME,
   WEB_SEARCH_TOOL_NAME,
   WIREFRAME_TOOL_NAME,
@@ -28,10 +27,6 @@ export const isWireframeToolCall = (toolName: string): boolean => toolName === W
 
 // 判断是否为模型提问（question 工具）调用。
 export const isQuestionToolCall = (toolName: string): boolean => toolName === QUESTION_TOOL_NAME
-
-// 判断是否为模式切换（switch_mode 工具）调用。
-export const isSwitchModeToolCall = (toolName: string): boolean =>
-  toolName === SWITCH_MODE_TOOL_NAME
 
 // MCP 工具命名空间前缀（main 侧 `mcp__server__tool`）。
 export const MCP_TOOL_PREFIX = "mcp__"

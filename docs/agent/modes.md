@@ -37,14 +37,14 @@ Auto 是编排基础模式：会话的门禁 / 提示词 / 子代理白名单始
 3. 用户要求审查/审计 → 切 `review` 输出 `<review_findings>`；实现完重大或高风险改动后，派发 `task(mode="review")` 子代理做隔离验证，把结论并入完成汇报；琐碎改动跳过自审。
 4. UI / 页面 / 原型设计 → 切 `design` 走 `<front_design>` 协议（只读）。
 5. 需要用户交互/审批的协议产物必须**内联自产**（计划卡、审查卡、设计画布）；隔离探查、草稿、并行扇出走 `task` 派发（其产出只是文本工具结果，不回传卡片）。
-6. 只读模式回 `build` 必须用户批准；`minimal` 永久不可达；不要为小改动反复横跳。
+6. 只读模式回 `build` 由模型在用户批准后自行完成（不得在展示计划的同一轮切回）；`minimal` 永久不可达；不要为小改动反复横跳。
 
-### 2.3 `switch_mode` 工具与退出审批
+### 2.3 `switch_mode` 工具与切换审计
 
 - **激活**：`switch_mode` 仅在 auto 基础模式装配进激活工具集（`ALL_TOOL_NAMES` + `sessionRunnerAgentFactory` 激活收窄）；工具描述内嵌判定规则与退出约束。
 - **即时性**：进入只读模式（plan / review / design）即时生效（当轮门控立即生效）；工具结果同步返回目标模式的契约与退出约束（系统提示词在下一轮 `ensureReady` 重建时才更新）。
-- **退出审批（用户动作）**：退出只读模式回 `build` 时 `ModeExitManager` 挂起 → `mode_exit_request` 事件 → renderer 在**聊天消息流**（`AgentModeExitBlock`）与**执行流程视图**（`FlowItemModeExitContent`，挂起时该步骤默认展开）双入口内联渲染确认（[退出并执行] / [留在当前模式]），并伴随 warning toast → `agent:modeExitResponse` 回灌；拒绝 / abort / 会话切换 / 用户手动切换模式一律按拒绝解除（fail-safe，无推送目标也不放行）；计划/审查卡片的采纳按钮是用户点击直达，宿主直接把有效模式置回 `build`，不弹确认框。
-- **提示词约束**：输出 `<proposed_plan>` 的计划轮不得同轮调用 `switch_mode("build")`，避免卡片与确认框同屏双审批。
+- **自行退出（无宿主二次确认）**：用户批准后（点击计划/审查卡片，或在对话中明确要求继续），模型自行调用 `switch_mode("build")` 退出只读模式，即时生效并落 `mode_change` 条目（`viaAuto: true`）供审计；状态栏即时显示 `Auto · Build`，执行流程视图以独立步骤展示切换。计划/审查卡片的采纳按钮仍走 `setEffectiveMode`（用户点击直达）。
+- **提示词约束**：输出 `<proposed_plan>` 的计划轮不得同轮调用 `switch_mode("build")`（用户尚未批准）；用户未批准前模型须留在当前模式等待。
 
 ### 2.4 模式子代理派发（`task` 的 `mode` 参数）
 
@@ -57,7 +57,7 @@ Auto 是编排基础模式：会话的门禁 / 提示词 / 子代理白名单始
 
 - auto 基础模式无模式硬基线（与 build 同级），`DEFAULT_MODE_SUBAGENT_ROLES` 不注入子代理白名单缺省。
 - `agent.permissions.modes.auto` 作为**附加收紧层**与有效模式白名单求交（只能收紧、永不放开），但不约束 `switch_mode` 本身（要禁用 auto 请切换基础模式）。
-- `switch_mode` 归入 `EXEMPT_TOOLS`（纯会话状态切换，无文件/命令副作用）；退出只读模式的审批由 `ModeExitManager` 承担，不进入权限弹窗。
+- `switch_mode` 归入 `EXEMPT_TOOLS`（纯会话状态切换，无文件/命令副作用）；切换只落审计条目，不进入权限弹窗。
 
 ---
 
@@ -327,7 +327,7 @@ generateElementSelector(element): { selector, description, injectedAttr? }
 | 命名空间 | 用途 |
 | :--- | :--- |
 | `agent.collaborationModeBuild` / `collaborationModeAuto` / `collaborationModePlan` / `collaborationModeReview` / `collaborationModeDesign` / `collaborationModeMinimal` | 状态栏模式名、模式列表与切换提示 |
-| `agent.modeExit*` | 退出审批内联块（`modeExitTitle` / `modeExitPrompt` / `modeExitConfirm` / `modeExitReject` / `modeExitAllowed` / `modeExitDenied` / `modeExitResolved`）与 `modeSwitchViaAuto` 流程标签 |
+| `agent.modeSwitchViaAuto` | FlowList 中 auto 编排切换的「Auto 编排」标签 |
 | `agent.plan.*` | 计划卡片：`cardTitle` / `acceptAndExecute` / `planAccepted` / `copyPlan` / `copySuccess` |
 | `agent.review.*` | 审查卡片：`badge` / `applyFixes` / `fillInput` / `noFindings` / `selectedCount` 等 |
 | `frontDesign.*` | 设计卡片与画布：`iterateAction` / `basedOnPrefix` / `versionBadge` / `inspectMode` / `viewportDesktop|Tablet|Mobile` / `openDesignDir` / `updateTargetNotFound` 等 |

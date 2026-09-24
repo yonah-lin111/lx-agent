@@ -3,7 +3,6 @@ import type {
   AgentEvent,
   AgentSendContext,
   AgentSendOptions,
-  ModeExitResponse,
   PermissionResponse,
   QuestionResponse,
   SuggestedQuestionContextMessage,
@@ -92,8 +91,6 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.permissionResponse, response),
   questionRespond: (response: QuestionResponse) =>
     ipcRenderer.invoke(AGENT_CHANNELS.questionResponse, response),
-  modeExitRespond: (response: ModeExitResponse) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.modeExitResponse, response),
   openFileAt: (filePath: string, line: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.openFileAt, filePath, line),
   showItemInFolder: (filePath: string) =>

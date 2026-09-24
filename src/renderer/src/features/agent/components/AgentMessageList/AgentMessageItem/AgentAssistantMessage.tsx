@@ -9,7 +9,6 @@ import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
   AgentExecutionGroup,
   AgentMcpCallBlock,
-  AgentModeExitBlock,
   AgentQuestionBlock,
   AgentSkillCallBlock,
   AgentSubagentBlock,
@@ -273,10 +272,6 @@ export const AgentAssistantMessage = ({
 
             if (group.kind === "question") {
               return <AgentQuestionBlock key={groupIndex} toolCall={group.block} />
-            }
-
-            if (group.kind === "modeExit") {
-              return <AgentModeExitBlock key={groupIndex} toolCall={group.block} />
             }
 
             const executionItems = group.blocks.flatMap<ExecutionItemMeta>(

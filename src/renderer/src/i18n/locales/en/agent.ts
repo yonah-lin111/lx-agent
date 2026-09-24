@@ -74,16 +74,6 @@ export const agent = {
   collaborationModeSwitchedToDesign: "Switched to Design Mode (Frontend Design)",
   collaborationModeSwitchedToMinimal: "Switched to Minimal Mode (Terminal + Read/Write)",
   collaborationModeShortcutHint: "Press Shift + Tab to cycle mode, click to open the mode list",
-  modeExitTitle: "Mode Switch Approval",
-  modeExitPrompt:
-    "The model requests to exit {{mode}} and start executing (write operations will be unblocked).",
-  modeExitConfirm: "Exit & Execute",
-  modeExitReject: "Stay in Current Mode",
-  modeExitAllowed: "Approved exiting {{mode}}",
-  modeExitDenied: "Declined exiting {{mode}}",
-  modeExitRequestedToast:
-    'The model requests to exit {{mode}} and start executing — click "Exit & Execute" in the message stream to confirm',
-  modeExitResolved: "Mode switch request resolved",
   modeSwitchViaAuto: "via Auto",
   review: {
     badge: "Code Review Report",

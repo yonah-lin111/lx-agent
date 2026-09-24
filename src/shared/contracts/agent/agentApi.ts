@@ -4,7 +4,6 @@ import type { ModelSelection } from "@shared/settings"
 import type { AgentEvent } from "./events"
 import type { InstructionFileInfo, InstructionScope, SaveInstructionInput } from "./instructions"
 import type { AgentMessage, ModelSwitchMessage, SuggestedQuestionContextMessage } from "./messages"
-import type { ModeExitResponse } from "./modeExit"
 import type { CollaborationMode, PermissionResponse } from "./permissions"
 import type { PromptAssembly, PromptTemplateItem, SkillItem } from "./promptAssembly"
 import type { QuestionResponse } from "./questions"
@@ -160,7 +159,6 @@ export interface AgentApi {
     permissionRespond: (response: PermissionResponse) => Promise<{ ok: boolean }>
     // 响应提问请求（requestId 匹配 main 侧挂起的提问；answers 或 dismissed）。
     questionRespond: (response: QuestionResponse) => Promise<{ ok: boolean }>
-    modeExitRespond: (response: ModeExitResponse) => Promise<{ ok: boolean }>
     // 用系统默认编辑器打开文件并定位到行（LSP 结果跳转）。
     openFileAt: (filePath: string, line: number) => Promise<{ ok: boolean }>
     // 在系统文件管理器/资源管理器中高亮定位文件。

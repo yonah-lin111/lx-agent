@@ -9,7 +9,6 @@ import {
   isQuestionToolCall,
   isSkillToolCall,
   isSubagentToolCall,
-  isSwitchModeToolCall,
   isTodoToolCall,
   isWebSearchToolCall,
   isWireframeToolCall,
@@ -295,11 +294,6 @@ export const useMessageItemGroups = (
       if (isQuestionToolCall(toolName)) {
         currentExecution = null
         groups.push({ kind: "question", block: item.block, isStreaming: item.isStreaming })
-        continue
-      }
-      if (isSwitchModeToolCall(toolName)) {
-        currentExecution = null
-        groups.push({ kind: "modeExit", block: item.block, isStreaming: item.isStreaming })
         continue
       }
 

@@ -7,7 +7,6 @@ export {
 } from "./AgentExecutionGroup"
 export { AgentLspBlock } from "./AgentLspBlock"
 export { AgentMcpCallBlock } from "./AgentMcpCallBlock"
-export { AgentModeExitBlock } from "./AgentModeExitBlock"
 export { AgentQuestionBlock } from "./AgentQuestionBlock"
 export { AgentSkillCallBlock } from "./AgentSkillCallBlock"
 export { AgentSubagentBlock } from "./AgentSubagentBlock"

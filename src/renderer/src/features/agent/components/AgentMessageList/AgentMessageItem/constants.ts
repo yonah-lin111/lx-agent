@@ -6,7 +6,6 @@ export const SUBAGENT_TOOL_NAME = "task"
 export const TODO_TOOL_NAME = "todowrite"
 export const WIREFRAME_TOOL_NAME = "wireframe"
 export const QUESTION_TOOL_NAME = "question"
-export const SWITCH_MODE_TOOL_NAME = "switch_mode"
 
 // 稳定的空上下文（避免每次渲染新数组导致 hook effect 依赖变化触发无限重渲染）。
 export const EMPTY_SUGGESTED_QUESTION_CONTEXT: SuggestedQuestionContextMessage[] = []

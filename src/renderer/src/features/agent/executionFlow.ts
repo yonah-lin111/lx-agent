@@ -595,7 +595,6 @@ export const buildExecutionSteps = (
               image: pairedResult?.image,
               question: block.question,
               answers: block.answers,
-              modeExit: block.modeExit,
             },
           })
         }

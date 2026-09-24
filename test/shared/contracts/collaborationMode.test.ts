@@ -2,7 +2,6 @@ import {
   COLLABORATION_MODE_ORDER,
   getModeAllowedTools,
   getModeBlockedTools,
-  isReadOnlyEffectiveMode,
   isToolBlockedByMode,
   nextCollaborationMode,
   normalizeCollaborationMode,
@@ -30,14 +29,8 @@ describe("协作模式契约", () => {
     expect(nextCollaborationMode("minimal")).toBe("build")
   })
 
-  it("switch_mode 目标集合与只读有效模式判定：minimal / auto 不可达", () => {
+  it("switch_mode 目标集合：minimal / auto 不可达", () => {
     expect(SWITCH_MODE_TARGETS).toEqual(["build", "plan", "review", "design"])
-    expect(isReadOnlyEffectiveMode("plan")).toBe(true)
-    expect(isReadOnlyEffectiveMode("review")).toBe(true)
-    expect(isReadOnlyEffectiveMode("design")).toBe(true)
-    expect(isReadOnlyEffectiveMode("build")).toBe(false)
-    expect(isReadOnlyEffectiveMode("auto")).toBe(false)
-    expect(isReadOnlyEffectiveMode("minimal")).toBe(false)
   })
 
   it("归一化：合法模式保留（含 auto / minimal），历史 default 与非法值回退 build", () => {

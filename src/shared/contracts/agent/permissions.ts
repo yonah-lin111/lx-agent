@@ -68,15 +68,6 @@ export const MODE_BLOCKED_TOOLS: readonly string[] = [
 // 模式附加硬拦截：Design Mode 禁用 wireframe（原型交付走 <front_design> 协议）。
 const DESIGN_BLOCKED_TOOLS: readonly string[] = ["wireframe"]
 
-// 只读有效模式（auto 编排下模型内联切换后的受约束态）：退出回 build 需用户批准。
-export const READ_ONLY_EFFECTIVE_MODES: readonly CollaborationMode[] = ["plan", "review", "design"]
-
-/**
- * 判定只读有效模式（plan / review / design）：auto 编排下模型不得自行退出，需用户审批。
- */
-export const isReadOnlyEffectiveMode = (mode: CollaborationMode): boolean =>
-  READ_ONLY_EFFECTIVE_MODES.includes(mode)
-
 // Minimal Mode 工具白名单：终端 + 文件读写；搜索/列目录走 bash，其余工具一律硬拦截
 // （fail-closed，新增工具默认被拦截）。有意偏离 dsh minimal 的 shell-only 基线（见 docs/agent/modes.md §6）。
 const MINIMAL_ALLOWED_TOOLS: readonly string[] = ["bash", "read", "write", "edit"]

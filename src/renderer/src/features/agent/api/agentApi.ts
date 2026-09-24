@@ -20,7 +20,6 @@ import type {
   LspInstallResult,
   LspServerStatusItem,
   McpServerStatusItem,
-  ModeExitResponse,
   ModelSwitchMessage,
   PermissionResponse,
   PromptAssembly,
@@ -157,8 +156,6 @@ export const agentApi = {
     window.api.agent.permissionRespond(response),
   questionRespond: (response: QuestionResponse): Promise<{ ok: boolean }> =>
     window.api.agent.questionRespond(response),
-  modeExitRespond: (response: ModeExitResponse): Promise<{ ok: boolean }> =>
-    window.api.agent.modeExitRespond(response),
   openFileAt: (filePath: string, line: number): Promise<{ ok: boolean }> =>
     window.api.agent.openFileAt(filePath, line),
   showItemInFolder: (filePath: string): Promise<{ ok: boolean }> =>

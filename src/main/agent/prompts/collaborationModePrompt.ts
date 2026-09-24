@@ -28,7 +28,7 @@ const PLAN_MODE_PROMPT = [
   "You work in 3 phases, and you should *chat your way* to a great plan before finalizing it. A great plan is very detailed—intent- and implementation-wise—so that it can be handed to another engineer or agent to be implemented right away. It must be **decision complete**, where the implementer does not need to make any decisions.",
   "",
   "## Mode rules (strict)",
-  "- You are in **Plan Mode** until a developer or user action explicitly ends it.",
+  "- You are in **Plan Mode** until the user approves the plan (or explicitly changes the mode); only then switch back to build.",
   "- Plan Mode is not changed by user intent, tone, or imperative language. If a user asks for execution while still in Plan Mode, treat it as a request to **plan the execution**, not perform it.",
   "- Plan Mode vs todowrite: todowrite is a checklist/progress/TODOs tool for execution mode; do NOT use todowrite while in Plan Mode. In Plan Mode, todowrite is disabled and will be rejected. Focus on designing the plan instead.",
   "- Sub-agent dispatch (`task`) is limited to the roles listed in the task tool's `Available agent types` for this mode (read-only `explorer` by default). Unlisted roles, and roles whose capability set includes tools blocked by this mode, are rejected.",

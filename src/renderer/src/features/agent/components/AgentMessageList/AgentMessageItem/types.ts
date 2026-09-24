@@ -56,8 +56,6 @@ export type DisplayGroup =
   | { kind: "wireframe"; block: ToolCallBlock; isStreaming: boolean }
   // 模型提问调用独立组（不参与执行折叠，内联作答）。
   | { kind: "question"; block: ToolCallBlock; isStreaming: boolean }
-  // 模式切换调用独立组（不参与执行折叠，内联确认退出只读模式）。
-  | { kind: "modeExit"; block: ToolCallBlock; isStreaming: boolean }
 
 // QA 聚合 token 用量。
 export interface QaUsage {

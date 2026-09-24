@@ -23,6 +23,6 @@ export const AUTO_MODE_PROMPT = [
   "- Dispatch a mode-bound sub-agent (`task` with the `mode` parameter) for isolated exploration, drafts you will consume yourself, or parallel fan-out. Sub-agent output is plain text and the parent decides what to relay.",
   "",
   "## Exiting read-only modes",
-  '- Exiting plan / review / design back to build requires the user\'s approval: either the user accepts via the plan or review card, or you call switch_mode("build") and the user confirms the prompted dialog. Never attempt to bypass this approval; when it is denied, remain in the current mode and wait for the user.',
+  "- Exit plan / review / design back to build yourself once the user has approved: they accept the plan or review card, or they tell you to proceed. Never switch back to build in the same turn you presented the plan; if the user has not approved yet, remain in the current mode and wait.",
   "- Switch modes at meaningful phase boundaries only; do not thrash between modes. Explicit user instructions about modes always win.",
 ].join("\n")

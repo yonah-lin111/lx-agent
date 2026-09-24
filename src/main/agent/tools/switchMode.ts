@@ -1,5 +1,5 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
-import { isReadOnlyEffectiveMode, SWITCH_MODE_TARGETS } from "@shared/contracts/agent"
+import { SWITCH_MODE_TARGETS } from "@shared/contracts/agent"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
 
@@ -24,13 +24,8 @@ export interface SwitchModeDeps {
   getBaseMode: () => CollaborationMode
   // 当前有效模式。
   getEffectiveMode: () => CollaborationMode
-  // 切换有效模式（落 mode_change 条目并广播）。
+  // 切换有效模式（落 mode_change 条目并广播，状态栏与流程视图可见）。
   switchEffectiveMode: (mode: CollaborationMode) => { ok: true } | { ok: false; error: string }
-  // 只读有效模式退出审批（renderer 内联确认块；返回 false = 拒绝）。
-  requestExitApproval: (input: {
-    toolCallId: string
-    fromMode: CollaborationMode
-  }) => Promise<boolean>
 }
 
 // 切换后的即时引导（系统提示词在下一轮才重建，本轮靠工具结果同步契约）。
@@ -38,35 +33,27 @@ const MODE_SWITCH_GUIDANCE: Record<(typeof SWITCH_MODE_TARGETS)[number], string>
   plan: [
     "Switched to Plan Mode (strictly read-only).",
     "Explore first with read-only tools, then deliver a decision-complete plan inside <proposed_plan> tags and end your turn for user approval.",
-    "Mutating tools (write, edit, apply_patch, todowrite, memory) are now hard-blocked; exiting back to build requires the user's approval.",
+    "Mutating tools (write, edit, apply_patch, todowrite, memory) are now hard-blocked.",
   ].join(" "),
   review: [
     "Switched to Review Mode (strictly read-only audit).",
     "Inspect the requested target (default: current uncommitted changes) and output structured findings inside <review_findings> tags.",
-    "Mutating tools are now hard-blocked; exiting back to build requires the user's approval.",
+    "Mutating tools are now hard-blocked.",
   ].join(" "),
   design: [
     "Switched to Front Design Mode (read-only prototyping).",
     "Deliver the prototype inside <front_design> tags; the wireframe tool is disabled.",
-    "Mutating tools are now hard-blocked; exiting back to build requires the user's approval.",
+    "Mutating tools are now hard-blocked.",
   ].join(" "),
   build:
     "Switched to Build Mode. Execution is enabled: proceed with implementation and verify the result.",
 }
 
-// 拒绝对话框后的回执（引导模型留在原模式等待用户）。
-const declinedExitMessage = (fromMode: CollaborationMode): string =>
-  [
-    `The user declined to exit ${fromMode} Mode back to build.`,
-    `Remain in ${fromMode} Mode and continue improving the current deliverable, or wait for the user's explicit instruction.`,
-    'Do not call switch_mode("build") again in this turn.',
-  ].join(" ")
-
 /**
- * switch_mode 工具（仅 auto 编排基础模式可用）：模型按自动编排策略切换自身有效模式。
+ * switch_mode 工具（仅 auto 编排基础模式可用）：模型按自动编排策略自行切换有效模式。
  *
- * 进入只读模式（plan / review / design）即时生效；退出只读模式回 build 必须经用户确认对话框
- * （renderer 内联确认块）批准，拒绝时保持原模式并返回引导。
+ * 切换即时生效并落 mode_change 条目（viaAuto）供审计；用户可在状态栏随时改回。
+ * 退出只读模式由模型在用户批准后自行完成（提示词约束：不得在展示计划的同一轮切回 build）。
  */
 export const createSwitchModeTool = (
   deps: SwitchModeDeps,
@@ -77,12 +64,12 @@ export const createSwitchModeTool = (
     "Switch the collaboration mode of this session (Auto orchestration).",
     "Use 'plan' before implementing work that spans multiple files, introduces architecture/API/schema decisions, has ambiguous requirements, or is risky to reverse; deliver the plan with <proposed_plan> and end your turn.",
     "Use 'review' for read-only audits and verification passes (deliver <review_findings>); use 'design' for front-end prototypes (deliver <front_design>).",
-    "Use 'build' to resume execution after the user approves a plan or design; this prompts the user for confirmation before leaving a read-only mode.",
+    "Use 'build' to resume execution after the user approves the plan or design; never switch back to build in the same turn you presented the plan.",
     "Do not switch for small, clear, low-risk changes — stay in the current mode.",
   ].join(" "),
   inputSchema: SWITCH_MODE_INPUT_SCHEMA,
   executionMode: "sequential",
-  execute: async (toolCallId, params) => {
+  execute: async (_toolCallId, params) => {
     const baseMode = deps.getBaseMode()
     if (baseMode !== "auto") {
       return {
@@ -100,17 +87,6 @@ export const createSwitchModeTool = (
     if (target === currentMode) {
       return {
         content: [{ type: "text", text: `Already in '${currentMode}' mode.` }],
-      }
-    }
-
-    // 退出只读有效模式：必须经用户批准（拒绝或撤销均视为拒绝）。
-    if (target === "build" && isReadOnlyEffectiveMode(currentMode)) {
-      const allowed = await deps.requestExitApproval({
-        toolCallId,
-        fromMode: currentMode,
-      })
-      if (!allowed) {
-        return { content: [{ type: "text", text: declinedExitMessage(currentMode) }] }
       }
     }
 

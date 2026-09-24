@@ -44,7 +44,7 @@ export const useFlowSteps = ({
   const [groupExpansionOverrides, setGroupExpansionOverrides] = useState<Record<string, boolean>>(
     {},
   )
-  const pendingInteractionStepIdsRef = useRef(new Set<string>())
+  const pendingQuestionStepIdsRef = useRef(new Set<string>())
 
   // 提取步骤列表：直接由实时 messages 响应式计算，AI 生成输出中实时跟进新步骤与流式内容。
   // reuseExecutionSteps 稳定未变化步骤的对象引用，使子项 memo 只命中真正变化的步骤。
@@ -102,10 +102,6 @@ export const useFlowSteps = ({
       if (step.toolContent?.toolName === "question") {
         return step.toolContent.question !== undefined
       }
-      // 模式退出审批挂起：默认展开，保证确认按钮在流程视图可见（否则工具挂起、视图无入口）。
-      if (step.toolContent?.modeExit !== undefined) {
-        return true
-      }
       // 默认规则：全部用户 item 与 AI 回复 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；审查卡片 reviewFindings 默认展开；todowrite 工具默认展开；批量扇出（tasks[]）的子代理步骤默认展开；每个已完成 turn 的最后一个 step 默认展开；其余全部折叠
       if (
         step.kind === "user" ||
@@ -128,26 +124,25 @@ export const useFlowSteps = ({
     [userExpansionOverrides, lastStepIdsOfCompletedTurns],
   )
 
-  // 挂起交互（question / 模式退出审批）完成后清除其手动展开覆盖，恢复完成态默认折叠；
-  // 历史步骤仍可由用户再次展开查看。
+  // question 完成后清除其手动展开覆盖，恢复完成态默认折叠；历史 question 仍可由用户再次展开查看。
   useLayoutEffect(() => {
-    const pendingInteractionStepIds = new Set(
+    const pendingQuestionStepIds = new Set(
       steps
-        .filter((step) => step.toolContent?.question || step.toolContent?.modeExit)
+        .filter((step) => step.toolContent?.toolName === "question" && step.toolContent.question)
         .map((step) => step.id),
     )
 
     setUserExpansionOverrides((prev) => {
       let next: Record<string, boolean> | undefined
-      for (const id of pendingInteractionStepIdsRef.current) {
-        if (!pendingInteractionStepIds.has(id) && id in prev) {
+      for (const id of pendingQuestionStepIdsRef.current) {
+        if (!pendingQuestionStepIds.has(id) && id in prev) {
           next ??= { ...prev }
           delete next[id]
         }
       }
       return next ?? prev
     })
-    pendingInteractionStepIdsRef.current = pendingInteractionStepIds
+    pendingQuestionStepIdsRef.current = pendingQuestionStepIds
   }, [steps])
 
   // 切换指定步骤的展开/折叠状态并记录手动覆盖
