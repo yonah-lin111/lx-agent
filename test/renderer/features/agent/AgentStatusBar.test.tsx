@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { PermissionRequest } from "@shared/contracts/agent"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AgentStatusBar } from "@/features/agent"
 
@@ -117,5 +117,60 @@ describe("AgentStatusBar", () => {
     const passedProps = mockGitStatusBar.mock.calls[0]?.[0] as Record<string, unknown>
     expect(passedProps.alwaysShowWorktree).toBeUndefined()
     expect(passedProps.interactive).toBe(true)
+  })
+
+  it("根节点按展示模式标注模式底纹：auto 下跟随有效模式，有效 build 时回退 auto", () => {
+    const { container, rerender } = render(
+      <AgentStatusBar
+        collaborationMode="auto"
+        effectiveMode="plan"
+        pendingRequest={null}
+        onPermissionRespond={vi.fn()}
+      />,
+    )
+    expect(container.querySelector(".agent-status-bar")?.getAttribute("data-agent-mode")).toBe(
+      "plan",
+    )
+
+    rerender(
+      <AgentStatusBar
+        collaborationMode="auto"
+        effectiveMode="build"
+        pendingRequest={null}
+        onPermissionRespond={vi.fn()}
+      />,
+    )
+    expect(container.querySelector(".agent-status-bar")?.getAttribute("data-agent-mode")).toBe(
+      "auto",
+    )
+
+    rerender(
+      <AgentStatusBar
+        collaborationMode="review"
+        pendingRequest={null}
+        onPermissionRespond={vi.fn()}
+      />,
+    )
+    expect(container.querySelector(".agent-status-bar")?.getAttribute("data-agent-mode")).toBe(
+      "review",
+    )
+  })
+
+  it("生成中禁用模式切换：不渲染可点击的模式按钮，点击不回调", () => {
+    const onCollaborationModeChange = vi.fn()
+    const { container } = render(
+      <AgentStatusBar
+        collaborationMode="plan"
+        isStreaming={true}
+        onCollaborationModeChange={onCollaborationModeChange}
+        pendingRequest={null}
+        onPermissionRespond={vi.fn()}
+      />,
+    )
+
+    expect(container.querySelector("[aria-haspopup='listbox']")).toBeNull()
+    fireEvent.click(screen.getByText("Plan"))
+    expect(onCollaborationModeChange).not.toHaveBeenCalled()
+    expect(screen.queryByRole("listbox")).toBeNull()
   })
 })

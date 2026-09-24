@@ -5,6 +5,7 @@ import type {
   SandboxPolicy,
 } from "@shared/contracts/agent"
 import { GitStatusBar } from "@/features/git"
+import { resolveDisplayCollaborationMode } from "@/lib/collaborationModes"
 import { CollaborationModeButton } from "./CollaborationModeButton"
 import { JobStatusButton } from "./JobStatusButton"
 import { PermissionStatusButton } from "./PermissionStatusButton"
@@ -33,6 +34,8 @@ export interface AgentStatusBarProps {
   collaborationMode?: CollaborationMode
   // auto 编排下的有效模式（展示用）。
   effectiveMode?: CollaborationMode
+  // Agent 生成/执行中：协作模式按钮禁止切换（仅 hover 提示）。
+  isStreaming?: boolean
   // 切换协作模式（点击状态栏模式标签弹层选择；缺省时仅展示）。
   onCollaborationModeChange?: (mode: CollaborationMode) => void
   // 挂起的权限请求（非空时状态栏展示权限 icon 与常驻 tooltip）。
@@ -64,12 +67,16 @@ export const AgentStatusBar = ({
   sandboxPolicy,
   collaborationMode,
   effectiveMode,
+  isStreaming = false,
   onCollaborationModeChange,
   pendingRequest,
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
+  // 模式底纹跟随展示模式（auto 下按有效模式着色），与标签配色同一规则。
+  const displayMode = resolveDisplayCollaborationMode(collaborationMode ?? "build", effectiveMode)
+
   return (
-    <div className="agent-status-bar flex min-w-0 items-center">
+    <div className="agent-status-bar flex min-w-0 items-center" data-agent-mode={displayMode}>
       <div className="min-w-0 flex-1">
         <GitStatusBar
           projectPath={projectPath}
@@ -84,6 +91,7 @@ export const AgentStatusBar = ({
       <CollaborationModeButton
         mode={collaborationMode}
         effectiveMode={effectiveMode}
+        disabled={isStreaming}
         onModeChange={onCollaborationModeChange}
       />
       <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />

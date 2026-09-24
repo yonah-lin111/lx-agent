@@ -1258,3 +1258,37 @@ select {
 .agent-visual-header {
   user-select: none;
 }
+
+/* Agent 协作模式底纹：状态栏与输入框按当前展示模式叠加主题色（令牌见各主题文件）。
+   data-agent-mode 由渲染层按 resolveDisplayCollaborationMode 标注；build 为 transparent，保持默认观感。 */
+.agent-input-container,
+.agent-status-bar {
+  background-image: linear-gradient(
+    var(--agent-mode-tint, transparent),
+    var(--agent-mode-tint, transparent)
+  );
+}
+
+[data-agent-mode="build"] {
+  --agent-mode-tint: var(--agent-mode-build-tint);
+}
+
+[data-agent-mode="auto"] {
+  --agent-mode-tint: var(--agent-mode-auto-tint);
+}
+
+[data-agent-mode="plan"] {
+  --agent-mode-tint: var(--agent-mode-plan-tint);
+}
+
+[data-agent-mode="review"] {
+  --agent-mode-tint: var(--agent-mode-review-tint);
+}
+
+[data-agent-mode="design"] {
+  --agent-mode-tint: var(--agent-mode-design-tint);
+}
+
+[data-agent-mode="minimal"] {
+  --agent-mode-tint: var(--agent-mode-minimal-tint);
+}

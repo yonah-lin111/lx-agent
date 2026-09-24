@@ -12,6 +12,7 @@ import { buildGitWorktreeOptions, getGitWorktreeDirName, useGitWorktrees } from 
 import { settingsApi } from "@/features/settings/api/settingsApi"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
+import { resolveDisplayCollaborationMode } from "@/lib/collaborationModes"
 import { agentApi } from "./api/agentApi"
 import { AgentExecutionFlowList } from "./components/AgentExecutionFlowList"
 import { AgentInput } from "./components/AgentInput"
@@ -480,6 +481,13 @@ export const AgentPage = ({
 
       e.preventDefault()
       e.stopPropagation()
+
+      // Agent 生成/执行中禁止切换模式（与状态栏按钮同一约束），给出明确反馈。
+      if (isStreaming) {
+        warning(t("agent.collaborationModeLockedWhileGenerating"))
+        return
+      }
+
       toggleCollaborationMode()
     }
 
@@ -487,7 +495,7 @@ export const AgentPage = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown, true)
     }
-  }, [tabId, toggleCollaborationMode])
+  }, [tabId, toggleCollaborationMode, isStreaming, warning, t])
 
   // Cmd / Ctrl + Shift + V 快捷键：在当前 AgentPage 聚焦时快速切换语音录入/转录
   useEffect(() => {
@@ -884,6 +892,7 @@ export const AgentPage = ({
         <AgentInput
           inputText={inputText}
           isStreaming={isStreaming}
+          agentMode={resolveDisplayCollaborationMode(collaborationMode, effectiveMode)}
           isCompacting={isCompacting}
           isCompactingManual={isCompactingManual}
           queuedCount={queuedCount}
@@ -931,6 +940,7 @@ export const AgentPage = ({
           sandboxPolicy={currentSandboxPolicy}
           collaborationMode={collaborationMode}
           effectiveMode={effectiveMode}
+          isStreaming={isStreaming}
           onCollaborationModeChange={selectCollaborationMode}
           pendingRequest={pendingRequest}
           onPermissionRespond={respondPermission}

@@ -56,6 +56,18 @@ describe("AgentInput 布局与操作按钮测试", () => {
     supportsImages: true,
   }
 
+  it("按 agentMode 标注输入区模式底纹（缺省 build）", () => {
+    const { container, rerender } = render(<AgentInput {...defaultProps} />)
+    expect(container.querySelector(".agent-input-container")?.getAttribute("data-agent-mode")).toBe(
+      "build",
+    )
+
+    rerender(<AgentInput {...defaultProps} agentMode="plan" />)
+    expect(container.querySelector(".agent-input-container")?.getAttribute("data-agent-mode")).toBe(
+      "plan",
+    )
+  })
+
   it("底栏操作区不再渲染扩大/自适应输入框按钮", () => {
     const { container } = render(<AgentInput {...defaultProps} />)
 

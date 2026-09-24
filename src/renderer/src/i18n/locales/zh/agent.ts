@@ -60,7 +60,7 @@ export const agent = {
   collaborationModeDesignDesc: "前端设计专属模式，禁用内嵌 render 工具，输出代码热更新至设计看板。",
   collaborationModeAuto: "Auto 模式",
   collaborationModeAutoDesc:
-    "自动编排模式：由模型按阶段自行切换 Plan / Review / Design / Build，并在隔离探查或并行扇出场景派发模式子代理；退出只读模式需用户批准。",
+    "自动编排模式：由模型按阶段自行切换 Plan / Review / Design / Build，并在隔离探查或并行扇出场景派发模式子代理；用户批准后模型自行切回 Build。",
   collaborationModeMinimal: "Minimal 模式",
   collaborationModeMinimalDesc:
     "仅开放终端与文件读写工具（bash / read / write / edit）的极简模式，适合测试与对比模型基础表现。",
@@ -71,6 +71,7 @@ export const agent = {
   collaborationModeSwitchedToDesign: "已切换至 Design 模式（前端设计）",
   collaborationModeSwitchedToMinimal: "已切换至 Minimal 模式（终端 + 读写）",
   collaborationModeShortcutHint: "使用 Shift + Tab 可循环切换模式，点击可展开模式列表",
+  collaborationModeLockedWhileGenerating: "Agent 运行中不可切换模式",
   modeSwitchViaAuto: "Auto 编排",
   review: {
     badge: "代码审查报告",

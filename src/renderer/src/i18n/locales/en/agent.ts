@@ -63,7 +63,7 @@ export const agent = {
     "Frontend design mode. Disables embedded render tools and hot-reloads output code in Design page.",
   collaborationModeAuto: "Auto Mode",
   collaborationModeAutoDesc:
-    "Orchestration mode: the model switches itself between Plan / Review / Design / Build as each phase requires and dispatches mode-bound sub-agents for isolated exploration or parallel fan-out; exiting a read-only mode requires user approval.",
+    "Orchestration mode: the model switches itself between Plan / Review / Design / Build as each phase requires and dispatches mode-bound sub-agents for isolated exploration or parallel fan-out; after user approval it switches back to Build itself.",
   collaborationModeMinimal: "Minimal Mode",
   collaborationModeMinimalDesc:
     "Minimal mode with terminal and file read/write tools only (bash / read / write / edit), useful for testing and comparing basic model performance.",
@@ -74,6 +74,8 @@ export const agent = {
   collaborationModeSwitchedToDesign: "Switched to Design Mode (Frontend Design)",
   collaborationModeSwitchedToMinimal: "Switched to Minimal Mode (Terminal + Read/Write)",
   collaborationModeShortcutHint: "Press Shift + Tab to cycle mode, click to open the mode list",
+  collaborationModeLockedWhileGenerating:
+    "Mode switching is unavailable while the agent is running",
   modeSwitchViaAuto: "via Auto",
   review: {
     badge: "Code Review Report",

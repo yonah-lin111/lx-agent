@@ -7,13 +7,15 @@ import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
-import { COLLABORATION_MODE_META } from "@/lib/collaborationModes"
+import { COLLABORATION_MODE_META, resolveDisplayCollaborationMode } from "@/lib/collaborationModes"
 
 interface CollaborationModeButtonProps {
   // 基础模式（用户选择；auto = 自动编排）。
   mode?: CollaborationMode
   // auto 编排下模型切出的有效模式（展示用；非 auto 缺省 = mode）。
   effectiveMode?: CollaborationMode
+  // Agent 生成/执行中：禁止切换模式（不打开列表，仅保留 hover 信息与锁定提示）。
+  disabled?: boolean
   // 点击弹层选择模式（缺省时退化为纯 hover 提示）。
   onModeChange?: (mode: CollaborationMode) => void
 }
@@ -25,6 +27,7 @@ interface CollaborationModeButtonProps {
 export const CollaborationModeButton = ({
   mode = "build",
   effectiveMode,
+  disabled = false,
   onModeChange,
 }: CollaborationModeButtonProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -47,14 +50,20 @@ export const CollaborationModeButton = ({
           <span className="text-white/45">{t(baseMeta.descKey)}</span>
         )}
       </div>
-      <div className="border-t border-white/10 pt-1 text-xs text-white/45">
-        {t("agent.collaborationModeShortcutHint")}
+      <div className="flex flex-col gap-0.5 border-t border-white/10 pt-1 text-xs text-white/45">
+        {disabled ? (
+          <span className="text-amber-300/80">
+            {t("agent.collaborationModeLockedWhileGenerating")}
+          </span>
+        ) : (
+          <span>{t("agent.collaborationModeShortcutHint")}</span>
+        )}
       </div>
     </div>
   )
 
-  // 有效模式为 build 时保持 auto 自身的图标与色板；只读有效模式下切换为对应模式的视觉信号。
-  const tagMeta = isAuto && activeMode === "build" ? baseMeta : meta
+  // 展示模式：auto 下按有效模式着色（有效 build 时回退 auto 自身）；与模式底纹同一规则。
+  const tagMeta = COLLABORATION_MODE_META[resolveDisplayCollaborationMode(mode, effectiveMode)]
   const tag = (
     <LxTag
       size="small"
@@ -67,7 +76,7 @@ export const CollaborationModeButton = ({
     </LxTag>
   )
 
-  if (!onModeChange) {
+  if (!onModeChange || disabled) {
     return (
       <LxTooltip placement="top" content={hoverContent}>
         {tag}

@@ -67,3 +67,16 @@ export const COLLABORATION_MODE_META: Record<
     Icon: Terminal,
   },
 }
+
+/**
+ * 解析展示模式：auto 下按有效模式展示（有效 build 时回退 auto 自身）；
+ * 状态栏标签配色与输入框/状态栏模式底纹共用同一规则，避免两侧分叉。
+ */
+export const resolveDisplayCollaborationMode = (
+  mode: CollaborationMode,
+  effectiveMode?: CollaborationMode,
+): CollaborationMode => {
+  if (mode !== "auto") return mode
+  const active = effectiveMode ?? "build"
+  return active === "build" ? "auto" : active
+}
