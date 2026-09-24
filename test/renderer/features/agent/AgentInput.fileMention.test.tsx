@@ -356,4 +356,58 @@ describe("AgentInput 文件提及面板唤起", () => {
 
     expect(view.state.doc.toString()).toBe("$demo-skill ")
   })
+
+  it("处于 auto 模式时输入 @ 展示模式候选，并在点选后插入 @agentMode:<mode>", async () => {
+    vi.mocked(projectApi.searchFiles).mockResolvedValue([])
+
+    let updateText: (val: string) => void = () => {}
+    const Harness = () => {
+      const [text, setText] = useState("")
+      updateText = setText
+      return (
+        <AgentInput
+          inputText={text}
+          isStreaming={false}
+          collaborationMode="auto"
+          effectiveMode="build"
+          isCompacting={false}
+          queuedCount={0}
+          queuedMessages={[]}
+          onInputChange={setText}
+          onSend={vi.fn()}
+          onStop={vi.fn()}
+          onClear={vi.fn()}
+          onUndo={vi.fn()}
+          onCompact={vi.fn()}
+          selectedModel="m"
+          onModelChange={vi.fn()}
+          modelOptions={[]}
+          hasModelOptions={false}
+          worktreeOptions={null}
+          onWorktreeSelect={vi.fn()}
+          selectedFiles={[]}
+          onFilesChange={vi.fn()}
+          supportsImages={false}
+        />
+      )
+    }
+
+    render(<Harness />)
+    await act(async () => {})
+    const content = document.querySelector(".cm-content") as HTMLElement
+    expect(content).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.focus(content)
+      updateText("@")
+    })
+
+    const modeOption = await screen.findByRole("option", { name: /@agentMode:plan/ })
+    expect(modeOption).not.toBeNull()
+    expect(modeOption.textContent).toContain("Mode")
+
+    fireEvent.mouseDown(modeOption)
+    const view = EditorView.findFromDOM(content)
+    expect(view?.state.doc.toString()).toBe("@agentMode:plan ")
+  })
 })

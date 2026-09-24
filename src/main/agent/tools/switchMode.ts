@@ -26,6 +26,8 @@ export interface SwitchModeDeps {
   getEffectiveMode: () => CollaborationMode
   // 切换有效模式（落 mode_change 条目并广播，状态栏与流程视图可见）。
   switchEffectiveMode: (mode: CollaborationMode) => { ok: true } | { ok: false; error: string }
+  // 允许切换的目标模式列表（缺省全量 SWITCH_MODE_TARGETS）。
+  getAllowedTargets?: () => readonly (typeof SWITCH_MODE_TARGETS)[number][]
 }
 
 // 切换后的即时引导（系统提示词在下一轮才重建，本轮靠工具结果同步契约）。
@@ -87,6 +89,18 @@ export const createSwitchModeTool = (
     if (target === currentMode) {
       return {
         content: [{ type: "text", text: `Already in '${currentMode}' mode.` }],
+      }
+    }
+
+    const allowedTargets = deps.getAllowedTargets?.() ?? SWITCH_MODE_TARGETS
+    if (!allowedTargets.includes(target)) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Mode '${target}' is disabled in settings. You cannot switch to it. Available modes: ${allowedTargets.join(", ")}.`,
+          },
+        ],
       }
     }
 

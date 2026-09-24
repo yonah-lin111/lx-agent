@@ -76,4 +76,15 @@ describe("switch_mode 工具（auto 编排）", () => {
     expect(text).toBe("boom")
     expect(text).not.toContain("Switched to")
   })
+
+  it("当目标模式不在允许列表中时拒绝切换", async () => {
+    const switchEffectiveMode = vi.fn(() => ({ ok: true as const }))
+    const deps = createDeps({
+      getAllowedTargets: () => ["build", "plan"],
+      switchEffectiveMode,
+    })
+    const text = await runTool(deps, { mode: "design" })
+    expect(text).toContain("Mode 'design' is disabled in settings")
+    expect(switchEffectiveMode).not.toHaveBeenCalled()
+  })
 })

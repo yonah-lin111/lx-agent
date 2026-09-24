@@ -88,7 +88,7 @@ describe("Context Window Guidance Harness 深度测试", () => {
     })
 
     // Plan Mode 行为约束与 Guidance 并存
-    expect(planAssembly.rendered).toContain("# Collaboration Mode: Plan Mode")
+    expect(planAssembly.rendered).toContain('<collaboration_mode name="plan"')
     expect(planAssembly.rendered).toContain("<proposed_plan>")
     expect(planAssembly.rendered).toContain('<context_window_guidance level="warning">')
     expect(planAssembly.rendered).toContain("85%")
@@ -105,7 +105,7 @@ describe("Context Window Guidance Harness 深度测试", () => {
     })
 
     // Review Mode 行为约束与 Critical Guidance 并存
-    expect(reviewAssembly.rendered).toContain("# Collaboration Mode: Review Mode")
+    expect(reviewAssembly.rendered).toContain('<collaboration_mode name="review"')
     expect(reviewAssembly.rendered).toContain("<review_findings>")
     expect(reviewAssembly.rendered).toContain('<context_window_guidance level="critical">')
     expect(reviewAssembly.rendered).toContain("92%")

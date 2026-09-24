@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process"
 import type { AgentContextUsage, CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
-import { getModeAllowedTools } from "@shared/contracts/agent"
+import { getEffectiveAutoTargets, getModeAllowedTools } from "@shared/contracts/agent"
+import { getPermissionSettings } from "@/services/settingsService"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import type { PersonalityName } from "./prompts/personalities"
 import { defaultSystemPromptManager, type SystemPromptManager } from "./prompts/systemPromptManager"
@@ -308,7 +309,14 @@ export const createRegistry = (
   }
   // switch_mode：仅 auto 编排基础模式装配时注入（激活列表由调用方收窄）。
   if (switchModeDeps) {
-    registry.register(createSwitchModeTool(switchModeDeps))
+    registry.register(
+      createSwitchModeTool({
+        ...switchModeDeps,
+        getAllowedTargets:
+          switchModeDeps.getAllowedTargets ??
+          (() => getEffectiveAutoTargets(getPermissionSettings().autoEnabledModes)),
+      }),
+    )
   }
   // task 子代理工具：execute 时从注册表当前激活集派生子代理工具集（去掉 task 斩断递归）。
   if (taskDeps) {

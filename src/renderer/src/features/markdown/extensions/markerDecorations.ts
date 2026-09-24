@@ -7,6 +7,7 @@ import {
 } from "@/features/markdown/commands/markdownReferenceCommands"
 import { MARKDOWN_REFERENCE_PATTERN } from "@/features/markdown/extensions/editorHighlight"
 import { extractAgentMentions } from "@/features/markdown/extensions/markdownAgentMentions"
+import { extractAgentModeMentions } from "@/features/markdown/extensions/markdownAgentModeMentions"
 import {
   isPathUnderReferencedRoots,
   MARKDOWN_DESIGN_MENTION_PATTERN,
@@ -101,6 +102,11 @@ export const scanMarkdownTokensInLine = (
   for (const mention of extractAgentMentions(line)) {
     mentionRanges.push({ from: mention.start, to: mention.end })
     addMarker(mention.start, mention.end, "cm-md-agent-mention")
+  }
+
+  for (const mention of extractAgentModeMentions(line)) {
+    mentionRanges.push({ from: mention.start, to: mention.end })
+    addMarker(mention.start, mention.end, "cm-md-agent-mode-mention")
   }
 
   addMatches(/(?<!\\)(?:\*\*|__)/g, "cm-md-strong-marker")

@@ -4,6 +4,7 @@ import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPan
 import { LxTag } from "@/components/ui/LxTag"
 import { getMentionDirectoryTag } from "@/features/project/utils"
 import { useTranslation } from "@/i18n"
+import { COLLABORATION_MODE_META } from "@/lib/collaborationModes"
 import type { AgentMentionItem } from "../types"
 import { panelClassName } from "../utils"
 
@@ -43,6 +44,43 @@ export const AgentInputFilePanel = ({
         <>
           {displayData.items.map((item, index) => {
             const isActive = index === displayData.activeIndex
+
+            if (item.kind === "agentMode") {
+              const meta = COLLABORATION_MODE_META[item.mode]
+              const Icon = meta.Icon
+
+              return (
+                <LxCommandPanelItem
+                  key={`agentMode-${item.mode}`}
+                  active={isActive}
+                  className="flex min-h-11 items-center gap-2 px-2 py-1 text-xs"
+                  index={index}
+                  leading={
+                    <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 text-[#a78bfa]">
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                  }
+                  onSelect={() => onSelect?.(item)}
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
+                      <span className="font-mono font-medium">@agentMode:{item.mode}</span>
+                      <span className="text-xs font-normal text-white/35">({item.label})</span>
+                    </span>
+                    {item.description && (
+                      <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
+                        {item.description}
+                      </span>
+                    )}
+                  </span>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <LxTag color={meta.color} className="pointer-events-none shrink-0" size="small">
+                      Mode
+                    </LxTag>
+                  </div>
+                </LxCommandPanelItem>
+              )
+            }
 
             if (item.kind === "skill") {
               const { skill } = item

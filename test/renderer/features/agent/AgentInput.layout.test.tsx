@@ -68,6 +68,18 @@ describe("AgentInput 布局与操作按钮测试", () => {
     )
   })
 
+  it("auto 模式下外部容器保持 auto 模式色，内部输入框标注有效模式色", () => {
+    const { container } = render(
+      <AgentInput {...defaultProps} collaborationMode="auto" effectiveMode="plan" />,
+    )
+    expect(container.querySelector(".agent-input-container")?.getAttribute("data-agent-mode")).toBe(
+      "auto",
+    )
+    expect(
+      container.querySelector(".agent-markdown-input-wrapper")?.getAttribute("data-agent-mode"),
+    ).toBe("plan")
+  })
+
   it("底栏操作区不再渲染扩大/自适应输入框按钮", () => {
     const { container } = render(<AgentInput {...defaultProps} />)
 

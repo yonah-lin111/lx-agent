@@ -1,5 +1,12 @@
 import type { EditorView } from "@codemirror/view"
-import type { AgentSessionSummary, PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
+import {
+  type AgentSessionSummary,
+  type AutoConfigurableMode,
+  type CollaborationMode,
+  getEffectiveAutoTargets,
+  type PromptTemplateItem,
+  type SkillItem,
+} from "@shared/contracts/agent"
 import type { Project, ProjectFileEntry } from "@shared/project"
 import type { Locale } from "@shared/settings"
 import type React from "react"
@@ -30,6 +37,7 @@ import {
 } from "../../AgentInputCommandPanels"
 import {
   DESIGN_MENTION_TAG,
+  filterAgentModeMentionCandidates,
   filterClawMentionCandidates,
   filterSkillsByQuery,
   getMatchedCommands,
@@ -57,6 +65,10 @@ interface UseAgentInputPanelsProps {
   promptHistory?: string[]
   // 重新拉取历史提示词（进入二级面板时调用）。
   refreshPromptHistory?: () => void
+  // 基础协作模式。
+  collaborationMode?: CollaborationMode
+  // Auto 编排下允许启用的模式列表（用于 @agentMode 补全候选裁剪）。
+  autoEnabledModes?: AutoConfigurableMode[]
   getPanelAnchor: () => HTMLElement | null
   t: (key: TranslationKey, params?: Record<string, string | number>) => string
   locale?: Locale
@@ -74,6 +86,8 @@ export const useAgentInputPanels = ({
   worktreeOptions,
   promptHistory = [],
   refreshPromptHistory,
+  collaborationMode,
+  autoEnabledModes,
   getPanelAnchor,
   t,
   locale = "zh",
@@ -537,8 +551,32 @@ export const useAgentInputPanels = ({
     )
   }, [activeMode, value, editorViewRef])
 
+  const allowedAutoModes = useMemo<readonly CollaborationMode[]>(() => {
+    return getEffectiveAutoTargets(autoEnabledModes)
+  }, [autoEnabledModes])
+
+  const isAuto = collaborationMode === "auto"
+
+  const matchedMentionAgentModes = useMemo(() => {
+    if (activeMode !== "file") return []
+    const view = editorViewRef.current
+    const cursor = view?.state.selection.main.head ?? value.length
+    const mention = getMentionQuery(value, cursor)
+    if (!mention) return []
+    const q = mention.query.toLowerCase().trim()
+    // 仅处于 auto 模式，或者显式输入 agentmode / mode 关键词时，提供模式候选
+    if (!isAuto && !q.startsWith("agentmode") && !q.startsWith("mode")) {
+      return []
+    }
+    return filterAgentModeMentionCandidates(allowedAutoModes, mention.query, t)
+  }, [activeMode, value, isAuto, allowedAutoModes, editorViewRef, t])
+
   const mentionItems = useMemo<AgentMentionItem[]>(() => {
     if (activeMode !== "file") return []
+    const modeItems: AgentMentionItem[] = matchedMentionAgentModes.map((item) => ({
+      kind: "agentMode",
+      ...item,
+    }))
     const designItems: AgentMentionItem[] = matchedMentionDesigns.map((design) => ({
       kind: "design",
       design,
@@ -560,9 +598,17 @@ export const useAgentInputPanels = ({
       kind: "claw",
       claw,
     }))
-    return [...designItems, ...skillItems, ...subagentItems, ...fileItems, ...clawItems]
+    return [
+      ...modeItems,
+      ...designItems,
+      ...skillItems,
+      ...subagentItems,
+      ...fileItems,
+      ...clawItems,
+    ]
   }, [
     activeMode,
+    matchedMentionAgentModes,
     matchedMentionDesigns,
     matchedMentionSkills,
     matchedMentionSubagents,

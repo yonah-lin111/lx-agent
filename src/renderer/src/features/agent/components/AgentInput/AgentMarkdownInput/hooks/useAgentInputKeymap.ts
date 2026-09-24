@@ -6,6 +6,7 @@ import type { GitWorktreeOption } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import type { MarkdownPasteReferenceOption } from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import { getAgentMentionDeletionRange } from "@/features/markdown/extensions/markdownAgentMentions"
+import { getAgentModeMentionDeletionRange } from "@/features/markdown/extensions/markdownAgentModeMentions"
 import type { TranslationKey } from "@/i18n"
 import type {
   AgentHistoryPromptItem,
@@ -524,6 +525,16 @@ export const useAgentInputKeymap = ({
                 view.dispatch({
                   changes: { from: designRange.from, to: designRange.to, insert: "" },
                   selection: { anchor: designRange.from },
+                })
+                return true
+              }
+
+              // 匹配 @agentMode 模式提及的快速整块删除
+              const modeRange = getAgentModeMentionDeletionRange(docText, cursor.from)
+              if (modeRange) {
+                view.dispatch({
+                  changes: { from: modeRange.from, to: modeRange.to, insert: "" },
+                  selection: { anchor: modeRange.from },
                 })
                 return true
               }

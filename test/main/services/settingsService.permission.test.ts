@@ -246,4 +246,24 @@ describe("settingsService 权限配置", () => {
       },
     })
   })
+
+  it("autoEnabledModes 合法值保留与去重，非法值过滤", () => {
+    writeConfigTree(holder.configPath, {
+      agent: {
+        permissions: {
+          autoEnabledModes: ["plan", "plan", "review", "invalid_mode", "design"],
+        },
+      },
+    })
+    expect(getPermissionSettings().autoEnabledModes).toEqual(["plan", "review", "design"])
+
+    savePermissionSettings({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+      autoEnabledModes: ["plan", "review"],
+    })
+    expect(getPermissionSettings().autoEnabledModes).toEqual(["plan", "review"])
+  })
 })

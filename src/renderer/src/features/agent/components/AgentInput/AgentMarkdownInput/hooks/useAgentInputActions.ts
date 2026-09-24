@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view"
-import type { SkillItem } from "@shared/contracts/agent"
+import type { CollaborationMode, SkillItem } from "@shared/contracts/agent"
 import { cleanWorkspacePath, type ProjectFileEntry } from "@shared/project"
 import type React from "react"
 import { useCallback, useRef } from "react"
@@ -687,6 +687,25 @@ export const useAgentInputActions = ({
     [editorViewRef, setActiveMode],
   )
 
+  const selectAgentMode = useCallback(
+    (mode: CollaborationMode): void => {
+      const view = editorViewRef.current
+      if (!view) return
+      const text = view.state.doc.toString()
+      const cursor = view.state.selection.main.head
+      const mention = getMentionQuery(text, cursor)
+      if (!mention) return
+      const insert = `@agentMode:${mode} `
+      view.dispatch({
+        changes: { from: mention.start, to: cursor, insert },
+        selection: { anchor: mention.start + insert.length },
+      })
+      view.focus()
+      setActiveMode(null)
+    },
+    [editorViewRef, setActiveMode],
+  )
+
   const selectBlockCommand = useCallback(
     (cmd: MarkdownBlockCommand): void => {
       const view = editorViewRef.current
@@ -725,6 +744,7 @@ export const useAgentInputActions = ({
     selectDesign,
     selectClawAgent,
     selectSubagentMention,
+    selectAgentMode,
     selectBlockCommand,
   }
 }

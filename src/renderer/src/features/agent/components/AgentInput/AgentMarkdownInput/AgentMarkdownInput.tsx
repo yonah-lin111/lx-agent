@@ -62,6 +62,9 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onSessionSelect,
       allowProjectChange = true,
       currentSessionId,
+      collaborationMode,
+      inputMode,
+      autoEnabledModes,
       onClear,
       onUndo,
       isOnlyOneTurnLeft,
@@ -118,6 +121,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       worktreeOptions,
       promptHistory,
       refreshPromptHistory,
+      collaborationMode,
+      autoEnabledModes,
       getPanelAnchor,
       t,
       locale,
@@ -173,6 +178,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         actions.selectSubagentMention(item.subagent)
       } else if (item.kind === "claw") {
         actions.selectClawAgent(item.claw)
+      } else if (item.kind === "agentMode") {
+        actions.selectAgentMode(item.mode)
       } else {
         actions.selectFile(item.file)
       }
@@ -370,7 +377,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     }, [value])
 
     return (
-      <div className="agent-markdown-input-wrapper relative min-w-0 flex-1">
+      <div
+        data-agent-mode={inputMode}
+        className="agent-markdown-input-wrapper relative min-w-0 flex-1"
+      >
         {/* 面板集合 */}
         <AgentInputCommandPanel
           isOpen={panels.isCommandMode}

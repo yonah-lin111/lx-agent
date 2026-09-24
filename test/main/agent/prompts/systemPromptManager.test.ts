@@ -404,10 +404,8 @@ describe("SystemPromptManager", () => {
           collaborationMode: "review",
         })
 
-        expect(assembly.rendered).toContain(
-          "# Collaboration Mode: Review Mode (Strictly Read-Only Audit)",
-        )
-        expect(assembly.rendered).toContain("## Default Review Target")
+        expect(assembly.rendered).toContain('<collaboration_mode name="review" read_only="true">')
+        expect(assembly.rendered).toContain("default_target")
         expect(assembly.rendered).toContain(
           "current uncommitted changes (staged, unstaged, and untracked files)",
         )
@@ -420,7 +418,7 @@ describe("SystemPromptManager", () => {
           collaborationMode: "design",
         })
 
-        expect(assembly.rendered).toContain("# Collaboration Mode: Front Design Mode")
+        expect(assembly.rendered).toContain('<collaboration_mode name="design" read_only="true">')
         expect(assembly.rendered).toContain("<front_design")
         expect(assembly.rendered).toContain("</front_design>")
       })
@@ -539,26 +537,22 @@ describe("SystemPromptManager", () => {
         const manager = createDefaultSystemPromptManager()
 
         const autoBuild = await manager.assemble({ collaborationMode: "auto" })
-        expect(autoBuild.rendered).toContain("# Collaboration Mode: Auto Orchestration")
+        expect(autoBuild.rendered).toContain('<collaboration_mode name="auto">')
         expect(autoBuild.rendered).toContain("switch_mode")
-        expect(autoBuild.rendered).not.toContain("# Collaboration Mode: Plan Mode")
+        expect(autoBuild.rendered).not.toContain('<collaboration_mode name="plan"')
 
         const autoPlan = await manager.assemble({
           collaborationMode: "auto",
           effectiveCollaborationMode: "plan",
         })
-        expect(autoPlan.rendered).toContain("# Collaboration Mode: Auto Orchestration")
-        expect(autoPlan.rendered).toContain(
-          "# Collaboration Mode: Plan Mode (Strictly Non-Mutating)",
-        )
+        expect(autoPlan.rendered).toContain('<collaboration_mode name="auto">')
+        expect(autoPlan.rendered).toContain('<collaboration_mode name="plan" non_mutating="true">')
 
         const autoReview = await manager.assemble({
           collaborationMode: "auto",
           effectiveCollaborationMode: "review",
         })
-        expect(autoReview.rendered).toContain(
-          "# Collaboration Mode: Review Mode (Strictly Read-Only Audit)",
-        )
+        expect(autoReview.rendered).toContain('<collaboration_mode name="review" read_only="true">')
       })
 
       it("auto 的有效模式不触发 minimal 独占段（minimal 不在编排目标内）", async () => {
@@ -570,7 +564,7 @@ describe("SystemPromptManager", () => {
         expect(
           assembly.sections.some((section) => section.name === PROMPT_SECTION_NAMES.MINIMAL_MODE),
         ).toBe(false)
-        expect(assembly.rendered).toContain("# Collaboration Mode: Front Design Mode")
+        expect(assembly.rendered).toContain('<collaboration_mode name="design" read_only="true">')
       })
 
       it("非 minimal 模式不注入独占段，常规分层与各模式互不影响", async () => {

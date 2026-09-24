@@ -1,5 +1,6 @@
 import type {
   AgentSendContext,
+  AutoConfigurableMode,
   PermissionRequest,
   SandboxPolicy,
   SuggestedQuestionContextMessage,
@@ -137,12 +138,16 @@ export const AgentPage = ({
   }, [selectedSelection, refreshContextUsage])
 
   const [currentSandboxPolicy, setCurrentSandboxPolicy] = useState<SandboxPolicy>("workspace-write")
+  const [autoEnabledModes, setAutoEnabledModes] = useState<AutoConfigurableMode[] | undefined>(
+    undefined,
+  )
 
   const loadPermissionSettings = useCallback(() => {
     void settingsApi.getPermissionSettings().then((settings) => {
       if (settings?.sandboxPolicy) {
         setCurrentSandboxPolicy(settings.sandboxPolicy)
       }
+      setAutoEnabledModes(settings?.autoEnabledModes)
     })
   }, [])
 
@@ -892,7 +897,10 @@ export const AgentPage = ({
         <AgentInput
           inputText={inputText}
           isStreaming={isStreaming}
+          collaborationMode={collaborationMode}
+          effectiveMode={effectiveMode}
           agentMode={resolveDisplayCollaborationMode(collaborationMode, effectiveMode)}
+          autoEnabledModes={autoEnabledModes}
           isCompacting={isCompacting}
           isCompactingManual={isCompactingManual}
           queuedCount={queuedCount}

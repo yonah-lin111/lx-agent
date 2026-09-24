@@ -53,6 +53,20 @@ export const permissions = {
 - **Build / Plan / Review / Design**：与状态栏协作模式一致。
 - **Minimal**：仅开放终端与文件读写工具（\`bash\` / \`read\` / \`write\` / \`edit\`）的极简模式，适合测试与对比模型基础表现。
 - **生效时机**：仅对新建会话生效；当前会话的临时切换不会被覆盖。`,
+  autoModeAvailableModes: "Auto 模式可用目标模式 (Auto Mode Targets)",
+  autoModeAvailableModesDesc:
+    "设置处于 Auto 自动编排模式时，Agent 可以自主切入的目标模式以及输入框 @ 补全候选；Build 模式作为基础执行模式始终内置启用。",
+  autoModeAvailableModesDoc: `### Auto 模式可用目标模式
+
+配置在 Auto 自动编排模式下，Agent 可以根据任务复杂度自主切入的模式白名单。
+
+- **Build**：执行模式，始终内置启用。
+- **Plan**：复杂任务规划模式。未勾选时，Auto 模式将不会自动切换到 Plan 模式，@agentMode 补全候选亦不展示。
+- **Review**：代码审查与验证模式。未勾选时停用自动审查。
+- **Design**：前端原型设计模式。未勾选时停用自动设计。
+
+注：该设置仅约束 Auto 编排的自主决策和补全，不限制你在状态栏手动全局切换模式。`,
+  autoModeBuildFixed: "始终启用 (Built-in)",
   ruleGroups: "规则组",
   allowRules: "允许规则 (Allow)",
   allowRulesDesc: "无需确认直接放行执行",

@@ -1,4 +1,4 @@
-import type { SkillItem } from "@shared/contracts/agent"
+import type { CollaborationMode, SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
 import type { FrontDesignItem } from "@/features/agent/hooks/frontDesignStore"
 
@@ -61,6 +61,12 @@ export type AgentMentionItem =
   | {
       kind: "claw"
       claw: ClawMentionCandidate
+    }
+  | {
+      kind: "agentMode"
+      mode: CollaborationMode
+      label: string
+      description: string
     }
 
 // 子代理角色提及候选（内置角色 + 用户自定义角色）。

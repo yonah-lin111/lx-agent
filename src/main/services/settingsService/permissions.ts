@@ -1,9 +1,14 @@
 import type {
+  AutoConfigurableMode,
   CapabilityPermissions,
   CollaborationMode,
   PermissionSettings,
 } from "@shared/contracts/agent"
-import { COLLABORATION_MODE_ORDER, isToolBlockedByMode } from "@shared/contracts/agent"
+import {
+  AUTO_CONFIGURABLE_MODES,
+  COLLABORATION_MODE_ORDER,
+  isToolBlockedByMode,
+} from "@shared/contracts/agent"
 import { SUBAGENT_PERMISSION_TOOL_NAMES, SUBAGENT_WEBSEARCH_TOOL_NAMES } from "@shared/settings"
 
 import { getConfigPath } from "@/paths"
@@ -104,6 +109,18 @@ const normalizePermissionSettings = (raw: unknown): PermissionSettings => {
   if (collaborationMode) settings.collaborationMode = collaborationMode
   const modes = normalizeModePermissionsMap(raw.modes)
   if (modes) settings.modes = modes
+  if (Array.isArray(raw.autoEnabledModes)) {
+    const validModes = new Set<string>(AUTO_CONFIGURABLE_MODES)
+    const seen = new Set<AutoConfigurableMode>()
+    const autoEnabled: AutoConfigurableMode[] = []
+    for (const item of toStringArray(raw.autoEnabledModes)) {
+      if (validModes.has(item) && !seen.has(item as AutoConfigurableMode)) {
+        seen.add(item as AutoConfigurableMode)
+        autoEnabled.push(item as AutoConfigurableMode)
+      }
+    }
+    settings.autoEnabledModes = autoEnabled
+  }
   return settings
 }
 

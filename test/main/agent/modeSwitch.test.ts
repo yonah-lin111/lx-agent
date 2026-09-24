@@ -316,8 +316,8 @@ describe("Collaboration Mode Switch Entries", () => {
     expect(res.ok).toBe(true)
 
     const prompt = agentRunner.getRunner(sessionId)?.agent?.state.systemPrompt ?? ""
-    expect(prompt).toContain("# Collaboration Mode: Auto Orchestration")
-    expect(prompt).toContain("# Collaboration Mode: Plan Mode (Strictly Non-Mutating)")
+    expect(prompt).toContain('<collaboration_mode name="auto">')
+    expect(prompt).toContain('<collaboration_mode name="plan"')
     expect(prompt).not.toContain('<collaboration_mode name="build">')
   })
 })
