@@ -219,7 +219,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
     // 主 agent 提示词确为 Plan Mode，作为对照基线。
     expect(
       holder.capturedSystemPrompts.some((prompt) =>
-        prompt.includes("# Collaboration Mode: Plan Mode"),
+        prompt.includes('<collaboration_mode name="plan"'),
       ),
     ).toBe(true)
 
@@ -243,8 +243,8 @@ describe("AgentRunner 子代理协作模式隔离", () => {
       prompt.includes("You are now a sub-agent"),
     )
     expect(childPrompts.length).toBeGreaterThan(0)
-    expect(childPrompts[0]).toContain("# Collaboration Mode: Review Mode")
-    expect(childPrompts[0]).not.toContain("# Collaboration Mode: Plan Mode")
+    expect(childPrompts[0]).toContain('<collaboration_mode name="review"')
+    expect(childPrompts[0]).not.toContain('<collaboration_mode name="plan"')
 
     // 门禁：子代理工具调用传入子代理模式 review，而非主 agent 的 plan。
     expect(holder.gateModes).toContain("review")
@@ -278,7 +278,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
     )
     expect(childPrompts.length).toBeGreaterThan(0)
     expect(childPrompts[0]).toContain('<collaboration_mode name="build">')
-    expect(childPrompts[0]).not.toContain("# Collaboration Mode: Plan Mode")
+    expect(childPrompts[0]).not.toContain('<collaboration_mode name="plan"')
 
     expect(holder.gateModes).toContain("build")
     expect(holder.gateModes).not.toContain("plan")

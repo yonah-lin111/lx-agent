@@ -26,6 +26,18 @@ export const COLLABORATION_MODE_ORDER: readonly CollaborationMode[] = [
 // switch_mode 工具可达的目标模式（auto 不可达自身，minimal 永久排除在 auto 编排之外）。
 export const SWITCH_MODE_TARGETS = ["build", "plan", "review", "design"] as const
 
+// Auto 模式可配置启用的目标模式（build 始终内置支持，不可关闭；minimal 永久不可达）。
+export const AUTO_CONFIGURABLE_MODES = ["plan", "review", "design"] as const
+export type AutoConfigurableMode = (typeof AUTO_CONFIGURABLE_MODES)[number]
+
+// 计算当前生效的 Auto 模式可达目标（build 始终包含）。
+export const getEffectiveAutoTargets = (
+  configuredModes?: readonly AutoConfigurableMode[],
+): readonly (typeof SWITCH_MODE_TARGETS)[number][] => {
+  const allowed = new Set<string>(configuredModes ?? AUTO_CONFIGURABLE_MODES)
+  return ["build", ...AUTO_CONFIGURABLE_MODES.filter((m) => allowed.has(m))]
+}
+
 // 计算循环切换的下一个模式（末位回到首位）。
 export const nextCollaborationMode = (mode: CollaborationMode): CollaborationMode => {
   const index = COLLABORATION_MODE_ORDER.indexOf(mode)
@@ -168,6 +180,8 @@ export interface PermissionSettings {
   ask: string[]
   // 协作模式能力权限覆盖：缺省 = 不限制（仅受模式硬基线约束）；显式白名单只能收紧。
   modes?: Partial<Record<CollaborationMode, CapabilityPermissions>>
+  // Auto 编排模式下允许模型自主切换及 @agentMode 补全的模式列表（缺省 = ["plan", "review", "design"]）。
+  autoEnabledModes?: AutoConfigurableMode[]
 }
 
 // 权限请求（main → renderer，命令面板展示）。

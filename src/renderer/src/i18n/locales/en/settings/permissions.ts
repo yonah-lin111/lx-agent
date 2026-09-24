@@ -58,6 +58,20 @@ The collaboration mode used when a new session starts (new tab / after app resta
 - **Build / Plan / Review / Design**: same as the status bar collaboration modes.
 - **Minimal**: terminal + file read/write mode (\`bash\` / \`read\` / \`write\` / \`edit\`), useful for testing and comparing basic model performance.
 - **Effective**: applies to new sessions only; temporary switches in current sessions are not overwritten.`,
+  autoModeAvailableModes: "Auto Mode Target Modes",
+  autoModeAvailableModesDesc:
+    "Configure which target modes the Agent can switch to automatically in Auto Orchestration Mode and show in @ completions; Build Mode is always enabled.",
+  autoModeAvailableModesDoc: `### Auto Mode Target Modes
+
+Configure the allowed target modes in Auto Orchestration Mode.
+
+- **Build**: Execution mode, always enabled.
+- **Plan**: Architecture and implementation planning mode. When disabled, Auto Mode will not automatically switch to Plan Mode, and @agentMode completions will omit it.
+- **Review**: Read-only code audit and verification mode.
+- **Design**: Front-end prototyping mode.
+
+Note: This setting only constrains Auto mode decisions and @ completions; manual mode switching in the status bar is never restricted.`,
+  autoModeBuildFixed: "Always Enabled (Built-in)",
   ruleGroups: "Rule Groups",
   allowRules: "Allow Rules",
   allowRulesDesc: "Always execute without confirmation",

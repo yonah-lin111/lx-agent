@@ -532,6 +532,12 @@ export const editorTheme = EditorView.theme(
       textDecoration: "underline",
       textDecorationColor: "rgba(125, 211, 252, 0.4)",
     },
+    ".cm-md-agent-mode-mention, .cm-md-agent-mode-mention *": {
+      color: "#a78bfa !important",
+      fontWeight: "500",
+      textDecoration: "underline",
+      textDecorationColor: "rgba(167, 139, 250, 0.4)",
+    },
     ".cm-md-file-mention, .cm-md-file-mention *": {
       color: "#eab308 !important",
       fontWeight: "500",

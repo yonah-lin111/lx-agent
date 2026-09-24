@@ -98,6 +98,7 @@ export const switchCollaborationMode = (
   host.collaborationMode = normalized
   host.effectiveMode = nextEffective
   host.builtSignature = ""
+  host.rebuildSystemPrompt?.()
   if (!changed) {
     emitModeChanged(host)
     return { ok: true }
@@ -124,6 +125,7 @@ export const switchEffectiveMode = (
   const changed = host.effectiveMode !== normalized
   host.effectiveMode = normalized
   host.builtSignature = ""
+  host.rebuildSystemPrompt?.()
   if (!changed) {
     emitModeChanged(host)
     return { ok: true }

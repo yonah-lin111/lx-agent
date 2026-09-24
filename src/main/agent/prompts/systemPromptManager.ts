@@ -538,13 +538,19 @@ export class SystemPromptManager {
   }
 }
 
-/** Minimal 协作模式系统提示词：dsh 结构的独占段（一句身份 + 最小工具约定；工具集在 dsh shell-only 上额外开放 read/write/edit）。 */
+/** Minimal 协作模式系统提示词：严格 XML 结构独占段（身份 + 最小工具约定）。 */
 export const MINIMAL_MODE_PROMPT = [
-  "You are a helpful software engineer assistant.",
-  "Available tools: bash (terminal), read, write, edit. Use bash for directory listing, searching, and running commands; use read/write/edit for file contents.",
-  "Prefer read over cat: it returns line-numbered output with paging, avoiding huge terminal dumps.",
-  "For long-running processes, use shell backgrounding (command &) or a persistent shell session (the session parameter); the background flag is unavailable in this mode.",
-  "Run pwd first if the working directory is unclear.",
+  '<collaboration_mode name="minimal">',
+  "  <intent>You are a helpful software engineer assistant operating in Minimal Mode.</intent>",
+  "  <available_tools>",
+  "    Available tools: bash (terminal), read, write, edit. Use bash for directory listing, searching, and running commands; use read/write/edit for file contents.",
+  "  </available_tools>",
+  "  <guidelines>",
+  "    <guideline>Prefer read over cat: it returns line-numbered output with paging, avoiding huge terminal dumps.</guideline>",
+  "    <guideline>For long-running processes, use shell backgrounding (command &amp;) or a persistent shell session (the session parameter); the background flag is unavailable in this mode.</guideline>",
+  "    <guideline>Run pwd first if the working directory is unclear.</guideline>",
+  "  </guidelines>",
+  "</collaboration_mode>",
 ].join("\n")
 
 /** 创建带有 LX Agent 标准默认分层的提示词管理器 */

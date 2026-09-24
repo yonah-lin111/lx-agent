@@ -1,5 +1,6 @@
-import type { PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
+import type { CollaborationMode, PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
 import type { TranslationKey } from "@/i18n"
+import { COLLABORATION_MODE_META } from "@/lib/collaborationModes"
 import type { AgentInputCommand, ClawMentionCandidate } from "../AgentInputCommandPanels"
 
 // 历史提示词命令名（二级面板入口）。
@@ -135,6 +136,36 @@ export const isKindTagMatch = (query: string, tagLabel: string): boolean => {
   const normalizedQuery = normalizeTagQuery(query)
   if (!normalizedQuery) return true
   return isFuzzyMatch(normalizedQuery, tagLabel.trim().toLowerCase())
+}
+
+// 过滤协作模式候选。
+export const filterAgentModeMentionCandidates = (
+  modes: readonly CollaborationMode[],
+  query: string,
+  t: (key: TranslationKey) => string,
+): { mode: CollaborationMode; label: string; description: string }[] => {
+  const q = query.toLowerCase().trim()
+  if (q.startsWith("claw") || q.startsWith("agent:")) return []
+
+  const keyword = q.replace(/^(agentmode|mode):?/, "")
+
+  return modes
+    .map((mode) => {
+      const meta = COLLABORATION_MODE_META[mode]
+      return {
+        mode,
+        label: t(meta.labelKey),
+        description: t(meta.descKey),
+      }
+    })
+    .filter((item) => {
+      if (!keyword) return true
+      return (
+        isFuzzyMatch(keyword, item.mode.toLowerCase()) ||
+        isFuzzyMatch(keyword, item.label.toLowerCase()) ||
+        isFuzzyMatch(keyword, `agentmode:${item.mode}`)
+      )
+    })
 }
 
 // 按名称、显示名、短描述与描述模糊过滤 Skill。

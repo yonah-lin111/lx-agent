@@ -64,8 +64,34 @@ describe("CollaborationModeSettings", () => {
   it("同分区内嵌协作模式能力权限卡片（五种模式行）", async () => {
     render(<CollaborationModeSettings settings={baseSettings()} setSettings={vi.fn()} />)
 
-    expect(await screen.findByText("Plan Mode")).toBeTruthy()
-    expect(screen.getByText("Review Mode")).toBeTruthy()
-    expect(screen.getByText("Design Mode")).toBeTruthy()
+    expect((await screen.findAllByText("Plan Mode")).length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Review Mode").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Design Mode").length).toBeGreaterThan(0)
+  })
+
+  it("Auto 模式可用目标模式：展示各模式勾选状态并支持切换", () => {
+    const setSettings = vi.fn()
+    const settings: PermissionSettingsConfig = {
+      ...baseSettings(),
+      autoEnabledModes: ["plan", "review"],
+    }
+    const { container } = render(
+      <CollaborationModeSettings settings={settings} setSettings={setSettings} />,
+    )
+
+    // Build 模式固定启用
+    expect(screen.getByText("Always Enabled (Built-in)")).toBeTruthy()
+
+    const checkboxes = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')
+    expect(checkboxes.length).toBe(3) // plan, review, design
+    expect(checkboxes[0].checked).toBe(true) // plan
+    expect(checkboxes[1].checked).toBe(true) // review
+    expect(checkboxes[2].checked).toBe(false) // design
+
+    // 点击取消勾选 plan
+    fireEvent.click(checkboxes[0])
+    expect(setSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ autoEnabledModes: ["review"] }),
+    )
   })
 })

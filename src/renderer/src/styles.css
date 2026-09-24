@@ -1304,3 +1304,16 @@ select {
 [data-agent-mode="minimal"] {
   --agent-mode-tint: var(--agent-mode-minimal-tint);
 }
+
+/* 输入文本框区域在 auto 模式下跟随有效模式独立着色（外部容器与控件保持 auto 原生模式色） */
+.agent-input-container[data-agent-mode="auto"]
+  .agent-markdown-input-wrapper[data-agent-mode]:not([data-agent-mode="build"]):not(
+    [data-agent-mode="auto"]
+  )
+  .agent-markdown-input-editor {
+  background-image: linear-gradient(
+    var(--agent-mode-tint, transparent),
+    var(--agent-mode-tint, transparent)
+  );
+  border-radius: 4px;
+}

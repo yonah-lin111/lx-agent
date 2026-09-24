@@ -1,3 +1,4 @@
+import type { AutoConfigurableMode, CollaborationMode } from "@shared/contracts/agent"
 import type React from "react"
 import type { GitWorktreeOption } from "@/features/git"
 import type { AgentInputFile } from "../AgentInputFiles"
@@ -38,6 +39,12 @@ export interface AgentMarkdownInputProps {
   onCdSelect?: (projectId: string, projectPath: string) => void
   onSessionSelect?: (sessionId: string) => void
   currentSessionId?: string | null
+  // 基础协作模式（如 auto）。
+  collaborationMode?: CollaborationMode
+  // 当前输入框生效的协作模式（用于输入区域模式着色与底纹）。
+  inputMode?: CollaborationMode
+  // Auto 编排下允许启用的模式列表（用于 @agentMode 补全候选裁剪）。
+  autoEnabledModes?: AutoConfigurableMode[]
 }
 
 export type AgentInputActiveMode =
