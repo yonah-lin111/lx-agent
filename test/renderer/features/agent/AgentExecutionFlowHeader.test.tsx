@@ -23,6 +23,7 @@ const FILTER_COUNTS: Record<FilterKind, number> = {
   proposedPlan: 0,
   reviewFindings: 0,
   frontDesign: 0,
+  grillQuestion: 0,
   hook: 0,
   error: 0,
 }

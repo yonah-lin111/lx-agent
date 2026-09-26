@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { buildExecutionSteps, formatPreview } from "@/features/agent/executionFlow"
-import type { ChatMessage } from "@/features/agent/types"
+import type { ChatMessage, GrillQuestionData } from "@/features/agent/types"
 
 describe("executionFlow", () => {
   describe("formatPreview", () => {
@@ -1286,6 +1286,38 @@ describe("executionFlow", () => {
       const steps = buildExecutionSteps(messages)
       const toolStep = steps.find((step) => step.kind === "tool")
       expect(toolStep?.tokenSaverHit).toEqual(firstHit)
+    })
+
+    it("grill_question 卡片块生成独立 grillQuestion 步骤并携带原始协议文本", () => {
+      const grill: GrillQuestionData = {
+        question: "导出格式选 CSV 还是 XLSX？",
+        recommendation: "CSV，依赖为零。",
+        example: "双击就能用 Excel 打开。",
+        raw: "<grill_question>\n问题: 导出格式选 CSV 还是 XLSX？\n推荐: CSV，依赖为零。\n推荐举例说明: 双击就能用 Excel 打开。\n</grill_question>",
+      }
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "加个导出" }],
+          isStreaming: false,
+          timestamp: 1000,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [{ kind: "grillQuestion", grill }],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15 },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      const grillStep = steps.find((step) => step.kind === "grillQuestion")
+      expect(grillStep?.grillQuestionContent).toEqual(grill)
+      expect(grillStep?.title).toBe("导出格式选 CSV 还是 XLSX？")
+      expect(grillStep?.assistantContent?.text).toContain("<grill_question>")
     })
   })
 })

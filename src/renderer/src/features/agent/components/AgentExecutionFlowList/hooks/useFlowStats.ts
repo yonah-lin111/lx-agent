@@ -218,6 +218,7 @@ export const useFlowStats = ({
       proposedPlan: 0,
       reviewFindings: 0,
       frontDesign: 0,
+      grillQuestion: 0,
       error: 0,
     }
     for (const step of steps) {

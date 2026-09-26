@@ -6,13 +6,22 @@ import {
 import { createDefaultSystemPromptManager } from "@/agent/prompts/systemPromptManager"
 
 describe("Plan Mode 内嵌 grill-me 技能", () => {
-  it("plan 模式提示词包含 grill-me 技能块与固定三行输出格式契约", () => {
+  it("plan 模式提示词包含 grill-me 技能块、<grill_question> 协议与固定三行输出格式契约", () => {
     const plan = renderCollaborationModeText("plan")
     expect(plan).toContain('<skill name="grill-me">')
     expect(plan).toContain("</skill>")
+    expect(plan).toContain("<grill_question>")
+    expect(plan).toContain("</grill_question>")
     expect(plan).toContain("问题: <")
     expect(plan).toContain("推荐: <")
     expect(plan).toContain("推荐举例说明: <")
+  })
+
+  it("标签契约：不翻译标签名、每轮仅一个块、问句整体包裹在标签内", () => {
+    const plan = renderCollaborationModeText("plan")
+    expect(plan).toContain("never translate or rename them")
+    expect(plan).toContain("exactly one `<grill_question>` block")
+    expect(plan).toContain("never leave one of the three lines outside the block")
   })
 
   it("一次只问一个问题、禁用 question 工具、每题必须带推荐与通俗举例", () => {

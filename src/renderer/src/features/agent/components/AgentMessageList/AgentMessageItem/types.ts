@@ -39,6 +39,12 @@ export type DisplayGroup =
       block: Extract<ChatBlock, { kind: "reviewFindings" }>
       isStreaming: boolean
     }
+  // grill-me 逐题盘问独立组（不参与执行折叠，渲染问题/推荐/举例决策卡片）。
+  | {
+      kind: "grillQuestion"
+      block: Extract<ChatBlock, { kind: "grillQuestion" }>
+      isStreaming: boolean
+    }
   // 前端设计稿独立组（不参与执行折叠，渲染专用设计卡片与热更新预览入口）。
   | {
       kind: "frontDesign"
