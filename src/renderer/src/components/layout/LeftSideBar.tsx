@@ -1,10 +1,10 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import React, { useEffect, useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { useLocation } from "react-router-dom"
 
+import { LeftSideBarDockNav } from "@/components/layout/LeftSideBarDockNav"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useTranslation } from "@/i18n"
-import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 
 // 左侧栏属性。
 interface LeftSideBarProps {
@@ -17,7 +17,6 @@ interface LeftSideBarProps {
 export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const { pathname } = useLocation()
-  const navigate = useNavigate()
   const { t } = useTranslation()
 
   useEffect(() => {
@@ -53,31 +52,7 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
       >
         {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
       </LxIconButton>
-      <div
-        className={`mt-2 flex shrink-0 gap-1 transition-transform duration-300 ease-in-out ${
-          isCollapsed
-            ? "items-center -translate-x-[1px] flex-col"
-            : "translate-x-0 flex-row justify-center"
-        }`}
-      >
-        {PRIMARY_NAVIGATION_ITEMS.map(({ icon: Icon, labelKey, path }) => {
-          const isActive = pathname === path
-          const label = t(labelKey)
-          return (
-            <LxIconButton
-              key={path}
-              aria-current={isActive ? "page" : undefined}
-              aria-label={t("nav.openPage", { name: label })}
-              title={{ content: label, placement: isCollapsed ? "right" : "top" }}
-              highlighted={isActive}
-              onClick={() => navigate(path)}
-              size="small"
-            >
-              <Icon />
-            </LxIconButton>
-          )
-        })}
-      </div>
+      <LeftSideBarDockNav isCollapsed={isCollapsed} />
     </aside>
   )
 }
