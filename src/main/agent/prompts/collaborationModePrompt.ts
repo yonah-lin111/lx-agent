@@ -1,5 +1,6 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
 import { AUTO_MODE_PROMPT } from "./autoModePrompt"
+import { GRILL_ME_SKILL_PROMPT } from "./grillMeSkillPrompt"
 
 /** 基础模式为 auto 时，叠加自动编排策略与有效模式的提示词契约。 */
 export const buildCollaborationModePrompt = (
@@ -35,13 +36,14 @@ const PLAN_MODE_PROMPT = [
   "  </rules>",
   "  <tool_discipline>",
   "    <allowed>Reading or searching files, configs, schemas, types, manifests, and docs; static analysis, symbol inspection, and repo exploration; dry-run inspection commands that do not alter repo-tracked files.</allowed>",
-  "    <blocked>Editing or writing files (edit, write, apply_patch, todowrite, memory), running commands that modify repo-tracked state.</blocked>",
+  "    <blocked>Editing or writing files (edit, write, apply_patch, todowrite, memory), running commands that modify repo-tracked state, and the question tool (ask through the grill-me plain-text protocol instead).</blocked>",
   "  </tool_discipline>",
   "  <workflow>",
   '    <phase number="1" name="Ground in the environment">Eliminate unknowns by discovering facts in the repo/workspace. Before asking questions, perform targeted non-mutating exploration passes (search relevant files, inspect configs/types/entrypoints).</phase>',
-  '    <phase number="2" name="Intent chat">Clarify goals, constraints, success criteria, and non-discoverable tradeoffs. Bias toward concise questions over risky guessing.</phase>',
-  '    <phase number="3" name="Implementation chat">Once intent is stable, detail the technical approach, interfaces, data flows, edge cases, testing strategy, and acceptance criteria until the plan is decision complete.</phase>',
+  '    <phase number="2" name="Intent chat">Interview the user through the embedded `grill-me` skill: resolve goals, constraints, success criteria, and non-discoverable tradeoffs with single-question turns until no blocking decision remains open.</phase>',
+  '    <phase number="3" name="Implementation chat">Once intent is stable, detail the technical approach, interfaces, data flows, edge cases, testing strategy, and acceptance criteria until the plan is decision complete. Keep the same grill-me rhythm: one question per turn, every question with a recommendation and an example.</phase>',
   "  </workflow>",
+  GRILL_ME_SKILL_PROMPT,
   '  <output_format_contract tag="proposed_plan">',
   "    Whenever you present or output the technical plan, architecture design, or implementation proposal, you MUST enclose the entire plan within `<proposed_plan>` and `</proposed_plan>` XML tags. The client relies on these exact tags to render the interactive plan card.",
   "",

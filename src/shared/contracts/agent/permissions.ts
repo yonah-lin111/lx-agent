@@ -77,7 +77,9 @@ export const MODE_BLOCKED_TOOLS: readonly string[] = [
   "memory",
 ]
 
-// 模式附加硬拦截：Design Mode 禁用 wireframe（原型交付走 <front_design> 协议）。
+// 模式附加硬拦截：Plan Mode 禁用 question 工具（提问由内嵌 grill-me 技能的纯文本逐题协议承担）；
+// Design Mode 禁用 wireframe（原型交付走 <front_design> 协议）。
+const PLAN_BLOCKED_TOOLS: readonly string[] = ["question"]
 const DESIGN_BLOCKED_TOOLS: readonly string[] = ["wireframe"]
 
 // Minimal Mode 工具白名单：终端 + 文件读写；搜索/列目录走 bash，其余工具一律硬拦截
@@ -102,7 +104,7 @@ const MODE_BLOCKED_TOOL_SETS: Record<CollaborationMode, ReadonlySet<string>> = {
   build: EMPTY_TOOL_SET,
   // Auto 为编排基础模式，自身无模式硬基线（有效模式的门禁在切换后各自生效）。
   auto: EMPTY_TOOL_SET,
-  plan: BASE_MODE_BLOCKED_TOOLS,
+  plan: new Set([...MODE_BLOCKED_TOOLS, ...PLAN_BLOCKED_TOOLS]),
   review: BASE_MODE_BLOCKED_TOOLS,
   design: new Set([...MODE_BLOCKED_TOOLS, ...DESIGN_BLOCKED_TOOLS]),
   // Minimal 为白名单模式，无黑名单；限制由 getModeAllowedTools 承担。

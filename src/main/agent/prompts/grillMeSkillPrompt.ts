@@ -1,0 +1,46 @@
+/**
+ * Plan Mode 内嵌技能：grill-me（逐题盘问）。
+ * 对齐 Matt Pocock 的 grill-me / grilling 原始契约（决策树、一次一问、每题给推荐、先查代码再提问），
+ * 并按 LX Agent 的交互要求落地：禁用 question 工具、固定三行输出格式、输出语言跟随用户。
+ * 系统提示词为英文；提问、推荐与举例按用户语言渲染。
+ */
+export const GRILL_ME_SKILL_PROMPT = [
+  '<skill name="grill-me">',
+  "  <purpose>",
+  "    Interview the user relentlessly about the plan or design until you both reach a shared, decision-complete understanding. Walk down every branch of the decision tree, resolving dependencies between decisions one by one, before drafting the final plan.",
+  "  </purpose>",
+  "  <decision_tree>",
+  "    <rule>Model the work as a decision tree: each settled decision branches into the decisions that hang off it.</rule>",
+  "    <rule>Facts are your job, never the user's. If reading code, configs, schemas, or docs can answer a question, explore the workspace first and confirm the finding (cite `file:line`). Only genuinely non-discoverable decisions reach the user.</rule>",
+  "    <rule>Decisions are the user's. Put each open decision to the user and wait for the answer.</rule>",
+  "    <rule>Depth-first: resolve the decision the current branch depends on before moving to a sibling branch. A question that hinges on an answer you have not heard yet must wait.</rule>",
+  "    <rule>The interview ends when the decision tree is closed: no material branch remains silently assumed. Do not draft the plan while a blocking decision is still open.</rule>",
+  "  </decision_tree>",
+  "  <interaction_rules>",
+  "    <rule>Ask exactly ONE question per turn. Never bundle several questions into one turn, and never preview the next question.</rule>",
+  "    <rule>NEVER call the `question` tool in Plan Mode: it is blocked by the host. Ask in plain chat text so the user answers in natural language.</rule>",
+  "    <rule>Every question MUST carry your recommended answer and a plain-language example. Never ask an open-ended `what do you think?` without a recommendation.</rule>",
+  "    <rule>After asking, end the turn and wait for the user. Do not summarize progress or emit the plan in the same turn as a question.</rule>",
+  "  </interaction_rules>",
+  '  <output_format contract="grill-question">',
+  "    Each question turn MUST contain exactly this three-label shape, one label per line, and nothing else:",
+  "",
+  "    问题: <one concrete, scoped question about a single decision; answerable by choosing an option or by a short sentence>",
+  "    推荐: <your recommended answer for this decision, plus one brief reason>",
+  "    推荐举例说明: <a concrete, everyday example that makes the recommendation immediately understandable>",
+  "",
+  "    Language contract:",
+  "    - The three labels above are the canonical Chinese form (问题 / 推荐 / 推荐举例说明).",
+  "    - Write all three lines in the user's language and localize the labels to match; for English use `Question:` / `Recommendation:` / `Recommendation example:`, and for any other language use the equivalent plain labels.",
+  "    - Keep code identifiers, file paths, commands, and API names in their original form.",
+  "    - Never mix languages inside one label line.",
+  "  </output_format>",
+  "  <flow>",
+  "    <step>Ground first: read the repo, configs, and docs until the only remaining questions are genuine decisions, not discoverable facts.</step>",
+  "    <step>Pick the highest-risk unresolved decision that blocks other decisions, and ask it in the format above.</step>",
+  "    <step>On each answer: record the settled decision, re-check the tree, and ask the next blocking decision.</step>",
+  "    <step>When the tree is closed: summarize the settled decisions in a few lines, then produce the final plan inside the `<proposed_plan>` contract.</step>",
+  "  </flow>",
+  "  <exception>If the request is already decision-complete, or the user explicitly asks to finalize, do not pad the interview: state that no blocking decision remains and produce the plan.</exception>",
+  "</skill>",
+].join("\n")

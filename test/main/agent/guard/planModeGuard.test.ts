@@ -37,4 +37,23 @@ describe("Plan Mode Permission Guard", () => {
       permissionManager.evaluate("grep", { query: "test" }, { collaborationMode: "plan" }),
     ).toBe("allow")
   })
+
+  it("should deny the question tool in plan mode (grill-me uses plain-text single-question turns)", () => {
+    expect(
+      permissionManager.evaluate(
+        "question",
+        { questions: [{ question: "Pick one", options: [{ label: "A" }] }] },
+        { collaborationMode: "plan" },
+      ),
+    ).toBe("deny")
+
+    // build 模式保持豁免：question 永不询问、正常放行。
+    expect(
+      permissionManager.evaluate(
+        "question",
+        { questions: [{ question: "Pick one", options: [{ label: "A" }] }] },
+        { collaborationMode: "build" },
+      ),
+    ).toBe("allow")
+  })
 })
