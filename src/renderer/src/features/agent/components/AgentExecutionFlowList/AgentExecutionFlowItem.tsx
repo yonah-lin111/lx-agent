@@ -21,6 +21,7 @@ import {
 } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import {
   FrontDesignCard,
+  GrillQuestionCard,
   ProposedPlanCard,
   ReviewFindingsCard,
   resolveSubagentStatusRow,
@@ -178,6 +179,7 @@ export const AgentExecutionFlowItem = ({
     if (step.hookContent) return step.hookContent.text || step.title
     if (step.planContent) return step.planContent.content
     if (step.reviewFindingsContent) return step.reviewFindingsContent.raw
+    if (step.grillQuestionContent) return step.grillQuestionContent.raw
     if (step.frontDesignContent) return step.frontDesignContent.raw || step.frontDesignContent.html
     if (step.assistantContent) return step.assistantContent.text
     if (step.errorContent) {
@@ -584,6 +586,16 @@ export const AgentExecutionFlowItem = ({
             </div>
           )}
 
+          {/* grill-me 逐题盘问详情 */}
+          {step.grillQuestionContent && (
+            <div className="agent-execution-flow-grill-question-content w-full">
+              <GrillQuestionCard
+                grill={step.grillQuestionContent}
+                isStreaming={step.status === "running"}
+              />
+            </div>
+          )}
+
           {/* 前端设计原型详情 */}
           {step.frontDesignContent && (
             <div className="agent-execution-flow-design-content w-full">
@@ -599,6 +611,7 @@ export const AgentExecutionFlowItem = ({
             !step.compactionContent &&
             !step.planContent &&
             !step.reviewFindingsContent &&
+            !step.grillQuestionContent &&
             !step.frontDesignContent && (
               <FlowItemAssistantContent
                 content={step.assistantContent}

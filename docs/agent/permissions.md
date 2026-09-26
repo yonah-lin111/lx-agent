@@ -16,6 +16,7 @@
 │ [Gate 1: Collaboration Mode]                                │
 │   - Plan / Review / Design: write/edit/apply_patch/         │
 │     todowrite/memory ──► 硬拦截（模式身份约束）               │
+│   - Plan 额外硬拦截 question（提问走内嵌 grill-me 纯文本协议） │
 │   - Design 额外硬拦截 wireframe                              │
 │   - 子代理调用同时叠加父模式硬基线（parentMode）              │
 │   - 模式能力白名单 (agent.permissions.modes) 只能收紧         │
@@ -68,12 +69,12 @@ export type CollaborationMode = "build" | "auto" | "plan" | "review" | "design" 
 | :--- | :--- | :--- | :--- | :--- |
 | **`build`** | 无 | 缺省不限制；可经 `modes.build.subagents` 白名单收窄 | 正常判定；可经 `modes.build` 白名单收紧 | 无 |
 | **`auto`** | 无（与 `build` 同级；门禁按有效模式计算） | 缺省不限制（有效模式为 plan/review/design 时按该模式缺省仅 `explorer`） | `task` 可携带 `mode` 参数（仅 auto）；`modes.auto` 与有效模式白名单求交 | 按有效模式（见 modes.md §2） |
-| **`plan`** | `write` / `edit` / `apply_patch` / `todowrite` / `memory` | 缺省仅 `explorer`；白名单覆盖缺省，空数组 = 全禁 | 只读工具正常；可经白名单再收紧 | 见 modes.md §3 |
+| **`plan`** | `write` / `edit` / `apply_patch` / `todowrite` / `memory` + `question`（提问走内嵌 grill-me 纯文本逐题协议，见 modes.md §3.1） | 缺省仅 `explorer`；白名单覆盖缺省，空数组 = 全禁 | 只读工具正常；可经白名单再收紧 | 见 modes.md §3 |
 | **`review`** | 同 `plan` | 同 `plan` | 只读工具正常；可经白名单再收紧 | 见 modes.md §4 |
 | **`design`** | 同 `plan` + `wireframe` | 同 `plan` | 只读工具正常；可经白名单再收紧 | `<front_design>` / `<front_design_update>`，见 modes.md §5 |
 | **`minimal`** | **白名单模式**：仅 `bash` / `read` / `write` / `edit` 放行，其余全部工具 fail-closed 拦截；`bash` 的 `background: true` 参数亦拒绝 | 无（`task` 不在白名单，无法派发） | 上述四工具（`bash` 含 `session` 持久会话）；可经 `modes.minimal` 白名单再收紧 | 无 |
 
-- 非 build 模式的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`MODE_MUTATION_REASONS`）；`memory` 会写 `<project>/.lx/memory/memory.xml` 与 `~/.lx/memory/memory.xml`，因此同样纳入基线。
+- 非 build 模式的 deny 为**硬拦截**：不进入审批弹窗，直接返回带模式说明的 error ToolResult 回灌模型（`MODE_MUTATION_REASONS`）；`memory` 会写 `<project>/.lx/memory/memory.xml` 与 `~/.lx/memory/memory.xml`，因此同样纳入基线。`plan` 的 `question` 使用专用 reason（`PLAN_QUESTION_TOOL_REASON`）：提示模型按内嵌 grill-me 协议一次一问，用 `<grill_question>` 包裹 `问题: / 推荐: / 推荐举例说明:` 三行（字段随用户语言本地化，客户端渲染为决策卡片）。
 - **Minimal 白名单**：注册表激活层同步收窄（模型只看到 `bash` / `read` / `write` / `edit`），提示词以 `complete` 独占段压掉其余全部内容（见 modes.md §6）；`background: true` 单独拒绝（`MINIMAL_BACKGROUND_REASON`），引导改用 shell 后台（`command &`）或 `bash.session` 持久会话。在 dsh shell-only 基线上额外开放 `read` / `write` / `edit`（有意偏离，见 modes.md §6）；shell 重定向与内容改写仍由 Security Guard 硬拦，写文件走 `write` / `edit`。
 - **子代理派发**：`task` 不再属于硬基线，由 `modes.<mode>.subagents` 白名单控制（按 `agent_type` 判定，批量 `tasks[]` 逐项校验，未携带角色视为未命中）。非 build 模式缺省白名单 = `["explorer"]`（内置只读探索子代理），`build` 缺省 = 不限制；显式配置覆盖缺省，显式空数组 = 该模式完全禁止派发；`minimal` 无缺省白名单且 `task` 不在工具白名单内。
 - **父模式基线穿透**：子代理按 `agent.subagents.mode`（缺省 `build`）装配提示词与门控，但父会话的硬基线会以 `parentMode` 叠加到子代理的每次工具调用上——`plan` / `review` / `design` 下派发的子代理同样不能写文件，`design` 下还不能用 `wireframe`，`minimal` 下只能使用 `bash` / `read` / `write` / `edit`，派发无法绕过模式约束。

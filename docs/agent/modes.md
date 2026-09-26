@@ -12,7 +12,7 @@ LX Agent 定义六态协作模式：`build`（执行）、`auto`（自动编排�
 - **契约**：`CollaborationMode = "build" | "auto" | "plan" | "review" | "design" | "minimal"`；循环顺序与 `nextCollaborationMode` 由 `COLLABORATION_MODE_ORDER` 单一来源定义；`switch_mode` 可达目标由 `SWITCH_MODE_TARGETS`（build/plan/review/design，永久排除 minimal）定义；历史会话中的 `"default"` 由 `normalizeCollaborationMode` 归一化为 `"build"`。
 - **提示词**：`SystemPromptManager` 的 COLLABORATION_MODE 段（order 380）按模式返回对应英文指令模板；Plan / Review 模板中明确声明「模式不因用户语气或祈使句改变」与「写入工具被禁用」；Minimal 走 `complete` 独占段（见 §6）。
 - **历史条目**：切换模式会在会话中落一条 `mode_change` entry（`CollaborationModeSwitchMessage`，非 LLM 上下文，不注入模型；auto 编排的有效模式切换额外携带 `viaAuto: true`），执行流程列表（FlowList）以 «Mode Switched: Plan Mode» 独立步骤展示（模式标签 + «via Auto» 标签 + 职责说明、不计入对话轮次）；**会话尾部连续的切换消息（模型/模式）按同类原地合并**——来回切换只更新同一条目（entry payload 原地更新、seq 与位置不变），被真实对话消息打断后才新增条目；草稿态（会话尚未落库）切换只更新运行时模式，不产生条目。
-- **运行时门禁**：Plan / Review / Design 下 `write` / `edit` / `apply_patch` / `todowrite` / `memory` 由 `PermissionManager` 直接 deny（`design` 另禁 `wireframe`），模型收到带模式说明的错误结果并以对应 XML 协议输出；Minimal 下仅 `bash` / `read` / `write` / `edit` 放行（`background: true` 参数拒绝），注册表激活层同步收窄（见 permissions.md §2）。
+- **运行时门禁**：Plan / Review / Design 下 `write` / `edit` / `apply_patch` / `todowrite` / `memory` 由 `PermissionManager` 直接 deny（`design` 另禁 `wireframe`，`plan` 另禁 `question`——提问由内嵌 grill-me 的纯文本逐题协议承担），模型收到带模式说明的错误结果并以对应 XML 协议输出；Minimal 下仅 `bash` / `read` / `write` / `edit` 放行（`background: true` 参数拒绝），注册表激活层同步收窄（见 permissions.md §2）。
 - **子代理派发**：`task` 由 `agent.permissions.modes.<mode>.subagents` 白名单控制——非 build 模式缺省仅允许内置探索子代理 `explorer`，可勾选其他或自定义角色（空数组 = 全禁）；Minimal 无 `task` 工具、不可派发；能力集含模式硬基线工具的角色（含未限制能力集）在该模式下永久禁用（设置页锁定 + 门控拒绝）；父模式硬基线经 `parentMode` 叠加到子代理的每次工具调用，派发不能绕过只读约束；模式段同时声明该限制，`task` 工具描述的 `Available agent types` 按模式裁剪（模型可见目录 = 实际可派发角色）。
 - **共享解析**：`utils.ts` 的 `parseTextWithProposedPlan()` 是统一标签提取器——同一段助手文本中按出现顺序识别 `<review_findings>` / `<proposed_plan>` / `<front_design>` / `<front_design_update>`，拆成结构化块与普通文本块，支持标签未闭合的流式容错与多块级联解析；结构化块同时驱动 `AgentMessageList`（聊天流卡片）与 `AgentExecutionFlowList`（执行步骤），两处复用同一卡片组件。
 
@@ -63,12 +63,23 @@ Auto 是编排基础模式：会话的门禁 / 提示词 / 子代理白名单始
 
 ## 3. Plan Mode
 
-### 3.1 提示词契约（3 阶段 + Decision Complete）
+### 3.1 提示词契约（3 阶段 + 内嵌 grill-me 技能 + Decision Complete）
 
 1. **PHASE 1 — Ground in the environment**：先用只读工具（`read` / `grep` / `find` / `lsp` 等）探查事实，消除未知；不了解环境前不得提问。
-2. **PHASE 2 — Intent chat**：针对代码无法发现的产品诉求、约束与权衡向用户确认。
-3. **PHASE 3 — Implementation chat**：细化技术方案、接口、数据流、边界与测试策略，直到计划 **decision complete**（实施者无需再做任何决策）。
+2. **PHASE 2 — Intent chat**：走内嵌 `grill-me` 技能协议，针对代码无法发现的产品诉求、约束与权衡逐题盘问。
+3. **PHASE 3 — Implementation chat**：延续 grill-me 节奏细化技术方案、接口、数据流、边界与测试策略，直到计划 **decision complete**（实施者无需再做任何决策）。
 4. **Finalization**：计划就绪后必须包裹在 `<proposed_plan>` 中输出；`todowrite` 在计划期被禁用；不允许用「是否需要我开始实现？」代替动作，由用户在卡片上操作。
+
+**内嵌技能 `grill-me`**（`grillMeSkillPrompt.ts`，对齐 Matt Pocock 的 grill-me / grilling 原始契约，Plan 模式常驻生效）：
+
+- **决策树 + 一次一问**：把方案拆成决策树，每轮只问一个当前阻塞的最高风险决策，等待回答后再问下一个；依赖尚未闭合的决策不得提前提问（depth-first）。
+- **事实自己查，决策问用户**：能用只读工具从代码/配置/文档验证的事实不得反问用户，须先探查并给出 `file:line` 证据；只有代码无法回答的决策才交给用户（Facts are your job, never the user's）。
+- **每题必带推荐与通俗举例**：固定字段输出 `问题: / 推荐: / 推荐举例说明:`，并整体包裹在 `<grill_question>` 标签内（标签名不翻译；`推荐举例说明` 必须用日常语言举一个具体例子让用户秒懂）；严禁调用 `question` 工具（plan 模式硬拦截，`PLAN_QUESTION_TOOL_REASON`），提问一律走该文本协议。
+- **选项规范化**：离散选择必须逐行输出 `A) 文案` / `B) 文案`（题干保留在 `问题:` 行，禁止把 `(A)…(B)…` 塞进问题句子里），`推荐:` 先点名推荐选项键（如 `推荐: A——理由`）；开放式问题（数值/命名/自由描述）不输出选项行。解析为 `GrillQuestionOption[]` 后由卡片渲染为独立选项行（键位徽标 + 文案）。
+- **英文提示词，随用户语言输出**：技能契约本身是英文系统提示词；三行标签随用户语言本地化（英文为 `Question: / Recommendation: / Recommendation example:`），代码标识符、路径与 API 名保持原文。
+- **例外**：请求已 decision complete 或用户明确要求收敛时，不硬凑问题，直接进入 `<proposed_plan>`。
+
+**协议解析与卡片**：`utils/structuredTags.ts` 将 `<grill_question>` 拆为 `kind: "grillQuestion"` 块（`GrillQuestionData`；字段与选项解析见 `utils/tagContentParsers.ts`，兼容中英文标签、Markdown 加粗、多行字段与全/半角选项键；定稿必须闭合，流式容忍未闭合）。聊天流以 `GrillQuestionCard` 独立渲染（sky 主题：问题 / A/B/C 选项行 / 推荐 / 推荐举例说明，右上角复制原始提问）；执行流以 `ExecutionStepKind = "grillQuestion"` 独立步骤呈现（默认展开、不参与执行折叠、顶部筛选 tab 与计数）。会话恢复与 `toAgentMessages` 回传按原始标签文本往返，协议不丢失。
 
 ### 3.2 输出协议
 

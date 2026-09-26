@@ -254,6 +254,11 @@ export const useMessageItemGroups = (
         groups.push({ kind: "reviewFindings", block: item.block, isStreaming: item.isStreaming })
         continue
       }
+      if (item.block.kind === "grillQuestion") {
+        currentExecution = null
+        groups.push({ kind: "grillQuestion", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
       if (item.block.kind === "frontDesign") {
         currentExecution = null
         groups.push({ kind: "frontDesign", block: item.block, isStreaming: item.isStreaming })
@@ -321,6 +326,7 @@ export const useMessageItemGroups = (
     ({ block }) =>
       (block.kind === "text" && block.text.trim() !== "") ||
       (block.kind === "proposedPlan" && block.plan.content.trim() !== "") ||
+      (block.kind === "grillQuestion" && block.grill.question.trim() !== "") ||
       (block.kind === "reviewFindings" &&
         (block.findings.summary.trim() !== "" || block.findings.findings.length > 0)),
   )
@@ -332,7 +338,8 @@ export const useMessageItemGroups = (
         block.kind === "toolCall" ||
         block.kind === "thinking" ||
         block.kind === "proposedPlan" ||
-        block.kind === "reviewFindings",
+        block.kind === "reviewFindings" ||
+        block.kind === "grillQuestion",
     )
 
   const isAborted =

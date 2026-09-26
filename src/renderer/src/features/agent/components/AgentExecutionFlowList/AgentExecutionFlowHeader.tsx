@@ -167,6 +167,14 @@ const FILTER_TAB_COLORS: Record<
     highlightExtra: "font-semibold ring-1 ring-pink-500/30",
     dot: "bg-pink-400",
   },
+  grillQuestion: {
+    highlightBg: "bg-sky-500/20",
+    highlightText: "text-sky-300",
+    hoverBg: "hover:bg-sky-500/10",
+    hoverText: "hover:text-sky-300",
+    highlightExtra: "font-semibold ring-1 ring-sky-500/30",
+    dot: "bg-sky-400",
+  },
   hook: {
     highlightBg: "bg-orange-500/20",
     highlightText: "text-orange-300",
@@ -319,6 +327,8 @@ export const AgentExecutionFlowHeader = ({
               renderTab("reviewFindings", t("agent.review.badge"), filterCounts.reviewFindings)}
             {filterCounts.frontDesign > 0 &&
               renderTab("frontDesign", t("frontDesign.designCardBadge"), filterCounts.frontDesign)}
+            {filterCounts.grillQuestion > 0 &&
+              renderTab("grillQuestion", t("agent.grillQuestionBadge"), filterCounts.grillQuestion)}
             {filterCounts.modelSwitch > 0 &&
               renderTab("modelSwitch", t("agent.modelSwitched"), filterCounts.modelSwitch)}
             {filterCounts.modeSwitch > 0 &&

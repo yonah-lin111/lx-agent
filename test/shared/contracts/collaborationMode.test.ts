@@ -74,7 +74,7 @@ describe("协作模式契约", () => {
     }
   })
 
-  it("黑名单模式保持原语义：build / auto 不拦截，plan/review 拦写操作，design 另拦 wireframe", () => {
+  it("黑名单模式保持原语义：build / auto 不拦截，plan/review 拦写操作，plan 另拦 question，design 另拦 wireframe", () => {
     expect(isToolBlockedByMode("auto", "write")).toBe(false)
     expect([...getModeBlockedTools("auto")]).toEqual([])
     expect(isToolBlockedByMode("build", "write")).toBe(false)
@@ -82,10 +82,15 @@ describe("协作模式契约", () => {
       "apply_patch",
       "edit",
       "memory",
+      "question",
       "todowrite",
       "write",
     ])
     expect(isToolBlockedByMode("review", "todowrite")).toBe(true)
+    // question 仅被 plan 硬拦截：review / design 不受影响。
+    expect(isToolBlockedByMode("plan", "question")).toBe(true)
+    expect(isToolBlockedByMode("review", "question")).toBe(false)
+    expect(isToolBlockedByMode("design", "question")).toBe(false)
     expect(isToolBlockedByMode("design", "wireframe")).toBe(true)
     expect(isToolBlockedByMode("plan", "wireframe")).toBe(false)
     expect(isToolBlockedByMode("plan", "read")).toBe(false)

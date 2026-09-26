@@ -963,6 +963,25 @@ describe("permissionManager 协作模式权限（模式策略统一表）", () =
     expect(permissionManager.evaluate("memory", {}, { collaborationMode: "build" })).toBe("allow")
   })
 
+  it("plan 模式硬拦截 question 工具：返回 grill-me 纯文本逐题协议专用 reason", async () => {
+    applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
+    const question = { questions: [{ question: "q", options: [{ label: "a" }] }] }
+
+    expect(permissionManager.evaluate("question", question, { collaborationMode: "plan" })).toBe(
+      "deny",
+    )
+
+    const result = await permissionManager.gate(
+      gateContext("question", question),
+      "s1",
+      undefined,
+      { collaborationMode: "plan" },
+    )
+    expect(result?.block).toBe(true)
+    expect(result?.reason).toContain("grill-me")
+    expect(result?.reason).toContain("one question per turn")
+  })
+
   it("非 build 模式缺省仅允许探索子代理；显式白名单覆盖缺省，空数组全禁", () => {
     applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
     const plan = { collaborationMode: "plan" as const }

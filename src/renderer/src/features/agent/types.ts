@@ -87,6 +87,23 @@ export interface ReviewFindingsData {
   isStreaming?: boolean
 }
 
+// grill-me 单个候选项（A/B/C… 键 + 文案）。
+export interface GrillQuestionOption {
+  key: string
+  text: string
+}
+
+// grill-me 逐题盘问数据结构（问题 / 选项 / 推荐 / 推荐举例说明）。
+export interface GrillQuestionData {
+  question: string
+  // 离散选项（问题为开放式时缺省）。
+  options?: GrillQuestionOption[]
+  recommendation: string
+  example: string
+  raw: string
+  isStreaming?: boolean
+}
+
 // 前端设计数据结构。
 // 定向更新动作：replace（默认）/ append / prepend / before / after
 export type FrontDesignUpdateAction = "replace" | "append" | "prepend" | "before" | "after"
@@ -119,6 +136,11 @@ export type ChatBlock =
   | {
       kind: "reviewFindings"
       findings: ReviewFindingsData
+      durationMs?: number
+    }
+  | {
+      kind: "grillQuestion"
+      grill: GrillQuestionData
       durationMs?: number
     }
   | {
@@ -248,6 +270,7 @@ export type ExecutionStepKind =
   | "proposedPlan"
   | "reviewFindings"
   | "frontDesign"
+  | "grillQuestion"
   | "hook"
 
 // 执行步骤状态。
@@ -325,6 +348,8 @@ export interface ExecutionStep {
   planContent?: ProposedPlanData
   // 审查结果内容。
   reviewFindingsContent?: ReviewFindingsData
+  // grill-me 逐题盘问内容。
+  grillQuestionContent?: GrillQuestionData
   // 前端设计原型内容。
   frontDesignContent?: FrontDesignData
   // 模型切换/初始模型内容。
