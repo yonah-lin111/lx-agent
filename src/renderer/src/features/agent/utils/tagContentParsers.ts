@@ -1,6 +1,7 @@
 import type {
   FrontDesignUpdateAction,
   GrillQuestionData,
+  GrillQuestionOption,
   ReviewFindingItem,
   ReviewFindingsData,
   ReviewSeverity,
@@ -168,8 +169,46 @@ const GRILL_FIELD_PATTERNS: {
   { field: "question", pattern: /^(?:\*\*)?(?:问题|question)(?:\*\*)?\s*[:：]\s*/i },
 ]
 
+// 选项行：兼容 `A) 文案` / `A. 文案` / `A、文案` / `（A）文案` / `(A) 文案` / `- A) 文案`（文案可暂空，流式续行补全）。
+const GRILL_OPTION_PATTERNS = [
+  /^(?:[-*]\s*)?[（(]([A-Z])[)）]\s*(.*)$/,
+  /^(?:[-*]\s*)?([A-Z])[).、:：]\s*(.*)$/,
+]
+
+const matchGrillOptionLine = (line: string): GrillQuestionOption | null => {
+  for (const pattern of GRILL_OPTION_PATTERNS) {
+    const match = pattern.exec(line)
+    if (match) return { key: match[1], text: match[2].trim() }
+  }
+  return null
+}
+
+// 从问题字段中拆分选项行：选项之前的行是题干，选项之后的行续接最近选项（多行选项容错）。
+const splitGrillOptions = (question: string): { stem: string; options: GrillQuestionOption[] } => {
+  const stemLines: string[] = []
+  const options: GrillQuestionOption[] = []
+
+  for (const line of question.split("\n")) {
+    const trimmed = line.trim()
+    const matched = matchGrillOptionLine(trimmed)
+    if (matched) {
+      options.push(matched)
+      continue
+    }
+    if (options.length > 0) {
+      if (!trimmed) continue
+      const last = options[options.length - 1]
+      last.text = last.text ? `${last.text}\n${trimmed}` : trimmed
+      continue
+    }
+    stemLines.push(line)
+  }
+
+  return { stem: stemLines.join("\n").trim(), options }
+}
+
 /**
- * 解析 <grill_question> 正文：按 问题 / 推荐 / 推荐举例说明 三个标签切分字段，
+ * 解析 <grill_question> 正文：按 问题（含 A/B/C 选项行）/ 推荐 / 推荐举例说明 切分字段，
  * 支持字段多行内容与流式未写完的半截内容（缺失字段保持空串）。
  */
 export const parseGrillQuestionContent = (
@@ -201,8 +240,11 @@ export const parseGrillQuestionContent = (
     }
   }
 
+  const { stem, options } = splitGrillOptions(fields.question)
+
   return {
-    question: fields.question,
+    question: stem,
+    ...(options.length > 0 ? { options } : {}),
     recommendation: fields.recommendation,
     example: fields.example,
     raw,

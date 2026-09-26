@@ -107,6 +107,24 @@ export const GrillQuestionCard = ({
           </div>
         )}
 
+        {grill.options && grill.options.length > 0 && (
+          <ul className="grill-question-options flex flex-col gap-1">
+            {grill.options.map((option, index) => (
+              <li
+                key={`${option.key}-${index}`}
+                className="grill-question-option flex items-start gap-2 rounded-md border border-sky-500/15 bg-sky-500/[0.06] px-2 py-1.5"
+              >
+                <span className="grill-question-option-key mt-0.5 inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded border border-sky-500/25 bg-sky-500/15 px-1 text-xs font-semibold leading-none text-sky-200">
+                  {option.key}
+                </span>
+                <span className="grill-question-option-text min-w-0 flex-1 break-words text-sm leading-relaxed text-white/85">
+                  {option.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
         {grill.recommendation && (
           <div className="grill-question-recommendation rounded-lg border border-sky-500/20 bg-sky-500/[0.07] p-2.5">
             <div className="grill-question-label mb-1 text-xs font-medium text-sky-300/90">

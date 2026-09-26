@@ -38,6 +38,29 @@ describe("GrillQuestionCard", () => {
     expect(screen.getByText(/另存为 CSV/)).toBeTruthy()
   })
 
+  it("渲染 A/B/C 选项行：键位徽标与选项文案逐行展示", () => {
+    render(
+      <GrillQuestionCard
+        grill={{
+          ...grill,
+          question: "你要的“登录”是哪一种？",
+          options: [
+            { key: "A", text: "本地应用锁，纯离线。" },
+            { key: "B", text: "云端账号登录，需要后端。" },
+            { key: "C", text: "其他（请具体描述）。" },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText("A")).toBeTruthy()
+    expect(screen.getByText("B")).toBeTruthy()
+    expect(screen.getByText("C")).toBeTruthy()
+    expect(screen.getByText("本地应用锁，纯离线。")).toBeTruthy()
+    expect(screen.getByText("云端账号登录，需要后端。")).toBeTruthy()
+    expect(screen.getByText("其他（请具体描述）。")).toBeTruthy()
+  })
+
   it("缺少字段时不渲染对应段落（流式渐进补全）", () => {
     render(
       <GrillQuestionCard

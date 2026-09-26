@@ -58,6 +58,18 @@ describe("像素主题：grill-me 逐题盘问卡片", () => {
     ).toContain("color: #9ad9e2 !important")
   })
 
+  it("选项行沿用像素槽与青色键位徽标", () => {
+    const option = cssBlockOf('[data-theme="pixel"] .grill-question-option {')
+    expect(option).toContain("border: 2px solid #000000 !important")
+    expect(option).toContain("border-radius: 0px !important")
+    expect(option).toContain("box-shadow:")
+
+    const optionKey = cssBlockOf('[data-theme="pixel"] .grill-question-option-key {')
+    expect(optionKey).toContain("border: 1px solid #000000 !important")
+    expect(optionKey).toContain("color: #55ffff !important")
+    expect(optionKey).toContain("font-family: var(--theme-font-family) !important")
+  })
+
   it("像素主题选择器与组件类名一一对齐，避免样式漂移", () => {
     for (const className of [
       "grill-question-card",
@@ -68,6 +80,7 @@ describe("像素主题：grill-me 逐题盘问卡片", () => {
       "grill-question-label",
       "grill-question-recommendation",
       "grill-question-example",
+      "grill-question-option",
       "grill-question-waiting",
     ]) {
       expect(pixelAgentCss).toContain(`.${className}`)

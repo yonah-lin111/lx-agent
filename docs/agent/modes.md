@@ -74,11 +74,12 @@ Auto 是编排基础模式：会话的门禁 / 提示词 / 子代理白名单始
 
 - **决策树 + 一次一问**：把方案拆成决策树，每轮只问一个当前阻塞的最高风险决策，等待回答后再问下一个；依赖尚未闭合的决策不得提前提问（depth-first）。
 - **事实自己查，决策问用户**：能用只读工具从代码/配置/文档验证的事实不得反问用户，须先探查并给出 `file:line` 证据；只有代码无法回答的决策才交给用户（Facts are your job, never the user's）。
-- **每题必带推荐与通俗举例**：固定三行输出 `问题: / 推荐: / 推荐举例说明:`，并整体包裹在 `<grill_question>` 标签内（标签名不翻译；`推荐举例说明` 必须用日常语言举一个具体例子让用户秒懂）；严禁调用 `question` 工具（plan 模式硬拦截，`PLAN_QUESTION_TOOL_REASON`），提问一律走该文本协议。
+- **每题必带推荐与通俗举例**：固定字段输出 `问题: / 推荐: / 推荐举例说明:`，并整体包裹在 `<grill_question>` 标签内（标签名不翻译；`推荐举例说明` 必须用日常语言举一个具体例子让用户秒懂）；严禁调用 `question` 工具（plan 模式硬拦截，`PLAN_QUESTION_TOOL_REASON`），提问一律走该文本协议。
+- **选项规范化**：离散选择必须逐行输出 `A) 文案` / `B) 文案`（题干保留在 `问题:` 行，禁止把 `(A)…(B)…` 塞进问题句子里），`推荐:` 先点名推荐选项键（如 `推荐: A——理由`）；开放式问题（数值/命名/自由描述）不输出选项行。解析为 `GrillQuestionOption[]` 后由卡片渲染为独立选项行（键位徽标 + 文案）。
 - **英文提示词，随用户语言输出**：技能契约本身是英文系统提示词；三行标签随用户语言本地化（英文为 `Question: / Recommendation: / Recommendation example:`），代码标识符、路径与 API 名保持原文。
 - **例外**：请求已 decision complete 或用户明确要求收敛时，不硬凑问题，直接进入 `<proposed_plan>`。
 
-**协议解析与卡片**：`utils/structuredTags.ts` 将 `<grill_question>` 拆为 `kind: "grillQuestion"` 块（`GrillQuestionData`；字段解析见 `utils/tagContentParsers.ts`，兼容中英文标签、Markdown 加粗与多行字段；定稿必须闭合，流式容忍未闭合）。聊天流以 `GrillQuestionCard` 独立渲染（sky 主题三段式：问题 / 推荐 / 推荐举例说明，右上角复制原始提问）；执行流以 `ExecutionStepKind = "grillQuestion"` 独立步骤呈现（默认展开、不参与执行折叠、顶部筛选 tab 与计数）。会话恢复与 `toAgentMessages` 回传按原始标签文本往返，协议不丢失。
+**协议解析与卡片**：`utils/structuredTags.ts` 将 `<grill_question>` 拆为 `kind: "grillQuestion"` 块（`GrillQuestionData`；字段与选项解析见 `utils/tagContentParsers.ts`，兼容中英文标签、Markdown 加粗、多行字段与全/半角选项键；定稿必须闭合，流式容忍未闭合）。聊天流以 `GrillQuestionCard` 独立渲染（sky 主题：问题 / A/B/C 选项行 / 推荐 / 推荐举例说明，右上角复制原始提问）；执行流以 `ExecutionStepKind = "grillQuestion"` 独立步骤呈现（默认展开、不参与执行折叠、顶部筛选 tab 与计数）。会话恢复与 `toAgentMessages` 回传按原始标签文本往返，协议不丢失。
 
 ### 3.2 输出协议
 

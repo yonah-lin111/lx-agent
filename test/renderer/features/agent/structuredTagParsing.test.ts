@@ -103,7 +103,45 @@ describe("结构化标签解析：定稿必须闭合，流式允许未闭合", (
       expect(grillBlock.grill.example).toBe("就像手机锁屏密码，打开 App 先输口令，全程不联网。")
       expect(grillBlock.grill.isStreaming).toBe(false)
       expect(grillBlock.grill.raw).toContain("<grill_question>")
+      expect(grillBlock.grill.options).toBeUndefined()
     }
+  })
+
+  it("选项规范化：A) 独立成行解析为 options，题干不含选项散文（兼容全角与多行选项）", () => {
+    const raw = [
+      "<grill_question>",
+      '问题: 你要的"登录"是哪一种？',
+      "A) 本地应用锁——启动时用本机口令解锁，纯离线。",
+      "B) 云端账号登录——需要新增后端服务。",
+      "（C） 其他（请具体描述），",
+      "例如对接 OpenClaw 的登录。",
+      "推荐: A——本项目是本地优先应用。",
+      "推荐举例说明: 就像手机锁屏密码。",
+      "</grill_question>",
+    ].join("\n")
+    const blocks = parseTextWithProposedPlan(raw)
+    const grillBlock = blocks[0]
+    if (grillBlock.kind !== "grillQuestion") {
+      throw new Error("expected grillQuestion block")
+    }
+    expect(grillBlock.grill.question).toBe('你要的"登录"是哪一种？')
+    expect(grillBlock.grill.options).toEqual([
+      { key: "A", text: "本地应用锁——启动时用本机口令解锁，纯离线。" },
+      { key: "B", text: "云端账号登录——需要新增后端服务。" },
+      { key: "C", text: "其他（请具体描述），\n例如对接 OpenClaw 的登录。" },
+    ])
+  })
+
+  it("开放式问题不带选项行时 options 保持缺省", () => {
+    const blocks = parseStreaming(
+      "<grill_question>\n问题: 导出数据量上限是多少？\n推荐: 10 万行以内。",
+    )
+    const grillBlock = blocks[0]
+    if (grillBlock.kind !== "grillQuestion") {
+      throw new Error("expected grillQuestion block")
+    }
+    expect(grillBlock.grill.question).toBe("导出数据量上限是多少？")
+    expect(grillBlock.grill.options).toBeUndefined()
   })
 
   it("grill_question 兼容英文标签、Markdown 加粗与多行字段", () => {

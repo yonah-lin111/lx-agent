@@ -6,15 +6,28 @@ import {
 import { createDefaultSystemPromptManager } from "@/agent/prompts/systemPromptManager"
 
 describe("Plan Mode 内嵌 grill-me 技能", () => {
-  it("plan 模式提示词包含 grill-me 技能块、<grill_question> 协议与固定三行输出格式契约", () => {
+  it("plan 模式提示词包含 grill-me 技能块、<grill_question> 协议与固定字段输出格式契约", () => {
     const plan = renderCollaborationModeText("plan")
     expect(plan).toContain('<skill name="grill-me">')
     expect(plan).toContain("</skill>")
     expect(plan).toContain("<grill_question>")
     expect(plan).toContain("</grill_question>")
     expect(plan).toContain("问题: <")
+    expect(plan).toContain("A) <")
+    expect(plan).toContain("B) <")
     expect(plan).toContain("推荐: <")
     expect(plan).toContain("推荐举例说明: <")
+  })
+
+  it("选项规范化：每题选项独立成行、禁止行内 (A)…(B)… 散文、推荐点名选项键", () => {
+    const plan = renderCollaborationModeText("plan")
+    expect(plan).toContain("list each choice on its own line right after the question line")
+    expect(plan).toContain("NEVER inline choices inside the question sentence")
+    expect(plan).toContain(
+      "The `推荐:` line MUST name the recommended option key first (e.g. `推荐: A——...`)",
+    )
+    expect(plan).toContain("omit the option lines entirely")
+    expect(plan).toContain("Never mix languages")
   })
 
   it("标签契约：不翻译标签名、每轮仅一个块、问句整体包裹在标签内", () => {
@@ -31,7 +44,7 @@ describe("Plan Mode 内嵌 grill-me 技能", () => {
     expect(plan).toContain(
       "Every question MUST carry your recommended answer and a plain-language example",
     )
-    expect(plan).toContain("answerable by choosing an option or by a short sentence")
+    expect(plan).toContain("answerable by choosing an option key or by a short sentence")
   })
 
   it("决策树协议：先查代码验证事实，事实是模型的责任而非用户的责任", () => {

@@ -3126,6 +3126,26 @@
   color: #9ad9e2 !important;
 }
 
+[data-theme="pixel"] .grill-question-option {
+  border: 2px solid #000000 !important;
+  background-color: #0c1a1f !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.06),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .grill-question-option-key {
+  border: 1px solid #000000 !important;
+  background-color: #123039 !important;
+  color: #55ffff !important;
+  border-radius: 0px !important;
+  font-family: var(--theme-font-family) !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
 [data-theme="pixel"] .grill-question-waiting {
   font-family: var(--theme-font-family) !important;
   color: #7f9aa0 !important;

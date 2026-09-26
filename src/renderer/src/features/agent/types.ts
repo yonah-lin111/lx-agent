@@ -87,9 +87,17 @@ export interface ReviewFindingsData {
   isStreaming?: boolean
 }
 
-// grill-me 逐题盘问数据结构（问题 / 推荐 / 推荐举例说明三行字段）。
+// grill-me 单个候选项（A/B/C… 键 + 文案）。
+export interface GrillQuestionOption {
+  key: string
+  text: string
+}
+
+// grill-me 逐题盘问数据结构（问题 / 选项 / 推荐 / 推荐举例说明）。
 export interface GrillQuestionData {
   question: string
+  // 离散选项（问题为开放式时缺省）。
+  options?: GrillQuestionOption[]
   recommendation: string
   example: string
   raw: string
