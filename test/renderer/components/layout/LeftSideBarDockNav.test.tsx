@@ -5,17 +5,7 @@ import type React from "react"
 import { MemoryRouter, useLocation } from "react-router-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { LeftSideBar } from "@/components/layout/LeftSideBar"
-import {
-  computeDockMagnifyLayout,
-  DOCK_MAX_SCALE,
-  LeftSideBarDockNav,
-} from "@/components/layout/LeftSideBarDockNav"
-
-// 6 个 24px 宽、间距 4px 的导航项，首项中心位于容器内 30px。
-const BASE_ITEMS = Array.from({ length: 6 }, (_, index) => ({
-  center: 30 + index * 28,
-  width: 24,
-}))
+import { LeftSideBarDockNav } from "@/components/layout/LeftSideBarDockNav"
 
 // 生成 DOMRect 替身。
 const createRect = (left: number, width: number, height = 24): DOMRect =>
@@ -92,100 +82,6 @@ const renderDockNav = (
       {props.withProbe ? <LocationProbe /> : null}
     </MemoryRouter>,
   )
-
-describe("computeDockMagnifyLayout", () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-    vi.unstubAllGlobals()
-  })
-
-  it("空列表返回空布局", () => {
-    expect(computeDockMagnifyLayout(0, [])).toEqual([])
-  })
-
-  it("光标位于图标中心时达到放大上限，超出影响半径的图标保持原尺寸", () => {
-    const layout = computeDockMagnifyLayout(30, BASE_ITEMS)
-
-    expect(layout[0].scale).toBeCloseTo(DOCK_MAX_SCALE, 5)
-    // d=28px 时 t=0.5，(1 - t²)² = 0.5625，scale = 1 + 0.5 * 0.5625
-    expect(layout[1].scale).toBeCloseTo(1.28125, 5)
-    // d=56px 时衰减归零
-    expect(layout[2].scale).toBe(1)
-    expect(layout[5].scale).toBe(1)
-  })
-
-  it("距离越远放大越小", () => {
-    const layout = computeDockMagnifyLayout(58, BASE_ITEMS)
-
-    expect(layout[1].scale).toBeCloseTo(DOCK_MAX_SCALE, 5)
-    expect(layout[1].scale).toBeGreaterThan(layout[2].scale)
-    expect(layout[2].scale).toBeGreaterThan(layout[3].scale)
-    expect(layout[3].scale).toBe(1)
-  })
-
-  it("光标下图标原位锚定，邻居向外推开且保持原始间距", () => {
-    const layout = computeDockMagnifyLayout(30, BASE_ITEMS)
-
-    expect(layout[0].translateX).toBeCloseTo(0, 5)
-    for (let index = 1; index < layout.length; index += 1) {
-      expect(layout[index].translateX).toBeGreaterThan(0)
-    }
-
-    for (let index = 1; index < BASE_ITEMS.length; index += 1) {
-      const previousRight =
-        BASE_ITEMS[index - 1].center +
-        layout[index - 1].translateX +
-        (BASE_ITEMS[index - 1].width * layout[index - 1].scale) / 2
-      const currentLeft =
-        BASE_ITEMS[index].center +
-        layout[index].translateX -
-        (BASE_ITEMS[index].width * layout[index].scale) / 2
-      expect(currentLeft - previousRight).toBeCloseTo(4, 5)
-    }
-  })
-
-  it("光标位于图标内部非中心位置时锚定该点", () => {
-    const pointerX = 24
-    const layout = computeDockMagnifyLayout(pointerX, BASE_ITEMS)
-    const ratio =
-      (pointerX - (BASE_ITEMS[0].center - BASE_ITEMS[0].width / 2)) / BASE_ITEMS[0].width
-    const anchor =
-      BASE_ITEMS[0].center +
-      layout[0].translateX +
-      (ratio - 0.5) * BASE_ITEMS[0].width * layout[0].scale
-
-    expect(anchor).toBeCloseTo(pointerX, 5)
-  })
-
-  it("光标远离导航条时输出恒等变换", () => {
-    const layout = computeDockMagnifyLayout(230, BASE_ITEMS)
-
-    for (const item of layout) {
-      expect(item.scale).toBe(1)
-      expect(item.translateX).toBeCloseTo(0, 5)
-    }
-  })
-
-  it("光标越过右端时整条右边缘保持原位", () => {
-    const pointerX = 190
-    const layout = computeDockMagnifyLayout(pointerX, BASE_ITEMS)
-    const lastIndex = BASE_ITEMS.length - 1
-    const lastRight =
-      BASE_ITEMS[lastIndex].center +
-      layout[lastIndex].translateX +
-      (BASE_ITEMS[lastIndex].width * layout[lastIndex].scale) / 2
-
-    expect(lastRight).toBeCloseTo(182, 5)
-    expect(layout[lastIndex].scale).toBeGreaterThan(1)
-  })
-
-  it("单项列表仍按锚点放大", () => {
-    const layout = computeDockMagnifyLayout(12, [{ center: 12, width: 24 }])
-
-    expect(layout[0].scale).toBeCloseTo(DOCK_MAX_SCALE, 5)
-    expect(layout[0].translateX).toBeCloseTo(0, 5)
-  })
-})
 
 describe("LeftSideBarDockNav", () => {
   afterEach(() => {

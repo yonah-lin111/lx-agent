@@ -21,6 +21,15 @@ import type {
   PromptStatus,
 } from "@/features/project-navigation/types"
 import { type TranslationKey, useTranslation } from "@/i18n"
+import { useDockMagnify } from "@/lib/useDockMagnify"
+
+// 树列表 Dock 放大上限与光标影响半径：全宽行横向余量有限，档位比图标条收敛。
+const TREE_DOCK_MAX_SCALE = 1.08
+const TREE_DOCK_INFLUENCE_RADIUS_PX = 56
+
+// Dock 行项注册键：按实体类型加前缀，避免不同表 id 冲突。
+const dockItemKey = (kind: "project" | "project_folder" | "prompt" | "temp", id: string): string =>
+  `${kind}:${id}`
 
 export type {
   EditingItem,
@@ -95,6 +104,14 @@ export const ProjectNavigationList = ({
   onOpenMenu,
 }: ProjectNavigationListProps): React.JSX.Element => {
   const { t } = useTranslation()
+  const { containerRef, registerItem, handlePointerMove, resetTransforms } =
+    useDockMagnify<HTMLDivElement>({
+      enabled: true,
+      axis: "y",
+      maxScale: TREE_DOCK_MAX_SCALE,
+      influenceRadiusPx: TREE_DOCK_INFLUENCE_RADIUS_PX,
+      distanceMode: "edge",
+    })
 
   /**
    * 渲染条目状态图标，点击可循环切换状态。
@@ -168,6 +185,9 @@ export const ProjectNavigationList = ({
     return (
       <LxNavItem
         key={tempPromptId}
+        ref={(node) => {
+          registerItem(dockItemKey("temp", tempPromptId), node)
+        }}
         depth={1}
         hoverable={false}
         data-item-variant="temp-prompt"
@@ -210,6 +230,9 @@ export const ProjectNavigationList = ({
     return (
       <LxNavItem
         key={prompt.id}
+        ref={(node) => {
+          registerItem(dockItemKey("prompt", prompt.id), node)
+        }}
         depth={depth}
         level={3}
         data-menu-open={activeMenuId === prompt.id ? "true" : undefined}
@@ -247,6 +270,9 @@ export const ProjectNavigationList = ({
     return (
       <div key={folder.id} className="space-y-0.5">
         <LxNavItem
+          ref={(node) => {
+            registerItem(dockItemKey("project_folder", folder.id), node)
+          }}
           depth={depth}
           level={2}
           data-menu-open={activeMenuId === folder.id ? "true" : undefined}
@@ -285,7 +311,13 @@ export const ProjectNavigationList = ({
   }
 
   return (
-    <div className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-2 [scrollbar-gutter:stable]">
+    <div
+      ref={containerRef}
+      className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-2.5 pb-2 [scrollbar-gutter:stable]"
+      onPointerCancel={resetTransforms}
+      onPointerLeave={resetTransforms}
+      onPointerMove={handlePointerMove}
+    >
       {projects.length > 0 &&
         projects.map((project) => {
           const isProjectCollapsed = searchKeyword ? false : !Boolean(collapsedProjects[project.id])
@@ -293,6 +325,9 @@ export const ProjectNavigationList = ({
           return (
             <div key={project.id} className="space-y-1">
               <LxNavItem
+                ref={(node) => {
+                  registerItem(dockItemKey("project", project.id), node)
+                }}
                 level={1}
                 data-unimported={project.isImported === false ? "true" : undefined}
                 data-menu-open={activeMenuId === project.id ? "true" : undefined}
