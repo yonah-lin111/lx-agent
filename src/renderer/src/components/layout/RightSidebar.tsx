@@ -1,5 +1,5 @@
 import type { AgentSendContext } from "@shared/contracts/agent"
-import { ChevronLeft, ChevronRight, History, MessageSquare, Plus, Workflow } from "lucide-react"
+import { ChevronLeft, ChevronRight, History, ListTree, MessagesSquare, Plus } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
@@ -290,7 +290,7 @@ export const RightSideBar = (): React.JSX.Element => {
                 size="small"
                 className="shrink-0"
               >
-                {viewMode === "flow" ? <MessageSquare /> : <Workflow />}
+                {viewMode === "flow" ? <MessagesSquare /> : <ListTree />}
               </LxIconButton>
             </div>
 
