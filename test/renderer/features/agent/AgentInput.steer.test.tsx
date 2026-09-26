@@ -204,7 +204,7 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
     await act(async () => {})
     fireEvent.keyDown(editor, { key: "Enter" })
 
-    expect(currentText).toBe("/steer [prompt]")
+    expect(currentText).toBe("/steer -prompt")
 
     const cmView = EditorView.findFromDOM(editor)
     expect(cmView).not.toBeNull()

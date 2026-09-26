@@ -434,6 +434,51 @@ describe("LxMarkdownEditor /addContent 命令执行", () => {
     )
   })
 
+  it("输入 /addContent -@xxx 并回车后，剥离 - 分隔符写入 @content 块", async () => {
+    const initialText = [
+      "$$$ varTemplate --start 「title: 」",
+      "@content:",
+      "  - @src/keep.ts",
+      'key: "var"',
+      "$$$ varTemplate --end",
+      "",
+      "# 正文",
+      "/addContent -@src/bar.ts",
+    ].join("\n")
+
+    render(<LxMarkdownEditor initialContent={initialText} projectPath="/repo" />)
+    await waitFor(() => expect(getCm()).not.toBeNull())
+
+    const view = EditorView.findFromDOM(getCm()!)!
+    const commandOffset = initialText.indexOf("/addContent") + "/addContent".length
+    view.dispatch({ selection: { anchor: commandOffset } })
+
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    await new Promise((r) => setTimeout(r, 100))
+
+    expect(view.state.doc.toString()).toBe(
+      [
+        "$$$ varTemplate --start 「title: 」",
+        "@content:",
+        "  - @src/keep.ts",
+        "  - @src/bar.ts",
+        'key: "var"',
+        "$$$ varTemplate --end",
+        "",
+        "# 正文",
+        "",
+      ].join("\n"),
+    )
+  })
+
   it("参数非 @ 开头时回车提示无法添加且不改动文档", async () => {
     const initialText = [
       "$$$ varTemplate --start 「title: 」",
@@ -441,7 +486,7 @@ describe("LxMarkdownEditor /addContent 命令执行", () => {
       "$$$ varTemplate --end",
       "",
       "# 正文",
-      "/addContent [content]",
+      "/addContent -content",
     ].join("\n")
 
     render(<LxMarkdownEditor initialContent={initialText} projectPath="/repo" />)

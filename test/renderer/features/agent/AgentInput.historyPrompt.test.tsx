@@ -161,7 +161,7 @@ describe("AgentInput /historyPrompt 历史提示词面板", () => {
     fireEvent.keyDown(content, { key: "Enter" })
     await act(async () => {})
 
-    expect(content.textContent).toBe("/historyPrompt ")
+    expect(content.textContent).toBe("/historyPrompt -query")
     // 等待一级命令面板退场动画结束，仅剩二级历史面板。
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 150))

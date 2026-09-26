@@ -50,7 +50,7 @@ describe("/cd 命令测试", () => {
       expect(cmds.some((c) => c.id === "cd")).toBe(true)
     })
 
-    it("executeCommand 正确填充 /cd ", () => {
+    it("executeCommand 正确填充 /cd -path ", () => {
       const onChange = vi.fn()
       const { result } = renderHook(() =>
         useAgentInputActions({
@@ -64,7 +64,7 @@ describe("/cd 命令测试", () => {
         name: "cd",
         description: "Change directory workspace",
       })
-      expect(onChange).toHaveBeenCalledWith("/cd ")
+      expect(onChange).toHaveBeenCalledWith("/cd -path")
     })
   })
 
@@ -170,6 +170,27 @@ describe("/cd 命令测试", () => {
         expect(projectApi.findOrCreateByPath).toHaveBeenCalledWith("/picked/directory")
         expect(onCdSelect).toHaveBeenCalledWith("p-picked", "/picked/directory")
       })
+    })
+
+    it("未编辑的 -path 占位词执行 /cd: 打开目录选择器", async () => {
+      const onCdSelect = vi.fn()
+      const onChange = vi.fn()
+      vi.mocked(projectApi.selectDirectory).mockResolvedValue("/picked/dash")
+
+      const { result } = renderHook(() =>
+        useAgentInputActions({
+          ...defaultProps,
+          valueRef: { current: "/cd -path" },
+          onChangeRef: { current: onChange },
+          onCdSelect,
+        }),
+      )
+
+      result.current.handleSendAction()
+
+      expect(onChange).toHaveBeenCalledWith("")
+      expect(projectApi.selectDirectory).toHaveBeenCalled()
+      expect(projectApi.findOrCreateByPath).not.toHaveBeenCalled()
     })
 
     it("Electron IPC 抛出远程异常包含 PROJECT_PATH_NOT_FOUND 时友善提示", async () => {

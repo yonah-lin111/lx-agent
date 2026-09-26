@@ -327,21 +327,21 @@ export const useMarkdownCommandRunners = ({
   )
 
   /**
-   * 执行 /addContent 命令：把 [@path] 参数追加到首个变量模板块的 @content 内容块。
+   * 执行 /addContent 命令：把参数（@path 或 @引用）追加到首个变量模板块的 @content 内容块。
+   * 兼容旧 `[content]` 写法；未编辑的 `-content` 占位词视为缺参。
    */
   const runAddContentAppend = useCallback(
     (view: EditorView): void => {
       const cursor = view.state.selection.main.head
       const line = view.state.doc.lineAt(cursor)
-      const argument = line.text
+      const rawArgument = line.text
         .trim()
         .slice(ADD_CONTENT_COMMAND_LABEL.length)
         .trim()
-        .replace(/^\[/, "")
-        .replace(/\]$/, "")
-        .trim()
+        .replace(/^\[([\s\S]*)\]$/, "$1")
+      const argument = rawArgument.replace(/^-/, "").trim()
 
-      if (!argument.startsWith("@") || argument.length < 2) {
+      if (!argument || argument === "content" || !argument.startsWith("@") || argument.length < 2) {
         warning(t("markdown.addContentInvalidEntry"))
         return
       }

@@ -223,17 +223,17 @@ describe("Markdown 斜杠命令", () => {
     )
   })
 
-  it("/addContent 为参数型全 page 命令，插入文本默认选中 [content]", () => {
+  it("/addContent 为参数型全 page 命令，插入文本默认选中 -content 占位词", () => {
     const commands = getMarkdownSlashCommands("/addContent", false, true, [], "zh")
     expect(commands).toHaveLength(1)
     const command = commands[0]
     expect(command.kind).toBe("argument")
     expect(command.scope).toBe("all")
-    expect(command.argumentHint).toBe("[content]")
-    expect(command.content).toBe("/addContent [content]")
+    expect(command.argumentHint).toBe("-content")
+    expect(command.content).toBe("/addContent -content")
 
-    const range = getTemplatePlaceholderSelectionRange(command.content)
-    expect(range).not.toBeNull()
+    const range = command.selectionRange
+    expect(range).toBeDefined()
     expect(command.content.slice(range!.start, range!.end)).toBe("content")
   })
 })
@@ -357,7 +357,7 @@ describe("Markdown 斜杠命令武装判定", () => {
         id: "custom:my-feature",
         label: "/my-feature",
         description: "自定义特性模板",
-        argumentHint: "[feature-name]",
+        argumentHint: "-feature-name",
         content: "## Feature: [feature-name]\n\nDescription",
         cursorOffset: 35,
         scope: "both" as const,
@@ -368,7 +368,7 @@ describe("Markdown 斜杠命令武装判定", () => {
 
     const matches = getMarkdownSlashCommands("/my", false, true, customCommands)
     expect(matches).toHaveLength(1)
-    expect(matches[0].argumentHint).toBe("[feature-name]")
+    expect(matches[0].argumentHint).toBe("-feature-name")
   })
 
   it("stripMarkdownSlashCommands: 移除内容中的斜杠命令文本并保留空行换行", () => {

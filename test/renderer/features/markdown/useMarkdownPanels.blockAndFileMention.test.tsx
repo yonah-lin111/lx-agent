@@ -371,7 +371,7 @@ describe("useMarkdownPanels /addContent 命令插入", () => {
     cleanup()
   })
 
-  it("面板选中 /addContent 后插入 [content] 占位并默认选中 content", () => {
+  it("面板选中 /addContent 后插入 -content 占位并默认选中 content", () => {
     const doc = "/addContent"
     const editorView = createEditorView(doc, doc.length)
     const editorRef = { current: editorView }
@@ -388,7 +388,7 @@ describe("useMarkdownPanels /addContent 命令插入", () => {
     act(() => {
       result.current.selectSlashCommand(command!)
     })
-    expect(editorView.state.doc.toString()).toBe("/addContent [content]")
+    expect(editorView.state.doc.toString()).toBe("/addContent -content")
     expect(
       editorView.state.doc.sliceString(
         editorView.state.selection.main.from,

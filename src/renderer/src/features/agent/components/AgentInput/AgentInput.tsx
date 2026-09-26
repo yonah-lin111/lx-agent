@@ -5,6 +5,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "r
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { agentApi } from "@/features/agent/api/agentApi"
 import type { GitWorktreeOption } from "@/features/git"
 import { useTranslation } from "@/i18n"
 import { AgentContextUsagePill } from "../AgentContextUsagePill"
@@ -15,6 +16,11 @@ import {
   type AgentMarkdownInputProps,
   type AgentMarkdownInputRef,
 } from "./AgentMarkdownInput"
+import {
+  getMissingRequiredCommand,
+  isKnownCommandName,
+  parseSlashCommandName,
+} from "./AgentMarkdownInput/agentMarkdownInputUtils"
 import { AgentVoiceInputButton, type AgentVoiceInputButtonRef } from "./AgentVoiceInputButton"
 
 // 图片附件支持集：与 view_image 工具一致（nativeImage 仅稳定解码 PNG/JPEG）。
@@ -152,6 +158,26 @@ export const AgentInput = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { error: errorToast } = useLxAgentToast()
   const { t } = useTranslation()
+
+  // 已加载的 Prompt 模板命令名：发送前校验未知 `/命令`（与命令面板同源 API）。
+  const [templateCommandNames, setTemplateCommandNames] = useState<string[]>([])
+  const templateCommandNamesRef = useRef(templateCommandNames)
+  templateCommandNamesRef.current = templateCommandNames
+
+  useEffect(() => {
+    let active = true
+    agentApi
+      .listPromptTemplates(projectPath)
+      .then((templates) => {
+        if (active) setTemplateCommandNames(templates.map((item) => item.name))
+      })
+      .catch(() => {
+        if (active) setTemplateCommandNames([])
+      })
+    return () => {
+      active = false
+    }
+  }, [projectPath])
 
   // 发送即时插话后的顶部瞬时提示条（参考排队消息提示；数秒后自动消失）。
   const [steerNoticeVisible, setSteerNoticeVisible] = useState(false)
@@ -293,6 +319,23 @@ export const AgentInput = ({
 
   const handleSend = (options?: { delivery?: "queue" | "steer" }): void => {
     if (!inputText.trim() && selectedFiles.length === 0) return
+
+    const text = inputText.trim()
+    // 未知 `/命令`：拒绝发送并提示（`/usr/local` 这类路径不视为命令）。
+    const commandName = parseSlashCommandName(text)
+    if (commandName && !isKnownCommandName(commandName, templateCommandNamesRef.current)) {
+      errorToast(t("agent.unknownCommand", { command: `/${commandName}` }))
+      return
+    }
+    // 必填参数缺失：提示补参，保留输入等待修正。
+    const missingCommand = getMissingRequiredCommand(text)
+    if (missingCommand) {
+      errorToast(
+        t(missingCommand.id === "btw" ? "agent.btwMissingContent" : "agent.steerMissingContent"),
+      )
+      return
+    }
+
     // 即时插话（steer）展示顶部瞬时提示条。
     if (options?.delivery === "steer") {
       showSteerNotice()

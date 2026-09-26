@@ -25,10 +25,13 @@ import type {
   SubagentMentionCandidate,
 } from "../../AgentInputCommandPanels"
 import {
+  collapsePlaceholderArgument,
   getArgumentSelectionRange,
+  getCommandArgumentText,
   getMentionQuery,
   getSkillMentionQuery,
   HISTORY_PROMPT_COMMAND,
+  resolveExportFormat,
 } from "../agentMarkdownInputUtils"
 import type { AgentInputActiveMode } from "../types"
 
@@ -98,6 +101,40 @@ export const useAgentInputActions = ({
   const isOnlyOneTurnLeftRef = useRef(isOnlyOneTurnLeft)
   isOnlyOneTurnLeftRef.current = isOnlyOneTurnLeft
 
+  // 清空编辑器与外部输入状态（命令执行后统一收口）。
+  const clearEditor = useCallback((): void => {
+    onChangeRef.current("")
+    const view = editorViewRef.current
+    if (view) {
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
+    }
+  }, [editorViewRef, onChangeRef])
+
+  // 执行会话导出：命令拦截与 /export 二级面板选项共用。
+  const executeExport = useCallback(
+    (format: "html" | "markdown" | "jsonl"): void => {
+      clearEditor()
+      void agentApi
+        .exportSession({ format, openAfterExport: true })
+        .then((res) => {
+          if (res.ok && !res.canceled && res.filePath) {
+            successToast(
+              t("agent.exportSuccess", {
+                format: format.toUpperCase(),
+                path: res.filePath,
+              }),
+            )
+          } else if (!res.ok) {
+            errorToast(res.error || t("agent.exportFailed"))
+          }
+        })
+        .catch((err) => {
+          errorToast(err instanceof Error ? err.message : t("agent.exportFailed"))
+        })
+    },
+    [clearEditor, successToast, errorToast, t],
+  )
+
   const handleSendAction = useCallback(
     (forceDelivery?: "queue" | "steer"): void => {
       reset()
@@ -111,53 +148,17 @@ export const useAgentInputActions = ({
         text.startsWith("/export:") ||
         text.startsWith("/export-")
       ) {
-        const rawArg = text
-          .replace(/^\/export[:\s-]*/i, "")
+        const rawArg = getCommandArgumentText(text, "export")
           .replace(/^\[|\]$/g, "")
-          .trim()
           .toLowerCase()
-        let format: "html" | "markdown" | "jsonl" = "html"
-        if (
-          rawArg === "md" ||
-          rawArg === "markdown" ||
-          rawArg.startsWith("md") ||
-          rawArg.startsWith("markdown")
-        ) {
-          format = "markdown"
-        } else if (
-          rawArg === "json" ||
-          rawArg === "jsonl" ||
-          rawArg.startsWith("json") ||
-          rawArg.startsWith("jsonl")
-        ) {
-          format = "jsonl"
-        } else if (rawArg === "html" || rawArg.startsWith("html") || rawArg === "") {
-          format = "html"
+        const explicitDash = /^\/export[:\s]*-/.test(text)
+        // 显式写了 `-` 却没选格式，或参数无法识别：提示选择，保留输入等待修正。
+        const format = rawArg ? resolveExportFormat(rawArg) : explicitDash ? null : "html"
+        if (format === null) {
+          warningToast(t("agent.exportFormatRequired"))
+          return
         }
-        onChangeRef.current("")
-        const view = editorViewRef.current
-        if (view) {
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: "" },
-          })
-        }
-        void agentApi
-          .exportSession({ format, openAfterExport: true })
-          .then((res) => {
-            if (res.ok && !res.canceled && res.filePath) {
-              successToast(
-                t("agent.exportSuccess", {
-                  format: format.toUpperCase(),
-                  path: res.filePath,
-                }),
-              )
-            } else if (!res.ok) {
-              errorToast(res.error || t("agent.exportFailed"))
-            }
-          })
-          .catch((err) => {
-            errorToast(err instanceof Error ? err.message : t("agent.exportFailed"))
-          })
+        executeExport(format)
         return
       }
 
@@ -206,15 +207,10 @@ export const useAgentInputActions = ({
         text.startsWith("/cd:") ||
         text.startsWith("/cd-")
       ) {
-        const rawArg = text.replace(/^\/cd[:\s-]*/i, "")
-        const targetPath = cleanWorkspacePath(rawArg)
-        onChangeRef.current("")
-        const view = editorViewRef.current
-        if (view) {
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: "" },
-          })
-        }
+        const rawArg = getCommandArgumentText(text, "cd")
+        // `/cd -path` 未编辑占位词时等同空参：走系统目录选择器（cleanWorkspacePath 兼容 [path]）。
+        const targetPath = cleanWorkspacePath(collapsePlaceholderArgument(rawArg, "path"))
+        clearEditor()
 
         const proceedWithTargetPath = (path: string): void => {
           void projectApi
@@ -297,22 +293,14 @@ export const useAgentInputActions = ({
         text.startsWith("/copy:") ||
         text.startsWith("/copy-")
       ) {
-        const rawArg = text
-          .replace(/^\/copy[:\s-]*/i, "")
+        const rawArg = getCommandArgumentText(text, "copy")
           .replace(/^\[|\]$/g, "")
-          .trim()
           .toLowerCase()
         const target =
           rawArg === "all" || rawArg === "full" || rawArg === "md" || rawArg === "markdown"
             ? "markdown"
             : "last_assistant"
-        onChangeRef.current("")
-        const view = editorViewRef.current
-        if (view) {
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: "" },
-          })
-        }
+        clearEditor()
         void agentApi
           .copySession({ target })
           .then((res) => {
@@ -355,12 +343,12 @@ export const useAgentInputActions = ({
           warningToast(t("agent.btwNoConversation"))
           return
         }
-        const question = text
-          .slice(4)
-          .trim()
-          .replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1")
-          .trim()
-        if (!question) return
+        // 必填参数缺失（含未编辑的 `-prompt` 占位词）：提示补参后发送，保留输入。
+        const question = collapsePlaceholderArgument(getCommandArgumentText(text, "btw"), "prompt")
+        if (!question) {
+          errorToast(t("agent.btwMissingContent"))
+          return
+        }
         onBtwSendRef?.current?.(question)
         return
       }
@@ -368,9 +356,16 @@ export const useAgentInputActions = ({
       let delivery = forceDelivery
       if (text.startsWith("/steer ") || text === "/steer") {
         delivery = "steer"
-        text = text.slice(6).trim()
-        text = text.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
-        if (!text) return
+        // 必填参数缺失（含未编辑的 `-prompt` 占位词）：提示补参后发送，保留输入。
+        const steerContent = collapsePlaceholderArgument(
+          getCommandArgumentText(text, "steer"),
+          "prompt",
+        )
+        if (!steerContent) {
+          errorToast(t("agent.steerMissingContent"))
+          return
+        }
+        text = steerContent
       }
 
       if (delivery === "steer") {
@@ -391,6 +386,8 @@ export const useAgentInputActions = ({
       onCompact,
       onClear,
       onUndo,
+      executeExport,
+      clearEditor,
       setActiveMode,
       setUndoConfirmIndex,
       updatePanelPosition,
@@ -406,6 +403,13 @@ export const useAgentInputActions = ({
     (command: AgentInputCommand): void => {
       setActiveMode(null)
       const view = editorViewRef.current
+
+      // /export 二级格式面板选项：选中即执行导出。
+      if (command.id.startsWith("export:")) {
+        executeExport(command.id.slice("export:".length) as "html" | "markdown" | "jsonl")
+        return
+      }
+
       if (command.kind === "prompt") {
         const rawName = command.name.startsWith("/") ? command.name : `/${command.name}`
         const hint = command.argumentHint ? ` ${command.argumentHint}` : " "
@@ -432,7 +436,7 @@ export const useAgentInputActions = ({
         }
         onUndo?.()
       } else if (command.id === "steer") {
-        const insertText = "/steer [prompt]"
+        const insertText = "/steer -prompt"
         onChangeRef.current(insertText)
         if (view) {
           const selection = getArgumentSelectionRange(insertText, 6)
@@ -442,7 +446,7 @@ export const useAgentInputActions = ({
           })
         }
       } else if (command.id === "btw") {
-        const insertText = "/btw [prompt]"
+        const insertText = "/btw -prompt"
         onChangeRef.current(insertText)
         if (view) {
           const selection = getArgumentSelectionRange(insertText, 4)
@@ -470,11 +474,15 @@ export const useAgentInputActions = ({
           selection: { anchor: 9 },
         })
       } else if (command.id === "cd") {
-        onChangeRef.current("/cd ")
-        view?.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: "/cd " },
-          selection: { anchor: 4 },
-        })
+        const insertText = "/cd -path"
+        onChangeRef.current(insertText)
+        if (view) {
+          const selection = getArgumentSelectionRange(insertText, 3)
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: insertText },
+            selection,
+          })
+        }
       } else if (command.id === "session") {
         onChangeRef.current("/session ")
         view?.dispatch({
@@ -485,17 +493,15 @@ export const useAgentInputActions = ({
         onChangeRef.current("")
         onCompact?.()
       } else if (command.id === "export") {
-        const insertText = "/export [html | md | json]"
+        // 回显 `/export -` 并触发二级格式面板（syncPanels 检测前缀后弹出）。
+        const insertText = "/export -"
         onChangeRef.current(insertText)
-        if (view) {
-          const selection = getArgumentSelectionRange(insertText, 7)
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: insertText },
-            selection,
-          })
-        }
+        view?.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: insertText },
+          selection: { anchor: insertText.length },
+        })
       } else if (command.id === "copy") {
-        const insertText = "/copy [all]"
+        const insertText = "/copy -all"
         onChangeRef.current(insertText)
         if (view) {
           const selection = getArgumentSelectionRange(insertText, 5)
@@ -505,12 +511,15 @@ export const useAgentInputActions = ({
           })
         }
       } else if (command.id === "historyPrompt") {
-        const insertText = `${HISTORY_PROMPT_COMMAND} `
+        const insertText = `${HISTORY_PROMPT_COMMAND} -query`
         onChangeRef.current(insertText)
-        view?.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: insertText },
-          selection: { anchor: insertText.length },
-        })
+        if (view) {
+          const selection = getArgumentSelectionRange(insertText, HISTORY_PROMPT_COMMAND.length)
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: insertText },
+            selection,
+          })
+        }
       }
       view?.focus()
     },
@@ -520,6 +529,7 @@ export const useAgentInputActions = ({
       onClear,
       onUndo,
       onCompact,
+      executeExport,
       setActiveMode,
       setUndoConfirmIndex,
       updatePanelPosition,

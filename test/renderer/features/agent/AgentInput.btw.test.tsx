@@ -107,7 +107,7 @@ describe("AgentInput /btw 命令", () => {
     vi.mocked(promptHistoryApi.get).mockReset()
   })
 
-  it("命令面板选中 /btw 回显 /btw [prompt]", async () => {
+  it("命令面板选中 /btw 回显 /btw -prompt", async () => {
     const { content } = await renderInput({})
     const view = stubCoords(content)
 
@@ -119,7 +119,7 @@ describe("AgentInput /btw 命令", () => {
     fireEvent.mouseDown(option)
 
     await waitFor(() => {
-      expect(view.state.doc.toString()).toBe("/btw [prompt]")
+      expect(view.state.doc.toString()).toBe("/btw -prompt")
     })
   })
 

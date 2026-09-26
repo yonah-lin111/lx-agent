@@ -177,9 +177,14 @@ export const useMarkdownSlashCommandPanel = ({
     const panel = slashCommandPanelRef.current
     if (!view || !panel) return
 
-    // 参数型命令（/addContent）：回显命令文本并选中 [] 占位参数，等待回车执行。
+    // 参数型命令（/addContent）：回显命令文本并选中占位参数，等待回车执行。
     if (command.kind === "argument") {
-      const placeholderRange = getTemplatePlaceholderSelectionRange(command.content)
+      const placeholderRange =
+        command.selectionRange ??
+        (() => {
+          const bracketRange = getTemplatePlaceholderSelectionRange(command.content)
+          return bracketRange ? { start: bracketRange.start, end: bracketRange.end } : null
+        })()
       const selection = placeholderRange
         ? {
             anchor: panel.line.from + placeholderRange.start,

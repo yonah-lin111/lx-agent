@@ -3,7 +3,9 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
+  cleanupPlaceholderArgs,
   inferArgumentHint,
+  normalizeArgumentHint,
   PromptTemplateLoader,
   parseCommandArgs,
   parseFrontmatterSafely,
@@ -127,7 +129,7 @@ argument-hint: [file]
       expect(templates[0]).toMatchObject({
         name: "review",
         description: "全局审查模板",
-        argumentHint: "[file]",
+        argumentHint: "-file",
         content: "请审查 $1",
         source: "user",
       })
@@ -160,7 +162,7 @@ argument-hint: [target_file]
       expect(templates[0]).toMatchObject({
         name: "review",
         description: "项目专属审查模板",
-        argumentHint: "[target_file]",
+        argumentHint: "-target_file",
         content: "项目专属规则: $1",
         source: "project",
       })
@@ -195,6 +197,23 @@ description: 重构代码
       expect(expanded).toBe("请重构 src/main.ts，采用最小修改原则。补充：src/main.ts 保持优雅")
     })
 
+    it("drops untouched -placeholder args and strips dash separators", () => {
+      writeFileSync(
+        join(projectPromptsDir, "hinted.md"),
+        `---
+description: 带占位提示
+argument-hint: -arg1
+---
+请处理 $1 完成
+`,
+      )
+
+      // 未编辑占位词：视为未填写，$1 替换为空串。
+      expect(loader.expand("/hinted -arg1", projectDir)).toBe("请处理  完成")
+      // 实际填写：剥离 `-` 分隔符。
+      expect(loader.expand("/hinted -hello", projectDir)).toBe("请处理 hello 完成")
+    })
+
     it("ignores reserved system commands like /clear, /undo, /steer, /model, /compact", () => {
       expect(loader.expand("/clear", projectDir)).toBe("/clear")
       expect(loader.expand("/undo", projectDir)).toBe("/undo")
@@ -213,23 +232,51 @@ description: 重构代码
   })
 
   describe("inferArgumentHint", () => {
-    it("infers multiple indexed arguments like $1 $2", () => {
-      expect(inferArgumentHint("请审查 $1 并对比 $2")).toBe("[arg1] [arg2]")
+    it("infers multiple indexed arguments like -arg1 -arg2", () => {
+      expect(inferArgumentHint("请审查 $1 并对比 $2")).toBe("-arg1 -arg2")
     })
 
     it("infers arguments with default names like ${1:-target_file} ${2:-rules}", () => {
       expect(inferArgumentHint("请审查 ${1:-target_file} 规则：${2:-rules}")).toBe(
-        "[target_file] [rules]",
+        "-target_file -rules",
       )
     })
 
-    it("infers [arguments] for $@ or $ARGUMENTS", () => {
-      expect(inferArgumentHint("执行任务：$@")).toBe("[arguments]")
-      expect(inferArgumentHint("参数：$ARGUMENTS")).toBe("[arguments]")
+    it("infers -arguments for $@ or $ARGUMENTS", () => {
+      expect(inferArgumentHint("执行任务：$@")).toBe("-arguments")
+      expect(inferArgumentHint("参数：$ARGUMENTS")).toBe("-arguments")
     })
 
     it("returns undefined for static templates without arguments", () => {
       expect(inferArgumentHint("请输出系统架构图。")).toBeUndefined()
+    })
+  })
+
+  describe("normalizeArgumentHint", () => {
+    it("converts bracketed placeholders to dash form", () => {
+      expect(normalizeArgumentHint("[content] [title]")).toBe("-content -title")
+      expect(normalizeArgumentHint("[html | md | json]")).toBe("-html | -md | -json")
+    })
+
+    it("normalizes bare words and comma lists", () => {
+      expect(normalizeArgumentHint("content")).toBe("-content")
+      expect(normalizeArgumentHint("content, title")).toBe("-content -title")
+    })
+
+    it("keeps dash form untouched", () => {
+      expect(normalizeArgumentHint("-content -title")).toBe("-content -title")
+      expect(normalizeArgumentHint("-html | -md")).toBe("-html | -md")
+    })
+  })
+
+  describe("cleanupPlaceholderArgs", () => {
+    it("strips dash separators and drops untouched placeholder words", () => {
+      expect(cleanupPlaceholderArgs(["-arg1", "-foo"], "-arg1 -arg2")).toEqual(["foo"])
+      expect(cleanupPlaceholderArgs(["-arg1"], "-arg1")).toEqual([])
+      expect(cleanupPlaceholderArgs(["-hello", "-world"], "-arg1 -arg2")).toEqual([
+        "hello",
+        "world",
+      ])
     })
   })
 
@@ -263,7 +310,7 @@ argument-hint: [content] [title]
       expect(templates[0]).toMatchObject({
         name: "sayHello",
         description: "say hello",
-        argumentHint: "[content] [title]",
+        argumentHint: "-content -title",
         content: "输出 $1 的内容，并添加表情emoji",
         source: "project",
       })
@@ -394,12 +441,12 @@ Action: [action]
       const mdCommands = loader.loadMarkdownCommands(projectDir)
       const target = mdCommands.find((c) => c.name === "hintTemplate")
       expect(target).toBeDefined()
-      expect(target?.argumentHint).toBe("[target] [action]")
+      expect(target?.argumentHint).toBe("-target -action")
 
       const ipcList = loader.listMarkdownCommands(projectDir)
       const ipcTarget = ipcList.find((c) => c.name === "hintTemplate")
       expect(ipcTarget).toBeDefined()
-      expect(ipcTarget?.argumentHint).toBe("[target] [action]")
+      expect(ipcTarget?.argumentHint).toBe("-target -action")
     })
 
     it("preserves leading spaces/indentation on the first line while trimming trailing whitespace", () => {

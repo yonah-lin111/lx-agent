@@ -166,7 +166,7 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     cursorOffset: getTemplateCursorOffset(MARKDOWN_TEMPLATE_LOG_CONTENT),
   }
 
-  // 固定 @ 内容块追加命令：全 page 可用，回显 /addContent [content] 并选中参数，回车写入首个变量块的 @content。
+  // 固定 @ 内容块追加命令：全 page 可用，回显 /addContent -content 并选中参数，回车写入首个变量块的 @content。
   const addContent: MarkdownSlashCommand = {
     id: "addContent",
     label: "/addContent",
@@ -174,9 +174,10 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     scope: "all",
     kind: "argument",
     source: "builtin",
-    content: "/addContent [content]",
-    cursorOffset: "/addContent [content]".length,
-    argumentHint: "[content]",
+    content: "/addContent -content",
+    cursorOffset: 20,
+    selectionRange: { start: 13, end: 20 },
+    argumentHint: "-content",
   }
 
   const sendPrompt: MarkdownSlashCommand = {

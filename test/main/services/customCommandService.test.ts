@@ -99,7 +99,8 @@ describe("CustomCommandService", () => {
     const list = service.list({ type: "agentMD", scope: "user" })
     const found = list.find((c) => c.name === "customMdWithHint")
     expect(found).toBeDefined()
-    expect(found?.argumentHint).toBe("[module] [desc]")
+    // 读取出口统一归一化为 `-` 占位符；写入磁盘仍保留作者原文。
+    expect(found?.argumentHint).toBe("-module -desc")
     expect(found?.mdScope).toBe("global")
   })
 

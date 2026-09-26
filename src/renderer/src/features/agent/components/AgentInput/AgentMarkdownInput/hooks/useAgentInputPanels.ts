@@ -36,10 +36,12 @@ import {
   type SubagentMentionCandidate,
 } from "../../AgentInputCommandPanels"
 import {
+  collapsePlaceholderArgument,
   DESIGN_MENTION_TAG,
   filterAgentModeMentionCandidates,
   filterClawMentionCandidates,
   filterSkillsByQuery,
+  getCommandArgumentText,
   getMatchedCommands,
   getMentionQuery,
   getMentionSkillCandidates,
@@ -256,7 +258,11 @@ export const useAgentInputPanels = ({
     if (value !== HISTORY_PROMPT_COMMAND && !value.startsWith(`${HISTORY_PROMPT_COMMAND} `)) {
       return []
     }
-    const query = value.slice(HISTORY_PROMPT_COMMAND.length).trim().toLowerCase()
+    // 兼容 `-query` 占位词：未编辑时视为空查询，列出全部历史。
+    const query = collapsePlaceholderArgument(
+      getCommandArgumentText(value, HISTORY_PROMPT_COMMAND),
+      "query",
+    ).toLowerCase()
     const matches = query
       ? promptHistory.filter((text) => isFuzzyMatch(query, text.toLowerCase()))
       : promptHistory

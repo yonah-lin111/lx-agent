@@ -143,9 +143,62 @@ export function substituteArgs(content: string, args: string[]): string {
 }
 
 /**
+ * 归一化参数提示文本：统一使用 `-` 前缀的占位符形式。
+ * - `[word]` / `[word | word]` → `-word` / `-word | -word`
+ * - 裸词与逗号列表先按词拆分再补 `-` 前缀
+ * - 已是 `-word` 的保持原样
+ */
+export function normalizeArgumentHint(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ""
+
+  const listNormalized =
+    trimmed.includes(",") && !trimmed.includes("[")
+      ? trimmed
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .join(" ")
+      : trimmed
+
+  const bracketed = listNormalized.replace(/\[([^\]]*)\]/g, (_match, inner: string) =>
+    inner
+      .split("|")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(" | "),
+  )
+
+  return bracketed
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => (token === "|" || token.startsWith("-") ? token : `-${token}`))
+    .join(" ")
+}
+
+/**
+ * 清理模板参数中的未填写占位符：
+ * - 去掉每个参数的前导 `-`（统一参数分隔符）；
+ * - 参数与 argumentHint 中的占位词完全一致时视为未填写，丢弃该参数。
+ */
+export function cleanupPlaceholderArgs(args: string[], argumentHint?: string): string[] {
+  const placeholders = new Set(
+    (argumentHint ?? "").match(/-[^\s|]+/g)?.map((token) => token.slice(1)) ?? [],
+  )
+  const cleaned: string[] = []
+  for (const raw of args) {
+    const stripped = raw.startsWith("-") ? raw.slice(1) : raw
+    if (stripped && placeholders.has(stripped)) continue
+    cleaned.push(stripped)
+  }
+  return cleaned
+}
+
+/**
  * 从模板正文中推断参数占位符提示：
  * - 查找 $1, $2 ... 或 ${1:-default}
  * - 查找 $@ 或 $ARGUMENTS
+ * 统一产出 `-argN` / `-arguments` 形式。
  */
 export function inferArgumentHint(content: string): string | undefined {
   const numberedMatches = Array.from(content.matchAll(/\$\{(\d+)(?::-([^}]*))?\}|\$(\d+)/g))
@@ -164,13 +217,13 @@ export function inferArgumentHint(content: string): string | undefined {
     const parts: string[] = []
     for (let i = 1; i <= maxNum; i++) {
       const name = argMap.get(i) || `arg${i}`
-      parts.push(name.startsWith("[") ? name : `[${name}]`)
+      parts.push(name.startsWith("-") ? name : `-${name}`)
     }
     return parts.join(" ")
   }
 
   if (/\$(ARGUMENTS|@)|\$\{(ARGUMENTS|@)(?::-([^}]*))?\}/.test(content)) {
-    return "[arguments]"
+    return "-arguments"
   }
 
   return undefined
@@ -255,23 +308,9 @@ export function loadTemplateFromFile(
     let argumentHint: string | undefined
     const rawHint = frontmatter["argument-hint"] ?? frontmatter.argumentHint
     if (typeof rawHint === "string" && rawHint.trim()) {
-      const trimmedHint = rawHint.trim()
-      if (trimmedHint.includes(",") && !trimmedHint.startsWith("[")) {
-        argumentHint = trimmedHint
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .map((s) => (s.startsWith("[") ? s : `[${s}]`))
-          .join(" ")
-      } else if (!trimmedHint.startsWith("[") && !trimmedHint.includes(" ")) {
-        argumentHint = `[${trimmedHint}]`
-      } else {
-        argumentHint = trimmedHint
-      }
+      argumentHint = normalizeArgumentHint(rawHint)
     } else if (Array.isArray(rawHint)) {
-      argumentHint = rawHint
-        .map((h) => (String(h).startsWith("[") ? String(h) : `[${h}]`))
-        .join(" ")
+      argumentHint = normalizeArgumentHint(rawHint.map((h) => String(h)).join(" "))
     } else {
       argumentHint = inferArgumentHint(body)
     }
@@ -358,9 +397,9 @@ export function loadMarkdownCommandFromFile(
     let argumentHint: string | undefined
     const rawHint = frontmatter["argument-hint"] ?? frontmatter.argumentHint
     if (typeof rawHint === "string" && rawHint.trim()) {
-      argumentHint = rawHint.trim()
+      argumentHint = normalizeArgumentHint(rawHint)
     } else if (Array.isArray(rawHint)) {
-      argumentHint = rawHint.map((h) => String(h).trim()).join(" ")
+      argumentHint = normalizeArgumentHint(rawHint.map((h) => String(h)).join(" "))
     }
 
     return {
@@ -643,7 +682,7 @@ export class PromptTemplateLoader {
     const template = templates.find((t) => t.name === commandName)
 
     if (template) {
-      const args = parseCommandArgs(argsString)
+      const args = cleanupPlaceholderArgs(parseCommandArgs(argsString), template.argumentHint)
       const expanded = substituteArgs(template.content, args)
       return { template, args, expanded }
     }

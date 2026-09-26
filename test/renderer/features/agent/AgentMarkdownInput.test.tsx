@@ -123,35 +123,29 @@ describe("AgentMarkdownInput 工具函数单元测试", () => {
     expect(getMentionSkillCandidates(mentionSkills, "skill:xyz")).toHaveLength(0)
   })
 
-  it("getArgumentSelectionRange 正确计算参数括号内部区间（排除括号本身）", () => {
-    const text = "/export [html | md | json]"
-    const range = getArgumentSelectionRange(text, "/export".length)
-    expect(range.anchor).toBe(9)
-    expect(range.head).toBe(25)
-    expect(text.slice(range.anchor, range.head)).toBe("html | md | json")
+  it("getArgumentSelectionRange 正确计算参数占位词区间（排除 - 分隔符）", () => {
+    const text = "/steer -prompt"
+    const range = getArgumentSelectionRange(text, "/steer".length)
+    expect(range.anchor).toBe(8)
+    expect(range.head).toBe(14)
+    expect(text.slice(range.anchor, range.head)).toBe("prompt")
 
-    const steerText = "/steer [prompt]"
-    const steerRange = getArgumentSelectionRange(steerText, "/steer".length)
-    expect(steerRange.anchor).toBe(8)
-    expect(steerRange.head).toBe(14)
-    expect(steerText.slice(steerRange.anchor, steerRange.head)).toBe("prompt")
-
-    const customText = "/custom [target]"
+    const customText = "/custom -target"
     const customRange = getArgumentSelectionRange(customText, "/custom".length)
     expect(customRange.anchor).toBe(9)
     expect(customRange.head).toBe(15)
     expect(customText.slice(customRange.anchor, customRange.head)).toBe("target")
 
-    const emptyBracketText = "/cmd []"
-    const emptyRange = getArgumentSelectionRange(emptyBracketText, "/cmd".length)
-    expect(emptyRange.anchor).toBe(6)
-    expect(emptyRange.head).toBe(6)
+    const paramText = "/cmd -param"
+    const paramRange = getArgumentSelectionRange(paramText, "/cmd".length)
+    expect(paramRange.anchor).toBe(6)
+    expect(paramRange.head).toBe(11)
+    expect(paramText.slice(paramRange.anchor, paramRange.head)).toBe("param")
 
-    const noBracketText = "/cmd param"
-    const noBracketRange = getArgumentSelectionRange(noBracketText, "/cmd".length)
-    expect(noBracketRange.anchor).toBe(5)
-    expect(noBracketRange.head).toBe(10)
-    expect(noBracketText.slice(noBracketRange.anchor, noBracketRange.head)).toBe("param")
+    // 兼容旧 `[占位词]` 形式
+    const bracketText = "/legacy [target]"
+    const bracketRange = getArgumentSelectionRange(bracketText, "/legacy".length)
+    expect(bracketText.slice(bracketRange.anchor, bracketRange.head)).toBe("target")
   })
 })
 
@@ -328,7 +322,7 @@ describe("AgentMarkdownInput 视图与交互测试", () => {
     expect(currentVal).toBe("")
   })
 
-  it("在命令面板选中 /steer 时，自动填入 '/steer [prompt]' 并选中内部的 'prompt'", async () => {
+  it("在命令面板选中 /steer 时，自动填入 '/steer -prompt' 并选中内部的 'prompt'", async () => {
     let updateVal: (val: string) => void = () => {}
     let currentVal = ""
     const Harness = () => {
@@ -351,7 +345,7 @@ describe("AgentMarkdownInput 视图与交互测试", () => {
 
     // 回车确认选择 /steer
     fireEvent.keyDown(editor, { key: "Enter" })
-    expect(currentVal).toBe("/steer [prompt]")
+    expect(currentVal).toBe("/steer -prompt")
 
     const cmView = EditorView.findFromDOM(editor)
     expect(cmView).not.toBeNull()
@@ -366,7 +360,7 @@ describe("AgentMarkdownInput 视图与交互测试", () => {
       {
         name: "review",
         description: "Review code",
-        argumentHint: "[branch]",
+        argumentHint: "-branch",
         source: "project",
         filePath: "/test/review.md",
       },
@@ -396,7 +390,7 @@ describe("AgentMarkdownInput 视图与交互测试", () => {
 
     // 回车确认选择 /review
     fireEvent.keyDown(editor, { key: "Enter" })
-    expect(currentVal).toBe("/review [branch]")
+    expect(currentVal).toBe("/review -branch")
 
     const cmView = EditorView.findFromDOM(editor)
     expect(cmView).not.toBeNull()

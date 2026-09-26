@@ -6,12 +6,15 @@ import type { AgentInputCommand, ClawMentionCandidate } from "../AgentInputComma
 // 历史提示词命令名（二级面板入口）。
 export const HISTORY_PROMPT_COMMAND = "/historyPrompt"
 
+// 内置命令元数据：argumentHint 统一使用 `-` 前缀占位符；requiredArgument 标记是否必须补参。
 export const BUILTIN_COMMAND_KEYS: {
   id: string
   name: string
   descKey: TranslationKey
   kind: "builtin"
   argumentHint?: string
+  argumentPlaceholder?: string
+  requiredArgument?: boolean
 }[] = [
   { id: "clear", name: "/clear", descKey: "agent.commandClearDesc", kind: "builtin" },
   { id: "undo", name: "/undo", descKey: "agent.commandUndoDesc", kind: "builtin" },
@@ -20,14 +23,18 @@ export const BUILTIN_COMMAND_KEYS: {
     name: "/steer",
     descKey: "agent.commandSteerDesc",
     kind: "builtin",
-    argumentHint: "[prompt]",
+    argumentHint: "-prompt",
+    argumentPlaceholder: "prompt",
+    requiredArgument: true,
   },
   {
     id: "btw",
     name: "/btw",
     descKey: "agent.commandBtwDesc",
     kind: "builtin",
-    argumentHint: "[prompt]",
+    argumentHint: "-prompt",
+    argumentPlaceholder: "prompt",
+    requiredArgument: true,
   },
   { id: "model", name: "/model", descKey: "agent.commandModelDesc", kind: "builtin" },
   {
@@ -47,7 +54,8 @@ export const BUILTIN_COMMAND_KEYS: {
     name: "/cd",
     descKey: "agent.commandCdDesc",
     kind: "builtin",
-    argumentHint: "[path]",
+    argumentHint: "-path",
+    argumentPlaceholder: "path",
   },
   {
     id: "session",
@@ -61,23 +69,103 @@ export const BUILTIN_COMMAND_KEYS: {
     name: "/export",
     descKey: "agent.commandExportDesc",
     kind: "builtin",
-    argumentHint: "[html | md | json]",
+    argumentHint: "-html | -md | -json",
   },
   {
     id: "copy",
     name: "/copy",
     descKey: "agent.commandCopyDesc",
     kind: "builtin",
-    argumentHint: "[all]",
+    argumentHint: "-all",
   },
   {
     id: "historyPrompt",
     name: HISTORY_PROMPT_COMMAND,
     descKey: "agent.commandHistoryPromptDesc",
     kind: "builtin",
-    argumentHint: "[query]",
+    argumentHint: "-query",
+    argumentPlaceholder: "query",
   },
 ]
+
+// 内置命令的别名（校验与面板匹配共用）。
+const BUILTIN_COMMAND_ALIASES: Record<string, string[]> = {
+  clear: ["clear", "new"],
+  session: ["session", "resume"],
+}
+
+// 斜杠命令名（不含 `/`）后必须紧跟空白或末尾，token 内出现第二个 `/` 视为普通文本（如路径）。
+const SLASH_COMMAND_NAME_RE = /^\/([A-Za-z0-9_-]+)(?=\s|$)/
+
+/**
+ * 解析文本开头的斜杠命令名；非命令形态（含 `/usr/local` 这类路径）返回 null。
+ */
+export const parseSlashCommandName = (text: string): string | null => {
+  const match = SLASH_COMMAND_NAME_RE.exec(text.trim())
+  return match ? match[1] : null
+}
+
+/**
+ * 命令名是否命中内置命令集合（含别名）或额外命令名（如 prompt 模板名）。
+ */
+export const isKnownCommandName = (name: string, extraNames: readonly string[] = []): boolean => {
+  const normalized = name.toLowerCase()
+  const builtinHit = BUILTIN_COMMAND_KEYS.some((command) => {
+    const rawName = command.name.replace(/^\//, "").toLowerCase()
+    if (rawName === normalized) return true
+    return (BUILTIN_COMMAND_ALIASES[command.id] ?? []).includes(normalized)
+  })
+  if (builtinHit) return true
+  return extraNames.some((extra) => extra.replace(/^\//, "").toLowerCase() === normalized)
+}
+
+/**
+ * 解析命令后携带的参数文本：剥掉命令名后的分隔符（空白/冒号/首个 `-`）。
+ * commandName 可带或不带前导 `/`。
+ */
+export const getCommandArgumentText = (text: string, commandName: string): string => {
+  const escaped = commandName.replace(/^\//, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const prefixRe = new RegExp(`^/${escaped}(?=$|[\\s:-])`, "i")
+  const trimmed = text.trim()
+  if (!prefixRe.test(trimmed)) return ""
+  return trimmed
+    .replace(prefixRe, "")
+    .replace(/^[\s:]*-\s*/, "")
+    .replace(/^[\s:]+/, "")
+    .trim()
+}
+
+/**
+ * 占位词未编辑时视为未填写：兼容旧 `[prompt]` / `【prompt】` 包裹写法。
+ */
+export const collapsePlaceholderArgument = (arg: string, placeholder?: string): string => {
+  const unwrapped = arg.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
+  if (placeholder && unwrapped === placeholder.toLowerCase()) return ""
+  return unwrapped
+}
+
+/**
+ * 返回必填参数缺失的内置命令（当前为 /steer、/btw）；参数已填写时返回 null。
+ */
+export const getMissingRequiredCommand = (
+  text: string,
+): { id: string; name: string; placeholder: string } | null => {
+  const name = parseSlashCommandName(text)
+  if (!name) return null
+  const command = BUILTIN_COMMAND_KEYS.find(
+    (item) =>
+      item.requiredArgument &&
+      (item.name.replace(/^\//, "").toLowerCase() === name.toLowerCase() ||
+        (BUILTIN_COMMAND_ALIASES[item.id] ?? []).includes(name.toLowerCase())),
+  )
+  if (!command?.argumentPlaceholder) return null
+  const arg = collapsePlaceholderArgument(
+    getCommandArgumentText(text, command.name.replace(/^\//, "")),
+    command.argumentPlaceholder,
+  )
+  if (arg) return null
+  return { id: command.id, name: command.name, placeholder: command.argumentPlaceholder }
+}
 
 export const isFuzzyMatch = (query: string, keyword: string): boolean => {
   if (!query) return true
@@ -226,14 +314,54 @@ export const getCommandTagLabel = (command: Pick<AgentInputCommand, "kind" | "so
   return "Builtin"
 }
 
+/**
+ * 解析 /export 参数为导出格式；无法识别时返回 null（调用方提示重选）。
+ * 空参数默认 html；调用方需自行拦截「显式写了 `-` 但没选值」的情况。
+ */
+export const resolveExportFormat = (rawArg: string): "html" | "markdown" | "jsonl" | null => {
+  const arg = rawArg.trim().toLowerCase()
+  if (!arg) return "html"
+  if (arg === "md" || arg.startsWith("markdown")) return "markdown"
+  if (arg === "json" || arg.startsWith("jsonl")) return "jsonl"
+  if (arg.startsWith("html")) return "html"
+  return null
+}
+
+// /export 二级格式选项：name 为用户输入 token，id 为导出格式值。
+export const EXPORT_FORMAT_OPTIONS: {
+  id: "html" | "markdown" | "jsonl"
+  name: string
+  label: string
+}[] = [
+  { id: "html", name: "html", label: "HTML" },
+  { id: "markdown", name: "md", label: "Markdown" },
+  { id: "jsonl", name: "json", label: "JSONL" },
+]
+
 export const getMatchedCommands = (
   value: string,
   templates: PromptTemplateItem[] = [],
-  t: (key: TranslationKey) => string,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string,
   allowProjectChange = true,
   canUseBtw = true,
 ): AgentInputCommand[] => {
-  if (!value.startsWith("/") || /\s/.test(value)) return []
+  if (!value.startsWith("/")) return []
+
+  // /export 二级格式面板：`/export -`、`/export ` 或 `/export -md` 列出可选格式。
+  const exportMatch = /^\/export(?:[:\s-]+)(.*)$/i.exec(value)
+  if (exportMatch) {
+    const query = exportMatch[1].trim().toLowerCase()
+    return EXPORT_FORMAT_OPTIONS.filter((option) => !query || isFuzzyMatch(query, option.name)).map(
+      (option) => ({
+        id: `export:${option.id}`,
+        name: option.name,
+        description: t("agent.exportFormatDesc", { format: option.label }),
+        kind: "builtin" as const,
+      }),
+    )
+  }
+
+  if (/\s/.test(value)) return []
   const query = value.slice(1).toLowerCase()
 
   const builtinCommands: AgentInputCommand[] = BUILTIN_COMMAND_KEYS.filter(
@@ -275,6 +403,17 @@ export const getArgumentSelectionRange = (
   insertText: string,
   commandNameLength: number,
 ): { anchor: number; head: number } => {
+  // 首选 `-占位词` 形式：选中占位词本体（不含 `-`）。
+  const dashIndex = insertText.indexOf("-", commandNameLength)
+  if (dashIndex !== -1) {
+    const start = dashIndex + 1
+    const wordMatch = /^[^\s|]+/.exec(insertText.slice(start))
+    if (wordMatch && wordMatch[0].length > 0) {
+      return { anchor: start, head: start + wordMatch[0].length }
+    }
+  }
+
+  // 兼容旧 `[占位词]` 形式。
   const startBracket = insertText.indexOf("[", commandNameLength)
   if (startBracket !== -1) {
     const endBracket = insertText.indexOf("]", startBracket)
