@@ -53,7 +53,9 @@ const seedThreads = (): void => {
   btwStore.appendAssistant(OWNER, second.threadId, "second answer")
 }
 
-const renderPanel = async (options: { isOpen?: boolean; isPending?: boolean } = {}) => {
+const renderPanel = async (
+  options: { isOpen?: boolean; isPending?: boolean; viewMode?: "qa" | "flow" } = {},
+) => {
   vi.mocked(promptHistoryApi.get).mockResolvedValue([])
   const onAsk = vi.fn()
   const onClose = vi.fn()
@@ -69,6 +71,7 @@ const renderPanel = async (options: { isOpen?: boolean; isPending?: boolean } = 
       hasModelOptions
       collaborationMode="build"
       projectPath="/proj"
+      viewMode={options.viewMode}
     />,
   )
   await act(async () => {})
@@ -162,5 +165,28 @@ describe("AgentBtwPanel", () => {
     await renderPanel()
 
     expect(screen.getByText("No btw side questions yet")).toBeDefined()
+  })
+
+  it("qa 模式问题复用用户气泡、回答使用 btw 助手气泡", async () => {
+    seedThreads()
+    await renderPanel()
+
+    // 用户问题：复用 AgentUserMessage 的 data-user-bubble 结构。
+    const userBubbles = document.querySelectorAll('[data-user-bubble="true"]')
+    expect(userBubbles.length).toBeGreaterThan(0)
+    // 回答：btw 专属助手气泡容器。
+    const assistantBubbles = document.querySelectorAll('[data-assistant-bubble="true"]')
+    expect(assistantBubbles.length).toBeGreaterThan(0)
+  })
+
+  it("flow 模式问答切换为执行流步骤卡片", async () => {
+    seedThreads()
+    await renderPanel({ viewMode: "flow" })
+
+    expect(document.querySelector(".agent-btw-flow-step--user")).not.toBeNull()
+    expect(document.querySelector(".agent-btw-flow-step--assistant")).not.toBeNull()
+    // flow 卡片下不再使用气泡结构。
+    expect(document.querySelector('[data-user-bubble="true"]')).toBeNull()
+    expect(screen.getByText("second answer")).toBeDefined()
   })
 })

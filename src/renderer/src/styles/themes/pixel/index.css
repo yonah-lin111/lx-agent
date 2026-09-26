@@ -59,6 +59,9 @@
   --color-project-prompt-bubble: #1a4837; /* 绿宝石矿石深翠绿 */
   --color-global-prompt-bubble: #372854; /* 末影水晶暗紫 */
   --color-skill-bubble: #38234f; /* 紫水晶/附魔暗紫槽 */
+  /* btw 侧问气泡：区别于主会话（问题=青金石偏青槽，回答=末影箱偏冷灰槽） */
+  --color-btw-user-bubble: #1f3a4a; /* 青金石偏青暗槽 */
+  --color-btw-assistant-bubble: #232633; /* 末影箱偏冷灰紫槽 */
 
   color: #d4d4e4;
   background: #1c1c26;

@@ -106,6 +106,8 @@ export const agent = {
   btwThinking: "正在回答...",
   btwNoConversation: "请先与 Agent 对话后再使用 /btw",
   btwBusy: "已有 btw 请求进行中，请稍候",
+  btwQuestion: "侧问",
+  btwAnswer: "回答",
   commandBtwDesc: "临时侧问（不影响主对话，不入库）",
   searchHistory: "搜索历史会话...",
   noHistory: "暂无历史对话",

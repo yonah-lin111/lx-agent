@@ -3,19 +3,21 @@ import type {
   CollaborationMode,
   SandboxPolicy,
 } from "@shared/contracts/agent"
-import { ArrowLeft, ArrowRight, Loader2, MessageCircleQuestion, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, MessageCircleQuestion, X } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import { renderMarkdown } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { AgentInput } from "@/features/agent/components/AgentInput"
+import type { AgentInputFile } from "@/features/agent/components/AgentInput/AgentInputFiles"
+import type { AgentModelSelectProps } from "@/features/agent/components/AgentModelSelect"
+import {
+  AgentBtwMessage,
+  AgentBtwThinking,
+} from "@/features/agent/components/panels/AgentBtwMessage"
+import { AgentStatusBar } from "@/features/agent/components/status-bar"
+import { type BtwThread, btwStore } from "@/features/agent/hooks/btwStore"
 import { useTranslation } from "@/i18n"
-import { type BtwThread, btwStore } from "../../hooks/btwStore"
-import { AgentInput } from "../AgentInput"
-import type { AgentInputFile } from "../AgentInput/AgentInputFiles"
-import type { AgentModelSelectProps } from "../AgentModelSelect"
-import { AgentStatusBar } from "../status-bar"
 
 interface AgentBtwPanelProps {
   // 面板是否展开（false = 上移收起，保持挂载）。
@@ -42,6 +44,8 @@ interface AgentBtwPanelProps {
   projectPath?: string
   projectId?: string
   sandboxPolicy?: SandboxPolicy
+  // 主视图模式：qa 复用消息气泡，flow 切换为执行流步骤卡片外观。
+  viewMode?: "qa" | "flow"
 }
 
 // 稳定空引用：AgentInput 文件列表与空态判断复用。
@@ -75,6 +79,7 @@ export const AgentBtwPanel = ({
   projectPath,
   projectId,
   sandboxPolicy,
+  viewMode = "qa",
 }: AgentBtwPanelProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [inputText, setInputText] = useState("")
@@ -177,43 +182,18 @@ export const AgentBtwPanel = ({
         </div>
       </div>
 
-      {/* 侧问消息列表：问题为右侧气泡，回答为 Markdown 渲染。 */}
+      {/* 侧问消息列表：问题为右侧气泡，回答为 Markdown 渲染；flow 模式切换为执行流卡片外观。 */}
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {!thread ? (
-          <div className="flex h-full items-center justify-center text-xs text-white/40">
+          <div className="agent-btw-empty flex h-full items-center justify-center text-xs text-white/40">
             {t("agent.btwEmpty")}
           </div>
         ) : (
           <div className="flex flex-col gap-2.5">
-            {thread.messages.map((message) =>
-              message.role === "user" ? (
-                <div
-                  key={message.id}
-                  className="agent-btw-user-bubble max-w-[85%] self-end rounded-[6px] bg-[var(--color-user-bubble,rgba(255,255,255,0.1))] px-2.5 py-1.5 text-sm whitespace-pre-wrap break-words text-white/90"
-                >
-                  {message.content}
-                </div>
-              ) : message.failed ? (
-                <div key={message.id} className="self-start px-1 text-sm text-rose-300/90">
-                  {message.content}
-                </div>
-              ) : (
-                <LxMarkdownPreview
-                  key={message.id}
-                  html={renderMarkdown(message.content)}
-                  previewMode="preview"
-                  className="px-0"
-                  contentClassName="py-0.5"
-                  sanitizeCopy
-                />
-              ),
-            )}
-            {isPending && threadIndex === threads.length - 1 && (
-              <div className="flex items-center gap-1.5 self-start px-1 text-xs text-white/45">
-                <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-                <span>{t("agent.btwThinking")}</span>
-              </div>
-            )}
+            {thread.messages.map((message) => (
+              <AgentBtwMessage key={message.id} message={message} viewMode={viewMode} />
+            ))}
+            {isPending && threadIndex === threads.length - 1 && <AgentBtwThinking />}
           </div>
         )}
       </div>

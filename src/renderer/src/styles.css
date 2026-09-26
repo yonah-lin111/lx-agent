@@ -22,6 +22,10 @@
   --color-global-prompt-bubble: #2d3164;
   /* Skill 技能调用气泡色：深紫暗调 */
   --color-skill-bubble: #35254d;
+  /* btw 侧问问题气泡色：偏青的暗调，与主会话用户气泡区分 */
+  --color-btw-user-bubble: #1f3d4e;
+  /* btw 侧问回答气泡色：偏冷的石板暗调，与主会话助手气泡区分 */
+  --color-btw-assistant-bubble: #2c3138;
 }
 
 :root {
@@ -1316,4 +1320,13 @@ select {
     var(--agent-mode-tint, transparent)
   );
   border-radius: 4px;
+}
+
+/* btw 侧问面板：问答气泡使用 btw 专属色，与主会话消息列表区分（主题各自定义变量，pixel 主题另有浮雕覆盖） */
+.agent-btw-panel [data-user-bubble="true"] {
+  background-color: var(--color-btw-user-bubble, #1f3d4e);
+}
+
+.agent-btw-panel [data-assistant-bubble="true"] {
+  background-color: var(--color-btw-assistant-bubble, #2c3138);
 }

@@ -1,3 +1,4 @@
+export { AgentBtwMessage, AgentBtwThinking } from "./AgentBtwMessage"
 export { AgentBtwPanel } from "./AgentBtwPanel"
 export { AgentHistoryPanel } from "./AgentHistoryPanel"
 export { AgentJobsMonitorView } from "./AgentJobsMonitorView"

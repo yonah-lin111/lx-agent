@@ -110,6 +110,8 @@ export const agent = {
   btwThinking: "Answering...",
   btwNoConversation: "Start the conversation before using /btw",
   btwBusy: "A btw request is already in progress, please wait",
+  btwQuestion: "Question",
+  btwAnswer: "Answer",
   commandBtwDesc: "Quick side question (does not affect the main conversation, not persisted)",
   searchHistory: "Search history sessions...",
   noHistory: "No history sessions found",

@@ -1084,6 +1084,7 @@ export const AgentPage = ({
           projectPath={statusBarPath}
           projectId={effectiveProjectId}
           sandboxPolicy={currentSandboxPolicy}
+          viewMode={viewMode}
         />
       </div>
       {/* 输入区与状态栏：被覆盖面板打开时整体 inert（display: contents 保持既有 flex 布局不变）。 */}

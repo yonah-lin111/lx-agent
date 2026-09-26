@@ -3049,3 +3049,114 @@
   color: #a6a6bc !important;
   text-shadow: 1px 1px 0px #000000;
 }
+
+/* ========================================================
+ * 18. btw 侧问面板 (AgentBtwPanel) - 命名的相邻覆盖与专属气泡色
+ *     .agent-btw-panel 为面板自身命名空间，覆盖其内部消息气泡，避免影响主会话消息列表。
+ * ======================================================== */
+/* 面板容器：末影箱深板岩马赛克基底 + 3D 浮雕 */
+[data-theme="pixel"] .agent-btw-panel {
+  border: 2px solid #000000 !important;
+  background-color: #1a1a26 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1a26'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23161622'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%231d1d2b'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23222232'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%231c1c29'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23232334'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23171723'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%231e1e2e'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23171723'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23252536'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23181824'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%231a1a27'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23222232'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 0px 1px 0px 0px rgba(255, 255, 255, 0.06),
+    0px 8px 24px rgba(0, 0, 0, 0.75) !important;
+}
+
+/* 面板头部：与消息列表/历史面板一致的浮雕标题条 */
+[data-theme="pixel"] .agent-btw-panel-header {
+  border-bottom: 2px solid #000000 !important;
+  background-color: #222232 !important;
+  font-family: var(--theme-font-family) !important;
+  box-shadow:
+    inset 0px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    0px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .agent-btw-panel-header span {
+  color: #f0f0f8 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* btw 问题气泡：对齐用户气泡圆角结构，沿用 btw 专属青蓝槽 */
+[data-theme="pixel"] .agent-btw-panel [data-user-bubble="true"] {
+  border: 2px solid #000000 !important;
+  background-color: #1f3a4a !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* btw 回答气泡：对齐助手气泡结构，沿用 btw 专属冷灰紫槽 */
+[data-theme="pixel"] .agent-btw-panel [data-assistant-bubble="true"] {
+  border: 2px solid #000000 !important;
+  background-color: #232633 !important;
+  color: #d4d4e4 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    3px 3px 0px 0px #000000 !important;
+}
+
+/* flow 模式下 btw 问答卡片：复用执行流步骤体的琥珀/绿宝石方块质感 */
+[data-theme="pixel"] .agent-btw-panel .agent-btw-flow-step {
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.16),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .agent-btw-panel .agent-btw-flow-step--user {
+  background-color: #261e14 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 170, 0, 0.28),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .agent-btw-panel .agent-btw-flow-step--assistant {
+  background-color: #142418 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(85, 255, 85, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .agent-btw-panel .agent-btw-flow-step-header {
+  font-family: var(--theme-font-family) !important;
+  color: #d4d4e4 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-btw-panel .agent-btw-flow-step-header svg {
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="pixel"] .agent-btw-empty {
+  font-family: var(--theme-font-family) !important;
+  color: #727288 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-btw-thinking {
+  font-family: var(--theme-font-family) !important;
+  color: #a6a6bc !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-btw-thinking svg {
+  color: #55ff55 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="pixel"] .agent-btw-failed {
+  font-family: var(--theme-font-family) !important;
+  color: #ff5555 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
