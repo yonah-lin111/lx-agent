@@ -643,7 +643,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
   return (
     <>
       <div className="flex h-full min-w-0 flex-col gap-3">
-        <div className="flex h-7 shrink-0 items-center justify-end px-2.5">
+        <div className="flex h-7 shrink-0 items-center justify-end px-1">
           <div className="flex items-center gap-0.5">
             <LxIconButton
               aria-label={t("project.locateCurrentItem")}
@@ -690,7 +690,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
           </div>
         </div>
 
-        <div className="px-2.5">
+        <div className="px-1">
           <LxInput
             type="text"
             value={searchKeyword}

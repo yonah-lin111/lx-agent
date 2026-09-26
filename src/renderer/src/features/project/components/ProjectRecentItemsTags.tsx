@@ -13,11 +13,6 @@ import {
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import { useTranslation } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
-import { useDockMagnify } from "@/lib/useDockMagnify"
-
-// 标签 Dock 放大上限与光标影响半径：文字芯片档位比图标条收敛。
-const TAGS_DOCK_MAX_SCALE = 1.2
-const TAGS_DOCK_INFLUENCE_RADIUS_PX = 72
 
 // 渲染「项目/文件夹/条目」单行标签文本。
 const renderTagLabel = (
@@ -188,20 +183,6 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
-  const { containerRef, registerItem, handlePointerMove, resetTransforms } =
-    useDockMagnify<HTMLDivElement>({
-      enabled: true,
-      axis: "x",
-      maxScale: TAGS_DOCK_MAX_SCALE,
-      influenceRadiusPx: TAGS_DOCK_INFLUENCE_RADIUS_PX,
-      distanceMode: "edge",
-    })
-
-  // 滚动容器同时作为 Dock 测量基准，合并两个 ref。
-  const setScrollContainerRef = (node: HTMLDivElement | null): void => {
-    scrollRef.current = node
-    containerRef.current = node
-  }
 
   // 最近打开条目或条目数据变更（状态/模版编辑）时重新解析卡片数据。
   useEffect(() => {
@@ -307,11 +288,8 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
         <ArrowLeft />
       </LxIconButton>
       <div
-        ref={setScrollContainerRef}
-        className="scrollbar-hidden flex h-8 min-w-0 flex-1 items-center gap-1 overflow-x-auto"
-        onPointerCancel={resetTransforms}
-        onPointerLeave={resetTransforms}
-        onPointerMove={handlePointerMove}
+        ref={scrollRef}
+        className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
       >
         {cards === null ? null : cards.length === 0 ? (
           <span className="whitespace-nowrap text-white/40">{t("project.noProjects")}</span>
@@ -329,12 +307,8 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                 placement="top"
               >
                 <div
-                  ref={(node) => {
-                    registerItem(card.id, node)
-                  }}
                   draggable
                   onDragStart={(event) => {
-                    resetTransforms()
                     draggingIdRef.current = card.id
                     setDraggingId(card.id)
                     event.dataTransfer.effectAllowed = "move"
