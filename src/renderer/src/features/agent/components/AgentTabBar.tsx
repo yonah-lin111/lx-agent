@@ -1,8 +1,16 @@
 import type { AgentSessionSummary } from "@shared/contracts/agent"
 import type { Project } from "@shared/project"
-import { ArrowLeft, ArrowRight, Cpu, Folder, MessageSquare, Plus } from "lucide-react"
+import {
+  ArrowLeft,
+  ArrowRight,
+  Cpu,
+  Folder,
+  MessageCircleQuestion,
+  MessageSquare,
+  Plus,
+} from "lucide-react"
 import type React from "react"
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -11,15 +19,22 @@ import { useProjectItemsVersionStore } from "@/features/project-navigation/proje
 import { useTranslation } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 import { type AgentTab, agentTabStore } from "../hooks/agentTabStore"
+import { btwStore, getBtwOwnerKey } from "../hooks/btwStore"
 import { getModelDisplayName, modelsStore } from "../hooks/modelsStore"
 import { sessionListStore } from "../hooks/sessionListStore"
+
+// AgentTabBar 属性。
+interface AgentTabBarProps {
+  // 打开 btw 侧问面板（当前激活 Tab；由 RightSidebar 桥接）。
+  onOpenBtw?: () => void
+}
 
 /**
  * AgentTabBar - 顶部横向 Agent 标签页栏
  * 放置在 RightSidebar 顶部（QA/Flow 视图切换按钮与折叠按钮之间），
  * 支持标签页横向滚动、左右切换翻页、滚轮滚动、新建 Tab、关闭 Tab 二次确认与富信息 Tooltip。
  */
-export const AgentTabBar = (): React.JSX.Element => {
+export const AgentTabBar = ({ onOpenBtw }: AgentTabBarProps): React.JSX.Element => {
   const { t } = useTranslation()
   const { warning } = useLxAgentToast()
 
@@ -30,6 +45,12 @@ export const AgentTabBar = (): React.JSX.Element => {
   const modelSettings = useSyncExternalStore(modelsStore.subscribe, modelsStore.getSettings)
   const projectItemsVersion = useProjectItemsVersionStore((state) => state.version)
   const [projects, setProjects] = useState<Project[]>([])
+
+  // 当前激活 Tab 的 btw 侧问线（存在侧问记录时才显示入口按钮）。
+  const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [tabs, activeTabId])
+  const btwOwnerKey = activeTab ? getBtwOwnerKey(activeTab.sessionId, activeTab.id) : null
+  const getBtwThreads = useCallback(() => btwStore.getThreads(btwOwnerKey), [btwOwnerKey])
+  const btwThreads = useSyncExternalStore(btwStore.subscribe, getBtwThreads)
 
   useEffect(() => {
     void projectApi
@@ -287,6 +308,19 @@ export const AgentTabBar = (): React.JSX.Element => {
       >
         <ArrowRight />
       </LxIconButton>
+
+      {/* btw 侧问入口：当前 Tab 存在侧问记录时显示（右侧）。 */}
+      {btwThreads.length > 0 && (
+        <LxIconButton
+          size="small"
+          aria-label={t("agent.btwOpenHistory")}
+          title={{ content: t("agent.btwOpenHistory"), placement: "bottom" }}
+          onClick={onOpenBtw}
+          className="shrink-0"
+        >
+          <MessageCircleQuestion />
+        </LxIconButton>
+      )}
     </div>
   )
 }

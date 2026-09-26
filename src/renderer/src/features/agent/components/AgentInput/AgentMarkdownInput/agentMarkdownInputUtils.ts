@@ -22,6 +22,13 @@ export const BUILTIN_COMMAND_KEYS: {
     kind: "builtin",
     argumentHint: "[prompt]",
   },
+  {
+    id: "btw",
+    name: "/btw",
+    descKey: "agent.commandBtwDesc",
+    kind: "builtin",
+    argumentHint: "[prompt]",
+  },
   { id: "model", name: "/model", descKey: "agent.commandModelDesc", kind: "builtin" },
   {
     id: "gitWorktree",
@@ -224,12 +231,13 @@ export const getMatchedCommands = (
   templates: PromptTemplateItem[] = [],
   t: (key: TranslationKey) => string,
   allowProjectChange = true,
+  canUseBtw = true,
 ): AgentInputCommand[] => {
   if (!value.startsWith("/") || /\s/.test(value)) return []
   const query = value.slice(1).toLowerCase()
 
   const builtinCommands: AgentInputCommand[] = BUILTIN_COMMAND_KEYS.filter(
-    (cmd) => cmd.id !== "project" || allowProjectChange,
+    (cmd) => (cmd.id !== "project" || allowProjectChange) && (cmd.id !== "btw" || canUseBtw),
   ).map((cmd) => ({
     id: cmd.id,
     name: cmd.name,

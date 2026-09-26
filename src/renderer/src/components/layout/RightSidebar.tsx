@@ -8,6 +8,7 @@ import { useLxAgentToast } from "@/components/ui/LxToast"
 import { AgentPage, AgentTabBar, agentViewStore } from "@/features/agent"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
+import { btwStore } from "@/features/agent/hooks/btwStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 import { useTranslation } from "@/i18n"
@@ -39,6 +40,7 @@ export const RightSideBar = (): React.JSX.Element => {
         newChat?: () => void
         toggleExecutionFlow?: () => void
         toggleHistory?: () => void
+        toggleBtw?: () => void
       }
     >
   >({})
@@ -78,6 +80,8 @@ export const RightSideBar = (): React.JSX.Element => {
       .deleteSession(sessionId)
       .then(() => {
         sessionListStore.removeSession(sessionId)
+        // 会话删除后清理其 btw 侧问记录（不入库，仅浏览器侧数据）。
+        btwStore.deleteOwner(sessionId)
         if (tabWithSession) {
           tabActionsRef.current[tabWithSession.id]?.newChat?.()
         }
@@ -104,6 +108,10 @@ export const RightSideBar = (): React.JSX.Element => {
       return false
     }
     sessionListStore.removeSessions(sessionIds)
+    // 会话删除后清理各自的 btw 侧问记录（不入库，仅浏览器侧数据）。
+    for (const sessionId of sessionIds) {
+      btwStore.deleteOwner(sessionId)
+    }
     for (const item of boundTabs) {
       tabActionsRef.current[item.tabId]?.newChat?.()
     }
@@ -295,7 +303,13 @@ export const RightSideBar = (): React.JSX.Element => {
             </div>
 
             {/* 中间横向 Tab 栏 */}
-            <AgentTabBar />
+            <AgentTabBar
+              onOpenBtw={() => {
+                if (activeTab) {
+                  tabActionsRef.current[activeTab.id]?.toggleBtw?.()
+                }
+              }}
+            />
 
             <div className="flex shrink-0 items-center justify-end gap-1">
               <LxIconButton
@@ -338,6 +352,12 @@ export const RightSideBar = (): React.JSX.Element => {
                     tabActionsRef.current[tab.id] = {
                       ...tabActionsRef.current[tab.id],
                       toggleHistory: fn,
+                    }
+                  }}
+                  onToggleBtwRef={(fn) => {
+                    tabActionsRef.current[tab.id] = {
+                      ...tabActionsRef.current[tab.id],
+                      toggleBtw: fn,
                     }
                   }}
                   context={context}

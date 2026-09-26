@@ -46,6 +46,8 @@ export interface AgentStatusBarProps {
     allowAll?: boolean,
     permanent?: boolean,
   ) => void
+  // 只读展示（btw 侧问面板）：仅显示项目/分支/协作模式，隐藏权限与后台任务入口并禁止交互切换。
+  readOnly?: boolean
 }
 
 /**
@@ -70,6 +72,7 @@ export const AgentStatusBar = ({
   onCollaborationModeChange,
   pendingRequest,
   onPermissionRespond,
+  readOnly = false,
 }: AgentStatusBarProps): React.JSX.Element => {
   return (
     <div className="agent-status-bar flex min-w-0 items-center">
@@ -77,7 +80,7 @@ export const AgentStatusBar = ({
         <GitStatusBar
           projectPath={projectPath}
           projectId={projectId}
-          interactive={true}
+          interactive={!readOnly}
           allowProjectChange={allowProjectChange}
           onProjectChange={onProjectChange}
           onBranchChange={onBranchChange}
@@ -87,15 +90,17 @@ export const AgentStatusBar = ({
       <CollaborationModeButton
         mode={collaborationMode}
         effectiveMode={effectiveMode}
-        disabled={isStreaming}
+        disabled={isStreaming || readOnly}
         onModeChange={onCollaborationModeChange}
       />
-      <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />
-      <PermissionStatusButton
-        request={pendingRequest}
-        sandboxPolicy={sandboxPolicy}
-        onRespond={onPermissionRespond}
-      />
+      {!readOnly && <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />}
+      {!readOnly && (
+        <PermissionStatusButton
+          request={pendingRequest}
+          sandboxPolicy={sandboxPolicy}
+          onRespond={onPermissionRespond}
+        />
+      )}
     </div>
   )
 }

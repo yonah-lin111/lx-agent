@@ -82,6 +82,14 @@ export interface AgentInputProps {
   autoEnabledModes?: AutoConfigurableMode[]
   // 语音输入按钮引用（供外部快捷键调用 toggleRecording）
   voiceButtonRef?: React.Ref<AgentVoiceInputButtonRef>
+  // btw 侧问面板精简模式：隐藏附件/语音/上下文用量，禁用命令面板，模型选择只读。
+  variant?: "main" | "btw"
+  // 主输入框是否可用 /btw（无 QA 的主会话隐藏该命令并拦截发送）。
+  canUseBtw?: boolean
+  // /btw 发送回调（问题文本；由 AgentPage 路由到侧问线）。
+  onBtwSend?: (question: string) => void
+  // 自定义占位符（btw 面板使用；缺省按语音状态与默认文案）。
+  placeholder?: string
 }
 
 /**
@@ -129,7 +137,12 @@ export const AgentInput = ({
   agentMode = "build",
   autoEnabledModes,
   voiceButtonRef,
+  variant = "main",
+  canUseBtw = true,
+  onBtwSend,
+  placeholder,
 }: AgentInputProps): React.JSX.Element => {
+  const isBtw = variant === "btw"
   const isAuto = (collaborationMode ?? agentMode) === "auto"
   const containerMode = isAuto ? "auto" : (collaborationMode ?? agentMode ?? "build")
   const inputMode = isAuto ? (effectiveMode ?? "build") : containerMode
@@ -335,48 +348,60 @@ export const AgentInput = ({
     </>
   )
 
-  const actionButton = isStreaming ? (
-    <LxIconButton
-      shape="circle"
-      aria-label={t("agent.stopGenerating")}
-      title={{ content: t("agent.stopGenerating"), placement: "top" }}
-      onClick={onStop}
-      hoverBgClass="hover:bg-white/90"
-      className="agent-input-action-btn agent-input-stop-btn bg-white !text-black shadow-sm"
-    >
-      <Square className="fill-current" />
-    </LxIconButton>
-  ) : isCompacting ? (
-    <LxIconButton
-      shape="circle"
-      aria-label={isCompactingManual ? t("agent.compactingManual") : t("agent.compactingAuto")}
-      title={{
-        content: isCompactingManual ? t("agent.compactingManual") : t("agent.compactingAuto"),
-        placement: "top",
-      }}
-      disabled
-      className="agent-input-action-btn agent-input-compacting-btn bg-white/15 !text-white/30"
-    >
-      <Loader2 className="animate-spin" />
-    </LxIconButton>
-  ) : (
-    <LxIconButton
-      shape="circle"
-      aria-label={t("agent.send")}
-      title={{ content: t("agent.sendMessage"), placement: "top" }}
-      onClick={() => handleSend()}
-      disabled={!inputText.trim() && selectedFiles.length === 0}
-      hoverBgClass="hover:bg-white/90"
-      className="agent-input-action-btn agent-input-send-btn bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
-    >
-      <Send />
-    </LxIconButton>
-  )
+  const actionButton =
+    isBtw && isStreaming ? (
+      // btw 面板：请求在途时发送按钮显示 loading（不支持中止，超时由 main 侧兜底）。
+      <LxIconButton
+        shape="circle"
+        aria-label={t("agent.btwThinking")}
+        title={{ content: t("agent.btwThinking"), placement: "top" }}
+        disabled
+        className="agent-input-action-btn agent-input-compacting-btn bg-white/15 !text-white/30"
+      >
+        <Loader2 className="animate-spin" />
+      </LxIconButton>
+    ) : isStreaming ? (
+      <LxIconButton
+        shape="circle"
+        aria-label={t("agent.stopGenerating")}
+        title={{ content: t("agent.stopGenerating"), placement: "top" }}
+        onClick={onStop}
+        hoverBgClass="hover:bg-white/90"
+        className="agent-input-action-btn agent-input-stop-btn bg-white !text-black shadow-sm"
+      >
+        <Square className="fill-current" />
+      </LxIconButton>
+    ) : isCompacting ? (
+      <LxIconButton
+        shape="circle"
+        aria-label={isCompactingManual ? t("agent.compactingManual") : t("agent.compactingAuto")}
+        title={{
+          content: isCompactingManual ? t("agent.compactingManual") : t("agent.compactingAuto"),
+          placement: "top",
+        }}
+        disabled
+        className="agent-input-action-btn agent-input-compacting-btn bg-white/15 !text-white/30"
+      >
+        <Loader2 className="animate-spin" />
+      </LxIconButton>
+    ) : (
+      <LxIconButton
+        shape="circle"
+        aria-label={t("agent.send")}
+        title={{ content: t("agent.sendMessage"), placement: "top" }}
+        onClick={() => handleSend()}
+        disabled={!inputText.trim() && selectedFiles.length === 0}
+        hoverBgClass="hover:bg-white/90"
+        className="agent-input-action-btn agent-input-send-btn bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
+      >
+        <Send />
+      </LxIconButton>
+    )
 
   return (
     <div className="relative bg-transparent p-0.5 pt-1 pb-0">
       {/* 排队消息提示：流式输出期间发送的消息等待当前回复结束后自动发送；hover 展示排队问题列表。 */}
-      {queuedCount > 0 && (
+      {!isBtw && queuedCount > 0 && (
         <LxTooltip
           title={`已排队 ${queuedCount} 条消息`}
           placement="top"
@@ -403,13 +428,13 @@ export const AgentInput = ({
           </div>
         </LxTooltip>
       )}
-      {steerNoticeVisible && (
+      {!isBtw && steerNoticeVisible && (
         <div className="agent-input-steer-notice mb-1 flex items-center gap-1.5 px-1 text-xs text-white/45">
           <Zap className="h-3 w-3 shrink-0 text-amber-400/80" />
           <span className="truncate">{t("agent.steerSentNotice")}</span>
         </div>
       )}
-      <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
+      {!isBtw && <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />}
       <div
         ref={containerRef}
         data-agent-mode={containerMode}
@@ -429,14 +454,18 @@ export const AgentInput = ({
           inputMode={inputMode}
           autoEnabledModes={autoEnabledModes}
           placeholder={
-            voiceRecordingState === "recording"
+            placeholder ??
+            (voiceRecordingState === "recording"
               ? t("agent.voiceListeningPlaceholder")
               : voiceRecordingState === "transcribing"
                 ? t("agent.voiceTranscribingPlaceholder")
-                : t("agent.inputPlaceholder")
+                : t("agent.inputPlaceholder"))
           }
           onChange={onInputChange}
           onSend={handleSend}
+          onBtwSend={onBtwSend}
+          canUseBtw={canUseBtw}
+          commandPanelEnabled={!isBtw}
           isStreaming={isStreaming}
           onStop={onStop}
           panelAnchorRef={containerRef}
@@ -461,22 +490,24 @@ export const AgentInput = ({
         />
         <div className="flex w-full items-center justify-between pt-1.5">
           <div className="flex min-w-0 items-center gap-1.5">
-            <AgentVoiceInputButton
-              ref={voiceButtonRef}
-              onTranscribed={handleVoiceTranscribed}
-              onRecordingStateChange={setVoiceRecordingState}
-            />
-            {addButton}
+            {!isBtw && (
+              <AgentVoiceInputButton
+                ref={voiceButtonRef}
+                onTranscribed={handleVoiceTranscribed}
+                onRecordingStateChange={setVoiceRecordingState}
+              />
+            )}
+            {!isBtw && addButton}
             <AgentModelSelect
               value={selectedModel}
               onChange={onModelChange}
               options={modelOptions}
-              disabled={!hasModelOptions}
+              disabled={!hasModelOptions || isBtw}
               variant={selectedVariant}
               variants={availableVariants}
               onVariantChange={onVariantChange}
             />
-            <AgentContextUsagePill contextUsage={contextUsage} />
+            {!isBtw && <AgentContextUsagePill contextUsage={contextUsage} />}
           </div>
 
           <div className="flex items-center gap-1.5">{actionButton}</div>

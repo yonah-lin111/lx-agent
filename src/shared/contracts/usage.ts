@@ -9,7 +9,7 @@ export interface UsageTokens {
 }
 
 // 模型调用的来源类型。
-export type UsagePurpose = "chat" | "subagent" | "compaction" | "title" | "suggested"
+export type UsagePurpose = "chat" | "subagent" | "compaction" | "title" | "suggested" | "btw"
 
 // 请求日志状态。
 export type UsageLogStatus = "success" | "error" | "aborted"

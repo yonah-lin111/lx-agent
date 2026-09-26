@@ -33,10 +33,10 @@ vi.mock("@/services/settingsService", () => ({
   getModelProviderSettings: () => settingsState.settings,
 }))
 
+import { trimConversationContext } from "@/agent/contextBudget"
 import {
   generateSuggestedQuestions,
   parseSuggestedQuestions,
-  trimSuggestedQuestionContext,
 } from "@/agent/suggestedQuestionsGenerator"
 
 describe("parseSuggestedQuestions", () => {
@@ -71,7 +71,7 @@ describe("parseSuggestedQuestions", () => {
   })
 })
 
-describe("trimSuggestedQuestionContext", () => {
+describe("trimConversationContext", () => {
   const makeMessage = (content: string): SuggestedQuestionContextMessage => ({
     role: "user",
     content,
@@ -79,25 +79,25 @@ describe("trimSuggestedQuestionContext", () => {
 
   it("保留最近的上下文并按预算截断", () => {
     const messages = [makeMessage("a"), makeMessage("bb"), makeMessage("ccc")]
-    const result = trimSuggestedQuestionContext(messages, 5)
+    const result = trimConversationContext(messages, 5)
     expect(result.map((item) => item.content)).toEqual(["bb", "ccc"])
   })
 
   it("预算耗尽后停止，并把更早消息截断到剩余预算", () => {
     const messages = [makeMessage("x".repeat(100)), makeMessage("y".repeat(100))]
-    const result = trimSuggestedQuestionContext(messages, 120)
+    const result = trimConversationContext(messages, 120)
     expect(result).toEqual([makeMessage("x".repeat(20)), makeMessage("y".repeat(100))])
   })
 
   it("最多保留最近 12 条", () => {
     const messages = Array.from({ length: 16 }, (_, index) => makeMessage(`msg${index}`))
-    const result = trimSuggestedQuestionContext(messages, 100_000)
+    const result = trimConversationContext(messages, 100_000)
     expect(result).toHaveLength(12)
     expect(result.at(-1)?.content).toBe("msg15")
   })
 
   it("空输入返回空数组", () => {
-    expect(trimSuggestedQuestionContext([], 100)).toEqual([])
+    expect(trimConversationContext([], 100)).toEqual([])
   })
 })
 

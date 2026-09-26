@@ -1,16 +1,13 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
 import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
+import { trimConversationContext } from "./contextBudget"
 import type { Model } from "./core/types"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
 import { recordModelCall, toUsage } from "./usageRecorder"
 
 // 建议问题生成超时（秒）：兜底避免无响应 provider 挂住渲染端请求。
 const SUGGEST_TIMEOUT_MS = 15_000
-// 上下文保留条数上限（最近的 N 条消息）。
-const MAX_CONTEXT_MESSAGES = 12
-// 单条消息内容截断上限。
-const MAX_MESSAGE_CHARS = 8000
 // 上下文基础预算；优先按模型 context limit 放大（最多 3 倍）。
 const BASE_CONTEXT_CHARS = 4000
 
@@ -57,28 +54,6 @@ export const parseSuggestedQuestions = (content: string): string[] => {
 }
 
 /**
- * 按上下文预算保留最近对话，避免建议请求挤占主对话可用上下文。
- */
-export const trimSuggestedQuestionContext = (
-  messages: SuggestedQuestionContextMessage[],
-  maxChars: number,
-): SuggestedQuestionContextMessage[] => {
-  const selected: SuggestedQuestionContextMessage[] = []
-  let usedChars = 0
-
-  for (const message of messages.slice(-MAX_CONTEXT_MESSAGES).reverse()) {
-    const availableChars = maxChars - usedChars
-    if (availableChars <= 0) break
-    const content = message.content.slice(-Math.min(MAX_MESSAGE_CHARS, availableChars))
-    if (!content) continue
-    selected.unshift({ ...message, content })
-    usedChars += content.length
-  }
-
-  return selected
-}
-
-/**
  * 用配置的 suggestedQuestions 模型为对话生成后续建议问题。
  * 纯生成、无工具、不进 Agent 事件流；功能未开启 / 无模型 / 无 key / 失败均静默返回空数组。
  * 成功与失败均写入 usage 日志（该调用链无会话上下文，sessionId 为空）。
@@ -104,7 +79,7 @@ export const generateSuggestedQuestions = async (
 
     const contextLimit = provider.models[selection.model].limit?.context
     const budget = Math.max(BASE_CONTEXT_CHARS, (contextLimit ?? BASE_CONTEXT_CHARS) * 3)
-    const context = trimSuggestedQuestionContext(messages, budget)
+    const context = trimConversationContext(messages, budget)
     if (context.length === 0) return []
 
     const result = streamText({

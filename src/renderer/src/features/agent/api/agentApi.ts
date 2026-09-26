@@ -12,6 +12,8 @@ import type {
   AgentSwitchProjectResult,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
+  BtwAskRequest,
+  BtwAskResult,
   CollaborationMode,
   CopySessionOptions,
   CopySessionResult,
@@ -151,6 +153,11 @@ export const agentApi = {
     messages: SuggestedQuestionContextMessage[],
     excludedQuestions?: string[],
   ): Promise<string[]> => window.api.agent.suggestedQuestions(messages, excludedQuestions),
+  // btw 侧问：一次性无工具调用（不入库）；环境不支持时返回失败结果。
+  btwAsk: (request: BtwAskRequest): Promise<BtwAskResult> =>
+    window?.api?.agent?.btwAsk
+      ? window.api.agent.btwAsk(request)
+      : Promise.resolve({ ok: false, error: "btw is not available in current environment" }),
   getDefaultPath: (): Promise<string> => window.api.agent.getDefaultPath(),
   permissionRespond: (response: PermissionResponse): Promise<{ ok: boolean }> =>
     window.api.agent.permissionRespond(response),

@@ -59,6 +59,10 @@ interface UseAgentInputPanelsProps {
   currentPath?: string
   currentSessionId?: string | null
   allowProjectChange?: boolean
+  // 是否可用 /btw（无 QA 的主会话隐藏该命令）。
+  canUseBtw?: boolean
+  // 是否启用命令/提及面板（btw 面板精简模式下整体关闭）。
+  commandPanelEnabled?: boolean
   modelOptions?: AgentMarkdownInputProps["modelOptions"]
   worktreeOptions?: GitWorktreeOption[] | null
   // 全局历史提示词（新→旧）。
@@ -82,6 +86,8 @@ export const useAgentInputPanels = ({
   currentPath,
   currentSessionId,
   allowProjectChange = true,
+  canUseBtw = true,
+  commandPanelEnabled = true,
   modelOptions = [],
   worktreeOptions,
   promptHistory = [],
@@ -239,8 +245,8 @@ export const useAgentInputPanels = ({
   }, [projectPath])
 
   const matchedCommands = useMemo(
-    () => getMatchedCommands(value, promptTemplates, t, allowProjectChange),
-    [value, promptTemplates, t, allowProjectChange],
+    () => getMatchedCommands(value, promptTemplates, t, allowProjectChange, canUseBtw),
+    [value, promptTemplates, t, allowProjectChange, canUseBtw],
   )
   const matchedCommandsRef = useRef(matchedCommands)
   matchedCommandsRef.current = matchedCommands
@@ -703,6 +709,15 @@ export const useAgentInputPanels = ({
   // 同步面板状态
   const syncPanels = useCallback(
     (docText: string, cursor: number, view: EditorView): void => {
+      // btw 面板精简模式：命令、提及与块级提示整体关闭。
+      if (!commandPanelEnabled) {
+        setActiveMode(null)
+        setFiles([])
+        setBlockCommands([])
+        setBlockCommandPosition(undefined)
+        return
+      }
+
       // 1. 斜杠命令相关
       const isModelInput = docText === "/model" || docText.startsWith("/model ")
       if (isModelInput) {
@@ -767,6 +782,7 @@ export const useAgentInputPanels = ({
         promptTemplatesRef.current,
         t,
         allowProjectChange,
+        canUseBtw,
       )
       if (commands.length > 0) {
         setActiveMode("command")
@@ -864,7 +880,16 @@ export const useAgentInputPanels = ({
       setBlockCommands([])
       setBlockCommandPosition(undefined)
     },
-    [projectId, currentPath, getPanelAnchor, t, allowProjectChange, refreshPromptHistory],
+    [
+      projectId,
+      currentPath,
+      getPanelAnchor,
+      t,
+      allowProjectChange,
+      canUseBtw,
+      commandPanelEnabled,
+      refreshPromptHistory,
+    ],
   )
 
   const syncPanelsRef = useRef(syncPanels)

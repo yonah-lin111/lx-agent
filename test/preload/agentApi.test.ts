@@ -110,6 +110,18 @@ describe("preload agent API", () => {
     ])
   })
 
+  it("btwAsk 转发请求到共享 channel", async () => {
+    const api = exposeInMainWorld.mock.calls[0]?.[1]
+    const request = {
+      context: [{ role: "user", content: "主会话问题" }],
+      history: [],
+      question: "这个报错在哪？",
+    }
+
+    await api.agent.btwAsk(request)
+    expect(invoke).toHaveBeenNthCalledWith(1, AGENT_CHANNELS.btwAsk, request)
+  })
+
   it("getPromptAssembly 转发 sessionId 与 cwd 到共享 channel", async () => {
     const api = exposeInMainWorld.mock.calls[0]?.[1]
 

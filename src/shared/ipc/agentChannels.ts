@@ -37,6 +37,8 @@ export const AGENT_CHANNELS = {
   getInstruction: "agent:getInstruction",
   saveInstruction: "agent:saveInstruction",
   suggestedQuestions: "agent:suggestedQuestions",
+  // btw 侧问：一次性无工具模型调用（不入库、不产生 Agent 事件）。
+  btwAsk: "agent:btwAsk",
   // 获取系统默认的桌面路径
   getDefaultPath: "agent:getDefaultPath",
   // 查询当前会话上下文容量（模型切换后状态栏主动刷新）。

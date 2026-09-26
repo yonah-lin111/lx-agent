@@ -72,6 +72,7 @@ export const usage = {
     compaction: "上下文压缩",
     title: "标题生成",
     suggested: "推荐问题",
+    btw: "btw 侧问",
   },
   status: {
     success: "成功",

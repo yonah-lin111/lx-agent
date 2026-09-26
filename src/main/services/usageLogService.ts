@@ -93,7 +93,11 @@ const parseStatus = (value: string): UsageLogStatus =>
 
 // 解析日志来源为契约枚举。
 const parsePurpose = (value: string): UsagePurpose =>
-  value === "subagent" || value === "compaction" || value === "title" || value === "suggested"
+  value === "subagent" ||
+  value === "compaction" ||
+  value === "title" ||
+  value === "suggested" ||
+  value === "btw"
     ? value
     : "chat"
 

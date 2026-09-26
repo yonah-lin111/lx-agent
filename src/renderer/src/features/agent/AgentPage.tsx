@@ -1,6 +1,7 @@
 import type {
   AgentSendContext,
   AutoConfigurableMode,
+  BtwContextMessage,
   PermissionRequest,
   SandboxPolicy,
   SuggestedQuestionContextMessage,
@@ -19,10 +20,11 @@ import { AgentExecutionFlowList } from "./components/AgentExecutionFlowList"
 import { AgentInput } from "./components/AgentInput"
 import type { AgentVoiceInputButtonRef } from "./components/AgentInput/AgentVoiceInputButton"
 import { AgentMessageList } from "./components/AgentMessageList"
-import { AgentHistoryPanel, AgentSubagentPanel } from "./components/panels"
+import { AgentBtwPanel, AgentHistoryPanel, AgentSubagentPanel } from "./components/panels"
 import { AgentStatusBar } from "./components/status-bar"
 import { agentTabStore } from "./hooks/agentTabStore"
 import { agentViewStore } from "./hooks/agentViewStore"
+import { btwStore, getBtwOwnerKey, toBtwContextMessages } from "./hooks/btwStore"
 import { type SessionBinding, sessionListStore } from "./hooks/sessionListStore"
 import { useAgentChat } from "./hooks/useAgentChat"
 import { useAgentJobs } from "./hooks/useAgentJobs"
@@ -39,6 +41,8 @@ export interface AgentPageProps {
   onNewChatRef?: (fn: () => void) => void
   onToggleExecutionFlowRef?: (fn: () => void) => void
   onToggleHistoryRef?: (fn: () => void) => void
+  // 注册 btw 面板开关回调（TabBar 侧问入口按钮触发）。
+  onToggleBtwRef?: (fn: () => void) => void
   context?: AgentSendContext
   currentProjectId?: string
   currentProjectPath?: string
@@ -60,6 +64,7 @@ export const AgentPage = ({
   onNewChatRef,
   onToggleExecutionFlowRef,
   onToggleHistoryRef,
+  onToggleBtwRef,
   context,
   currentProjectId,
   currentProjectPath,
@@ -378,11 +383,29 @@ export const AgentPage = ({
   // 历史会话面板开关（右侧栏历史 icon 触发；与子代理面板互斥）。
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 
+  // btw 侧问面板开关（TabBar 侧问入口 / 发送 /btw 自动打开；与历史/子代理面板互斥）。
+  const [isBtwOpen, setIsBtwOpen] = useState(false)
+  // 侧问请求在途的 owner（会话切换后旧请求返回不干扰新 owner 的 pending 状态）。
+  const [btwPendingOwner, setBtwPendingOwner] = useState<string | null>(null)
+
   // 执行流程视图内打开的子代理面板开关（由 AgentExecutionFlowList 回传，用于遮盖输入区与状态栏）。
   const [isFlowSubagentOpen, setIsFlowSubagentOpen] = useState(false)
 
   // 任一覆盖面板打开：遮盖并禁用输入区与状态栏，避免键盘焦点落在被盖住的输入框。
-  const isOverlayPanelOpen = isHistoryOpen || activeSubagentId !== null || isFlowSubagentOpen
+  const isOverlayPanelOpen =
+    isHistoryOpen || activeSubagentId !== null || isFlowSubagentOpen || isBtwOpen
+
+  // btw 数据归属：已落库会话 = sessionId，草稿会话 = 当前 Tab。
+  const btwOwnerKey = useMemo(
+    () => getBtwOwnerKey(currentSessionId, tabId),
+    [currentSessionId, tabId],
+  )
+  // 主会话是否已有用户消息（无 QA 时禁用 /btw）。
+  const hasMainUserMessage = useMemo(
+    () => messages.some((message) => message.role === "user"),
+    [messages],
+  )
+  const isBtwPending = btwOwnerKey !== null && btwPendingOwner === btwOwnerKey
 
   // 实时从 messages 中解析最新的 subagent toolCall 块，确保子代理流式更新能够被面板响应
   const activeSubagent = useMemo<SubagentToolCall | null>(() => {
@@ -419,15 +442,17 @@ export const AgentPage = ({
     setActiveSubagentId(toolCall.toolCallId)
     setActiveSubagentIndex(subagentIndex)
     setIsHistoryOpen(false)
+    setIsBtwOpen(false)
   }, [])
 
-  // 切换历史面板：打开时关闭子代理面板并刷新会话列表（两面板互斥）。
+  // 切换历史面板：打开时关闭子代理/btw 面板并刷新会话列表（面板互斥）。
   const toggleHistory = useCallback((): void => {
     if (isHistoryOpen) {
       setIsHistoryOpen(false)
       return
     }
     setActiveSubagentId(null)
+    setIsBtwOpen(false)
     setIsHistoryOpen(true)
     void sessionListStore.refresh()
   }, [isHistoryOpen])
@@ -436,6 +461,101 @@ export const AgentPage = ({
   const closeHistory = useCallback((): void => {
     setIsHistoryOpen(false)
   }, [])
+
+  // 切换 btw 面板：打开时关闭历史/子代理面板（面板互斥）。
+  const toggleBtw = useCallback((): void => {
+    if (isBtwOpen) {
+      setIsBtwOpen(false)
+      return
+    }
+    setActiveSubagentId(null)
+    setIsHistoryOpen(false)
+    setIsBtwOpen(true)
+  }, [isBtwOpen])
+
+  // 主会话文本上下文（用户消息 + 助手文本块，含流式中的半成品），供 btw 侧问使用。
+  const buildMainContext = useCallback((): BtwContextMessage[] => {
+    const result: BtwContextMessage[] = []
+    for (const message of messages.slice(-20)) {
+      if (message.role !== "user" && message.role !== "assistant") continue
+      const text = message.blocks
+        .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
+        .map((block) => block.text)
+        .join("\n")
+        .trim()
+      if (!text) continue
+      result.push({ role: message.role, content: text })
+    }
+    return result
+  }, [messages])
+
+  // 发送 btw 侧问：写入侧问线并请求一次性回答；面板内串行，请求在途时拒绝新请求。
+  const handleBtwAsk = useCallback(
+    (question: string): void => {
+      const ownerKey = btwOwnerKey
+      if (!ownerKey) return
+      if (btwPendingOwner === ownerKey) {
+        warning(t("agent.btwBusy"))
+        return
+      }
+      const anchor = [...messages]
+        .reverse()
+        .find(
+          (message) => message.role === "user" && typeof message.timestamp === "number",
+        )?.timestamp
+      if (typeof anchor !== "number") {
+        warning(t("agent.btwNoConversation"))
+        return
+      }
+      // 同锚点并入最后一条侧问线，锚点变化新建（历史在追加本次问题前快照）。
+      const threads = btwStore.getThreads(ownerKey)
+      const lastThread = threads.at(-1)
+      const history =
+        lastThread && lastThread.anchor === anchor ? toBtwContextMessages(lastThread) : []
+      const { threadId } = btwStore.appendUser(ownerKey, anchor, question)
+      setInputText("")
+      setActiveSubagentId(null)
+      setIsHistoryOpen(false)
+      setIsBtwOpen(true)
+      setBtwPendingOwner(ownerKey)
+      void agentApi
+        .btwAsk({
+          context: buildMainContext(),
+          history,
+          question,
+          selection: selectedSelection ?? undefined,
+        })
+        .then((result) => {
+          btwStore.appendAssistant(
+            ownerKey,
+            threadId,
+            result.ok ? result.answer : result.error,
+            !result.ok,
+          )
+        })
+        .catch((err) => {
+          btwStore.appendAssistant(
+            ownerKey,
+            threadId,
+            err instanceof Error ? err.message : String(err),
+            true,
+          )
+        })
+        .finally(() => {
+          setBtwPendingOwner((prev) => (prev === ownerKey ? null : prev))
+        })
+    },
+    [
+      btwOwnerKey,
+      btwPendingOwner,
+      messages,
+      buildMainContext,
+      selectedSelection,
+      warning,
+      t,
+      setInputText,
+    ],
+  )
 
   // 从历史面板恢复会话：生成中拦截；已有 Tab 打开则切换，否则当前 Tab 恢复。
   const handleHistoryRestore = useCallback(
@@ -452,12 +572,47 @@ export const AgentPage = ({
         restoreChat(sessionId)
       }
       setIsHistoryOpen(false)
+      setIsBtwOpen(false)
     },
     [restoreChat, warning, t],
   )
   // 子代理面板消息列表滚动容器。
   const subagentScrollRef = useRef<HTMLDivElement>(null)
   const pageContainerRef = useRef<HTMLDivElement>(null)
+
+  // 草稿 Tab 绑定会话后迁移 btw 侧问线并持久化。
+  useEffect(() => {
+    if (!tabId || !currentSessionId) return
+    btwStore.migrateOwner(`tab:${tabId}`, currentSessionId)
+  }, [tabId, currentSessionId])
+
+  // 主会话轮次被删除/撤销时，清理锚点失效的 btw 侧问线（会话恢复的中间空态不参与）。
+  const btwAnchorOwnerRef = useRef<string | null>(null)
+  const btwAnchorsRef = useRef<Set<number>>(new Set())
+  useEffect(() => {
+    if (!btwOwnerKey) {
+      btwAnchorOwnerRef.current = null
+      btwAnchorsRef.current = new Set()
+      return
+    }
+    const anchors = new Set(
+      messages
+        .filter((message) => message.role === "user" && typeof message.timestamp === "number")
+        .map((message) => message.timestamp as number),
+    )
+    // 会话切换（owner 变化）：重置基线，不做删除清理。
+    if (btwAnchorOwnerRef.current !== btwOwnerKey) {
+      btwAnchorOwnerRef.current = btwOwnerKey
+      btwAnchorsRef.current = anchors
+      return
+    }
+    if (!isRestoring) {
+      for (const anchor of btwAnchorsRef.current) {
+        if (!anchors.has(anchor)) btwStore.removeThreadsByAnchor(btwOwnerKey, anchor)
+      }
+    }
+    btwAnchorsRef.current = anchors
+  }, [messages, btwOwnerKey, isRestoring])
 
   // Shift + Tab 快捷键：在整个 AgentPage 范围内切换协作模式（Build / Plan / Review / Design 循环切换）
   useEffect(() => {
@@ -592,6 +747,11 @@ export const AgentPage = ({
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Escape") return
+      // btw 面板打开时 Esc 优先关闭（不触发双击停止生成）。
+      if (isBtwOpen) {
+        setIsBtwOpen(false)
+        return
+      }
       // 若处于子代理面板打开状态，让子代理面板优先关闭
       if (activeSubagentId !== null) {
         setActiveSubagentId(null)
@@ -620,7 +780,16 @@ export const AgentPage = ({
     return () => {
       window.removeEventListener("keydown", handleGlobalKeyDown)
     }
-  }, [isStreaming, activeSubagent, pendingRequest, handleStop, warning, t, isHistoryOpen])
+  }, [
+    isStreaming,
+    activeSubagent,
+    pendingRequest,
+    handleStop,
+    warning,
+    t,
+    isHistoryOpen,
+    isBtwOpen,
+  ])
 
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
@@ -761,6 +930,7 @@ export const AgentPage = ({
   const handleNewChat = useCallback(() => {
     const previousBinding = activeTab?.draftBinding ?? sessionListStore.getCurrentSessionBinding()
     createNewChat()
+    setIsBtwOpen(false)
     if (tabId) {
       agentTabStore.setTabTitle(tabId, "")
     }
@@ -808,6 +978,7 @@ export const AgentPage = ({
   const handleRestoreChat = useCallback(
     (sessionId: string) => {
       restoreChat(sessionId)
+      setIsBtwOpen(false)
     },
     [restoreChat],
   )
@@ -820,6 +991,9 @@ export const AgentPage = ({
   }
   if (onToggleHistoryRef) {
     onToggleHistoryRef(toggleHistory)
+  }
+  if (onToggleBtwRef) {
+    onToggleBtwRef(toggleBtw)
   }
 
   return (
@@ -891,6 +1065,26 @@ export const AgentPage = ({
           onDelete={(sessionId) => onDeleteSession?.(sessionId)}
           onDeleteMany={(sessionIds) => onDeleteSessions?.(sessionIds) ?? Promise.resolve(true)}
         />
+        {/* btw 侧问面板：TabBar 侧问入口 / 发送 /btw 触发，覆盖消息列表与输入区（面板互斥）。 */}
+        <AgentBtwPanel
+          isOpen={isBtwOpen}
+          onClose={() => setIsBtwOpen(false)}
+          ownerKey={btwOwnerKey}
+          isPending={isBtwPending}
+          onAsk={handleBtwAsk}
+          selectedModel={selectedModel}
+          selectedVariant={selectedVariant}
+          availableVariants={availableVariants}
+          modelOptions={selectOptions}
+          hasModelOptions={hasModelOptions}
+          collaborationMode={collaborationMode}
+          effectiveMode={effectiveMode}
+          agentMode={resolveDisplayCollaborationMode(collaborationMode, effectiveMode)}
+          autoEnabledModes={autoEnabledModes}
+          projectPath={statusBarPath}
+          projectId={effectiveProjectId}
+          sandboxPolicy={currentSandboxPolicy}
+        />
       </div>
       {/* 输入区与状态栏：被覆盖面板打开时整体 inert（display: contents 保持既有 flex 布局不变）。 */}
       <div className="contents" inert={isOverlayPanelOpen}>
@@ -907,6 +1101,8 @@ export const AgentPage = ({
           queuedMessages={queuedMessages}
           onInputChange={setInputText}
           onSend={(options) => sendMessage(undefined, selectedSelection, options)}
+          onBtwSend={handleBtwAsk}
+          canUseBtw={hasMainUserMessage}
           onStop={handleStop}
           onClear={handleNewChat}
           onUndo={undoLastTurn}

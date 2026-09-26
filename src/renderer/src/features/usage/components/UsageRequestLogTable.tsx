@@ -17,6 +17,7 @@ const PURPOSE_LABEL_KEYS: Record<UsagePurpose, TranslationKey> = {
   compaction: "usage.purpose.compaction",
   title: "usage.purpose.title",
   suggested: "usage.purpose.suggested",
+  btw: "usage.purpose.btw",
 }
 
 const STATUS_LABEL_KEYS: Record<UsageLogStatus, TranslationKey> = {

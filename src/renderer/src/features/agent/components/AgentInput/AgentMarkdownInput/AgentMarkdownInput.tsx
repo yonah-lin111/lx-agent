@@ -45,6 +45,9 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       value,
       onChange,
       onSend,
+      onBtwSend,
+      canUseBtw = true,
+      commandPanelEnabled = true,
       disabled = false,
       isStreaming = false,
       onStop,
@@ -100,6 +103,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     onChangeRef.current = onChange
     const onSendRef = useRef(onSend)
     onSendRef.current = onSend
+    const onBtwSendRef = useRef(onBtwSend)
+    onBtwSendRef.current = onBtwSend
     const isStreamingRef = useRef(isStreaming)
     isStreamingRef.current = isStreaming
     const onStopRef = useRef(onStop)
@@ -117,6 +122,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       currentPath,
       currentSessionId,
       allowProjectChange,
+      canUseBtw,
+      commandPanelEnabled,
       modelOptions,
       worktreeOptions,
       promptHistory,
@@ -144,6 +151,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       valueRef,
       onChangeRef,
       onSendRef,
+      onBtwSendRef,
       onClear,
       onUndo,
       onCompact,
@@ -153,6 +161,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onCdSelect,
       onSessionSelect,
       allowProjectChange,
+      canUseBtw,
       currentSessionId,
       isOnlyOneTurnLeft,
       setActiveMode: panels.setActiveMode,

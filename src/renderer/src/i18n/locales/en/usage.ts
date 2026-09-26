@@ -72,6 +72,7 @@ export const usage = {
     compaction: "Compaction",
     title: "Title",
     suggested: "Suggested",
+    btw: "btw side question",
   },
   status: {
     success: "Success",

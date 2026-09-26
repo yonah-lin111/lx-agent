@@ -3,6 +3,7 @@ import type {
   AgentEvent,
   AgentSendContext,
   AgentSendOptions,
+  BtwAskRequest,
   PermissionResponse,
   QuestionResponse,
   SuggestedQuestionContextMessage,
@@ -86,6 +87,7 @@ export const agentApi: AgentApi["agent"] = {
   copySession: (options) => ipcRenderer.invoke(AGENT_CHANNELS.copySession, options),
   suggestedQuestions: (messages: SuggestedQuestionContextMessage[], excludedQuestions?: string[]) =>
     ipcRenderer.invoke(AGENT_CHANNELS.suggestedQuestions, messages, excludedQuestions),
+  btwAsk: (request: BtwAskRequest) => ipcRenderer.invoke(AGENT_CHANNELS.btwAsk, request),
   getDefaultPath: () => ipcRenderer.invoke(AGENT_CHANNELS.getDefaultPath),
   permissionRespond: (response: PermissionResponse) =>
     ipcRenderer.invoke(AGENT_CHANNELS.permissionResponse, response),

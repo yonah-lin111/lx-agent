@@ -1,6 +1,7 @@
 // 渲染进程可调用的 Agent IPC 接口契约。
 
 import type { ModelSelection } from "@shared/settings"
+import type { BtwAskRequest, BtwAskResult } from "./btw"
 import type { AgentEvent } from "./events"
 import type { InstructionFileInfo, InstructionScope, SaveInstructionInput } from "./instructions"
 import type { AgentMessage, ModelSwitchMessage, SuggestedQuestionContextMessage } from "./messages"
@@ -153,6 +154,8 @@ export interface AgentApi {
       messages: SuggestedQuestionContextMessage[],
       excludedQuestions?: string[],
     ) => Promise<string[]>
+    // btw 侧问：一次性无工具模型调用，不进入主会话与数据库。
+    btwAsk: (request: BtwAskRequest) => Promise<BtwAskResult>
     // 获取系统默认的桌面路径（做梦的路径）
     getDefaultPath: () => Promise<string>
     // 响应权限确认请求（requestId 匹配 main 侧挂起的请求）。

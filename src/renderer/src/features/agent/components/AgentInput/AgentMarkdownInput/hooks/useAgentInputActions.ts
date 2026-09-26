@@ -37,6 +37,8 @@ interface UseAgentInputActionsProps {
   valueRef: React.RefObject<string>
   onChangeRef: React.RefObject<(value: string) => void>
   onSendRef: React.RefObject<(options?: { delivery?: "queue" | "steer" }) => void>
+  // /btw 发送回调（问题文本；主输入框路由到侧问线）。
+  onBtwSendRef?: React.RefObject<((question: string) => void) | undefined>
   onClear?: () => void
   onUndo?: () => void
   onCompact?: () => void
@@ -46,6 +48,8 @@ interface UseAgentInputActionsProps {
   onCdSelect?: (projectId: string, projectPath: string) => void
   onSessionSelect?: (sessionId: string) => void
   allowProjectChange?: boolean
+  // 是否可用 /btw（无 QA 的主会话拦截发送并提示）。
+  canUseBtw?: boolean
   currentSessionId?: string | null
   isOnlyOneTurnLeft?: () => boolean
   setActiveMode: (mode: AgentInputActiveMode) => void
@@ -66,6 +70,7 @@ export const useAgentInputActions = ({
   valueRef,
   onChangeRef,
   onSendRef,
+  onBtwSendRef,
   onClear,
   onUndo,
   onCompact,
@@ -75,6 +80,7 @@ export const useAgentInputActions = ({
   onCdSelect,
   onSessionSelect,
   allowProjectChange = true,
+  canUseBtw = true,
   currentSessionId,
   isOnlyOneTurnLeft,
   setActiveMode,
@@ -343,6 +349,22 @@ export const useAgentInputActions = ({
         return
       }
 
+      // 拦截 /btw 相关命令：路由到侧问线；无 QA 的主会话不允许发送。
+      if (text.startsWith("/btw ") || text === "/btw") {
+        if (!canUseBtw) {
+          warningToast(t("agent.btwNoConversation"))
+          return
+        }
+        const question = text
+          .slice(4)
+          .trim()
+          .replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1")
+          .trim()
+        if (!question) return
+        onBtwSendRef?.current?.(question)
+        return
+      }
+
       let delivery = forceDelivery
       if (text.startsWith("/steer ") || text === "/steer") {
         delivery = "steer"
@@ -364,6 +386,7 @@ export const useAgentInputActions = ({
       onChangeRef,
       editorViewRef,
       onSendRef,
+      onBtwSendRef,
       record,
       onCompact,
       onClear,
@@ -413,6 +436,16 @@ export const useAgentInputActions = ({
         onChangeRef.current(insertText)
         if (view) {
           const selection = getArgumentSelectionRange(insertText, 6)
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: insertText },
+            selection,
+          })
+        }
+      } else if (command.id === "btw") {
+        const insertText = "/btw [prompt]"
+        onChangeRef.current(insertText)
+        if (view) {
+          const selection = getArgumentSelectionRange(insertText, 4)
           view.dispatch({
             changes: { from: 0, to: view.state.doc.length, insert: insertText },
             selection,

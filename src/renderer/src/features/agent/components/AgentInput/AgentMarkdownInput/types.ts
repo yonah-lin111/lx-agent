@@ -14,6 +14,12 @@ export interface AgentMarkdownInputProps {
   value: string
   onChange: (value: string) => void
   onSend: (options?: { delivery?: "queue" | "steer" }) => void
+  // /btw 发送回调（问题文本；主输入框路由到侧问线）。
+  onBtwSend?: (question: string) => void
+  // 是否可用 /btw（无 QA 的主会话隐藏该命令并拦截发送）。
+  canUseBtw?: boolean
+  // 是否启用命令/提及面板（btw 面板精简模式下整体关闭）。
+  commandPanelEnabled?: boolean
   disabled?: boolean
   isStreaming?: boolean
   onStop?: () => void

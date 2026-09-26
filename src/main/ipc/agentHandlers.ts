@@ -7,6 +7,8 @@ import type {
   AgentMessage,
   AgentSendContext,
   AgentSendOptions,
+  BtwAskRequest,
+  BtwContextMessage,
   CopySessionOptions,
   ExportSessionOptions,
   McpServerStatusItem,
@@ -19,6 +21,7 @@ import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
 import { ipcMain, shell, type WebContents } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
+import { askBtwQuestion } from "@/agent/btwAskGenerator"
 import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { permissionManager } from "@/agent/permissions/permissionManager"
@@ -101,6 +104,31 @@ const isValidSendContext = (value: unknown): value is AgentSendContext => {
     isOptionalString(context.page) &&
     isOptionalString(context.cwd) &&
     filesValid
+  )
+}
+
+// 校验 btw 上下文消息数组（IPC 输入边界）。
+const isValidBtwContextMessages = (value: unknown): value is BtwContextMessage[] => {
+  if (!Array.isArray(value)) return false
+  return value.every((item): item is BtwContextMessage => {
+    if (!item || typeof item !== "object") return false
+    const message = item as Record<string, unknown>
+    return (
+      (message.role === "user" || message.role === "assistant") &&
+      typeof message.content === "string"
+    )
+  })
+}
+
+// 校验 btw 侧问请求（IPC 输入边界）。
+const isValidBtwAskRequest = (value: unknown): value is BtwAskRequest => {
+  if (!value || typeof value !== "object") return false
+  const request = value as Record<string, unknown>
+  return (
+    isValidBtwContextMessages(request.context) &&
+    isValidBtwContextMessages(request.history) &&
+    typeof request.question === "string" &&
+    request.question.trim().length > 0
   )
 }
 
@@ -417,6 +445,13 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       return generateSuggestedQuestions(messages, excluded)
     },
   )
+
+  ipcMain.handle(AGENT_CHANNELS.btwAsk, (_, request: unknown) => {
+    if (!isValidBtwAskRequest(request)) {
+      return { ok: false, error: "invalid btw request" }
+    }
+    return askBtwQuestion(request)
+  })
 
   ipcMain.handle(AGENT_CHANNELS.getDefaultPath, () => join(homedir(), "Desktop"))
 

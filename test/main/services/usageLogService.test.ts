@@ -64,6 +64,19 @@ describe("usageLogService", () => {
     expect(page.rows.some((row) => row.rates.totalCostUsd === first.rates.totalCostUsd)).toBe(true)
   })
 
+  it("purpose 保留 btw 侧问来源", () => {
+    const service = createUsageLogService(() => database)
+    service.record({
+      purpose: "btw",
+      provider: "p",
+      model: "m",
+      tokens: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+      status: "success",
+    })
+
+    expect(service.listLogs({}).rows[0]?.purpose).toBe("btw")
+  })
+
   it("未配置价格时成本列为 null，token 仍照常统计", () => {
     const service = createUsageLogService(() => database)
     const record = service.record({

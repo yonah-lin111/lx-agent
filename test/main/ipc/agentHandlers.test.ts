@@ -25,6 +25,9 @@ vi.mock("@/agent/agentRunner", () => ({
 vi.mock("@/agent/suggestedQuestionsGenerator", () => ({
   generateSuggestedQuestions: vi.fn(),
 }))
+vi.mock("@/agent/btwAskGenerator", () => ({
+  askBtwQuestion: vi.fn(),
+}))
 
 describe("agent IPC handlers", () => {
   beforeEach(() => handle.mockClear())
@@ -191,6 +194,42 @@ describe("agent IPC handlers", () => {
     const result = await handler(undefined, messages, ["旧问题"])
     expect(generateSuggestedQuestions).toHaveBeenCalledWith(messages, ["旧问题"])
     expect(result).toEqual(["问题一", "问题二"])
+  })
+
+  it("btwAsk handler 校验输入并调用侧问生成器", async () => {
+    vi.resetModules()
+    const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
+    const { askBtwQuestion } = await import("@/agent/btwAskGenerator")
+
+    registerAgentHandlers(() => undefined)
+
+    const handler = handle.mock.calls.find(([channel]) => channel === AGENT_CHANNELS.btwAsk)?.[1]
+    expect(handler).toBeTypeOf("function")
+
+    // 非法请求直接返回错误，不触发生成器。
+    const invalidResult = await handler(undefined, { context: "not-an-array" })
+    expect(invalidResult).toEqual({ ok: false, error: expect.any(String) })
+    expect(askBtwQuestion).not.toHaveBeenCalled()
+
+    // 空问题同样拒绝。
+    const emptyQuestion = await handler(undefined, {
+      context: [],
+      history: [],
+      question: "   ",
+    })
+    expect(emptyQuestion).toEqual({ ok: false, error: expect.any(String) })
+    expect(askBtwQuestion).not.toHaveBeenCalled()
+
+    const request = {
+      context: [{ role: "user", content: "主会话问题" }],
+      history: [{ role: "assistant", content: "上一次侧问回答" }],
+      question: "这个报错在哪？",
+      selection: { provider: "p", model: "m" },
+    }
+    vi.mocked(askBtwQuestion).mockResolvedValue({ ok: true, answer: "在 agent.ts" })
+    const result = await handler(undefined, request)
+    expect(askBtwQuestion).toHaveBeenCalledWith(request)
+    expect(result).toEqual({ ok: true, answer: "在 agent.ts" })
   })
 
   it("restore handler 接受合法的 undoSummary 消息并转发到 agentRunner", async () => {
