@@ -48,6 +48,9 @@ const MODE_MUTATION_REASONS: Record<Exclude<CollaborationMode, "build" | "auto">
 // Minimal 模式后台作业拒绝 reason（job 工具不在白名单内，引导改用 shell 后台与持久会话）。
 const MINIMAL_BACKGROUND_REASON =
   "Action denied: Minimal Mode does not support background jobs. Run long-lived processes with shell backgrounding (command &) or a persistent shell session (the session parameter) instead."
+// Plan 模式 question 工具拒绝 reason（grill-me 协议要求纯文本逐题提问，question 工具在 plan 硬基线内）。
+const PLAN_QUESTION_TOOL_REASON =
+  "Action denied: Plan Mode embeds the grill-me skill. Ask exactly one question per turn as plain chat text in the user's language (one question, one recommendation, one plain-language example) instead of calling the question tool."
 // 模式能力权限白名单未命中 reason。
 const MODE_TOOL_NOT_ALLOWED_REASON =
   "Action denied: This tool is not allowed in the current collaboration mode by permission configuration."
@@ -304,10 +307,14 @@ class PermissionManager {
       if (baselineMode === undefined || baselineMode === "build") continue
       const isMinimalBackground =
         baselineMode === "minimal" && toolName === "bash" && record.background === true
-      if (!isMinimalBackground && !isToolBlockedByMode(baselineMode, toolName)) continue
+      const isPlanQuestion = baselineMode === "plan" && toolName === "question"
+      if (!isMinimalBackground && !isPlanQuestion && !isToolBlockedByMode(baselineMode, toolName))
+        continue
       const baseReason = isMinimalBackground
         ? MINIMAL_BACKGROUND_REASON
-        : MODE_MUTATION_REASONS[baselineMode]
+        : isPlanQuestion
+          ? PLAN_QUESTION_TOOL_REASON
+          : MODE_MUTATION_REASONS[baselineMode]
       const reason =
         baselineMode === collaborationMode ? baseReason : `${PARENT_BASELINE_PREFIX}${baseReason}`
       return { decision: "deny", reason }

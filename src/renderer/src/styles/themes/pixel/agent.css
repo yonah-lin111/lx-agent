@@ -3049,3 +3049,109 @@
   color: #a6a6bc !important;
   text-shadow: 1px 1px 0px #000000;
 }
+
+/* ========================================================
+ * 18. Plan Mode 逐题盘问卡片 (GrillQuestionCard) 冷青黑曜石浮雕槽
+ * ======================================================== */
+[data-theme="pixel"] .grill-question-card {
+  border: 2px solid #000000 !important;
+  background-color: #101b21 !important; /* 冷青黑曜石基底 */
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .grill-question-header {
+  border-bottom: 2px solid #000000 !important;
+}
+
+[data-theme="pixel"] .grill-question-icon-wrapper {
+  border: 2px solid #000000 !important;
+  background-color: #12262e !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .grill-question-icon-wrapper svg {
+  color: #55ffff !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="pixel"] .grill-question-badge {
+  border: 1px solid #000000 !important;
+  background-color: #123039 !important;
+  color: #7ff7ff !important;
+  font-family: var(--theme-font-family) !important;
+  font-weight: 700;
+  border-radius: 0px !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .grill-question-copy-btn svg {
+  color: #55ffff !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="pixel"] .grill-question-label {
+  font-family: var(--theme-font-family) !important;
+  color: #55ffff !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .grill-question-recommendation {
+  border: 2px solid #000000 !important;
+  background-color: #0d2229 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .grill-question-example {
+  border: 1px solid #000000 !important;
+  background-color: #0a1215 !important;
+  border-radius: 0px !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* 举例说明标签降为低饱和冷青，与主推荐标签区分层级 */
+[data-theme="pixel"] .grill-question-example .grill-question-label {
+  color: #9ad9e2 !important;
+}
+
+[data-theme="pixel"] .grill-question-option {
+  border: 2px solid #000000 !important;
+  background-color: #0c1a1f !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.06),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="pixel"] .grill-question-option-key {
+  border: 1px solid #000000 !important;
+  background-color: #123039 !important;
+  color: #55ffff !important;
+  border-radius: 0px !important;
+  font-family: var(--theme-font-family) !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .grill-question-waiting {
+  font-family: var(--theme-font-family) !important;
+  color: #7f9aa0 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-execution-flow-grill-question-content {
+  width: 100% !important;
+}

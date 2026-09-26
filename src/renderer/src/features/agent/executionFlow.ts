@@ -690,6 +690,49 @@ export const buildExecutionSteps = (
         continue
       }
 
+      // grill-me 逐题盘问
+      if (block.kind === "grillQuestion") {
+        if (!block.grill.question.trim() && !block.grill.recommendation.trim()) continue
+        stepIndex++
+        const textDuration = block.durationMs ?? message.durationMs
+        const isRunning =
+          message.isStreaming &&
+          blockIdx === message.blocks.length - 1 &&
+          Boolean(block.grill.isStreaming)
+        const start = currentBlockStartedAt ?? message.timestamp
+        const completed =
+          start !== undefined && textDuration !== undefined ? start + textDuration : undefined
+        if (completed !== undefined) {
+          currentBlockStartedAt = completed
+        }
+        steps.push({
+          id: `step-${stepIndex}-grill-question`,
+          messageId: message.id,
+          turnIndex: turn,
+          stepIndex,
+          kind: "grillQuestion",
+          title: formatPreview(block.grill.question, 90) || "Grill Me",
+          subtitle: block.grill.isStreaming ? "Generating question..." : undefined,
+          status: isRunning ? "running" : "done",
+          timestamp: start ?? message.timestamp,
+          startedAt: start,
+          completedAt: completed,
+          durationMs: textDuration,
+          model: message.model,
+          tokens: toolCallBlocksCount === 0 ? messageUsageTokens : undefined,
+          tokenSaver: message.usage ? message.tokenSaver : undefined,
+          grillQuestionContent: block.grill,
+          assistantContent: {
+            text: block.grill.raw,
+            model: message.model,
+            provider: message.provider,
+            stopReason: message.stopReason,
+            usage: message.usage,
+          },
+        })
+        continue
+      }
+
       // 前端设计原型
       if (block.kind === "frontDesign") {
         if (!block.design.html.trim() && !block.design.title?.trim()) continue

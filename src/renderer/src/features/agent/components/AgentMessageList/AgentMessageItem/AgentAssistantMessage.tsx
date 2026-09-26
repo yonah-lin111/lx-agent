@@ -19,6 +19,7 @@ import {
   AgentWireframeCallBlock,
   type ExecutionItemMeta,
   FrontDesignCard,
+  GrillQuestionCard,
   ProposedPlanCard,
   ReviewFindingsCard,
 } from "@/features/agent/components/blocks"
@@ -219,6 +220,16 @@ export const AgentAssistantMessage = ({
                   onFillInput={onEchoToInput}
                   readOnly={readOnly}
                   hasSubsequentUserMessage={hasSubsequentUserMessage}
+                />
+              )
+            }
+
+            if (group.kind === "grillQuestion") {
+              return (
+                <GrillQuestionCard
+                  key={groupIndex}
+                  grill={group.block.grill}
+                  isStreaming={group.isStreaming}
                 />
               )
             }

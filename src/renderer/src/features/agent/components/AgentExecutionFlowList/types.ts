@@ -8,6 +8,7 @@ import {
   Compass,
   Cpu,
   FileText,
+  MessageCircleQuestion,
   Minimize2,
   Palette,
   Search,
@@ -243,6 +244,12 @@ export const getKindMeta = (
       return { icon: ClipboardCheck, labelKey: "agent.proposedPlanBadge", tagColor: "emerald" }
     case "reviewFindings":
       return { icon: ShieldAlert, labelKey: "agent.review.badge", tagColor: "purple" }
+    case "grillQuestion":
+      return {
+        icon: MessageCircleQuestion,
+        labelKey: "agent.grillQuestionBadge",
+        tagColor: "sky",
+      }
     case "frontDesign":
       return { icon: Palette, labelKey: "frontDesign.designCardBadge", tagColor: "pink" }
     case "error": {
