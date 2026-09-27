@@ -1,4 +1,4 @@
-import { Star } from "lucide-react"
+import { Save, Sparkles, Star } from "lucide-react"
 import type React from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -101,6 +101,49 @@ export const LxIconButtonDemo = (): React.JSX.Element => {
           />
           <LxIconButton aria-label="Star" title={{ content: "Star", placement: "bottom" }}>
             <Star />
+          </LxIconButton>
+        </div>
+      </UiPreviewSection>
+      <UiPreviewSection
+        title={t("uiPreview.demos.textMode")}
+        description={t("uiPreview.demos.textModeDesc")}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <LxIconButton
+            size="small"
+            icon={<Save className="h-3.5 w-3.5" />}
+            aria-label={t("uiPreview.demos.mock.iconButton.saveSmall")}
+          >
+            {t("common.save")}
+          </LxIconButton>
+          <LxIconButton
+            size="medium"
+            icon={<Save className="h-3.5 w-3.5" />}
+            aria-label={t("uiPreview.demos.mock.iconButton.saveMedium")}
+          >
+            {t("common.save")}
+          </LxIconButton>
+          <LxIconButton
+            size="large"
+            icon={<Save className="h-3.5 w-3.5" />}
+            aria-label={t("uiPreview.demos.mock.iconButton.saveLarge")}
+          >
+            {t("common.save")}
+          </LxIconButton>
+          <LxIconButton
+            icon={<Sparkles className="h-3.5 w-3.5" />}
+            suffix={<span className="text-[10px] text-white/50">3</span>}
+            aria-label={t("uiPreview.demos.mock.iconButton.chipLabel")}
+          >
+            {t("uiPreview.demos.mock.iconButton.chipLabel")}
+          </LxIconButton>
+          <LxIconButton
+            icon={<Save className="h-3.5 w-3.5" />}
+            onClose={() => {}}
+            confirmClose={false}
+            aria-label={t("uiPreview.demos.mock.iconButton.closableChip")}
+          >
+            {t("uiPreview.demos.mock.iconButton.chipLabel")}
           </LxIconButton>
         </div>
       </UiPreviewSection>

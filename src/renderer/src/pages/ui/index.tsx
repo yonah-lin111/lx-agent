@@ -20,19 +20,27 @@ import { AgentTodoCallDemo } from "@/pages/ui/components/AgentTodoCallDemo"
 import { AgentToolCallDemo } from "@/pages/ui/components/AgentToolCallDemo"
 import { AgentWebSearchDemo } from "@/pages/ui/components/AgentWebSearchDemo"
 import { ChatHistoryDemo } from "@/pages/ui/components/ChatHistoryDemo"
+import { LxChartCardDemo } from "@/pages/ui/components/LxChartCardDemo"
+import { LxChartTooltipDemo } from "@/pages/ui/components/LxChartTooltipDemo"
 import { LxCheckboxDemo } from "@/pages/ui/components/LxCheckboxDemo"
+import { LxCodeBlockDemo } from "@/pages/ui/components/LxCodeBlockDemo"
+import { LxCommandPanelDemo } from "@/pages/ui/components/LxCommandPanelDemo"
+import { LxDatePickerDemo } from "@/pages/ui/components/LxDatePickerDemo"
 import { LxIconButtonDemo } from "@/pages/ui/components/LxIconButtonDemo"
+import { LxInfoTooltipDemo } from "@/pages/ui/components/LxInfoTooltipDemo"
 import { LxInputDemo } from "@/pages/ui/components/LxInputDemo"
 import { LxLoadingOverlayDemo } from "@/pages/ui/components/LxLoadingOverlayDemo"
 import { LxMarkdownDemo } from "@/pages/ui/components/LxMarkdownDemo"
 import { LxMenuDemo } from "@/pages/ui/components/LxMenuDemo"
 import { LxModalDemo } from "@/pages/ui/components/LxModalDemo"
+import { LxNavItemDemo } from "@/pages/ui/components/LxNavItemDemo"
 import { LxRadioDemo } from "@/pages/ui/components/LxRadioDemo"
 import { LxSelectDemo } from "@/pages/ui/components/LxSelectDemo"
 import { LxTagDemo } from "@/pages/ui/components/LxTagDemo"
 import { LxToastDemo } from "@/pages/ui/components/LxToastDemo"
 import { LxTooltipDemo } from "@/pages/ui/components/LxTooltipDemo"
 import { SuggestedQuestionsDemo } from "@/pages/ui/components/SuggestedQuestionsDemo"
+import { TreeBranchIconDemo } from "@/pages/ui/components/TreeBranchIconDemo"
 
 /**
  * 渲染 UI 组件预览页面。
@@ -61,13 +69,21 @@ export const UiPreviewPage = (): React.JSX.Element => {
         {activeSection === "input" ? <LxInputDemo /> : null}
         {activeSection === "loading-overlay" ? <LxLoadingOverlayDemo /> : null}
         {activeSection === "markdown" ? <LxMarkdownDemo /> : null}
+        {activeSection === "code-block" ? <LxCodeBlockDemo /> : null}
+        {activeSection === "chart-card" ? <LxChartCardDemo /> : null}
+        {activeSection === "chart-tooltip" ? <LxChartTooltipDemo /> : null}
         {activeSection === "menu" ? <LxMenuDemo /> : null}
+        {activeSection === "command-panel" ? <LxCommandPanelDemo /> : null}
+        {activeSection === "nav-item" ? <LxNavItemDemo /> : null}
+        {activeSection === "tree-branch-icon" ? <TreeBranchIconDemo /> : null}
         {activeSection === "modal" ? <LxModalDemo /> : null}
         {activeSection === "radio" ? <LxRadioDemo /> : null}
         {activeSection === "select" ? <LxSelectDemo /> : null}
+        {activeSection === "date-picker" ? <LxDatePickerDemo /> : null}
         {activeSection === "tag" ? <LxTagDemo /> : null}
         {activeSection === "toast" ? <LxToastDemo /> : null}
         {activeSection === "tooltip" ? <LxTooltipDemo /> : null}
+        {activeSection === "info-tooltip" ? <LxInfoTooltipDemo /> : null}
         {activeSection === "thinking" ? <AgentThinkingDemo /> : null}
         {activeSection === "tool-call" ? <AgentToolCallDemo /> : null}
         {activeSection === "todo-call" ? <AgentTodoCallDemo /> : null}
@@ -80,7 +96,7 @@ export const UiPreviewPage = (): React.JSX.Element => {
         {activeSection === "skill-call" ? <AgentSkillCallDemo /> : null}
         {activeSection === "web-search" ? <AgentWebSearchDemo /> : null}
         {activeSection === "status-bar" ? <AgentStatusBarDemo /> : null}
-        {activeSection === "input" ? <AgentInputDemo /> : null}
+        {activeSection === "agent-input" ? <AgentInputDemo /> : null}
         {activeSection === "jobs-monitor" ? <AgentJobsMonitorDemo /> : null}
         {activeSection === "chat-history" ? <ChatHistoryDemo /> : null}
         {activeSection === "subagent-panel" ? <AgentSubagentDemo /> : null}

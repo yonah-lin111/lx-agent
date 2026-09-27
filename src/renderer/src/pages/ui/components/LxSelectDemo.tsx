@@ -1,3 +1,4 @@
+import { Sparkles, Zap } from "lucide-react"
 import type React from "react"
 import { useMemo, useState } from "react"
 
@@ -18,12 +19,20 @@ export const LxSelectDemo = (): React.JSX.Element => {
 
   const modelOptions: (LxSelectOption<string> | LxSelectGroup<string>)[] = useMemo(
     () => [
-      { value: "opus", label: "Opus" },
+      {
+        value: "opus",
+        label: "Opus",
+        icon: <Sparkles className="h-3.5 w-3.5 text-amber-300/80" />,
+      },
       { value: "sonnet", label: "Sonnet" },
       {
         label: "Open Source",
         options: [
-          { value: "deepseek", label: "DeepSeek" },
+          {
+            value: "deepseek",
+            label: "DeepSeek",
+            icon: <Zap className="h-3.5 w-3.5 text-blue-300/80" />,
+          },
           { value: "qwen", label: "Qwen" },
         ],
       },
