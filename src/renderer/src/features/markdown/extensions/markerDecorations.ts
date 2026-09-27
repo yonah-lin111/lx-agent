@@ -13,6 +13,7 @@ import {
   MARKDOWN_DESIGN_MENTION_PATTERN,
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/features/markdown/extensions/markdownFileMentions"
+import { extractMcpMentions } from "@/features/markdown/extensions/markdownMcpMentions"
 import {
   handleLogBlockLine,
   handleSuppleBlockLine,
@@ -107,6 +108,11 @@ export const scanMarkdownTokensInLine = (
   for (const mention of extractAgentModeMentions(line)) {
     mentionRanges.push({ from: mention.start, to: mention.end })
     addMarker(mention.start, mention.end, "cm-md-agent-mode-mention")
+  }
+
+  for (const mention of extractMcpMentions(line)) {
+    mentionRanges.push({ from: mention.start, to: mention.end })
+    addMarker(mention.start, mention.end, "cm-md-mcp-mention")
   }
 
   addMatches(/(?<!\\)(?:\*\*|__)/g, "cm-md-strong-marker")

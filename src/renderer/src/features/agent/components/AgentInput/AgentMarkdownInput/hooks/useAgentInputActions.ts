@@ -22,6 +22,7 @@ import type {
   AgentInputProjectItem,
   AgentInputSessionItem,
   ClawMentionCandidate,
+  McpMentionCandidate,
   SubagentMentionCandidate,
 } from "../../AgentInputCommandPanels"
 import {
@@ -726,6 +727,25 @@ export const useAgentInputActions = ({
     [editorViewRef, setActiveMode],
   )
 
+  const selectMcpServer = useCallback(
+    (candidate: McpMentionCandidate): void => {
+      const view = editorViewRef.current
+      if (!view) return
+      const text = view.state.doc.toString()
+      const cursor = view.state.selection.main.head
+      const mention = getMentionQuery(text, cursor)
+      if (!mention) return
+      const insert = `@mcp:${candidate.name} `
+      view.dispatch({
+        changes: { from: mention.start, to: cursor, insert },
+        selection: { anchor: mention.start + insert.length },
+      })
+      view.focus()
+      setActiveMode(null)
+    },
+    [editorViewRef, setActiveMode],
+  )
+
   const selectAgentMode = useCallback(
     (mode: CollaborationMode): void => {
       const view = editorViewRef.current
@@ -783,6 +803,7 @@ export const useAgentInputActions = ({
     selectDesign,
     selectClawAgent,
     selectSubagentMention,
+    selectMcpServer,
     selectAgentMode,
     selectBlockCommand,
   }

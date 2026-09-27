@@ -7,6 +7,7 @@ import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdown
 import type { MarkdownPasteReferenceOption } from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import { getAgentMentionDeletionRange } from "@/features/markdown/extensions/markdownAgentMentions"
 import { getAgentModeMentionDeletionRange } from "@/features/markdown/extensions/markdownAgentModeMentions"
+import { getMcpMentionDeletionRange } from "@/features/markdown/extensions/markdownMcpMentions"
 import type { TranslationKey } from "@/i18n"
 import type {
   AgentHistoryPromptItem,
@@ -545,6 +546,16 @@ export const useAgentInputKeymap = ({
                 view.dispatch({
                   changes: { from: agentRange.from, to: agentRange.to, insert: "" },
                   selection: { anchor: agentRange.from },
+                })
+                return true
+              }
+
+              // 匹配 @mcp MCP server 提及的快速整块删除
+              const mcpRange = getMcpMentionDeletionRange(docText, cursor.from)
+              if (mcpRange) {
+                view.dispatch({
+                  changes: { from: mcpRange.from, to: mcpRange.to, insert: "" },
+                  selection: { anchor: mcpRange.from },
                 })
                 return true
               }

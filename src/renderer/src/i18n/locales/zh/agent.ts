@@ -325,6 +325,7 @@ export const agent = {
   effort: "Effort",
   fileMention: "项目文件提及",
   subagentMentionTag: "子代理",
+  mcpMentionTag: "MCP",
   modelSelect: "模型选择",
   commandClearDesc: "清空当前对话",
   commandUndoDesc: "撤销上一轮对话",

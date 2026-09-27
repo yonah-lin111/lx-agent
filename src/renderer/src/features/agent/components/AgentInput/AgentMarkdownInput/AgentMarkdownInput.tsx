@@ -185,6 +185,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         actions.selectDesign(item.design)
       } else if (item.kind === "subagent") {
         actions.selectSubagentMention(item.subagent)
+      } else if (item.kind === "mcp") {
+        actions.selectMcpServer(item.mcp)
       } else if (item.kind === "claw") {
         actions.selectClawAgent(item.claw)
       } else if (item.kind === "agentMode") {
