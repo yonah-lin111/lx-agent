@@ -26,6 +26,7 @@ import { registerSkillHandlers } from "@/ipc/skillHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerUpdateHandlers } from "@/ipc/updateHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
+import { ensureLoginShellPath } from "@/lib/shellEnv"
 import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerGameProtocol } from "@/protocols/gameProtocol"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
@@ -111,8 +112,9 @@ app.whenReady().then(() => {
 
   const stopScreenshotCleanup = startScreenshotCleanupScheduler()
 
-  // MCP server 连接（幂等；失败降级不阻塞），退出时断开避免残留子进程。
-  void mcpManager.ensureConnected()
+  // 打包态 GUI 启动不继承终端环境：先解析登录 shell PATH 再连 MCP server（幂等；失败降级不阻塞），
+  // 否则 nvm/homebrew 安装的 MCP 命令（npx、codegraph 等）spawn 报 ENOENT。
+  void ensureLoginShellPath().then(() => mcpManager.ensureConnected())
   app.on("will-quit", () => {
     stopScreenshotCleanup()
     // 生命周期 hook：退出路径 best-effort 派发 SessionEnd（quit，不等待异步工作）。
