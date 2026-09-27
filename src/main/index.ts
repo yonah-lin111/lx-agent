@@ -26,6 +26,7 @@ import { registerSkillHandlers } from "@/ipc/skillHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerUpdateHandlers } from "@/ipc/updateHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
+import { isDevRuntime, resolveDevUserDataDir } from "@/lib/runtimeMode"
 import { ensureLoginShellPath } from "@/lib/shellEnv"
 import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerGameProtocol } from "@/protocols/gameProtocol"
@@ -76,68 +77,90 @@ const createWindow = (): void => {
   void window.loadFile(join(__dirname, "../renderer/index.html"))
 }
 
-app.whenReady().then(() => {
-  initDatabase()
-  registerLocalImageProtocol()
-  registerFrontDesignProtocol()
-  registerGameProtocol()
-  registerActivityHandlers()
-  registerScheduleHandlers()
-  registerProjectHandlers()
-  registerClipboardHandlers()
-  registerSettingsHandlers()
-  registerSkillHandlers()
-  registerMarkdownHandlers()
-  registerNotificationHandlers()
-  registerGitHandlers()
-  registerCustomCommandHandlers()
-  registerPromptHistoryHandlers()
-  registerTerminalHandlers()
-  registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
-  registerOpenClawHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
-  registerUsageHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
-  registerGameHandlers()
-  registerGitHubHandlers()
-  registerUpdateHandlers()
+// 开发态 userData 与打包版隔离（localStorage、缓存等 Chromium 存储分开），必须在 app ready 前设置。
+const isDev = isDevRuntime()
+if (isDev) {
+  app.setPath("userData", resolveDevUserDataDir(app.getPath("appData")))
+}
 
-  // 系统通知点击出口：聚焦窗口后把跳转目标推给渲染进程。
-  notificationService.attachSender(() => BrowserWindow.getAllWindows()[0]?.webContents)
-  // 更新检查结果出口：打包态启动后延迟自动检查一次（开发态仅支持手动检查）。
-  updateService.attachSender(() => BrowserWindow.getAllWindows()[0]?.webContents)
-  updateService.startAutoCheck()
-  // Windows 开发态通知需要显式 AppUserModelId（打包后由安装器写入快捷方式）。
-  if (process.platform === "win32" && !app.isPackaged) {
-    app.setAppUserModelId(process.execPath)
-  }
+// 开发态单实例锁：dev 与打包版 userData 已分离，锁互不影响；第二个 dev 实例退出并聚焦已有窗口，
+// 避免两个 dev 实例并发读写同一份 dev 数据。打包态保持可多开。
+const hasSingleInstanceLock = !isDev || app.requestSingleInstanceLock()
 
-  const stopScreenshotCleanup = startScreenshotCleanupScheduler()
-
-  // 打包态 GUI 启动不继承终端环境：先解析登录 shell PATH 再连 MCP server（幂等；失败降级不阻塞），
-  // 否则 nvm/homebrew 安装的 MCP 命令（npx、codegraph 等）spawn 报 ENOENT。
-  void ensureLoginShellPath().then(() => mcpManager.ensureConnected())
-  app.on("will-quit", () => {
-    stopScreenshotCleanup()
-    // 生命周期 hook：退出路径 best-effort 派发 SessionEnd（quit，不等待异步工作）。
-    agentRunner.disposeAll("quit")
-    terminalService.disposeAll()
-    void mcpManager.disconnectAll()
-    // OpenClaw Gateway 连接回收。
-    openClawClientManager.disposeAll()
-    // LSP server 进程回收（会话切换时已按会话清理；退出兜底全部 kill）。
-    void lspManager.dispose()
+if (!hasSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on("second-instance", () => {
+    const window = BrowserWindow.getAllWindows()[0]
+    if (!window) return
+    if (window.isMinimized()) window.restore()
+    window.show()
+    window.focus()
   })
 
-  app.on("browser-window-created", (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
+  app.whenReady().then(() => {
+    initDatabase()
+    registerLocalImageProtocol()
+    registerFrontDesignProtocol()
+    registerGameProtocol()
+    registerActivityHandlers()
+    registerScheduleHandlers()
+    registerProjectHandlers()
+    registerClipboardHandlers()
+    registerSettingsHandlers()
+    registerSkillHandlers()
+    registerMarkdownHandlers()
+    registerNotificationHandlers()
+    registerGitHandlers()
+    registerCustomCommandHandlers()
+    registerPromptHistoryHandlers()
+    registerTerminalHandlers()
+    registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
+    registerOpenClawHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
+    registerUsageHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
+    registerGameHandlers()
+    registerGitHubHandlers()
+    registerUpdateHandlers()
 
-  // 外部链接统一交给系统默认浏览器，禁止在应用内弹出新窗口（覆盖所有 webContents）。
-  app.on("web-contents-created", (_, contents) => {
-    contents.setWindowOpenHandler(({ url }) => {
-      void openExternalUrl(url)
-      return { action: "deny" }
+    // 系统通知点击出口：聚焦窗口后把跳转目标推给渲染进程。
+    notificationService.attachSender(() => BrowserWindow.getAllWindows()[0]?.webContents)
+    // 更新检查结果出口：打包态启动后延迟自动检查一次（开发态仅支持手动检查）。
+    updateService.attachSender(() => BrowserWindow.getAllWindows()[0]?.webContents)
+    updateService.startAutoCheck()
+    // Windows 开发态通知需要显式 AppUserModelId（打包后由安装器写入快捷方式）。
+    if (process.platform === "win32" && !app.isPackaged) {
+      app.setAppUserModelId(process.execPath)
+    }
+
+    const stopScreenshotCleanup = startScreenshotCleanupScheduler()
+
+    // 打包态 GUI 启动不继承终端环境：先解析登录 shell PATH 再连 MCP server（幂等；失败降级不阻塞），
+    // 否则 nvm/homebrew 安装的 MCP 命令（npx、codegraph 等）spawn 报 ENOENT。
+    void ensureLoginShellPath().then(() => mcpManager.ensureConnected())
+    app.on("will-quit", () => {
+      stopScreenshotCleanup()
+      // 生命周期 hook：退出路径 best-effort 派发 SessionEnd（quit，不等待异步工作）。
+      agentRunner.disposeAll("quit")
+      terminalService.disposeAll()
+      void mcpManager.disconnectAll()
+      // OpenClaw Gateway 连接回收。
+      openClawClientManager.disposeAll()
+      // LSP server 进程回收（会话切换时已按会话清理；退出兜底全部 kill）。
+      void lspManager.dispose()
     })
-  })
 
-  createWindow()
-})
+    app.on("browser-window-created", (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
+
+    // 外部链接统一交给系统默认浏览器，禁止在应用内弹出新窗口（覆盖所有 webContents）。
+    app.on("web-contents-created", (_, contents) => {
+      contents.setWindowOpenHandler(({ url }) => {
+        void openExternalUrl(url)
+        return { action: "deny" }
+      })
+    })
+
+    createWindow()
+  })
+}
