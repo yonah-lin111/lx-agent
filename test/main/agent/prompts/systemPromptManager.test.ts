@@ -240,7 +240,7 @@ describe("SystemPromptManager", () => {
       expect(assembly.sections.some((s) => s.name === PROMPT_SECTION_NAMES.SKILLS)).toBe(true)
       expect(assembly.contexts.some((c) => c.name === PROMPT_SECTION_NAMES.ENVIRONMENT)).toBe(true)
 
-      expect(assembly.rendered).toContain("You are Yonah (also known as LX)")
+      expect(assembly.rendered).toContain("You are LX")
       expect(assembly.rendered).toContain("<behavior>")
       expect(assembly.rendered).toContain("<preamble>")
       expect(assembly.rendered).toContain("<task_planning>")

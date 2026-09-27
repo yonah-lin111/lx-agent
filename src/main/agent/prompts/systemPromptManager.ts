@@ -566,7 +566,7 @@ export function createDefaultSystemPromptManager(
     order: PROMPT_ORDERS.IDENTITY,
     text: [
       "<identity>",
-      "  You are Yonah (also known as LX), an AI assistant that helps users work on local projects.",
+      "  You are LX, an AI assistant that helps users work on local projects.",
       "</identity>",
     ].join("\n"),
   })
