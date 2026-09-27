@@ -1,7 +1,11 @@
 import type { CollaborationMode, PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
 import type { TranslationKey } from "@/i18n"
 import { COLLABORATION_MODE_META } from "@/lib/collaborationModes"
-import type { AgentInputCommand, ClawMentionCandidate } from "../AgentInputCommandPanels"
+import type {
+  AgentInputCommand,
+  ClawMentionCandidate,
+  McpMentionCandidate,
+} from "../AgentInputCommandPanels"
 
 // 历史提示词命令名（二级面板入口）。
 export const HISTORY_PROMPT_COMMAND = "/historyPrompt"
@@ -186,6 +190,9 @@ export const DESIGN_MENTION_TAG = "design"
 // @ 提及面板的 OpenClaw 种类 tag 文本。
 export const CLAW_MENTION_TAG = "claw"
 
+// @ 提及面板的 MCP 种类 tag 文本。
+export const MCP_MENTION_TAG = "mcp"
+
 // 子代理内置/自定义 tag 的英文兜底（与当前语言的本地化 tag 同时匹配）。
 export const SUBAGENT_BUILTIN_TAG_FALLBACK = "agent"
 export const SUBAGENT_CUSTOM_TAG_FALLBACK = "custom"
@@ -285,6 +292,21 @@ export const getMentionSkillCandidates = (skills: SkillItem[], query: string): S
   const keyword = normalizedQuery.replace(/^skill:?/, "")
   if (!keyword) return skills
   return filterSkillsByQuery(skills, keyword)
+}
+
+// @ 提及面板的 MCP 候选：空查询展示全部，`mcp` / `mcp:` / `mcp/` 前缀按 server 名过滤，其余查询仅 tag 命中时整类返回。
+export const getMentionMcpCandidates = (
+  candidates: readonly McpMentionCandidate[],
+  query: string,
+): McpMentionCandidate[] => {
+  const normalizedQuery = normalizeTagQuery(query)
+  if (!normalizedQuery) return [...candidates]
+  if (!normalizedQuery.startsWith(MCP_MENTION_TAG)) {
+    return isKindTagMatch(normalizedQuery, MCP_MENTION_TAG) ? [...candidates] : []
+  }
+  const keyword = normalizedQuery.slice(MCP_MENTION_TAG.length).replace(/^[:/]+/, "")
+  if (!keyword) return [...candidates]
+  return candidates.filter((candidate) => isFuzzyMatch(keyword, candidate.name.toLowerCase()))
 }
 
 /**

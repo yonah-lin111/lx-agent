@@ -24,6 +24,7 @@ export type {
   AgentInputSessionItem,
   AgentMentionItem,
   ClawMentionCandidate,
+  McpMentionCandidate,
   SubagentMentionCandidate,
 } from "./types"
 export { getAgentPanelPosition, panelClassName } from "./utils"

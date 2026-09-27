@@ -1,9 +1,11 @@
 import type { EditorView } from "@codemirror/view"
 import {
+  type AgentEvent,
   type AgentSessionSummary,
   type AutoConfigurableMode,
   type CollaborationMode,
   getEffectiveAutoTargets,
+  type McpServerStatusItem,
   type PromptTemplateItem,
   type SkillItem,
 } from "@shared/contracts/agent"
@@ -33,6 +35,7 @@ import {
   type AgentMentionItem,
   type ClawMentionCandidate,
   getAgentPanelPosition,
+  type McpMentionCandidate,
   type SubagentMentionCandidate,
 } from "../../AgentInputCommandPanels"
 import {
@@ -43,6 +46,7 @@ import {
   filterSkillsByQuery,
   getCommandArgumentText,
   getMatchedCommands,
+  getMentionMcpCandidates,
   getMentionQuery,
   getMentionSkillCandidates,
   getSkillMentionQuery,
@@ -445,6 +449,49 @@ export const useAgentInputPanels = ({
     })
   }, [loadClawCandidates])
 
+  // 已连接的 MCP server 候选：仅 status === "connected" 上屏，其余（failed/disabled）不展示。
+  const [mcpCandidates, setMcpCandidates] = useState<McpMentionCandidate[]>([])
+  const mcpCandidatesRef = useRef(mcpCandidates)
+  mcpCandidatesRef.current = mcpCandidates
+
+  useEffect(() => {
+    let active = true
+    const applyServers = (servers: McpServerStatusItem[]): void => {
+      if (!active) return
+      setMcpCandidates(
+        servers
+          .filter((server) => server.status === "connected")
+          .map((server) => ({ name: server.name, toolsCount: server.toolsCount ?? 0 })),
+      )
+    }
+    const fetchServers = (): void => {
+      // 部分测试/宿主环境未注入该方法时降级为空候选。
+      if (typeof agentApi.getMcpStatus !== "function") {
+        applyServers([])
+        return
+      }
+      void agentApi
+        .getMcpStatus()
+        .then(applyServers)
+        .catch(() => applyServers([]))
+    }
+    fetchServers()
+    // 运行中连接状态变化（断连/重连）与设置保存都需刷新候选。
+    const unsubscribeEvent =
+      typeof agentApi.onEvent === "function"
+        ? agentApi.onEvent((event: AgentEvent) => {
+            if (event.type !== "mcp_status_changed") return
+            applyServers(event.servers)
+          })
+        : () => {}
+    const unsubscribeSettings = subscribeSettingsChanged("mcp", fetchServers)
+    return () => {
+      active = false
+      unsubscribeEvent()
+      unsubscribeSettings()
+    }
+  }, [])
+
   // 已配置的子代理角色候选（内置角色在前 + 用户自定义角色按配置顺序）。
   const [subagentCandidates, setSubagentCandidates] = useState<SubagentMentionCandidate[]>([])
   const subagentCandidatesRef = useRef(subagentCandidates)
@@ -534,6 +581,15 @@ export const useAgentInputPanels = ({
     return getMentionSkillCandidates(skills, mention.query.toLowerCase())
   }, [activeMode, value, skills, editorViewRef])
 
+  const matchedMentionMcpServers = useMemo<McpMentionCandidate[]>(() => {
+    if (activeMode !== "file" || mcpCandidates.length === 0) return []
+    const view = editorViewRef.current
+    const cursor = view?.state.selection.main.head ?? value.length
+    const mention = getMentionQuery(value, cursor)
+    if (!mention) return []
+    return getMentionMcpCandidates(mcpCandidates, mention.query)
+  }, [activeMode, value, mcpCandidates, editorViewRef])
+
   const matchedMentionDesigns = useMemo<FrontDesignItem[]>(() => {
     if (activeMode !== "file") return []
     const view = editorViewRef.current
@@ -601,6 +657,10 @@ export const useAgentInputPanels = ({
       kind: "subagent",
       subagent,
     }))
+    const mcpItems: AgentMentionItem[] = matchedMentionMcpServers.map((mcp) => ({
+      kind: "mcp",
+      mcp,
+    }))
     const fileItems: AgentMentionItem[] = files.map((file) => ({
       kind: "file",
       file,
@@ -613,8 +673,9 @@ export const useAgentInputPanels = ({
     return [
       ...modeItems,
       ...designItems,
-      ...skillItems,
       ...subagentItems,
+      ...skillItems,
+      ...mcpItems,
       ...fileItems,
       ...clawItems,
     ]
@@ -624,6 +685,7 @@ export const useAgentInputPanels = ({
     matchedMentionDesigns,
     matchedMentionSkills,
     matchedMentionSubagents,
+    matchedMentionMcpServers,
     matchedMentionClawAgents,
     files,
   ])
@@ -808,7 +870,7 @@ export const useAgentInputPanels = ({
         return
       }
 
-      // 3. @ 文件、Skill 与设计原型综合提及
+      // 3. @ 文件、Skill、MCP 与设计原型综合提及
       const mention = getMentionQuery(docText, cursor)
       if (
         mention &&
@@ -816,6 +878,7 @@ export const useAgentInputPanels = ({
           currentPath ||
           skillsRef.current.length > 0 ||
           subagentCandidatesRef.current.length > 0 ||
+          mcpCandidatesRef.current.length > 0 ||
           frontDesignStore.getAllDesigns().length > 0)
       ) {
         setActiveMode("file")

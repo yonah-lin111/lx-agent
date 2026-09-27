@@ -336,6 +336,7 @@ export const agent = {
   effort: "Effort",
   fileMention: "Project File Mention",
   subagentMentionTag: "Agent",
+  mcpMentionTag: "MCP",
   modelSelect: "Model Select",
   commandClearDesc: "Clear current chat",
   commandUndoDesc: "Undo last turn",

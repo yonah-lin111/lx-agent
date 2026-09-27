@@ -63,6 +63,10 @@ export type AgentMentionItem =
       claw: ClawMentionCandidate
     }
   | {
+      kind: "mcp"
+      mcp: McpMentionCandidate
+    }
+  | {
       kind: "agentMode"
       mode: CollaborationMode
       label: string
@@ -84,4 +88,10 @@ export interface ClawMentionCandidate {
   name: string
   // 实例显示名
   instanceName: string
+}
+
+// MCP 提及候选（仅已连接的 server；渲染层展示用）。
+export interface McpMentionCandidate {
+  name: string
+  toolsCount: number
 }

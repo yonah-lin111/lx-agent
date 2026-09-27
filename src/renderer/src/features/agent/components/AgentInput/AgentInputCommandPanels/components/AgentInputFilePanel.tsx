@@ -1,4 +1,4 @@
-import { Bot, FileText, Folder, Palette, Sparkles, UserCog } from "lucide-react"
+import { Bot, FileText, Folder, Palette, Plug, Sparkles, UserCog } from "lucide-react"
 import type { CSSProperties } from "react"
 import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPanel"
 import { LxTag } from "@/components/ui/LxTag"
@@ -211,6 +211,42 @@ export const AgentInputFilePanel = ({
                       {subagent.builtIn
                         ? t("agent.subagentMentionTag")
                         : t("settings.subagentsCustomTag")}
+                    </LxTag>
+                  </div>
+                </LxCommandPanelItem>
+              )
+            }
+
+            if (item.kind === "mcp") {
+              const { mcp } = item
+              return (
+                <LxCommandPanelItem
+                  key={`mcp-${mcp.name}`}
+                  active={isActive}
+                  className="flex min-h-11 items-center gap-2 px-2 py-1 text-xs"
+                  index={index}
+                  leading={
+                    <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-emerald-500/20 text-emerald-300">
+                      <Plug className="h-3.5 w-3.5" />
+                    </span>
+                  }
+                  onSelect={() => onSelect?.(item)}
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
+                      <span className="font-mono font-medium">@mcp:{mcp.name}</span>
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
+                      {mcp.toolsCount} {t("settings.mcpTools")}
+                    </span>
+                  </span>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <LxTag
+                      bgClass="bg-emerald-500/20 text-emerald-300"
+                      className="pointer-events-none shrink-0"
+                      size="small"
+                    >
+                      {t("agent.mcpMentionTag")}
                     </LxTag>
                   </div>
                 </LxCommandPanelItem>
