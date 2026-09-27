@@ -31,6 +31,8 @@ export interface UseFloatingLayerOptions {
   closeOnOutsideClick?: boolean
   // 滚动时是否关闭（默认 true）。
   closeOnScroll?: boolean
+  // Esc 键是否关闭（默认 true）。
+  closeOnEscape?: boolean
 }
 
 // useFloatingLayer 返回值。
@@ -52,6 +54,7 @@ export const useFloatingLayer = ({
   anchorRef,
   closeOnOutsideClick = true,
   closeOnScroll = true,
+  closeOnEscape = true,
 }: UseFloatingLayerOptions): UseFloatingLayerResult => {
   const parentLayer = useContext(TooltipLayerContext)
   const layerNodesRef = useRef<Set<HTMLElement>>(new Set())
@@ -117,13 +120,13 @@ export const useFloatingLayer = ({
 
   // Esc 关闭。
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || !closeOnEscape) return
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") onClose()
     }
     document.addEventListener("keydown", handleEscape)
     return () => document.removeEventListener("keydown", handleEscape)
-  }, [isOpen, onClose])
+  }, [isOpen, closeOnEscape, onClose])
 
   // 滚动关闭：页面级滚动、或滚动容器包含锚点时关闭；无关容器滚动不影响浮层。
   useEffect(() => {

@@ -2,7 +2,7 @@
  * 渲染页面顶部栏。
  */
 import { Check, ChevronDown, ChevronUp, Palette, Tags } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -10,6 +10,7 @@ import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxBreadcrumbToast, useLxBreadcrumbToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { TooltipLayerContext, useFloatingLayer } from "@/components/ui/useFloatingLayer"
 import { OpenClawBreadcrumb } from "@/features/openclaw"
 import { ProjectRecentItemsTags } from "@/features/project/components/ProjectRecentItemsTags"
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
@@ -54,6 +55,18 @@ export const HeaderSideBar = ({
   const hasBreadcrumbToast = breadcrumbToasts.length > 0
   const activeNavigationItem =
     PRIMARY_NAVIGATION_ITEMS.find((item) => item.path === pathname) ?? PRIMARY_NAVIGATION_ITEMS[0]
+
+  // 展开时点击 header 外部自动收起；header 内部触发的 portal 浮层（tooltip / 菜单 / 下拉）
+  // 经由 TooltipLayerContext 注册为「内部」，点击浮层不收起，也不额外响应 Esc / 滚动。
+  const headerRef = useRef<HTMLElement>(null)
+  const { layerContextValue } = useFloatingLayer({
+    isOpen: isExpanded,
+    active: isExpanded,
+    rootRef: headerRef,
+    onClose: () => onExpandedChange(false),
+    closeOnScroll: false,
+    closeOnEscape: false,
+  })
 
   useEffect(() => {
     if (pathname !== PAGE_ROUTES.project || !itemId) {
@@ -182,144 +195,147 @@ export const HeaderSideBar = ({
 
   return (
     <header
+      ref={headerRef}
       className={`header-sidebar mb-2 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] transition-[height,min-height,max-height] duration-300 ease-in-out ${
         isExpanded
           ? "h-[300px] min-h-[300px] max-h-[300px] p-2"
           : "h-[40px] min-h-[40px] max-h-[40px] px-2 py-1"
       }`}
     >
-      <div className="relative h-full w-full">
-        <div
-          className={`flex h-6 w-full items-center justify-between ${
-            isExpanded ? "" : "mt-[var(--theme-header-collapsed-row-offset-y)]"
-          }`}
-        >
-          <div className="flex h-6 min-w-0 flex-1 items-center gap-2 mr-2 text-xs font-mono">
-            {hasBreadcrumbToast ? (
-              <LxBreadcrumbToast />
-            ) : showRecentTags ? (
-              <div className="flex min-w-0 flex-1 items-center">
-                <ProjectRecentItemsTags />
-              </div>
-            ) : (
-              <div
-                key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${homeView}-${projectBreadcrumb?.itemName ?? ""}`}
-                className="header-breadcrumb flex min-w-0 items-center gap-1.5 animate-header-breadcrumb-in"
-              >
-                <LxTag
-                  size="small"
-                  bgClass="border-white/10 bg-white/5"
-                  textClass="text-white/50"
-                  className="header-breadcrumb-slash shrink-0 shadow-xs"
+      <TooltipLayerContext.Provider value={layerContextValue}>
+        <div className="relative h-full w-full">
+          <div
+            className={`flex h-6 w-full items-center justify-between ${
+              isExpanded ? "" : "mt-[var(--theme-header-collapsed-row-offset-y)]"
+            }`}
+          >
+            <div className="flex h-6 min-w-0 flex-1 items-center gap-2 mr-2 text-xs font-mono">
+              {hasBreadcrumbToast ? (
+                <LxBreadcrumbToast />
+              ) : showRecentTags ? (
+                <div className="flex min-w-0 flex-1 items-center">
+                  <ProjectRecentItemsTags />
+                </div>
+              ) : (
+                <div
+                  key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${homeView}-${projectBreadcrumb?.itemName ?? ""}`}
+                  className="header-breadcrumb flex min-w-0 items-center gap-1.5 animate-header-breadcrumb-in"
                 >
-                  //
-                </LxTag>
-                {breadcrumbParts.map((part, index) => (
-                  <span
-                    key={`${part}-${index}`}
-                    className="flex min-w-0 items-center gap-1.5 truncate"
+                  <LxTag
+                    size="small"
+                    bgClass="border-white/10 bg-white/5"
+                    textClass="text-white/50"
+                    className="header-breadcrumb-slash shrink-0 shadow-xs"
                   >
-                    {index > 0 && (
+                    //
+                  </LxTag>
+                  {breadcrumbParts.map((part, index) => (
+                    <span
+                      key={`${part}-${index}`}
+                      className="flex min-w-0 items-center gap-1.5 truncate"
+                    >
+                      {index > 0 && (
+                        <LxTag
+                          size="small"
+                          bgClass="border-white/10 bg-white/5"
+                          textClass="text-white/40"
+                          className="header-breadcrumb-slash shrink-0 shadow-xs"
+                        >
+                          /
+                        </LxTag>
+                      )}
                       <LxTag
                         size="small"
                         bgClass="border-white/10 bg-white/5"
-                        textClass="text-white/40"
-                        className="header-breadcrumb-slash shrink-0 shadow-xs"
+                        textClass={index === 0 ? "text-white/60" : "text-white"}
+                        className={`header-breadcrumb-part min-w-0 shadow-xs ${
+                          index === 0 ? "uppercase tracking-wider" : ""
+                        }`}
                       >
-                        /
+                        {part}
                       </LxTag>
-                    )}
-                    <LxTag
-                      size="small"
-                      bgClass="border-white/10 bg-white/5"
-                      textClass={index === 0 ? "text-white/60" : "text-white"}
-                      className={`header-breadcrumb-part min-w-0 shadow-xs ${
-                        index === 0 ? "uppercase tracking-wider" : ""
-                      }`}
-                    >
-                      {part}
-                    </LxTag>
-                  </span>
-                ))}
-                {/* 当前办公区（仅 OpenClaw 路由挂载，避免其它页面加载 OpenClaw 配置） */}
-                {pathname === PAGE_ROUTES.openclaw ? <OpenClawBreadcrumb /> : null}
-              </div>
-            )}
-          </div>
-          <div className="flex h-6 shrink-0 items-center gap-2">
-            <LxIconButton
-              aria-label={t("header.showRecentTags")}
-              highlighted={showRecentTags}
-              title={{
-                content: showRecentTags ? t("header.hideRecentTags") : t("header.showRecentTags"),
-                placement: "bottom",
-              }}
-              onClick={handleToggleRecentTags}
-              size="small"
-            >
-              <Tags />
-            </LxIconButton>
-            <LxTooltip
-              hover={{
-                content: t("header.switchTheme"),
-                placement: "bottom",
-              }}
-              click={{
-                content: (
-                  <div className="theme-menu-dropdown flex flex-col gap-0.5 py-0.5 min-w-[90px]">
-                    {THEME_OPTIONS.map((opt) => {
-                      const isSelected = theme === opt.id
-                      return (
-                        <LxMenuItem
-                          key={opt.id}
-                          active={isSelected}
-                          trailing={isSelected ? <Check className="text-emerald-400" /> : null}
-                          onClick={() => setTheme(opt.id)}
-                        >
-                          {opt.label}
-                        </LxMenuItem>
-                      )
-                    })}
-                  </div>
-                ),
-                placement: "bottom",
-                closeOnContentClick: true,
-              }}
-            >
-              <LxIconButton aria-label={t("header.switchTheme")} size="small">
-                <Palette />
+                    </span>
+                  ))}
+                  {/* 当前办公区（仅 OpenClaw 路由挂载，避免其它页面加载 OpenClaw 配置） */}
+                  {pathname === PAGE_ROUTES.openclaw ? <OpenClawBreadcrumb /> : null}
+                </div>
+              )}
+            </div>
+            <div className="flex h-6 shrink-0 items-center gap-2">
+              <LxIconButton
+                aria-label={t("header.showRecentTags")}
+                highlighted={showRecentTags}
+                title={{
+                  content: showRecentTags ? t("header.hideRecentTags") : t("header.showRecentTags"),
+                  placement: "bottom",
+                }}
+                onClick={handleToggleRecentTags}
+                size="small"
+              >
+                <Tags />
               </LxIconButton>
-            </LxTooltip>
-            <LxIconButton
-              aria-label={isExpanded ? t("header.collapseHeader") : t("header.expandHeader")}
-              size="small"
-              title={{
-                content: isExpanded ? t("header.collapseHeader") : t("header.expandHeader"),
-                placement: "bottom",
-              }}
-              onClick={() => onExpandedChange(!isExpanded)}
-            >
-              {isExpanded ? <ChevronUp /> : <ChevronDown />}
-            </LxIconButton>
+              <LxTooltip
+                hover={{
+                  content: t("header.switchTheme"),
+                  placement: "bottom",
+                }}
+                click={{
+                  content: (
+                    <div className="theme-menu-dropdown flex flex-col gap-0.5 py-0.5 min-w-[90px]">
+                      {THEME_OPTIONS.map((opt) => {
+                        const isSelected = theme === opt.id
+                        return (
+                          <LxMenuItem
+                            key={opt.id}
+                            active={isSelected}
+                            trailing={isSelected ? <Check className="text-emerald-400" /> : null}
+                            onClick={() => setTheme(opt.id)}
+                          >
+                            {opt.label}
+                          </LxMenuItem>
+                        )
+                      })}
+                    </div>
+                  ),
+                  placement: "bottom",
+                  closeOnContentClick: true,
+                }}
+              >
+                <LxIconButton aria-label={t("header.switchTheme")} size="small">
+                  <Palette />
+                </LxIconButton>
+              </LxTooltip>
+              <LxIconButton
+                aria-label={isExpanded ? t("header.collapseHeader") : t("header.expandHeader")}
+                size="small"
+                title={{
+                  content: isExpanded ? t("header.collapseHeader") : t("header.expandHeader"),
+                  placement: "bottom",
+                }}
+                onClick={() => onExpandedChange(!isExpanded)}
+              >
+                {isExpanded ? <ChevronUp /> : <ChevronDown />}
+              </LxIconButton>
+            </div>
+          </div>
+          <div
+            className={`absolute inset-x-0 bottom-0 top-8 overflow-hidden ${
+              isExpanded ? "" : "invisible"
+            }`}
+          >
+            {/* 展开区左右等分容器：左侧今日待办面板，右侧今日用量面板。
+                像素主题下由 .header-expand-pane 叠加 3D 浮雕；默认主题以右侧边框线分隔。 */}
+            <div className="flex h-full min-h-0 w-full">
+              <div className="header-expand-pane flex h-full min-w-0 flex-1 flex-col overflow-hidden border-r border-white/10 p-2">
+                <HeaderSchedulePanel isExpanded={isExpanded} />
+              </div>
+              <div className="header-expand-pane min-w-0 flex-1 overflow-hidden p-2">
+                <HeaderUsagePanel isExpanded={isExpanded} />
+              </div>
+            </div>
           </div>
         </div>
-        <div
-          className={`absolute inset-x-0 bottom-0 top-8 overflow-hidden ${
-            isExpanded ? "" : "invisible"
-          }`}
-        >
-          {/* 展开区左右等分容器：左侧今日待办面板，右侧今日用量面板。
-              像素主题下由 .header-expand-pane 叠加 3D 浮雕；默认主题以右侧边框线分隔。 */}
-          <div className="flex h-full min-h-0 w-full">
-            <div className="header-expand-pane flex h-full min-w-0 flex-1 flex-col overflow-hidden border-r border-white/10 p-2">
-              <HeaderSchedulePanel isExpanded={isExpanded} />
-            </div>
-            <div className="header-expand-pane min-w-0 flex-1 overflow-hidden p-2">
-              <HeaderUsagePanel isExpanded={isExpanded} />
-            </div>
-          </div>
-        </div>
-      </div>
+      </TooltipLayerContext.Provider>
     </header>
   )
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { HeaderSideBar } from "@/components/layout/HeaderSideBar"
@@ -144,6 +144,72 @@ describe("HeaderSideBar", () => {
       </MemoryRouter>,
     )
     expect(homeView.container.textContent).not.toContain("工作台")
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  it("展开时点击 header 外部收起，点击 header 内部不收起", async () => {
+    const api = createApiMock()
+    // @ts-expect-error Mock window.api
+    window.api = api
+
+    const onExpandedChange = vi.fn()
+    const view = render(
+      <MemoryRouter>
+        <HeaderSideBar isExpanded onExpandedChange={onExpandedChange} />
+      </MemoryRouter>,
+    )
+
+    const header = view.container.querySelector("header")
+    expect(header).not.toBeNull()
+    fireEvent.pointerDown(header as HTMLElement)
+    expect(onExpandedChange).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(document.body)
+    expect(onExpandedChange).toHaveBeenCalledWith(false)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  it("展开时点击 header 内触发的 tooltip 浮层不收起，Esc 不收起", async () => {
+    const api = createApiMock()
+    // @ts-expect-error Mock window.api
+    window.api = api
+
+    const onExpandedChange = vi.fn()
+    render(
+      <MemoryRouter>
+        <HeaderSideBar isExpanded onExpandedChange={onExpandedChange} />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByLabelText("Switch Theme"))
+    // jsdom 无布局，气泡定位坐标为空时带 visibility:hidden，需包含隐藏元素查询。
+    const bubble = screen.getByRole("tooltip", { hidden: true })
+    fireEvent.pointerDown(bubble)
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(onExpandedChange).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(document.body)
+    expect(onExpandedChange).toHaveBeenCalledWith(false)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  it("收起态点击外部不触发收起回调", async () => {
+    const api = createApiMock()
+    // @ts-expect-error Mock window.api
+    window.api = api
+
+    const onExpandedChange = vi.fn()
+    render(
+      <MemoryRouter>
+        <HeaderSideBar isExpanded={false} onExpandedChange={onExpandedChange} />
+      </MemoryRouter>,
+    )
+
+    fireEvent.pointerDown(document.body)
+    expect(onExpandedChange).not.toHaveBeenCalled()
 
     await new Promise((resolve) => setTimeout(resolve, 0))
   })

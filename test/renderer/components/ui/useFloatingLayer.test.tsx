@@ -34,6 +34,7 @@ interface ProbeProps {
   onClose: () => void
   closeOnOutsideClick?: boolean
   closeOnScroll?: boolean
+  closeOnEscape?: boolean
   withAnchor?: boolean
   withNestedLayer?: boolean
   onExited?: () => void
@@ -45,6 +46,7 @@ const Probe = ({
   onClose,
   closeOnOutsideClick,
   closeOnScroll,
+  closeOnEscape,
   withAnchor = true,
   withNestedLayer = false,
   onExited,
@@ -62,6 +64,7 @@ const Probe = ({
     onClose,
     closeOnOutsideClick,
     closeOnScroll,
+    closeOnEscape,
   })
 
   return (
@@ -113,6 +116,17 @@ describe("useFloatingLayer 关闭语义", () => {
     expect(onClose).toHaveBeenCalledTimes(1)
 
     fireEvent.keyDown(document, { key: "Enter" })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it("closeOnEscape=false 时 Esc 不关闭，外部 pointerdown 仍关闭", () => {
+    const onClose = vi.fn()
+    render(<Probe isOpen={true} onClose={onClose} closeOnEscape={false} />)
+
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(onClose).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(document.body)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
