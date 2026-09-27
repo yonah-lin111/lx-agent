@@ -12,7 +12,6 @@ export const game = {
     pause: "Pause",
     resume: "Resume",
     restart: "Restart",
-    paused: "Paused",
     result: {
       title: "Run finished",
       newBest: "New best!",
@@ -103,12 +102,22 @@ A cake layer swings above the tower — press **click / Space** to drop it.
     description: 'This deletes "{{title}}" and its save data. This cannot be undone.',
     success: 'Deleted "{{title}}"',
   },
+  overlay: {
+    minimize: "Minimize to header",
+    close: "Close game",
+  },
+  pause: {
+    paused: "Paused",
+    resume: "Resume",
+    restart: "Restart",
+    minimize: "Minimize",
+    close: "Close game",
+  },
   stage: {
     loading: "Loading emulator…",
     error: "Failed to load the emulator",
     retry: "Retry",
-    back: "Back to games",
-    exitHint: "ESC to exit",
+    pauseHint: "ESC to pause",
     speed: "Speed ×{{ratio}}",
   },
   error: {

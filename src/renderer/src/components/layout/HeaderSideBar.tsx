@@ -1,7 +1,7 @@
 /**
  * 渲染页面顶部栏。
  */
-import { Check, ChevronDown, ChevronUp, Palette, Tags } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Gamepad2, Palette, Tags } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
@@ -11,6 +11,7 @@ import { LxTag } from "@/components/ui/LxTag"
 import { LxBreadcrumbToast, useLxBreadcrumbToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { TooltipLayerContext, useFloatingLayer } from "@/components/ui/useFloatingLayer"
+import { useGameSessionStore } from "@/features/game"
 import { OpenClawBreadcrumb } from "@/features/openclaw"
 import { ProjectRecentItemsTags } from "@/features/project/components/ProjectRecentItemsTags"
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
@@ -55,6 +56,9 @@ export const HeaderSideBar = ({
   const hasBreadcrumbToast = breadcrumbToasts.length > 0
   const activeNavigationItem =
     PRIMARY_NAVIGATION_ITEMS.find((item) => item.path === pathname) ?? PRIMARY_NAVIGATION_ITEMS[0]
+  // 游戏入口：存在进行中的会话时图标变黄，点击开/收游戏覆盖层。
+  const hasActiveGameSession = useGameSessionStore((state) => state.session !== null)
+  const toggleGameOverlay = useGameSessionStore((state) => state.toggle)
 
   // 展开时点击 header 外部自动收起；header 内部触发的 portal 浮层（tooltip / 菜单 / 下拉）
   // 经由 TooltipLayerContext 注册为「内部」，点击浮层不收起，也不额外响应 Esc / 滚动。
@@ -262,6 +266,17 @@ export const HeaderSideBar = ({
               )}
             </div>
             <div className="flex h-6 shrink-0 items-center gap-2">
+              <LxIconButton
+                aria-label={t("game.title")}
+                size="small"
+                className="header-game-icon"
+                data-game-active={hasActiveGameSession ? "true" : undefined}
+                textClass={hasActiveGameSession ? "text-amber-400" : undefined}
+                title={{ content: t("game.title"), placement: "bottom" }}
+                onClick={toggleGameOverlay}
+              >
+                <Gamepad2 />
+              </LxIconButton>
               <LxIconButton
                 aria-label={t("header.showRecentTags")}
                 highlighted={showRecentTags}

@@ -1602,6 +1602,30 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     2px 2px 0px 0px #000000 !important;
 }
 
+/* 游戏覆盖层：与游戏卡片一致的像素浮雕容器（无圆角） */
+[data-theme="pixel"] .game-overlay {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+/* 覆盖层顶栏：黑色分隔线与像素文字描边 */
+[data-theme="pixel"] .game-overlay-toolbar {
+  border-bottom: 2px solid #000000 !important;
+  text-shadow: 1px 1px 0px #000000 !important;
+}
+
+/* 顶部栏游戏入口：进行中会话使用金锭橙像素字色 */
+[data-theme="pixel"] .header-game-icon[data-game-active="true"] {
+  color: #ffaa00 !important;
+  filter: drop-shadow(1px 1px 0px #000000) !important;
+}
+
 /* 绿墙热力图像素风格单元格：经典像素绿色阶梯与立体像素槽 */
 [data-theme="pixel"] .activity-heatmap-cell {
   border-radius: 0px !important;

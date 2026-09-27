@@ -2,19 +2,8 @@
 import type { GameRomEntry } from "@shared/contracts/game"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { GameDashboard } from "@/features/game"
+import { GameDashboard, useGameSessionStore } from "@/features/game"
 import { BUILTIN_BEST_SCORES_STORAGE_KEY } from "@/features/game/builtin/constants"
-
-vi.mock("@/features/game/builtin/components/BuiltinGameCanvasHost", () => ({
-  BuiltinGameCanvasHost: ({ onGameOver }: { onGameOver: (score: number) => void }) => (
-    <div>
-      <span>builtin-canvas-host</span>
-      <button type="button" onClick={() => onGameOver(120)}>
-        finish-game
-      </button>
-    </div>
-  ),
-}))
 
 const createEntry = (patch: Partial<GameRomEntry> = {}): GameRomEntry => ({
   id: 1,
@@ -45,6 +34,7 @@ const installApi = (api: ReturnType<typeof createApiMock>): void => {
 afterEach(() => {
   cleanup()
   localStorage.clear()
+  useGameSessionStore.setState({ session: null, isOpen: false })
   vi.restoreAllMocks()
 })
 
@@ -108,19 +98,17 @@ describe("GameDashboard", () => {
     expect(screen.getAllByText("Best: 0")).toHaveLength(2)
   })
 
-  it("点击内置卡片直接开局，结算退出后列表刷新最高分", async () => {
+  it("点击内置卡片只写入会话 Store 开局（舞台由覆盖层承载）", async () => {
     installApi(createApiMock())
 
     render(<GameDashboard />)
     fireEvent.click(await screen.findByText("Stardust Dodge"))
 
-    expect(screen.getByText("builtin-canvas-host")).toBeDefined()
-
-    fireEvent.click(screen.getByText("finish-game"))
-    fireEvent.click(screen.getByRole("button", { name: "Pick another game" }))
-
-    expect(await screen.findByText("Best: 120")).toBeDefined()
+    expect(useGameSessionStore.getState().session).toEqual({ kind: "builtin", gameId: "dodge" })
+    expect(useGameSessionStore.getState().isOpen).toBe(true)
+    // 游戏库自身不再渲染舞台。
     expect(screen.getByText("Built-in games")).toBeDefined()
+    expect(document.querySelector("canvas")).toBeNull()
   })
 
   it("渲染导入游戏卡片（标题 / 体积 / 未游玩）与导入类型标签", async () => {
@@ -174,7 +162,7 @@ describe("GameDashboard", () => {
     expect(screen.getAllByText("Demo Game")).toHaveLength(1)
   })
 
-  it("点击导入卡片进入模拟器视图并渲染 webview", async () => {
+  it("点击导入卡片只写入 ROM 会话（webview 由覆盖层承载）", async () => {
     const api = createApiMock()
     api.list.mockResolvedValue([createEntry({ id: 7 })])
     installApi(api)
@@ -182,33 +170,11 @@ describe("GameDashboard", () => {
     render(<GameDashboard />)
     fireEvent.click(await screen.findByText("Demo Game"))
 
-    const webview = await waitFor(() => {
-      const element = document.querySelector("webview")
-      expect(element).not.toBeNull()
-      return element as HTMLElement
+    expect(useGameSessionStore.getState().session).toEqual({
+      kind: "rom",
+      entry: createEntry({ id: 7 }),
     })
-
-    expect(webview.getAttribute("src")).toContain("lx-game://emulator/wrapper.html")
-    expect(webview.getAttribute("src")).toContain("entry=7")
-    expect(webview.getAttribute("preload")).toBe("file:///tmp/guest-preload.cjs")
-    expect(webview.getAttribute("partition")).toBe("persist:lx-game")
-  })
-
-  it("模拟器视图点击返回按钮退出并刷新列表", async () => {
-    const api = createApiMock()
-    api.list.mockResolvedValue([createEntry()])
-    installApi(api)
-
-    render(<GameDashboard />)
-    fireEvent.click(await screen.findByText("Demo Game"))
-
-    const backButton = await screen.findByRole("button", { name: "Back to games" })
-    // jsdom 元素没有 webview.send，退出流程走异常兜底路径直接返回列表。
-    fireEvent.click(backButton)
-
-    expect(await screen.findByText(/Import GBA Game/)).toBeDefined()
-    await waitFor(() => {
-      expect(api.list).toHaveBeenCalledTimes(2)
-    })
+    expect(useGameSessionStore.getState().isOpen).toBe(true)
+    expect(document.querySelector("webview")).toBeNull()
   })
 })
