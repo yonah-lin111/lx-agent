@@ -77,21 +77,40 @@ const createWindow = (): void => {
   void window.loadFile(join(__dirname, "../renderer/index.html"))
 }
 
-// 开发态 userData 与打包版隔离（localStorage、缓存等 Chromium 存储分开），并按 worktree 隔离以支持多个 dev 实例，
-// 必须在 app ready 前设置。
+// 开发态 userData 与打包版隔离（localStorage、缓存等 Chromium 存储分开），并按 worktree 隔离，必须在 app ready 前设置。
 const isDev = isDevRuntime()
 if (isDev) {
   app.setPath("userData", resolveDevUserDataDir(app.getPath("appData"), app.getAppPath()))
 }
 
-// 开发态单实例锁：锁随 userData 按 worktree 生效，不同 worktree 可各跑一个 dev 实例；
-// 同一 worktree 的第二个实例退出并聚焦已有窗口，避免并发读写同一份 dev 数据。打包态保持可多开。
-const hasSingleInstanceLock = !isDev || app.requestSingleInstanceLock()
+// 同一 worktree 允许并行的 dev 实例数（基础槽位 + -2…-N 顺延槽位）。
+const MAX_DEV_INSTANCES = 10
+// 槽位探测标记：已有实例收到带此标记的 second-instance 通知时不抢焦点（发起方会自选空闲槽位启动）。
+const DEV_INSTANCE_PROBE = "__lxDevInstanceProbe"
+
+/**
+ * 获取开发态实例锁：基础 userData 被占用时按 -2、-3… 顺延槽位重试，
+ * 每个槽位持有独立 Chromium 存储，业务数据根（~/.lx-dev）仍共享。
+ */
+const acquireDevInstanceLock = (): boolean => {
+  const baseUserData = app.getPath("userData")
+  for (let slot = 1; slot <= MAX_DEV_INSTANCES; slot++) {
+    app.setPath("userData", slot === 1 ? baseUserData : `${baseUserData}-${slot}`)
+    if (app.requestSingleInstanceLock({ [DEV_INSTANCE_PROBE]: true })) return true
+  }
+  return false
+}
+
+// 打包态可多开（不请求实例锁）；开发态按槽位取锁，支持同一 worktree 多个 `pnpm dev` 并行。
+const hasSingleInstanceLock = isDev ? acquireDevInstanceLock() : true
 
 if (!hasSingleInstanceLock) {
+  console.warn(`开发实例已达上限（${MAX_DEV_INSTANCES}），本次启动退出。`)
   app.quit()
 } else {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_event, _argv, _workingDirectory, additionalData) => {
+    // dev 槽位探测请求：不抢焦点。
+    if (additionalData?.[DEV_INSTANCE_PROBE]) return
     const window = BrowserWindow.getAllWindows()[0]
     if (!window) return
     if (window.isMinimized()) window.restore()
