@@ -13,6 +13,9 @@ export const initDatabase = (): Database.Database => {
 
   ensureDatabaseDir()
   sqlite = new Database(getDatabasePath())
+  // 多开发实例共享同一数据库：WAL 允许跨进程读写并行，busy_timeout 在写锁竞争时自动重试等待。
+  sqlite.pragma("journal_mode = WAL")
+  sqlite.pragma("busy_timeout = 5000")
   sqlite.pragma("foreign_keys = ON")
   runMigrations(sqlite)
   return sqlite

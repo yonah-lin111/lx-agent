@@ -65,9 +65,16 @@ export const runMigrations = (database: Database.Database): void => {
       continue
     }
 
-    database.transaction(() => {
-      migration.up(database)
-      record.run(migration.version, migration.name, new Date().toISOString())
-    })()
+    // BEGIN IMMEDIATE 先占写锁：多实例并发启动时，等待锁的实例在事务内复查后跳过，避免重复执行同一迁移。
+    database
+      .transaction(() => {
+        const appliedInTransaction = database
+          .prepare(`SELECT name FROM ${MIGRATIONS_TABLE} WHERE version = ?`)
+          .get(migration.version) as { name: string } | undefined
+        if (appliedInTransaction) return
+        migration.up(database)
+        record.run(migration.version, migration.name, new Date().toISOString())
+      })
+      .immediate()
   }
 }

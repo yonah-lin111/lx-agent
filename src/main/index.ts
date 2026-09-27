@@ -77,14 +77,15 @@ const createWindow = (): void => {
   void window.loadFile(join(__dirname, "../renderer/index.html"))
 }
 
-// 开发态 userData 与打包版隔离（localStorage、缓存等 Chromium 存储分开），必须在 app ready 前设置。
+// 开发态 userData 与打包版隔离（localStorage、缓存等 Chromium 存储分开），并按 worktree 隔离以支持多个 dev 实例，
+// 必须在 app ready 前设置。
 const isDev = isDevRuntime()
 if (isDev) {
-  app.setPath("userData", resolveDevUserDataDir(app.getPath("appData")))
+  app.setPath("userData", resolveDevUserDataDir(app.getPath("appData"), app.getAppPath()))
 }
 
-// 开发态单实例锁：dev 与打包版 userData 已分离，锁互不影响；第二个 dev 实例退出并聚焦已有窗口，
-// 避免两个 dev 实例并发读写同一份 dev 数据。打包态保持可多开。
+// 开发态单实例锁：锁随 userData 按 worktree 生效，不同 worktree 可各跑一个 dev 实例；
+// 同一 worktree 的第二个实例退出并聚焦已有窗口，避免并发读写同一份 dev 数据。打包态保持可多开。
 const hasSingleInstanceLock = !isDev || app.requestSingleInstanceLock()
 
 if (!hasSingleInstanceLock) {

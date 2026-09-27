@@ -34,4 +34,15 @@ describe("resolveDevUserDataDir", () => {
   it("解析 appData 根下的独立 dev userData 目录", () => {
     expect(resolveDevUserDataDir("/app-data")).toBe(join("/app-data", "lx-agent-dev"))
   })
+
+  it("传入 worktree 根时按 worktree 隔离，同一根稳定、不同根互不相同", () => {
+    const prefix = join("/app-data", "lx-agent-dev-")
+    const first = resolveDevUserDataDir("/app-data", "/repo/.worktrees/a")
+    const second = resolveDevUserDataDir("/app-data", "/repo/.worktrees/b")
+
+    expect(first.startsWith(prefix)).toBe(true)
+    expect(first.slice(prefix.length)).toMatch(/^[0-9a-f]{8}$/)
+    expect(resolveDevUserDataDir("/app-data", "/repo/.worktrees/a")).toBe(first)
+    expect(second).not.toBe(first)
+  })
 })
