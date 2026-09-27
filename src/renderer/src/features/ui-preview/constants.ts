@@ -3,6 +3,7 @@ import {
   Activity,
   AppWindow,
   Bell,
+  BellRing,
   Bot,
   Braces,
   Brain,
@@ -167,6 +168,12 @@ export const UI_SECTION_GROUPS: readonly UiSectionGroup[] = [
         label: "LxToast",
         icon: Bell,
         descriptionKey: "uiPreview.sections.toast",
+      },
+      {
+        id: "notification",
+        label: "SystemNotification",
+        icon: BellRing,
+        descriptionKey: "uiPreview.sections.notification",
       },
       {
         id: "tooltip",

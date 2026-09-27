@@ -1,12 +1,20 @@
 import { accessSync, constants, existsSync, mkdirSync, statSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
+import { isDevRuntime } from "@/lib/runtimeMode"
 
 /**
- * 获取 LX Agent 的应用数据根目录。
+ * 解析应用数据根目录：开发态 `.lx-dev` 与打包态 `.lx` 分离，避免历史记录与数据库互相串数据。
+ */
+export const resolveAppDataRoot = (home: string, isDev: boolean): string =>
+  join(home, isDev ? ".lx-dev" : ".lx")
+
+/**
+ * 获取 LX Agent 的应用数据根目录（开发态自动隔离）。
  * LX_AGENT_DATA_ROOT 可覆盖默认路径（测试隔离用）。
  */
-export const getAppDataRoot = (): string => process.env.LX_AGENT_DATA_ROOT ?? join(homedir(), ".lx")
+export const getAppDataRoot = (): string =>
+  process.env.LX_AGENT_DATA_ROOT ?? resolveAppDataRoot(homedir(), isDevRuntime())
 
 /**
  * 获取跨客户端标准 Skill 目录（默认 ~/.agents/skills）。

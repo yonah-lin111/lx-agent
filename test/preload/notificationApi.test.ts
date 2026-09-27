@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const exposeInMainWorld = vi.fn()
 const on = vi.fn()
 const removeListener = vi.fn()
+const send = vi.fn()
 
 vi.mock("electron", () => ({
   contextBridge: { exposeInMainWorld },
-  ipcRenderer: { on, removeListener },
+  ipcRenderer: { on, removeListener, send },
 }))
 
 describe("preload notification API", () => {
@@ -16,6 +17,7 @@ describe("preload notification API", () => {
     exposeInMainWorld.mockClear()
     on.mockReset()
     removeListener.mockReset()
+    send.mockReset()
     await import("../../src/preload/index")
   })
 
@@ -32,5 +34,13 @@ describe("preload notification API", () => {
 
     unsubscribe()
     expect(removeListener).toHaveBeenCalledWith(NOTIFICATION_CHANNELS.click, listener)
+  })
+
+  it("showDemo 通过 notification:demo 通道发送触发请求", () => {
+    const api = exposeInMainWorld.mock.calls[0]?.[1]
+
+    api.notification.showDemo()
+
+    expect(send).toHaveBeenCalledWith(NOTIFICATION_CHANNELS.demo)
   })
 })

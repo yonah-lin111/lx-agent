@@ -13,7 +13,7 @@ interface FakeWindow {
 }
 
 interface FakeNotificationInstance {
-  options: { title?: string; body?: string; icon?: unknown }
+  options: { title?: string; body?: string }
   show: ReturnType<typeof vi.fn>
   close: ReturnType<typeof vi.fn>
   clickHandlers: Array<() => void>
@@ -23,7 +23,6 @@ const holder = vi.hoisted(() => ({
   windows: [] as FakeWindow[],
   notifications: [] as FakeNotificationInstance[],
   supported: true,
-  createFromPath: vi.fn(() => ({ isEmpty: () => false })),
   uiSettings: {
     locale: "zh" as "zh" | "en",
     agentCompletionNotifyEnabled: true as boolean | undefined,
@@ -36,14 +35,14 @@ const holder = vi.hoisted(() => ({
 
 vi.mock("electron", () => {
   class FakeNotification {
-    options: { title?: string; body?: string; icon?: unknown }
+    options: { title?: string; body?: string }
     show = vi.fn()
     close = vi.fn()
     clickHandlers: Array<() => void> = []
     static isSupported(): boolean {
       return holder.supported
     }
-    constructor(options: { title?: string; body?: string; icon?: unknown }) {
+    constructor(options: { title?: string; body?: string }) {
       this.options = options
       holder.notifications.push(this)
     }
@@ -54,8 +53,6 @@ vi.mock("electron", () => {
   return {
     BrowserWindow: { getAllWindows: () => holder.windows },
     Notification: FakeNotification,
-    app: { isPackaged: false, getAppPath: () => "/tmp/lx-agent" },
-    nativeImage: { createFromPath: holder.createFromPath },
   }
 })
 
@@ -134,10 +131,7 @@ describe("notificationService", () => {
       title: "修复登录",
       body: "已完成",
     })
-    expect(holder.notifications[0]?.options.icon).toBeDefined()
-    expect(holder.createFromPath).toHaveBeenCalledWith(
-      expect.stringContaining("resources/icons/lx-logo.png"),
-    )
+    expect(holder.notifications[0]?.options).not.toHaveProperty("icon")
     expect(holder.notifications[0]?.show).toHaveBeenCalledOnce()
   })
 
@@ -265,6 +259,59 @@ describe("notificationService", () => {
       version: "0.3.0",
       releaseUrl: "https://github.com/yonah-lin111/lx-agent/releases/tag/v0.3.0",
     })
+
+    expect(holder.notifications).toHaveLength(0)
+  })
+
+  it("演示通知在窗口聚焦时仍投递，使用兜底标题与本地化完成文案", () => {
+    holder.windows = [createWindow(true)]
+
+    notificationService.showDemoNotification()
+
+    expect(holder.notifications).toHaveLength(1)
+    expect(holder.notifications[0]?.options).toEqual({ title: "LX Agent", body: "已完成" })
+    expect(holder.notifications[0]?.show).toHaveBeenCalledOnce()
+  })
+
+  it("演示通知按当前语言投递文案", () => {
+    holder.uiSettings.locale = "en"
+
+    notificationService.showDemoNotification()
+
+    expect(holder.notifications[0]?.options.body).toBe("Completed")
+  })
+
+  it("演示通知不受完成开关与节流限制，重复触发替换旧通知", () => {
+    holder.uiSettings.agentCompletionNotifyEnabled = false
+    holder.uiSettings.openclawCompletionNotifyEnabled = false
+
+    notificationService.showDemoNotification()
+    notificationService.showDemoNotification()
+
+    expect(holder.notifications).toHaveLength(2)
+    expect(holder.notifications[0]?.close).toHaveBeenCalledOnce()
+    expect(holder.notifications[1]?.close).not.toHaveBeenCalled()
+  })
+
+  it("演示通知点击聚焦主窗口且不推送跳转目标", () => {
+    const window = createWindow(true, true)
+    holder.windows = [window]
+    const sender = { send: vi.fn(), isDestroyed: () => false }
+    notificationService.attachSender(() => sender as never)
+
+    notificationService.showDemoNotification()
+    holder.notifications[0]?.clickHandlers[0]?.()
+
+    expect(window.restore).toHaveBeenCalledOnce()
+    expect(window.show).toHaveBeenCalledOnce()
+    expect(window.focus).toHaveBeenCalledOnce()
+    expect(sender.send).not.toHaveBeenCalled()
+  })
+
+  it("平台不支持通知时演示通知不投递", () => {
+    holder.supported = false
+
+    notificationService.showDemoNotification()
 
     expect(holder.notifications).toHaveLength(0)
   })

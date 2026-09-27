@@ -39,6 +39,7 @@ import { LxSelectDemo } from "@/pages/ui/components/LxSelectDemo"
 import { LxTagDemo } from "@/pages/ui/components/LxTagDemo"
 import { LxToastDemo } from "@/pages/ui/components/LxToastDemo"
 import { LxTooltipDemo } from "@/pages/ui/components/LxTooltipDemo"
+import { NotificationDemo } from "@/pages/ui/components/NotificationDemo"
 import { SuggestedQuestionsDemo } from "@/pages/ui/components/SuggestedQuestionsDemo"
 import { TreeBranchIconDemo } from "@/pages/ui/components/TreeBranchIconDemo"
 
@@ -82,6 +83,7 @@ export const UiPreviewPage = (): React.JSX.Element => {
         {activeSection === "date-picker" ? <LxDatePickerDemo /> : null}
         {activeSection === "tag" ? <LxTagDemo /> : null}
         {activeSection === "toast" ? <LxToastDemo /> : null}
+        {activeSection === "notification" ? <NotificationDemo /> : null}
         {activeSection === "tooltip" ? <LxTooltipDemo /> : null}
         {activeSection === "info-tooltip" ? <LxInfoTooltipDemo /> : null}
         {activeSection === "thinking" ? <AgentThinkingDemo /> : null}

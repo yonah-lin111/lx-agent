@@ -1,16 +1,8 @@
-import { join } from "node:path"
 import type { AgentEvent, AgentMessage, AssistantMessage } from "@shared/contracts/agent"
 import type { NotificationClickPayload } from "@shared/contracts/notification"
 import { NOTIFICATION_CHANNELS } from "@shared/ipc/notificationChannels"
 import { NOTIFICATION_TEXTS } from "@shared/notificationTexts"
-import {
-  app,
-  BrowserWindow,
-  type NativeImage,
-  Notification,
-  nativeImage,
-  type WebContents,
-} from "electron"
+import { BrowserWindow, Notification, type WebContents } from "electron"
 import { agentSessionService } from "@/services/agentSessionService"
 import { openExternalUrl } from "@/services/externalLinkService"
 import { getOpenClawSettings, getUiSettings } from "@/services/settingsService"
@@ -21,22 +13,8 @@ const NOTIFY_THROTTLE_MS = 3000
 // 会话标题缺失时的通知标题兜底。
 const FALLBACK_TITLE = "LX Agent"
 
-// 通知图标路径：开发态取仓库 resources，打包态取 extraResources（macOS 忽略，使用应用自身图标）。
-const resolveNotificationIconPath = (): string =>
-  app.isPackaged
-    ? join(process.resourcesPath, "resources", "icons", "lx-logo.png")
-    : join(app.getAppPath(), "resources", "icons", "lx-logo.png")
-
-// 懒加载的通知图标；文件缺失或加载失败时回退系统默认图标。
-let cachedNotificationIcon: NativeImage | null | undefined
-
-const getNotificationIcon = (): NativeImage | undefined => {
-  if (cachedNotificationIcon === undefined) {
-    const icon = nativeImage.createFromPath(resolveNotificationIconPath())
-    cachedNotificationIcon = icon.isEmpty() ? null : icon
-  }
-  return cachedNotificationIcon ?? undefined
-}
+// 演示通知的固定替换键：重复触发时替换上一条。
+const DEMO_NOTIFICATION_KEY = "demo"
 
 // 单条通知的投递参数。
 interface NotifyInput {
@@ -138,6 +116,28 @@ class NotificationService {
     })
   }
 
+  // UI 预览页触发的演示通知：跳过聚焦、开关与节流门禁，仅用于自检通知外观。
+  showDemoNotification(): void {
+    if (!Notification.isSupported()) return
+    const settings = getUiSettings()
+    const texts = NOTIFICATION_TEXTS[settings.locale] ?? NOTIFICATION_TEXTS.en
+    this.activeNotifications.get(DEMO_NOTIFICATION_KEY)?.close()
+    const notification = new Notification({
+      title: FALLBACK_TITLE,
+      body: texts.completedBody,
+    })
+    this.activeNotifications.set(DEMO_NOTIFICATION_KEY, notification)
+    notification.on("close", () => {
+      if (this.activeNotifications.get(DEMO_NOTIFICATION_KEY) === notification) {
+        this.activeNotifications.delete(DEMO_NOTIFICATION_KEY)
+      }
+    })
+    notification.on("click", () => {
+      this.focusMainWindow()
+    })
+    notification.show()
+  }
+
   // 投递前依次执行来源开关、平台能力、窗口焦点与节流门禁。
   private notify(input: NotifyInput): void {
     const settings = getUiSettings()
@@ -168,7 +168,6 @@ class NotificationService {
     const notification = new Notification({
       title: input.title,
       body,
-      icon: getNotificationIcon(),
     })
     this.activeNotifications.set(input.key, notification)
     notification.on("close", () => {

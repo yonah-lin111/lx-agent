@@ -18,6 +18,8 @@ export const uiPreview = {
     select: "Dark theme select dropdown supporting groups, sizes, and placement directions",
     tag: "Generic tag component with configurable colors, sizes, and interactions",
     toast: "Global single-message toast notifications supporting success, error, warning, and info",
+    notification:
+      "Real system notification delivery to verify notification appearance and click-to-focus behavior",
     tooltip: "Unified tooltip and secondary confirmation popovers adapting to viewport space",
     datePicker:
       "Date picker supporting date / week / month and range modes with size tiers and nav buttons",
@@ -159,6 +161,10 @@ export const uiPreview = {
     toastDesc: "Display global notifications via useLxToast, supporting 4 types with auto-stacking",
     toastPlacements: "Toast Placements",
     toastPlacementsDesc: "Supports 4 corners, top-center, and breadcrumb placement",
+    notificationTitle: "System Notification",
+    notificationDesc:
+      "Click to deliver a real system notification: delivered even when the app is focused, uses the system default icon, and clicking it focuses the main window",
+    notificationSend: "Send Test Notification",
     saveSuccess: "Saved successfully",
     saveFailed: "Save failed",
     diskSpaceLow: "Low disk space",
