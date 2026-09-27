@@ -9,5 +9,6 @@ export const gameApi: GameApi["game"] = {
   remove: (id) => ipcRenderer.invoke(GAME_CHANNELS.remove, id),
   markPlayed: (id) => ipcRenderer.invoke(GAME_CHANNELS.markPlayed, id),
   writeSave: (id, data) => ipcRenderer.invoke(GAME_CHANNELS.writeSave, id, data),
+  writeState: (id, slot, data) => ipcRenderer.invoke(GAME_CHANNELS.writeState, id, slot, data),
   getRuntimeConfig: () => ipcRenderer.invoke(GAME_CHANNELS.getRuntimeConfig),
 }

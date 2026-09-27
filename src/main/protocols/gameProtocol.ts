@@ -1,6 +1,10 @@
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { extname, normalize, resolve, sep } from "node:path"
-import { GAME_PROTOCOL, GAME_WEBVIEW_PARTITION } from "@shared/contracts/game"
+import {
+  GAME_PROTOCOL,
+  GAME_STATE_SLOT_COUNT,
+  GAME_WEBVIEW_PARTITION,
+} from "@shared/contracts/game"
 import { protocol, session } from "electron"
 import { getEmulatorAssetsDir } from "@/lib/emulatorAssets"
 import { gameRomService } from "@/services/gameRomService"
@@ -47,6 +51,15 @@ const fileResponse = (filePath: string, extraHeaders: Record<string, string> = {
     },
   })
 
+// 二进制响应：存档/快速存档统一 no-store。
+const binaryResponse = (bytes: Buffer): Response =>
+  new Response(new Uint8Array(bytes), {
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "Cache-Control": "no-store",
+    },
+  })
+
 /**
  * 创建 lx-game 协议请求处理器：宿主页/静态资产/ROM/存档统一路由。
  */
@@ -61,7 +74,7 @@ const createGameRequestHandler = (): ((request: Request) => Response) => (reques
     const [head, ...rest] = segments
     if (!head) return new Response("Not Found", { status: 404 })
 
-    if (head === "rom" || head === "sav") {
+    if (head === "rom" || head === "sav" || head === "state") {
       const entryId = Number.parseInt(rest[0] ?? "", 10)
       if (!Number.isInteger(entryId) || entryId <= 0) {
         return new Response("Bad Request", { status: 400 })
@@ -73,14 +86,19 @@ const createGameRequestHandler = (): ((request: Request) => Response) => (reques
         return fileResponse(romPath)
       }
 
-      const save = gameRomService.readSave(entryId)
-      if (!save) return new Response("Not Found", { status: 404 })
-      return new Response(new Uint8Array(save), {
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "Cache-Control": "no-store",
-        },
-      })
+      if (head === "sav") {
+        const save = gameRomService.readSave(entryId)
+        if (!save) return new Response("Not Found", { status: 404 })
+        return binaryResponse(save)
+      }
+
+      const slot = Number.parseInt(rest[1] ?? "", 10)
+      if (!Number.isInteger(slot) || slot < 1 || slot > GAME_STATE_SLOT_COUNT) {
+        return new Response("Bad Request", { status: 400 })
+      }
+      const state = gameRomService.readState(entryId, slot)
+      if (!state) return new Response("Not Found", { status: 404 })
+      return binaryResponse(state)
     }
 
     // 静态资产：wrapper.html / wrapper.js / data/**（目录遍历守卫）。
@@ -110,7 +128,7 @@ const createGameRequestHandler = (): ((request: Request) => Response) => (reques
 /**
  * 注册供 webview 加载模拟器宿主页、静态资产、ROM 与存档的自定义协议。
  *
- * 规范：lx-game://emulator/{wrapper.html|wrapper.js|data/**|rom/<entryId>|sav/<entryId>}
+ * 规范：lx-game://emulator/{wrapper.html|wrapper.js|data/**|rom/<entryId>|sav/<entryId>|state/<entryId>/<slot>}
  * ROM 与存档一律按条目 id 由主进程解析，协议不接受任意文件路径。
  * webview 使用独立持久分区（GAME_WEBVIEW_PARTITION），自定义协议必须在该 session 上单独注册。
  */

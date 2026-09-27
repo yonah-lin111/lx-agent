@@ -32,6 +32,7 @@ import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerGameProtocol } from "@/protocols/gameProtocol"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
 import { openExternalUrl } from "@/services/externalLinkService"
+import { gameRomService } from "@/services/gameRomService"
 import { notificationService } from "@/services/notificationService"
 import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
 import { startScreenshotCleanupScheduler } from "@/services/screenshotCleanupService"
@@ -120,6 +121,8 @@ if (!hasSingleInstanceLock) {
 
   app.whenReady().then(() => {
     initDatabase()
+    // 旧版游戏布局（game/roms、game/saves）与新目录结构不兼容，启动时一次性清空。
+    gameRomService.resetLegacyLayout()
     registerLocalImageProtocol()
     registerFrontDesignProtocol()
     registerGameProtocol()

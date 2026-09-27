@@ -19,6 +19,7 @@ const createApiMock = () => ({
   getRuntimeConfig: vi.fn().mockResolvedValue({ guestPreloadUrl: "file:///tmp/guest-preload.cjs" }),
   markPlayed: vi.fn().mockResolvedValue(createEntry()),
   writeSave: vi.fn().mockResolvedValue(undefined),
+  writeState: vi.fn().mockResolvedValue(undefined),
 })
 
 const installApi = (api: ReturnType<typeof createApiMock>): void => {
@@ -119,6 +120,29 @@ describe("GameStage", () => {
     await waitFor(() => {
       expect(api.writeSave).toHaveBeenCalledWith(3, new Uint8Array([1, 2, 3]))
     })
+  })
+
+  it("收到 state 上报后按槽位写入快速存档", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { webview } = await mountStage()
+    dispatchGuestMessage(webview, { type: "state", slot: 2, data: new Uint8Array([4, 5, 6]) })
+
+    await waitFor(() => {
+      expect(api.writeState).toHaveBeenCalledWith(3, 2, new Uint8Array([4, 5, 6]))
+    })
+  })
+
+  it("state 上报缺少槽位或数据时不写入", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { webview } = await mountStage()
+    dispatchGuestMessage(webview, { type: "state", data: new Uint8Array([4, 5, 6]) })
+    dispatchGuestMessage(webview, { type: "state", slot: 2 })
+
+    expect(api.writeState).not.toHaveBeenCalled()
   })
 
   it("收到 speed 上报后顶部徽标显示当前倍速", async () => {

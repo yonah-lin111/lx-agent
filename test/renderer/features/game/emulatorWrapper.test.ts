@@ -32,11 +32,23 @@ interface FakeEmulator {
   settingsMenu: { style: { display: string } }
   getSettingValue: (id: string) => string | null
   isPopupOpen: () => boolean
+  localization: (text: string) => string
+  displayMessage: (message: string) => void
   gameManager: {
     simulateInput: (player: number, slot: number, value: number) => void
     toggleFastForward: (enabled: number) => void
     setFastForwardRatio: (ratio: number) => void
+    getState: () => Uint8Array
+    loadState: (state: Uint8Array) => void
+    quickSave: (slot?: string | number) => boolean
+    quickLoad: (slot?: string | number) => void
   }
+}
+
+// 最小 fetch 响应替身（快速存档读取走 lx-game:// 协议）。
+interface FakeFetchResponse {
+  ok: boolean
+  arrayBuffer: () => Promise<ArrayBuffer>
 }
 
 interface KeyEventLike {
@@ -54,6 +66,7 @@ interface LoadOptions {
   menuDisplay?: string
   settingValue?: string
   popupOpen?: boolean
+  fetchImpl?: (url: string) => Promise<FakeFetchResponse>
 }
 
 const createStorage = (seed: Record<string, string> = {}): StorageLike => {
@@ -85,6 +98,10 @@ const loadWrapper = (options: LoadOptions = {}) => {
   const simulateInput = vi.fn()
   const toggleFastForward = vi.fn()
   const setFastForwardRatio = vi.fn()
+  const getState = vi.fn((): Uint8Array => new Uint8Array([9, 9, 9]))
+  const loadState = vi.fn()
+  const localization = vi.fn((text: string) => text)
+  const displayMessage = vi.fn()
   const report = vi.fn()
   const emulator: FakeEmulator = {
     started: options.started ?? true,
@@ -92,13 +109,24 @@ const loadWrapper = (options: LoadOptions = {}) => {
     settingsMenu: { style: { display: options.menuDisplay ?? "none" } },
     getSettingValue: () => options.settingValue ?? null,
     isPopupOpen: () => options.popupOpen ?? false,
-    gameManager: { simulateInput, toggleFastForward, setFastForwardRatio },
+    localization,
+    displayMessage,
+    gameManager: {
+      simulateInput,
+      toggleFastForward,
+      setFastForwardRatio,
+      getState,
+      loadState,
+      quickSave: () => false,
+      quickLoad: () => {},
+    },
   }
 
   const windowStub = {
     location: { search: "?entry=7&lang=zh-CN&color=%2338bdf8" },
     localStorage: storage,
-    fetch: () => Promise.reject(new Error("offline")),
+    fetch: (url: string) =>
+      options.fetchImpl ? options.fetchImpl(url) : Promise.reject(new Error("offline")),
     addEventListener: (type: string, listener: (event: KeyEventLike) => void) => {
       const bucket = listeners.get(type) ?? []
       bucket.push(listener)
@@ -124,6 +152,8 @@ const loadWrapper = (options: LoadOptions = {}) => {
       | Record<string, Record<string, { value: number; value2?: string }>>
       | undefined,
     EJS_hideSettings: undefined as string[] | undefined,
+    EJS_Buttons: undefined as Record<string, boolean> | undefined,
+    EJS_ready: undefined as (() => void) | undefined,
     EJS_onGameStart: undefined as (() => void) | undefined,
   }
 
@@ -144,6 +174,10 @@ const loadWrapper = (options: LoadOptions = {}) => {
     simulateInput,
     toggleFastForward,
     setFastForwardRatio,
+    getState,
+    loadState,
+    localization,
+    displayMessage,
     report,
     timers,
     flushTimeouts: (): void => {
@@ -220,7 +254,20 @@ describe("模拟器宿主页默认键位", () => {
   })
 
   it("隐藏 EmulatorJS 自带的快进菜单项（快进由宿主页统一接管）", () => {
-    expect(loadWrapper().window.EJS_hideSettings).toEqual(["fastForward", "ff-ratio"])
+    expect(loadWrapper().window.EJS_hideSettings).toEqual([
+      "fastForward",
+      "ff-ratio",
+      "save-state-location",
+    ])
+  })
+
+  it("隐藏会下载/选择本地文件的 Save State 按钮，存档统一走应用侧", () => {
+    const buttons = loadWrapper().window.EJS_Buttons ?? {}
+
+    expect(buttons.saveState).toBe(false)
+    expect(buttons.loadState).toBe(false)
+    expect(buttons.saveSavFiles).toBe(false)
+    expect(buttons.loadSavFiles).toBe(false)
   })
 })
 
@@ -373,6 +420,93 @@ describe("模拟器宿主页 ESC 退出", () => {
 
     harness.pressEscape()
     expect(harness.report).not.toHaveBeenCalled()
+  })
+})
+
+describe("模拟器宿主页快速存档", () => {
+  // 快速存档的 fetch 链路跨 vm 微任务队列，多轮 drain 后再走一次宏任务兜底。
+  const flushTasks = async (): Promise<void> => {
+    for (let index = 0; index < 5; index += 1) await Promise.resolve()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+
+  it("Quick Save 把 state 字节连同槽位上报宿主，不再写内存文件系统", () => {
+    const harness = loadWrapper()
+    harness.window.EJS_ready?.()
+
+    expect(harness.emulator.gameManager.quickSave("2")).toBe(true)
+
+    expect(harness.report).toHaveBeenCalledWith({
+      type: "state",
+      slot: 2,
+      data: new Uint8Array([9, 9, 9]),
+    })
+  })
+
+  it("槽位越界回退到 1；核心取档失败返回 false 且不上报", () => {
+    const harness = loadWrapper()
+    harness.window.EJS_ready?.()
+
+    harness.emulator.gameManager.quickSave("99")
+    expect(harness.report).toHaveBeenLastCalledWith({
+      type: "state",
+      slot: 1,
+      data: new Uint8Array([9, 9, 9]),
+    })
+
+    harness.getState.mockImplementationOnce(() => {
+      throw new Error("states unsupported")
+    })
+    expect(harness.emulator.gameManager.quickSave(1)).toBe(false)
+
+    const stateCalls = harness.report.mock.calls.filter(([payload]) => payload.type === "state")
+    expect(stateCalls).toHaveLength(1)
+  })
+
+  it("Quick Load 经 lx-game 协议读取槽位文件并载入核心", async () => {
+    const urls: string[] = []
+    const harness = loadWrapper({
+      fetchImpl: (url) => {
+        urls.push(url)
+        return Promise.resolve({
+          ok: true,
+          arrayBuffer: () => Promise.resolve(Uint8Array.from([4, 5, 6]).buffer),
+        })
+      },
+    })
+    harness.window.EJS_ready?.()
+
+    harness.emulator.gameManager.quickLoad("3")
+    await flushTasks()
+
+    expect(urls).toEqual(["state/7/3"])
+    expect(harness.loadState).toHaveBeenCalledTimes(1)
+    expect(Array.from(harness.loadState.mock.calls[0]?.[0] as Uint8Array)).toEqual([4, 5, 6])
+  })
+
+  it("槽位无存档时提示且不载入、不弹文件选择器", async () => {
+    const harness = loadWrapper({
+      fetchImpl: () =>
+        Promise.resolve({ ok: false, arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) }),
+    })
+    harness.window.EJS_ready?.()
+
+    harness.emulator.gameManager.quickLoad(4)
+    await flushTasks()
+
+    expect(harness.loadState).not.toHaveBeenCalled()
+    expect(harness.localization).toHaveBeenCalledWith("NO SAVE STATE IN SLOT")
+    expect(harness.displayMessage).toHaveBeenCalledWith("NO SAVE STATE IN SLOT 4")
+  })
+
+  it("每局开始重装桥接：重复安装不替换已有实现", () => {
+    const harness = loadWrapper()
+    harness.window.EJS_ready?.()
+    const installedQuickSave = harness.emulator.gameManager.quickSave
+
+    harness.window.EJS_onGameStart?.()
+
+    expect(harness.emulator.gameManager.quickSave).toBe(installedQuickSave)
   })
 })
 

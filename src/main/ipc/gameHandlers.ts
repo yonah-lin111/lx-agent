@@ -34,6 +34,10 @@ export const registerGameHandlers = (): void => {
     gameRomService.writeSave(id, data),
   )
 
+  ipcMain.handle(GAME_CHANNELS.writeState, (_, id: number, slot: number, data: unknown) =>
+    gameRomService.writeState(id, slot, data),
+  )
+
   ipcMain.handle(GAME_CHANNELS.getRuntimeConfig, () => ({
     guestPreloadUrl: pathToFileURL(join(getEmulatorAssetsDir(), "guest-preload.cjs")).toString(),
   }))

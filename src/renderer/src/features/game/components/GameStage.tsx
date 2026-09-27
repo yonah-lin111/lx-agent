@@ -26,11 +26,22 @@ interface WebviewElement extends HTMLElement {
 
 // guest 上报消息。
 interface GameGuestMessage {
-  type: "ready" | "started" | "save" | "save-restored" | "escape" | "flushed" | "error" | "speed"
+  type:
+    | "ready"
+    | "started"
+    | "save"
+    | "state"
+    | "save-restored"
+    | "escape"
+    | "flushed"
+    | "error"
+    | "speed"
   data?: unknown
   message?: string
   // 当前倍速（仅 speed 消息携带）。
   ratio?: number
+  // 快速存档槽位（仅 state 消息携带）。
+  slot?: number
 }
 
 type StageStatus = "loading" | "running" | "error"
@@ -184,6 +195,13 @@ export const GameStage = ({
           if (payload.data instanceof Uint8Array) {
             void gameApi
               .writeSave(entry.id, payload.data)
+              .catch(() => errorToast(t("game.error.saveFailed")))
+          }
+          break
+        case "state":
+          if (payload.data instanceof Uint8Array && typeof payload.slot === "number") {
+            void gameApi
+              .writeState(entry.id, payload.slot, payload.data)
               .catch(() => errorToast(t("game.error.saveFailed")))
           }
           break
