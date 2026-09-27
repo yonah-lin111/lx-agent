@@ -7,4 +7,8 @@ describe("NOTIFICATION_CHANNELS", () => {
 
     expect(new Set(channels)).toHaveLength(channels.length)
   })
+
+  it("demo 通道用于 UI 预览页触发演示通知", () => {
+    expect(NOTIFICATION_CHANNELS.demo).toBe("notification:demo")
+  })
 })

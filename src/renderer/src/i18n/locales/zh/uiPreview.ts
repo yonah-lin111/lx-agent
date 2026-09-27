@@ -16,6 +16,7 @@ export const uiPreview = {
     select: "黑色主题下拉选择器，支持分组、尺寸与弹出方向",
     tag: "可配置颜色、尺寸与交互的通用标签",
     toast: "全局单条消息提示，支持 success / error / warning / info",
+    notification: "真实投递的系统通知，用于验证通知外观与点击聚焦行为",
     tooltip: "统一提示与二次确认气泡，自动根据视口空间调整方向",
     datePicker: "日期选择器，支持按日 / 周 / 月与区间模式、尺寸档位与切换按钮",
     codeBlock: "独立代码块，支持语法高亮、复制与折叠",
@@ -152,6 +153,10 @@ export const uiPreview = {
     toastDesc: "通过 useLxToast 展示全局消息提示，支持四种类型，多条消息自动堆叠",
     toastPlacements: "消息方位",
     toastPlacementsDesc: "支持四角、顶部居中与面包屑位置，默认展示在顶部栏面包屑处（无边框无背景）",
+    notificationTitle: "系统通知",
+    notificationDesc:
+      "点击按钮真实投递一条系统通知：不受应用聚焦限制，使用系统默认图标，点击通知聚焦主窗口",
+    notificationSend: "发送测试通知",
     saveSuccess: "保存成功",
     saveFailed: "保存失败",
     diskSpaceLow: "磁盘空间不足",

@@ -1,10 +1,9 @@
-import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
 import { GAME_PROTOCOL } from "@shared/contracts/game"
 import { FRONT_DESIGN_PROTOCOL } from "@shared/frontDesign"
 import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
-import { app, BrowserWindow, nativeImage, protocol } from "electron"
+import { app, BrowserWindow, protocol } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
 import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
@@ -17,6 +16,7 @@ import { registerGameHandlers } from "@/ipc/gameHandlers"
 import { registerGitHandlers } from "@/ipc/gitHandlers"
 import { registerGitHubHandlers } from "@/ipc/githubHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
+import { registerNotificationHandlers } from "@/ipc/notificationHandlers"
 import { registerOpenClawHandlers } from "@/ipc/openclawHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
@@ -75,17 +75,6 @@ const createWindow = (): void => {
   void window.loadFile(join(__dirname, "../renderer/index.html"))
 }
 
-// 应用应用 Logo（macOS Dock）；文件缺失或加载失败时静默跳过，不影响启动。
-const applyAppDockIcon = (): void => {
-  if (process.platform !== "darwin" || !app.dock) return
-
-  const iconPath = join(app.getAppPath(), "resources", "icons", "lx-logo.png")
-  if (!existsSync(iconPath)) return
-  const icon = nativeImage.createFromPath(iconPath)
-  if (icon.isEmpty()) return
-  app.dock.setIcon(icon)
-}
-
 app.whenReady().then(() => {
   initDatabase()
   registerLocalImageProtocol()
@@ -98,6 +87,7 @@ app.whenReady().then(() => {
   registerSettingsHandlers()
   registerSkillHandlers()
   registerMarkdownHandlers()
+  registerNotificationHandlers()
   registerGitHandlers()
   registerCustomCommandHandlers()
   registerPromptHistoryHandlers()
@@ -148,5 +138,4 @@ app.whenReady().then(() => {
   })
 
   createWindow()
-  applyAppDockIcon()
 })

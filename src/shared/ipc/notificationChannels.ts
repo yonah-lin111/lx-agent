@@ -2,4 +2,6 @@
 export const NOTIFICATION_CHANNELS = {
   // 点击系统通知后，main → renderer 推送跳转目标。
   click: "notification:click",
+  // UI 预览页触发演示通知，renderer → main。
+  demo: "notification:demo",
 } as const

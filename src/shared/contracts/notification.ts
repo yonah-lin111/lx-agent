@@ -7,5 +7,7 @@ export type NotificationClickPayload =
 export interface NotificationApi {
   notification: {
     onClick: (handler: (payload: NotificationClickPayload) => void) => () => void
+    // 触发一条演示系统通知（UI 预览页）。
+    showDemo: () => void
   }
 }
