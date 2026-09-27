@@ -69,7 +69,7 @@ describe("/cd 命令测试", () => {
   })
 
   describe("执行 /cd 命令拦截与处理", () => {
-    it("支持中括号、智能引号及多余空格包裹的复杂路径解析", async () => {
+    it("支持智能引号及多余空格包裹的复杂路径解析", async () => {
       const onCdSelect = vi.fn()
       const onChange = vi.fn()
       vi.mocked(projectApi.findOrCreateByPath).mockResolvedValue({
@@ -86,7 +86,7 @@ describe("/cd 命令测试", () => {
       const { result } = renderHook(() =>
         useAgentInputActions({
           ...defaultProps,
-          valueRef: { current: '/cd [“ /Users/yonah/Desktop/hsl- project "]' },
+          valueRef: { current: '/cd -“ /Users/yonah/Desktop/hsl- project "' },
           onChangeRef: { current: onChange },
           onCdSelect,
         }),
@@ -137,7 +137,7 @@ describe("/cd 命令测试", () => {
       })
     })
 
-    it("无参数或字面占位符 [path] 执行 /cd: 打开目录选择器并在选择后调用 findOrCreateByPath", async () => {
+    it("无参数执行 /cd: 打开目录选择器并在选择后调用 findOrCreateByPath", async () => {
       const onCdSelect = vi.fn()
       const onChange = vi.fn()
       vi.mocked(projectApi.selectDirectory).mockResolvedValue("/picked/directory")
@@ -155,7 +155,7 @@ describe("/cd 命令测试", () => {
       const { result } = renderHook(() =>
         useAgentInputActions({
           ...defaultProps,
-          valueRef: { current: "/cd [path]" },
+          valueRef: { current: "/cd" },
           onChangeRef: { current: onChange },
           onCdSelect,
         }),

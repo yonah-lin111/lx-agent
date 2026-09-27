@@ -68,7 +68,6 @@ export const cleanUserPrompt = (
 
   if (options?.isSteer || options?.command?.name === "steer") {
     cleaned = cleaned.replace(/^\s*\/steer(?=[\s:-]|$)[\s:-]*/, "").trim()
-    cleaned = cleaned.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
     // 未编辑的 `-prompt` 占位词不参与展示。
     if (cleaned === "prompt") cleaned = ""
     return cleaned

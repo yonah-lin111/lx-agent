@@ -55,13 +55,11 @@ export const useAgentChatSend = ({
       let text = (contentToSend ?? inputText).trim()
       // 即时插话（steer）：统一剥离 /steer 前缀（含 `-` 分隔符），气泡与模型只看到内容、不出现命令。
       if (options?.delivery === "steer" || text.startsWith("/steer ") || text === "/steer") {
-        const hadSteerPrefix = text.startsWith("/steer")
-        if (hadSteerPrefix) {
+        if (text.startsWith("/steer")) {
           text = text.replace(/^\/steer(?=[\s:-]|$)[\s:-]*/, "").trim()
+          // 未编辑的 `-prompt` 占位词视为空内容。
+          if (text === "prompt") text = ""
         }
-        text = text.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
-        // 未编辑的 `-prompt` 占位词视为空内容。
-        if (hadSteerPrefix && text === "prompt") text = ""
       }
       if (!text && selectedFiles.length > 0) {
         text = `[发送了 ${selectedFiles.length} 个附件]`

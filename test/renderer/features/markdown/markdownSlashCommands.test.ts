@@ -270,13 +270,13 @@ describe("Markdown 斜杠命令武装判定", () => {
 
   it("参数型命令：/addContent 带值时全 page 武装，取值需由命令自身解析", () => {
     // 变量块内外均可武装（scope = all）
-    expect(getMarkdownArmedSlashCommand("/addContent [@src/a.ts]", false, [], false)?.id).toBe(
+    expect(getMarkdownArmedSlashCommand("/addContent -@src/a.ts", false, [], false)?.id).toBe(
       "addContent",
     )
-    expect(getMarkdownArmedSlashCommand("/addContent [@src/a.ts]", true, [], false)?.id).toBe(
+    expect(getMarkdownArmedSlashCommand("/addContent -@src/a.ts", true, [], false)?.id).toBe(
       "addContent",
     )
-    expect(getMarkdownArmedSlashCommand("/addContent [@src/a.ts]", false, [], true)?.id).toBe(
+    expect(getMarkdownArmedSlashCommand("/addContent -@src/a.ts", false, [], true)?.id).toBe(
       "addContent",
     )
 
@@ -285,7 +285,7 @@ describe("Markdown 斜杠命令武装判定", () => {
     expect(getMarkdownArmedSlashCommand("/addContent ", false)).toBeNull()
 
     // 参数型命令不属于 select，不参与 /gitWorktree 取值
-    expect(getMarkdownSelectCommandValue("/addContent [@src/a.ts]", false)).toBeNull()
+    expect(getMarkdownSelectCommandValue("/addContent -@src/a.ts", false)).toBeNull()
 
     // 其余作用域命令不受变量块标记影响
     expect(getMarkdownArmedSlashCommand("/gitWorktree feature-x", false, [], false)?.id).toBe(

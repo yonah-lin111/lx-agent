@@ -63,14 +63,13 @@ describe("getCommandArgumentText", () => {
 describe("collapsePlaceholderArgument", () => {
   it("占位词未编辑时视为未填写", () => {
     expect(collapsePlaceholderArgument("prompt", "prompt")).toBe("")
-    expect(collapsePlaceholderArgument("[prompt]", "prompt")).toBe("")
-    expect(collapsePlaceholderArgument("【prompt】", "prompt")).toBe("")
     expect(collapsePlaceholderArgument("path", "path")).toBe("")
   })
 
-  it("真实内容原样返回（兼容旧中括号包裹）", () => {
+  it("旧 [] 写法不再兼容，按字面文本处理", () => {
+    expect(collapsePlaceholderArgument("[prompt]", "prompt")).toBe("[prompt]")
+    expect(collapsePlaceholderArgument("【prompt】", "prompt")).toBe("【prompt】")
     expect(collapsePlaceholderArgument("改为直接回答", "prompt")).toBe("改为直接回答")
-    expect(collapsePlaceholderArgument("[真实内容]", "prompt")).toBe("真实内容")
   })
 })
 
@@ -79,13 +78,13 @@ describe("getMissingRequiredCommand", () => {
     expect(getMissingRequiredCommand("/steer")?.id).toBe("steer")
     expect(getMissingRequiredCommand("/steer -")?.id).toBe("steer")
     expect(getMissingRequiredCommand("/steer -prompt")?.id).toBe("steer")
-    expect(getMissingRequiredCommand("/steer [prompt]")?.id).toBe("steer")
     expect(getMissingRequiredCommand("/btw")?.id).toBe("btw")
     expect(getMissingRequiredCommand("/btw -prompt")?.id).toBe("btw")
   })
 
-  it("参数已填写或非必填命令返回 null", () => {
+  it("参数已填写、旧 [] 写法或非必填命令返回 null", () => {
     expect(getMissingRequiredCommand("/steer -改为直接回答")).toBeNull()
+    expect(getMissingRequiredCommand("/steer [prompt]")).toBeNull()
     expect(getMissingRequiredCommand("/btw 这个问题在哪")).toBeNull()
     expect(getMissingRequiredCommand("/clear")).toBeNull()
     expect(getMissingRequiredCommand("/cleawr")).toBeNull()

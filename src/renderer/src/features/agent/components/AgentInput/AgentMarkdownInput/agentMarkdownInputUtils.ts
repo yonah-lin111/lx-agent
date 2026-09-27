@@ -136,12 +136,12 @@ export const getCommandArgumentText = (text: string, commandName: string): strin
 }
 
 /**
- * 占位词未编辑时视为未填写：兼容旧 `[prompt]` / `【prompt】` 包裹写法。
+ * 占位词未编辑时视为未填写（仅 `-` 语法；`[prompt]` 等旧写法按字面文本处理）。
  */
 export const collapsePlaceholderArgument = (arg: string, placeholder?: string): string => {
-  const unwrapped = arg.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
-  if (placeholder && unwrapped === placeholder.toLowerCase()) return ""
-  return unwrapped
+  const trimmed = arg.trim()
+  if (placeholder && trimmed === placeholder.toLowerCase()) return ""
+  return trimmed
 }
 
 /**
@@ -403,22 +403,13 @@ export const getArgumentSelectionRange = (
   insertText: string,
   commandNameLength: number,
 ): { anchor: number; head: number } => {
-  // 首选 `-占位词` 形式：选中占位词本体（不含 `-`）。
+  // `-占位词` 形式：选中占位词本体（不含 `-`）。
   const dashIndex = insertText.indexOf("-", commandNameLength)
   if (dashIndex !== -1) {
     const start = dashIndex + 1
     const wordMatch = /^[^\s|]+/.exec(insertText.slice(start))
     if (wordMatch && wordMatch[0].length > 0) {
       return { anchor: start, head: start + wordMatch[0].length }
-    }
-  }
-
-  // 兼容旧 `[占位词]` 形式。
-  const startBracket = insertText.indexOf("[", commandNameLength)
-  if (startBracket !== -1) {
-    const endBracket = insertText.indexOf("]", startBracket)
-    if (endBracket !== -1 && endBracket >= startBracket + 1) {
-      return { anchor: startBracket + 1, head: endBracket }
     }
   }
   return { anchor: Math.min(commandNameLength + 1, insertText.length), head: insertText.length }

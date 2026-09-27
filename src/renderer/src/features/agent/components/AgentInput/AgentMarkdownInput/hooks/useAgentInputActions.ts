@@ -148,9 +148,7 @@ export const useAgentInputActions = ({
         text.startsWith("/export:") ||
         text.startsWith("/export-")
       ) {
-        const rawArg = getCommandArgumentText(text, "export")
-          .replace(/^\[|\]$/g, "")
-          .toLowerCase()
+        const rawArg = getCommandArgumentText(text, "export").toLowerCase()
         const explicitDash = /^\/export[:\s]*-/.test(text)
         // 显式写了 `-` 却没选格式，或参数无法识别：提示选择，保留输入等待修正。
         const format = rawArg ? resolveExportFormat(rawArg) : explicitDash ? null : "html"
@@ -208,7 +206,7 @@ export const useAgentInputActions = ({
         text.startsWith("/cd-")
       ) {
         const rawArg = getCommandArgumentText(text, "cd")
-        // `/cd -path` 未编辑占位词时等同空参：走系统目录选择器（cleanWorkspacePath 兼容 [path]）。
+        // `/cd -path` 未编辑占位词时等同空参：走系统目录选择器。
         const targetPath = cleanWorkspacePath(collapsePlaceholderArgument(rawArg, "path"))
         clearEditor()
 
@@ -293,9 +291,7 @@ export const useAgentInputActions = ({
         text.startsWith("/copy:") ||
         text.startsWith("/copy-")
       ) {
-        const rawArg = getCommandArgumentText(text, "copy")
-          .replace(/^\[|\]$/g, "")
-          .toLowerCase()
+        const rawArg = getCommandArgumentText(text, "copy").toLowerCase()
         const target =
           rawArg === "all" || rawArg === "full" || rawArg === "md" || rawArg === "markdown"
             ? "markdown"

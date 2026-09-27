@@ -389,7 +389,7 @@ describe("LxMarkdownEditor 剪贴板与弹层交互 (useMarkdownPasteReference)"
 })
 
 describe("LxMarkdownEditor /addContent 命令执行", () => {
-  it("输入 /addContent [@xxx] 并回车后，条目写入 @content 块且命令行清空保留换行", async () => {
+  it("输入 /addContent -@xxx 并回车后，条目写入 @content 块且命令行清空保留换行", async () => {
     const initialText = [
       "$$$ varTemplate --start 「title: 」",
       "@content:",
@@ -398,7 +398,7 @@ describe("LxMarkdownEditor /addContent 命令执行", () => {
       "$$$ varTemplate --end",
       "",
       "# 正文",
-      "/addContent [@src/foo.ts ]",
+      "/addContent -@src/foo.ts",
     ].join("\n")
 
     render(<LxMarkdownEditor initialContent={initialText} projectPath="/repo" />)
@@ -511,7 +511,7 @@ describe("LxMarkdownEditor /addContent 命令执行", () => {
   })
 
   it("无变量块时回车给出警告且不改动文档", async () => {
-    const initialText = "# 正文\n/addContent [@src/foo.ts ]"
+    const initialText = "# 正文\n/addContent -@src/foo.ts"
 
     render(<LxMarkdownEditor initialContent={initialText} projectPath="/repo" />)
     await waitFor(() => expect(getCm()).not.toBeNull())

@@ -141,11 +141,6 @@ describe("AgentMarkdownInput 工具函数单元测试", () => {
     expect(paramRange.anchor).toBe(6)
     expect(paramRange.head).toBe(11)
     expect(paramText.slice(paramRange.anchor, paramRange.head)).toBe("param")
-
-    // 兼容旧 `[占位词]` 形式
-    const bracketText = "/legacy [target]"
-    const bracketRange = getArgumentSelectionRange(bracketText, "/legacy".length)
-    expect(bracketText.slice(bracketRange.anchor, bracketRange.head)).toBe("target")
   })
 })
 

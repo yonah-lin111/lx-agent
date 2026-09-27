@@ -2277,7 +2277,7 @@ describe("AgentExecutionFlowList", () => {
     })
   })
 
-  it("用户步骤为 Steer 消息时，头部仅渲染一个 /steer 标签，正文清洗 /steer 前缀与方括号占位符，且消息内部不展示 /steer 徽标", () => {
+  it("用户步骤为 Steer 消息时，头部仅渲染一个 /steer 标签，正文清洗 /steer 前缀与 - 分隔符，且消息内部不展示 /steer 徽标", () => {
     const messages: ChatMessage[] = [
       {
         id: "u-steer",
@@ -2285,7 +2285,7 @@ describe("AgentExecutionFlowList", () => {
         blocks: [
           {
             kind: "text",
-            text: "/steer [不要使用mcp]",
+            text: "/steer -不要使用mcp",
           },
         ],
         command: {
@@ -2305,9 +2305,8 @@ describe("AgentExecutionFlowList", () => {
     const userContent = container.querySelector(".agent-execution-flow-user-content")
     expect(userContent).not.toBeNull()
     expect(userContent?.textContent?.includes("/steer")).toBe(false)
-    // 方括号占位符被自动剥离，仅保留核心文本
+    // `-` 分隔符被自动剥离，仅保留核心文本
     expect(screen.getByText("不要使用mcp")).not.toBeNull()
-    expect(screen.queryByText("[不要使用mcp]")).toBeNull()
   })
 
   it("在执行流程列表中，assistant 步骤支持删除整轮 QA 并在确认后触发 onDeleteMessage 回调", async () => {

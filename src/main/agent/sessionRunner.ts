@@ -366,9 +366,10 @@ export class AgentSessionRunner {
       processedText === "/steer"
     ) {
       if (processedText.startsWith("/steer")) {
-        processedText = processedText.slice(6).trim()
+        processedText = processedText.replace(/^\/steer(?=[\s:-]|$)[\s:-]*/, "").trim()
+        // 未编辑的 `-prompt` 占位词视为空内容。
+        if (processedText === "prompt") processedText = ""
       }
-      processedText = processedText.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
     }
 
     if (options?.delivery === "steer" && this.agent?.state.isStreaming) {

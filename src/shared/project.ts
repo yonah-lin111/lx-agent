@@ -134,20 +134,19 @@ export interface ProjectApi {
  * - 剥离外层定界符（如中括号 `[...]`、圆括号 `(...)`、尖括号 `<...>`）
  * - 剥离单双引号及各类弯引号/中文引号（如 `"`、`'`、`“`、`”`、`‘`、`’`、`「`、`」`、`『`、`』`）
  * - 去除内部首尾多余空格
- * - 忽略字面占位符（如 `[path]`、`path`）
+ * - 忽略字面占位符（如 `path`、`<path>`）
  * - 反转义终端复制带来的空格转义符（`\ ` -> ` `）
  */
 export const cleanWorkspacePath = (input: string): string => {
   let s = input.trim()
   if (!s) return ""
 
-  const placeholderRegex = /^(\[|<)?path(\]|>)?$/i
+  const placeholderRegex = /^(?:<)?path(?:>)?$/i
   if (placeholderRegex.test(s)) {
     return ""
   }
 
   const wrappers: Array<[string, string]> = [
-    ["[", "]"],
     ["(", ")"],
     ["<", ">"],
     ['"', '"'],
