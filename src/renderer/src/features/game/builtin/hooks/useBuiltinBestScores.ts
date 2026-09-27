@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from "react"
+import { useEffect } from "react"
+import { create } from "zustand"
 import { BUILTIN_BEST_SCORES_STORAGE_KEY } from "../constants"
 
 /**
@@ -24,28 +25,43 @@ const readBestScores = (): Record<string, number> => {
   }
 }
 
-/**
- * 管理各内置游戏最高分：仅在刷新纪录时写入 localStorage。
- */
-export const useBuiltinBestScores = (): {
+interface BuiltinBestScoresStore {
   bestScores: Record<string, number>
+  load: () => void
   submitScore: (gameId: string, score: number) => boolean
-} => {
-  const [bestScores, setBestScores] = useState<Record<string, number>>(readBestScores)
-  const bestScoresRef = useRef(bestScores)
+}
 
-  const submitScore = useCallback((gameId: string, score: number): boolean => {
-    if (score <= (bestScoresRef.current[gameId] ?? 0)) return false
+// 模块级 Store：游戏库与游戏覆盖层同时挂载时共享同一份最高分。
+const useBuiltinBestScoresStore = create<BuiltinBestScoresStore>((set, get) => ({
+  bestScores: {},
+  load: () => set({ bestScores: readBestScores() }),
+  submitScore: (gameId, score) => {
+    const current = get().bestScores
+    if (score <= (current[gameId] ?? 0)) return false
 
-    const next = { ...bestScoresRef.current, [gameId]: score }
-    bestScoresRef.current = next
-    setBestScores(next)
+    const next = { ...current, [gameId]: score }
+    set({ bestScores: next })
     try {
       localStorage.setItem(BUILTIN_BEST_SCORES_STORAGE_KEY, JSON.stringify(next))
     } catch (error) {
       console.error("Failed to save builtin best score", error)
     }
     return true
+  },
+}))
+
+/**
+ * 管理各内置游戏最高分：挂载时同步一次本机数据，仅刷新纪录时写入 localStorage。
+ */
+export const useBuiltinBestScores = (): {
+  bestScores: Record<string, number>
+  submitScore: (gameId: string, score: number) => boolean
+} => {
+  const bestScores = useBuiltinBestScoresStore((state) => state.bestScores)
+  const submitScore = useBuiltinBestScoresStore((state) => state.submitScore)
+
+  useEffect(() => {
+    useBuiltinBestScoresStore.getState().load()
   }, [])
 
   return { bestScores, submitScore }

@@ -1,7 +1,8 @@
-import { ArrowLeft, Pause, Play, RotateCcw } from "lucide-react"
+import { Pause, Play, RotateCcw } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
+import { GamePauseOverlay } from "@/features/game/components/GamePauseOverlay"
 import { useTranslation } from "@/i18n"
 import { useAppThemeValue } from "@/stores/themeStore"
 import { BUILTIN_GAME_META } from "../constants"
@@ -11,11 +12,14 @@ import { BuiltinGameCanvasHost } from "./BuiltinGameCanvasHost"
 
 export interface BuiltinGameStageProps {
   gameId: BuiltinGameId
-  // 各内置游戏最高分（由游戏列表持有，运行结束后回写展示）。
+  // 各内置游戏最高分（由游戏库持有，运行结束后回写展示）。
   bestScores: Record<string, number>
   // 提交本局得分，返回是否刷新最高分。
   submitScore: (gameId: string, score: number) => boolean
-  onExit: () => void
+  // 覆盖层收起（最小化）时为 true：强制暂停并保留本局状态。
+  isSuspended: boolean
+  // 结算面板"换一个游戏"：结束会话并回到游戏库。
+  onBackToLibrary: () => void
 }
 
 interface BuiltinResult {
@@ -24,13 +28,14 @@ interface BuiltinResult {
 }
 
 /**
- * 内置游戏舞台：整页运行单个内置小游戏，负责运行 → 暂停 / 结算，退出回到游戏列表。
+ * 内置游戏舞台：运行 → 暂停 / 结算；ESC 只暂停不退出，关闭入口由覆盖层顶栏提供。
  */
 export const BuiltinGameStage = ({
   gameId,
   bestScores,
   submitScore,
-  onExit,
+  isSuspended,
+  onBackToLibrary,
 }: BuiltinGameStageProps): React.JSX.Element => {
   const { t } = useTranslation()
   const theme = useAppThemeValue()
@@ -41,23 +46,11 @@ export const BuiltinGameStage = ({
   const [runId, setRunId] = useState(0)
 
   const activeGame = BUILTIN_GAME_META[gameId]
-  const isRunning = !isPaused && result === null
 
-  const handleExit = useCallback((): void => {
-    setIsPaused(false)
-    setResult(null)
-    onExit()
-  }, [onExit])
-
-  // ESC：运行中由画布宿主接管并转为暂停，其余状态一律退出舞台。
+  // 最小化到顶部栏入口时强制暂停，恢复展开后保持暂停态等待用户继续。
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== "Escape" || isRunning) return
-      onExit()
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isRunning, onExit])
+    if (isSuspended) setIsPaused(true)
+  }, [isSuspended])
 
   const handleRestart = useCallback((): void => {
     setIsPaused(false)
@@ -77,14 +70,6 @@ export const BuiltinGameStage = ({
       {/* 工具栏 */}
       <div className="game-builtin-stage-toolbar flex min-w-0 shrink-0 items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <LxIconButton
-            size="small"
-            aria-label={t("game.stage.back")}
-            title={{ content: t("game.stage.back"), placement: "bottom" }}
-            onClick={handleExit}
-          >
-            <ArrowLeft />
-          </LxIconButton>
           <span className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
             {t(activeGame.nameKey)}
           </span>
@@ -124,40 +109,13 @@ export const BuiltinGameStage = ({
           gameId={gameId}
           runId={runId}
           palette={palette}
-          isPaused={isPaused || result !== null}
+          isPaused={isPaused || result !== null || isSuspended}
           onGameOver={handleGameOver}
           onPauseRequest={() => setIsPaused(true)}
         />
 
         {isPaused && !result ? (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/60 backdrop-blur-sm">
-            <span className="font-mono text-sm font-semibold tracking-widest text-white/85">
-              {t("game.builtin.paused")}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="rounded-[var(--theme-radius-base)] border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 transition-colors hover:bg-white/20"
-                onClick={() => setIsPaused(false)}
-              >
-                {t("game.builtin.resume")}
-              </button>
-              <button
-                type="button"
-                className="rounded-[var(--theme-radius-base)] border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/10"
-                onClick={handleRestart}
-              >
-                {t("game.builtin.restart")}
-              </button>
-              <button
-                type="button"
-                className="rounded-[var(--theme-radius-base)] border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/10"
-                onClick={handleExit}
-              >
-                {t("game.stage.back")}
-              </button>
-            </div>
-          </div>
+          <GamePauseOverlay onResume={() => setIsPaused(false)} onRestart={handleRestart} />
         ) : null}
 
         {result ? (
@@ -182,7 +140,7 @@ export const BuiltinGameStage = ({
               <button
                 type="button"
                 className="rounded-[var(--theme-radius-base)] border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/10"
-                onClick={handleExit}
+                onClick={onBackToLibrary}
               >
                 {t("game.builtin.result.pickAnother")}
               </button>

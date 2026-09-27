@@ -29,21 +29,30 @@ vi.mock("@/features/game/builtin/components/BuiltinGameCanvasHost", () => ({
 // 渲染内置游戏舞台并返回可断言的桩函数。
 const renderStage = (
   patch: Partial<BuiltinGameStageProps> = {},
-): { onExit: ReturnType<typeof vi.fn>; submitScore: ReturnType<typeof vi.fn> } => {
-  const onExit = vi.fn()
-  const submitScore = vi.fn().mockReturnValue(true)
+): {
+  onBackToLibrary: ReturnType<typeof vi.fn>
+  submitScore: ReturnType<typeof vi.fn>
+  rerender: (next: Partial<BuiltinGameStageProps>) => void
+} => {
+  const onBackToLibrary = (patch.onBackToLibrary ?? vi.fn()) as ReturnType<typeof vi.fn>
+  const submitScore = (patch.submitScore ?? vi.fn().mockReturnValue(true)) as ReturnType<
+    typeof vi.fn
+  >
+  const props: BuiltinGameStageProps = {
+    gameId: "dodge",
+    bestScores: { dodge: 90 },
+    submitScore: submitScore as BuiltinGameStageProps["submitScore"],
+    isSuspended: false,
+    onBackToLibrary: onBackToLibrary as BuiltinGameStageProps["onBackToLibrary"],
+    ...patch,
+  }
 
-  render(
-    <BuiltinGameStage
-      gameId="dodge"
-      bestScores={{ dodge: 90 }}
-      submitScore={submitScore}
-      onExit={onExit}
-      {...patch}
-    />,
-  )
-
-  return { onExit, submitScore }
+  const view = render(<BuiltinGameStage {...props} />)
+  return {
+    onBackToLibrary,
+    submitScore,
+    rerender: (next) => view.rerender(<BuiltinGameStage {...props} {...next} />),
+  }
 }
 
 describe("BuiltinGameStage", () => {
@@ -67,9 +76,30 @@ describe("BuiltinGameStage", () => {
     fireEvent.click(screen.getByText("request-pause"))
     expect(screen.getByText("Paused")).toBeDefined()
 
+    // 工具栏与暂停面板同时存在 Resume 入口，点击面板中的按钮。
     const resumeButtons = screen.getAllByRole("button", { name: "Resume" })
     fireEvent.click(resumeButtons[resumeButtons.length - 1])
     expect(screen.queryByText("Paused")).toBeNull()
+  })
+
+  it("ESC 不再退出舞台，只由按钮控制会话", () => {
+    const { onBackToLibrary } = renderStage()
+
+    fireEvent.click(screen.getByText("request-pause"))
+    fireEvent.keyDown(window, { key: "Escape" })
+
+    expect(onBackToLibrary).not.toHaveBeenCalled()
+    expect(screen.getByText("canvas-host")).toBeDefined()
+  })
+
+  it("覆盖层最小化挂起时强制暂停本局", () => {
+    const { rerender } = renderStage()
+
+    expect(screen.queryByText("Paused")).toBeNull()
+
+    rerender({ isSuspended: true })
+
+    expect(screen.getByText("Paused")).toBeDefined()
   })
 
   it("游戏结束展示得分并提交最高分", () => {
@@ -103,39 +133,24 @@ describe("BuiltinGameStage", () => {
     expect(screen.getByText("canvas-host")).toBeDefined()
   })
 
-  it("结算面板可退出回到游戏列表", () => {
-    const { onExit } = renderStage()
+  it("结算面板换一个游戏：回到游戏库", () => {
+    const { onBackToLibrary } = renderStage()
 
     fireEvent.click(screen.getByText("finish-game"))
     fireEvent.click(screen.getByRole("button", { name: "Pick another game" }))
 
-    expect(onExit).toHaveBeenCalledTimes(1)
+    expect(onBackToLibrary).toHaveBeenCalledTimes(1)
   })
 
-  it("暂停后按 ESC 退出游戏列表", () => {
-    const { onExit } = renderStage()
+  it("暂停面板可重新开始本局", () => {
+    renderStage()
 
     fireEvent.click(screen.getByText("request-pause"))
-    fireEvent.keyDown(window, { key: "Escape" })
+    // 工具栏与暂停面板同时存在 Restart 入口，点击面板中的按钮。
+    const restartButtons = screen.getAllByRole("button", { name: "Restart" })
+    fireEvent.click(restartButtons[restartButtons.length - 1])
 
-    expect(onExit).toHaveBeenCalledTimes(1)
-  })
-
-  it("暂停面板可退出游戏列表", () => {
-    const { onExit } = renderStage()
-
-    fireEvent.click(screen.getByText("request-pause"))
-    const backButtons = screen.getAllByRole("button", { name: "Back to games" })
-    fireEvent.click(backButtons[backButtons.length - 1])
-
-    expect(onExit).toHaveBeenCalledTimes(1)
-  })
-
-  it("工具栏返回按钮退出游戏列表", () => {
-    const { onExit } = renderStage()
-
-    fireEvent.click(screen.getByRole("button", { name: "Back to games" }))
-
-    expect(onExit).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText("Paused")).toBeNull()
+    expect(screen.getByText("canvas-host")).toBeDefined()
   })
 })

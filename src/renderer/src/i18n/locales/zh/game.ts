@@ -11,7 +11,6 @@ export const game = {
     pause: "暂停",
     resume: "继续",
     restart: "重新开始",
-    paused: "已暂停",
     result: {
       title: "本局结束",
       newBest: "新纪录！",
@@ -102,12 +101,22 @@ export const game = {
     description: "将删除「{{title}}」及其存档，此操作不可撤销。",
     success: "已删除「{{title}}」",
   },
+  overlay: {
+    minimize: "最小化到顶部栏",
+    close: "关闭游戏",
+  },
+  pause: {
+    paused: "已暂停",
+    resume: "继续",
+    restart: "重新开始",
+    minimize: "最小化",
+    close: "关闭游戏",
+  },
   stage: {
     loading: "模拟器加载中…",
     error: "模拟器加载失败",
     retry: "重试",
-    back: "返回游戏列表",
-    exitHint: "ESC 退出",
+    pauseHint: "ESC 暂停",
     speed: "倍速 ×{{ratio}}",
   },
   error: {

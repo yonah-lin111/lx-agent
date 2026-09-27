@@ -356,6 +356,17 @@
     if (message.type === "flush") {
       flushSave()
       report("flushed")
+      return
+    }
+    // 宿主暂停/恢复（最小化、ESC 切换）：模拟器核心自行处理播放状态。
+    if (message.type === "pause" || message.type === "resume") {
+      var emulator = window.EJS_emulator
+      if (!emulator || emulator.started !== true) return
+      if (message.type === "pause") {
+        emulator.pause()
+      } else {
+        emulator.play()
+      }
     }
   })
 })()

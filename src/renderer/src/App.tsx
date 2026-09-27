@@ -8,6 +8,7 @@ import { PageContent } from "@/components/layout/PageContent"
 import { RightSideBar } from "@/components/layout/RightSidebar"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxToastProvider } from "@/components/ui/LxToast"
+import { GameOverlay } from "@/features/game"
 import { useNotificationClickRouter } from "@/features/notification"
 import { I18nProvider } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
@@ -83,6 +84,7 @@ export const App = () => {
                   <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
                     <PageRouter />
                     <LxLoadingOverlay isLoading={isPageLoading} text="Loading page..." />
+                    <GameOverlay />
                   </div>
                 </PageContent>
               </div>

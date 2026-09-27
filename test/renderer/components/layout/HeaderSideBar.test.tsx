@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act } from "react"
 import { MemoryRouter } from "react-router-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { HeaderSideBar } from "@/components/layout/HeaderSideBar"
+import { useGameSessionStore } from "@/features/game"
 import type { UsageSummary } from "@/features/usage/types"
 import { getTodayKey, shiftDateKey } from "@/lib/date"
 
@@ -43,6 +45,7 @@ const createApiMock = () => ({
 describe("HeaderSideBar", () => {
   afterEach(() => {
     cleanup()
+    useGameSessionStore.setState({ session: null, isOpen: false })
     vi.restoreAllMocks()
   })
 
@@ -192,6 +195,36 @@ describe("HeaderSideBar", () => {
 
     fireEvent.pointerDown(document.body)
     expect(onExpandedChange).toHaveBeenCalledWith(false)
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  it("游戏入口：存在进行中会话时图标变黄，点击开合覆盖层", async () => {
+    const api = createApiMock()
+    // @ts-expect-error Mock window.api
+    window.api = api
+
+    render(
+      <MemoryRouter>
+        <HeaderSideBar isExpanded={false} onExpandedChange={vi.fn()} />
+      </MemoryRouter>,
+    )
+
+    const getGameButton = (): HTMLElement => screen.getByRole("button", { name: "Games" })
+    expect(getGameButton().getAttribute("data-game-active")).toBeNull()
+    expect(getGameButton().className).not.toContain("text-amber-400")
+
+    act(() => {
+      useGameSessionStore.getState().startBuiltin("dodge")
+    })
+
+    expect(getGameButton().getAttribute("data-game-active")).toBe("true")
+    expect(getGameButton().className).toContain("text-amber-400")
+
+    // 覆盖层处于展开态，点击后收起（最小化）但保留会话。
+    fireEvent.click(getGameButton())
+    expect(useGameSessionStore.getState().isOpen).toBe(false)
+    expect(useGameSessionStore.getState().session).not.toBeNull()
 
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
