@@ -61,9 +61,9 @@ describe("switch_mode 工具（auto 编排）", () => {
     expect(text).toContain("<review_findings>")
   })
 
-  it("design → build 同样自行切换", async () => {
+  it("review → build 同样自行切换", async () => {
     const switchEffectiveMode = vi.fn(() => ({ ok: true as const }))
-    const deps = createDeps({ getEffectiveMode: () => "design", switchEffectiveMode })
+    const deps = createDeps({ getEffectiveMode: () => "review", switchEffectiveMode })
     await runTool(deps, { mode: "build" })
     expect(switchEffectiveMode).toHaveBeenCalledWith("build")
   })
@@ -83,8 +83,13 @@ describe("switch_mode 工具（auto 编排）", () => {
       getAllowedTargets: () => ["build", "plan"],
       switchEffectiveMode,
     })
-    const text = await runTool(deps, { mode: "design" })
-    expect(text).toContain("Mode 'design' is disabled in settings")
+    const text = await runTool(deps, { mode: "review" })
+    expect(text).toContain("Mode 'review' is disabled in settings")
     expect(switchEffectiveMode).not.toHaveBeenCalled()
+  })
+
+  it("design 已移除：输入 schema 拒绝切换到 design", () => {
+    const tool = createSwitchModeTool(createDeps())
+    expect(tool.inputSchema.safeParse({ mode: "design" }).success).toBe(false)
   })
 })

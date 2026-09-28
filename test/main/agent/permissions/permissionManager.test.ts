@@ -794,43 +794,6 @@ describe("permissionManager 永久决策写回（G5）", () => {
     })
   })
 
-  describe("前端设计模式 (Front Design Mode 门禁)", () => {
-    it("Design 模式下硬拦截 wireframe 工具，其他工具不受影响", async () => {
-      applySettings({
-        defaultMode: "default",
-        allow: [],
-        deny: [],
-        ask: [],
-      })
-
-      expect(
-        permissionManager.evaluate(
-          "wireframe",
-          { name: "Login", layout: "┌─┐" },
-          { collaborationMode: "design" },
-        ),
-      ).toBe("deny")
-      expect(
-        permissionManager.evaluate(
-          "read",
-          { path: "src/test.ts" },
-          { collaborationMode: "design" },
-        ),
-      ).toBe("allow")
-
-      const result = await permissionManager.gate(
-        gateContext("wireframe", { name: "Login", layout: "┌─┐" }),
-        "s1",
-        undefined,
-        { collaborationMode: "design" },
-      )
-      // 统一模式硬基线 reason（Front Design Mode 段）取代了此前的 wireframe 专用文案。
-      expect(result?.block).toBe(true)
-      expect(result?.reason).toContain("Front Design Mode")
-      expect(result?.reason).toContain("wireframe")
-    })
-  })
-
   describe("极简模式 (Minimal Mode 门禁)", () => {
     it("仅放行 bash 与 read/write/edit：其余工具全部硬拦截，bypassPermissions 也不可绕过", () => {
       applySettings({ defaultMode: "bypassPermissions", allow: [], deny: [], ask: [] })
@@ -954,7 +917,6 @@ describe("permissionManager 协作模式权限（模式策略统一表）", () =
     for (const toolName of ["write", "edit", "apply_patch", "todowrite", "memory"]) {
       expect(permissionManager.evaluate(toolName, {}, { collaborationMode: "review" })).toBe("deny")
       expect(permissionManager.evaluate(toolName, {}, { collaborationMode: "plan" })).toBe("deny")
-      expect(permissionManager.evaluate(toolName, {}, { collaborationMode: "design" })).toBe("deny")
     }
     // build 模式不受硬基线约束（bypassPermissions 放行）。
     expect(
@@ -1037,9 +999,6 @@ describe("permissionManager 协作模式权限（模式策略统一表）", () =
     expect(permissionManager.evaluate("task", workerTask, { collaborationMode: "plan" })).toBe(
       "deny",
     )
-    expect(permissionManager.evaluate("task", workerTask, { collaborationMode: "design" })).toBe(
-      "deny",
-    )
     // build 模式硬基线为空：无限制角色不受影响。
     expect(permissionManager.evaluate("task", workerTask, { collaborationMode: "build" })).toBe(
       "allow",
@@ -1101,17 +1060,6 @@ describe("permissionManager 协作模式权限（模式策略统一表）", () =
     expect(permissionManager.evaluate("write", { path: "a.ts" }, child)).toBe("deny")
     expect(permissionManager.evaluate("memory", {}, child)).toBe("deny")
     expect(permissionManager.evaluate("read", {}, child)).toBe("allow")
-    // 父为 design 时子代理同样禁用 wireframe。
-    expect(
-      permissionManager.evaluate(
-        "wireframe",
-        { title: "t" },
-        {
-          collaborationMode: "build",
-          parentMode: "design",
-        },
-      ),
-    ).toBe("deny")
     // 父为 build（或缺省）时不额外限制。
     expect(
       permissionManager.evaluate(
@@ -1123,20 +1071,6 @@ describe("permissionManager 协作模式权限（模式策略统一表）", () =
         },
       ),
     ).toBe("allow")
-  })
-
-  it("design 模式额外禁用 wireframe，其余模式不受影响", () => {
-    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
-    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "design" })).toBe(
-      "deny",
-    )
-    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "build" })).toBe(
-      "allow",
-    )
-    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "plan" })).toBe("allow")
-    expect(permissionManager.evaluate("wireframe", {}, { collaborationMode: "review" })).toBe(
-      "allow",
-    )
   })
 
   it("模式白名单四组独立判定：tools/mcp/skills/websearch 缺省组不限制", () => {
@@ -1294,19 +1228,10 @@ describe("permissionManager 协作模式权限（模式策略统一表）", () =
       gateContext("write", { path: "a.ts" }),
       "s1",
       undefined,
-      { collaborationMode: "design" },
+      { collaborationMode: "review" },
     )
     expect(blocked?.block).toBe(true)
-    expect(blocked?.reason).toContain("Front Design Mode")
-
-    const wireframe = await permissionManager.gate(
-      gateContext("wireframe", { title: "t", layout: "x" }),
-      "s1",
-      undefined,
-      { collaborationMode: "design" },
-    )
-    expect(wireframe?.block).toBe(true)
-    expect(wireframe?.reason).toContain("wireframe")
+    expect(blocked?.reason).toContain("Review Mode")
 
     applySettings({
       defaultMode: "default",

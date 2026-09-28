@@ -5,7 +5,6 @@ import {
   requestFrame,
   type ToolCallPatch,
 } from "@/features/agent/hooks/agentChatStreamUtils"
-import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import type { AgentChatCore } from "@/features/agent/hooks/useAgentChat.types"
 import {
   extractSubagentData,
@@ -22,9 +21,9 @@ import {
 export const useAgentChatFrames = ({
   core,
 }: {
-  core: Pick<AgentChatCore, "setMessages" | "streamingRef" | "currentSessionIdRef">
+  core: Pick<AgentChatCore, "setMessages" | "streamingRef">
 }) => {
-  const { setMessages, streamingRef, currentSessionIdRef } = core
+  const { setMessages, streamingRef } = core
   const pendingMessageUpdateRef = useRef<AgentMessage | null>(null)
   const pendingToolUpdatesRef = useRef(new Map<string, unknown>())
   const flushFrameRef = useRef<number | null>(null)
@@ -71,33 +70,10 @@ export const useAgentChatFrames = ({
     if (pendingMessage) {
       const streaming = streamingRef.current
       if (streaming) {
-        const updated = toChatMessage(
-          pendingMessage,
-          true,
-          streaming.id,
-          currentSessionIdRef.current,
-        )
+        const updated = toChatMessage(pendingMessage, true, streaming.id)
         updated.isStreaming = true
         streamingRef.current = updated
         setMessages((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
-
-        // 在流式输出过程中，如果包含前端设计卡片，实时同步到 frontDesignStore
-        updated.blocks.forEach((block) => {
-          if (block.kind === "frontDesign" && !block.design.isUpdate) {
-            frontDesignStore.registerDesign({
-              id: block.design.id,
-              parentId: block.design.parentId,
-              title: block.design.title,
-              html: block.design.html,
-              isStreaming: true,
-              autoActivate: true,
-              sessionId: currentSessionIdRef.current,
-              updatedAt: updated.timestamp,
-              mode: block.design.mode,
-              designDir: block.design.designDir,
-            })
-          }
-        })
       }
     }
 

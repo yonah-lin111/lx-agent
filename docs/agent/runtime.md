@@ -20,7 +20,7 @@ User Input / Drain
 ┌─────────────────┐
 │ TurnContext     │ ──► 捕获并冻结不可变环境快照:
 │                 │     - cwd, is_worktree, git_branch, platform
-│                 │     - collaborationMode (build | plan | review | design | minimal)
+│                 │     - collaborationMode (build | plan | review | minimal)
 │                 │     - sandboxPolicy
 └────────┬────────┘
          │
@@ -173,7 +173,7 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
       "maxDepth": 1,
       // 可选；缺省继承父会话模型。
       "defaultModel": { "provider": "anthropic", "model": "claude-sonnet-4-5" },
-      // 可选；子代理协作模式（build | plan | review | design），缺省 build；不继承主 Agent 模式。
+      // 可选；子代理协作模式（build | plan | review），缺省 build；不继承主 Agent 模式。
       "mode": "build",
       "roles": {
         "auditor": {
@@ -208,7 +208,7 @@ Token Saver 在 `aiSdkStreamFn` 发出请求前对**出站副本**做压缩与�
 | `maxDepth` | 整数 1–5 | 越界保存拒绝；读时回退 1 并告警 |
 | `maxConcurrent` | 整数 1–32 | 越界保存拒绝；读时回退缺省（不限）并告警 |
 | `defaultModel` | `ModelSelection`（provider/model 需存在，由消费者降级） | 缺省即继承；非法仅运行时告警降级 |
-| `mode` | `build` / `plan` / `review` / `design` | 缺省即 `build`；非法保存拒绝，读时告警 + 忽略（回退 `build`） |
+| `mode` | `build` / `plan` / `review` | 缺省即 `build`；非法保存拒绝，读时告警 + 忽略（回退 `build`） |
 
 设置与 IPC：`settings:subagents:get/save/builtins/get-capabilities` 四个通道；设置页「子代理」分区（全局治理卡片 + 内置角色列表（权限可编辑、身份只读）+ 用户角色增删改，`SubagentSettings.tsx`）；角色弹窗宽 720px、内嵌 `SubagentPermissionsForm.tsx` 2×2 权限编辑器（组开关 + 多选清单 + 全选/清空，能力目录来自 `get-capabilities`，卡片挂 `settings-item-card` 供主题适配）。
 

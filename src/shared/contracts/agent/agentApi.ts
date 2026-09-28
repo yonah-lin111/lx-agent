@@ -73,7 +73,7 @@ export interface AgentApi {
       sessionId?: string,
       tabId?: string,
     ) => Promise<{ ok: true; message?: ModelSwitchMessage } | { ok: false; error: string }>
-    // 切换协作模式（基础模式：build / auto / plan / review / design / minimal）。
+    // 切换协作模式（基础模式：build / auto / plan / review / minimal）。
     setCollaborationMode: (
       mode: CollaborationMode,
       sessionId?: string,
@@ -191,25 +191,6 @@ export interface AgentApi {
     ) => Promise<JobReadResult | null>
     // 查询当前会话装配的完整系统提示词与注入配置（执行流程面板展示用）。
     getPromptAssembly: (sessionId?: string, cwd?: string, tabId?: string) => Promise<PromptAssembly>
-    // 编译 HTML 中使用的 Tailwind CSS 样式
-    compileTailwind: (html: string) => Promise<string>
-    // 保存并拆分前端设计文件到 ~/.lx/session/{sessionId}/design/{designId}/
-    saveFrontDesign: (options: {
-      sessionId: string
-      designId: string
-      html: string
-      mode?: "tailwindcss" | "css"
-    }) => Promise<{
-      ok: boolean
-      dir: string
-      htmlPath: string
-      cssPath: string
-      jsPath: string
-      error?: string
-    }>
-    // 打开指定前端设计本地目录
-    openDesignDir: (sessionId: string, designId: string) => Promise<boolean>
-    // 导出指定前端设计的预览图（PNG，全页、按档位宽度与主题）
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

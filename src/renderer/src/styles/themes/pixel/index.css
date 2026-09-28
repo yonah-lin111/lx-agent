@@ -21,7 +21,6 @@
   --agent-mode-auto-tint: rgba(99, 102, 241, 0.22);
   --agent-mode-plan-tint: rgba(56, 189, 248, 0.22);
   --agent-mode-review-tint: rgba(168, 85, 247, 0.24);
-  --agent-mode-design-tint: rgba(236, 72, 153, 0.22);
   --agent-mode-minimal-tint: rgba(16, 185, 129, 0.22);
   /* 用量图表配色：压暗矿物色板（钻石 / 绿宝石 / 紫水晶 / 金 / 红石 / 青金石 + 羊皮 / 安山岩）。 */
   --color-usage-chart-fresh-input: #4ec5c5;
@@ -943,8 +942,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 [data-theme="pixel"] .terminal-empty-state,
 [data-theme="pixel"] .agent-page-container,
 [data-theme="pixel"] .markdown-editor-workspace,
-[data-theme="pixel"] .ui-preview-page-container,
-[data-theme="pixel"] .front-design-empty-canvas {
+[data-theme="pixel"] .ui-preview-page-container {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #12121a !important;

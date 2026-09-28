@@ -223,10 +223,10 @@ const parseMaxConcurrent = (raw: unknown, errors: string[]): number | undefined 
 // 解析 mode：非法或缺失一律忽略（生效值回退 build）并告警。
 const parseMode = (raw: unknown, errors: string[]): CollaborationMode | undefined => {
   if (raw === undefined) return undefined
-  if (raw === "build" || raw === "plan" || raw === "review" || raw === "design") {
+  if (raw === "build" || raw === "plan" || raw === "review") {
     return raw
   }
-  errors.push(`mode 须为 build | plan | review | design，已忽略: ${describeValue(raw)}`)
+  errors.push(`mode 须为 build | plan | review，已忽略: ${describeValue(raw)}`)
   return undefined
 }
 

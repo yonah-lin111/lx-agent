@@ -50,7 +50,7 @@ skips the prompt entirely — locally built apps carry no quarantine flag.
 | Area | What it does |
 | :--- | :--- |
 | **Agent runtime** | Streaming multi-turn chat on Anthropic, OpenAI, Google or any OpenAI-compatible endpoint, with per-task model selection, an idle watchdog and abort/resume control. |
-| **Collaboration modes** | `Shift + Tab` cycles `build → plan → review → design`. Plan, review and design answers are parsed out of the stream into interactive cards — implementation plan, review findings, front-design canvas — with one-click promotion back to build. |
+| **Collaboration modes** | `Shift + Tab` cycles `build → plan → review`. Plan and review answers are parsed out of the stream into interactive cards — implementation plan and review findings — with one-click promotion back to build. |
 | **Tooling** | File `read` / `write` / `edit` plus atomic multi-file patches, `glob` / `grep` / `find` search, PTY-backed unified exec with background jobs, web fetch and web search, image viewing, to-do lists and post-write LSP diagnostics. |
 | **Safety gates** | Four-mode permission gate, three-tier sandbox, Guardian risk evaluator, repeat-tool guard and multi-level approval prompts before anything touches your disk. |
 | **Context governance** | Automatic compaction and pruning plus Token Saver — deterministic tool-output compression with optional style injection — to keep long sessions affordable. |
@@ -59,7 +59,6 @@ skips the prompt entirely — locally built apps carry no quarantine flag.
 | **Sessions** | Up to 8 parallel agent tabs, steer and follow-up queues, SQLite-persisted history, session forking from any user turn and standalone HTML export. |
 | **Projects** | Group prompts, assets and files into projects and folders, with fast file search across referenced paths. |
 | **Markdown studio** | CodeMirror-based editor with variable commands, template presets and a rendered preview side by side. |
-| **Front Design** | Agents emit design specs that render live inside an isolated preview protocol, so iterations happen in place instead of in screenshots. |
 | **OpenClaw** | WebSocket access to one or many gateways: fan a single message out to several agents, watch the merged timeline, and delegate tasks across pages with `@claw:<instance>/<agent>`. |
 | **Terminal & Git** | Integrated xterm terminal on a real PTY, plus repository status and snapshots inside the workspace. |
 | **Usage & schedule** | Token, cost and request dashboards per model, provider and session; daily task planning and a year-long session activity heatmap. |
@@ -74,11 +73,9 @@ skips the prompt entirely — locally built apps carry no quarantine flag.
 | :---: | :---: |
 | ![Agent execution flow view with system prompt, initial model and grouped tool calls](./docs/assets/agent-execution-flow.png) | ![Integrated terminal running OpenCode and Claude Code](./docs/assets/terminal-cli.png) |
 
-### Design and collaboration
+### OpenClaw workspace
 
-| Front Design canvas | OpenClaw multi-instance workspace |
-| :---: | :---: |
-| ![Front Design canvas rendering an agent-generated design live, with the generated code and iterate actions alongside](./docs/assets/front-design-canvas.png) | ![OpenClaw workspace with offices, team members and a merged conversation](./docs/assets/openclaw-workspace.png) |
+![OpenClaw workspace with offices, team members and a merged conversation](./docs/assets/openclaw-workspace.png)
 
 ### Projects and markdown
 

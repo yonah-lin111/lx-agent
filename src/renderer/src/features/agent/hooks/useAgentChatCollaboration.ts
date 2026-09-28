@@ -116,7 +116,7 @@ export const useAgentChatCollaboration = ({
       const result = await agentApi.switchModel(selection, sessionId, tabId)
       if (result.ok && result.message) {
         const msg = result.message
-        const item = toChatMessage(msg, false, createChatMessageId(), sessionId)
+        const item = toChatMessage(msg, false, createChatMessageId())
         setMessages((prev) => upsertSwitchMessage(prev, item))
       }
       return result

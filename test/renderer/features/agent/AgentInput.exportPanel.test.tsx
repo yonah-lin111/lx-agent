@@ -55,12 +55,6 @@ vi.mock("@/features/agent/hooks/agentTabStore", () => ({
   },
 }))
 
-vi.mock("@/features/agent/hooks/frontDesignStore", () => ({
-  frontDesignStore: {
-    getAllDesigns: vi.fn().mockReturnValue([]),
-  },
-}))
-
 vi.stubGlobal(
   "ResizeObserver",
   class {

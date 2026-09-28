@@ -3,11 +3,9 @@ import type { ModelSelection } from "@shared/settings"
 import { useCallback, useMemo } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
-import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import type { AgentChatCore } from "@/features/agent/hooks/useAgentChat.types"
 import { cleanUserPrompt } from "@/features/agent/utils"
-import { buildDesignReferenceBlocks } from "@/features/agent/utils/designReferenceInjection"
 import { extractClawMentions, stripClawMention } from "@/features/openclaw/clawMention"
 import { useOpenClawOfficeStore } from "@/features/openclaw/openclawOfficeStore"
 import { navigateTo } from "@/lib/navigate"
@@ -87,16 +85,6 @@ export const useAgentChatSend = ({
         return
       }
 
-      // 注入设计上下文：显式 @design:{id}#selector 引用优先，design 模式下无引用时以画布激活设计为默认修改基线。
-      const designBlocks = buildDesignReferenceBlocks(text, {
-        collaborationMode,
-        currentSessionId: currentSessionIdRef.current,
-        activeDesign: frontDesignStore.getActiveDesign(),
-        resolveDesign: (id) => frontDesignStore.getDesign(id),
-      })
-      if (designBlocks.length > 0) {
-        text = `${designBlocks.join("\n\n")}\n\n${text}`
-      }
       // 上下文压缩中：禁止发送，避免与压缩/续跑竞态。
       if (isCompacting) {
         errorToast(

@@ -3,7 +3,6 @@ import { useCallback, useEffect } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { cancelFrame, createChatMessageId } from "@/features/agent/hooks/agentChatStreamUtils"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
-import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import type { AgentChatCore, AgentChatFrames } from "@/features/agent/hooks/useAgentChat.types"
 import type { ChatMessage } from "@/features/agent/types"
@@ -15,7 +14,6 @@ import {
   toChatMessage,
   upsertSwitchMessage,
 } from "@/features/agent/utils"
-import { synthesizeDesignUpdate } from "@/features/agent/utils/designSynthesizer"
 
 /**
  * 分发 main 进程推送的 AgentEvent，支持基于 sessionId 与 tabId 的精准路由。
@@ -124,12 +122,7 @@ export const useAgentChatEvents = ({
         case "message_start": {
           const message = event.message
           const streaming = message.role === "assistant" && message.stopReason === "pending"
-          const item = toChatMessage(
-            message,
-            streaming,
-            createChatMessageId(),
-            currentSessionIdRef.current,
-          )
+          const item = toChatMessage(message, streaming, createChatMessageId())
           // 队列 drain 自动发送的消息：标记后供列表跳过"用户发送→滚动到底"（drain 前 queue_changed 已置位）。
           if (drainIncomingRef.current) {
             drainIncomingRef.current = false
@@ -170,89 +163,9 @@ export const useAgentChatEvents = ({
           if (event.message.role !== "assistant") return
           // 最终消息覆盖挂起分片的全部内容，丢弃未提交分片避免其回写旧内容。
           pendingMessageUpdateRef.current = null
-          const final = toChatMessage(
-            event.message,
-            false,
-            streaming.id,
-            currentSessionIdRef.current,
-          )
+          const final = toChatMessage(event.message, false, streaming.id)
           streamingRef.current = null
           setMessages((prev) => prev.map((item) => (item.id === final.id ? final : item)))
-
-          // 流式生成完毕，固化并注册设计卡片（isStreaming: false）。
-          // 同一轮内的多个补丁按出现顺序链式累积：后一个补丁基于前一个结果，避免多区域修改互相覆盖。
-          let chainBaseHtml: string | null = null
-          let chainParentId: string | null = null
-
-          final.blocks.forEach((block) => {
-            if (block.kind === "frontDesign") {
-              if (block.design.isUpdate) {
-                const declaredParentId = block.design.parentId
-                const targetSelector = block.design.target
-                const parentDesign = declaredParentId
-                  ? frontDesignStore.getDesign(declaredParentId)
-                  : frontDesignStore.getActiveDesign()
-                const baseHtml = chainBaseHtml ?? parentDesign?.html ?? null
-
-                if (!baseHtml || !targetSelector) {
-                  warningToast(
-                    t("frontDesign.updateTargetNotFound", {
-                      target: targetSelector || "unknown",
-                    }),
-                  )
-                  return
-                }
-
-                const synthResult = synthesizeDesignUpdate(
-                  baseHtml,
-                  targetSelector,
-                  block.design.html,
-                  block.design.action,
-                )
-
-                if (!synthResult.ok || !synthResult.synthesizedHtml) {
-                  warningToast(
-                    t("frontDesign.updateTargetNotFound", {
-                      target: targetSelector,
-                    }),
-                  )
-                  return
-                }
-
-                frontDesignStore.registerDesign({
-                  id: block.design.id,
-                  parentId: chainParentId ?? parentDesign?.id ?? declaredParentId ?? null,
-                  title:
-                    block.design.title || `${parentDesign?.title || "Frontend Prototype"} (Update)`,
-                  html: synthResult.synthesizedHtml,
-                  isStreaming: false,
-                  autoActivate: true,
-                  sessionId: currentSessionIdRef.current,
-                  updatedAt: final.timestamp,
-                  mode: block.design.mode || parentDesign?.mode,
-                  designDir: block.design.designDir,
-                })
-                chainBaseHtml = synthResult.synthesizedHtml
-                chainParentId = block.design.id
-                return
-              }
-
-              frontDesignStore.registerDesign({
-                id: block.design.id,
-                parentId: block.design.parentId,
-                title: block.design.title,
-                html: block.design.html,
-                isStreaming: false,
-                autoActivate: true,
-                sessionId: currentSessionIdRef.current,
-                updatedAt: final.timestamp,
-                mode: block.design.mode,
-                designDir: block.design.designDir,
-              })
-              chainBaseHtml = block.design.html
-              chainParentId = block.design.id
-            }
-          })
           break
         }
 
@@ -310,7 +223,7 @@ export const useAgentChatEvents = ({
 
         case "model_switch": {
           const msg = event.message
-          const item = toChatMessage(msg, false, createChatMessageId(), currentSessionIdRef.current)
+          const item = toChatMessage(msg, false, createChatMessageId())
           setMessages((prev) => upsertSwitchMessage(prev, item))
           break
         }
@@ -322,12 +235,7 @@ export const useAgentChatEvents = ({
           setIsCompacting(stillCompacting)
           if (!stillCompacting) setIsCompactingManual(false)
           const summary = {
-            ...toChatMessage(
-              event.message,
-              false,
-              createChatMessageId(),
-              currentSessionIdRef.current,
-            ),
+            ...toChatMessage(event.message, false, createChatMessageId()),
             compactionId: event.compactionId,
           }
           setMessages((prev) => {
@@ -383,12 +291,7 @@ export const useAgentChatEvents = ({
           setCollaborationMode(event.mode)
           setEffectiveMode(event.effectiveMode)
           if (event.message) {
-            const item = toChatMessage(
-              event.message,
-              false,
-              createChatMessageId(),
-              currentSessionIdRef.current,
-            )
+            const item = toChatMessage(event.message, false, createChatMessageId())
             setMessages((prev) => upsertSwitchMessage(prev, item))
           }
           if (event.removedMessage) {
@@ -402,8 +305,6 @@ export const useAgentChatEvents = ({
             successToast(t("agent.collaborationModeSwitchedToPlan"))
           } else if (event.effectiveMode === "review") {
             successToast(t("agent.collaborationModeSwitchedToReview"))
-          } else if (event.effectiveMode === "design") {
-            successToast(t("agent.collaborationModeSwitchedToDesign"))
           } else if (event.mode === "auto") {
             successToast(t("agent.collaborationModeSwitchedToAuto"))
           } else if (event.mode === "minimal") {

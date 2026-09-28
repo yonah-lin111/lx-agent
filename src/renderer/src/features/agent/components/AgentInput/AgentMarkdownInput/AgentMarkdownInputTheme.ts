@@ -324,12 +324,6 @@ export const agentEditorTheme = EditorView.theme({
   ".cm-md-template-hidden-line": {
     display: "none !important",
   },
-  ".cm-md-design-mention, .cm-md-design-mention *": {
-    color: "#f472b6 !important",
-    fontWeight: "500",
-    textDecoration: "underline",
-    textDecorationColor: "rgba(244, 114, 182, 0.4)",
-  },
   ".cm-md-agent-mention, .cm-md-agent-mention *": {
     color: "#7dd3fc !important",
     fontWeight: "500",

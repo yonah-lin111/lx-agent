@@ -1,4 +1,4 @@
-import { Bot, FileText, Folder, Palette, Plug, Sparkles, UserCog } from "lucide-react"
+import { Bot, FileText, Folder, Plug, Sparkles, UserCog } from "lucide-react"
 import type { CSSProperties } from "react"
 import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPanel"
 import { LxTag } from "@/components/ui/LxTag"
@@ -121,52 +121,6 @@ export const AgentInputFilePanel = ({
                       size="small"
                     >
                       Skill
-                    </LxTag>
-                  </div>
-                </LxCommandPanelItem>
-              )
-            }
-
-            if (item.kind === "design") {
-              const { design } = item
-              const title = design.title || t("frontDesign.title")
-              const lines = design.html ? design.html.split("\n").length : 0
-              const modeLabel = design.mode === "css" ? "CSS" : "Tailwind"
-              const versionLabel = design.version ? `v${design.version}` : undefined
-
-              return (
-                <LxCommandPanelItem
-                  key={`design-${design.id}`}
-                  active={isActive}
-                  className="flex min-h-11 items-center gap-2 px-2 py-1 text-xs"
-                  index={index}
-                  leading={
-                    <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-pink-500/20 text-pink-400">
-                      <Palette className="h-3.5 w-3.5" />
-                    </span>
-                  }
-                  onSelect={() => onSelect?.(item)}
-                >
-                  <span className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
-                      <span className="font-medium text-white truncate max-w-[220px]">{title}</span>
-                      {versionLabel && (
-                        <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1 py-0.2 text-xs font-medium text-pink-300">
-                          {versionLabel}
-                        </span>
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
-                      {lines} {t("frontDesign.lines")} · {modeLabel}
-                    </span>
-                  </span>
-                  <div className="ml-auto flex shrink-0 items-center gap-1">
-                    <LxTag
-                      bgClass="bg-pink-500/20 text-pink-300"
-                      className="pointer-events-none shrink-0"
-                      size="small"
-                    >
-                      Design
                     </LxTag>
                   </div>
                 </LxCommandPanelItem>

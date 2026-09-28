@@ -1,7 +1,6 @@
 import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
 import { GAME_PROTOCOL } from "@shared/contracts/game"
-import { FRONT_DESIGN_PROTOCOL } from "@shared/frontDesign"
 import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
 import { app, BrowserWindow, protocol } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
@@ -28,7 +27,6 @@ import { registerUpdateHandlers } from "@/ipc/updateHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
 import { isDevRuntime, resolveDevUserDataDir } from "@/lib/runtimeMode"
 import { ensureLoginShellPath } from "@/lib/shellEnv"
-import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerGameProtocol } from "@/protocols/gameProtocol"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
 import { openExternalUrl } from "@/services/externalLinkService"
@@ -43,10 +41,6 @@ protocol.registerSchemesAsPrivileged([
   {
     scheme: LOCAL_IMAGE_PROTOCOL,
     privileges: { secure: true, standard: true },
-  },
-  {
-    scheme: FRONT_DESIGN_PROTOCOL,
-    privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true },
   },
   {
     scheme: GAME_PROTOCOL,
@@ -124,7 +118,6 @@ if (!hasSingleInstanceLock) {
     // 旧版游戏布局（game/roms、game/saves）与新目录结构不兼容，启动时一次性清空。
     gameRomService.resetLegacyLayout()
     registerLocalImageProtocol()
-    registerFrontDesignProtocol()
     registerGameProtocol()
     registerActivityHandlers()
     registerScheduleHandlers()

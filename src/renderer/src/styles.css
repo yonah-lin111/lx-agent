@@ -1301,10 +1301,6 @@ select {
   --agent-mode-tint: var(--agent-mode-review-tint);
 }
 
-[data-agent-mode="design"] {
-  --agent-mode-tint: var(--agent-mode-design-tint);
-}
-
 [data-agent-mode="minimal"] {
   --agent-mode-tint: var(--agent-mode-minimal-tint);
 }

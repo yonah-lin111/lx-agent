@@ -1,6 +1,6 @@
-# 协作模式（Auto / Plan / Review / Design / Minimal）
+# 协作模式（Auto / Plan / Review / Minimal）
 
-LX Agent 定义六态协作模式：`build`（执行）、`auto`（自动编排）、`plan`（规划）、`review`（审查）、`design`（前端设计）、`minimal`（极简：终端 + 读写）。本文档定义 Auto / Plan / Review / Design / Minimal 五态的提示词契约、运行时门禁、输出协议解析、交互卡片与 Front Design 画布闭环；`build` 无特殊协议，工具级门禁细节见 [permissions.md](./permissions.md)。
+LX Agent 定义五态协作模式：`build`（执行）、`auto`（自动编排）、`plan`（规划）、`review`（审查）、`minimal`（极简：终端 + 读写）。本文档定义 Auto / Plan / Review / Minimal 四态的提示词契约、运行时门禁、输出协议解析与交互卡片；`build` 无特殊协议，工具级门禁细节见 [permissions.md](./permissions.md)。
 
 架构总览见 [architecture.md](./architecture.md)；提示词装配见 [tools.md](./tools.md) §3。
 
@@ -8,50 +8,49 @@ LX Agent 定义六态协作模式：`build`（执行）、`auto`（自动编排�
 
 ## 1. 模式切换与提示词装配
 
-- **切换入口**：`Shift + Tab` 在 `build → auto → plan → review → design → minimal → build` 循环；状态栏 `CollaborationModeButton` 同步展示（auto 下显示「Auto · 有效模式」），点击标签弹出模式列表可定向切换；**Agent 生成/执行中（`isStreaming`）禁用切换**——标签降级为纯 hover 提示（含锁定说明）、`Shift + Tab` 以 warning toast 提示运行中不可切换；输入容器与其中控件（麦克风 / 加号 / 模型选择 / 发送按钮；用量胶囊保持透明）统一按展示模式叠加模式底纹（`data-agent-mode` + `--agent-mode-*-tint`，auto 跟随有效模式、有效 build 回退 auto 色；控件底纹叠加在自身底色之上）；下拉弹层与 Tooltip 位于浮层、保持默认外观，状态栏不变色；卡片一键采纳经 `setEffectiveMode` 退出只读模式；新会话启动模式取 `agent.permissions.collaborationMode`（缺省 `build`）。
-- **契约**：`CollaborationMode = "build" | "auto" | "plan" | "review" | "design" | "minimal"`；循环顺序与 `nextCollaborationMode` 由 `COLLABORATION_MODE_ORDER` 单一来源定义；`switch_mode` 可达目标由 `SWITCH_MODE_TARGETS`（build/plan/review/design，永久排除 minimal）定义；历史会话中的 `"default"` 由 `normalizeCollaborationMode` 归一化为 `"build"`。
+- **切换入口**：`Shift + Tab` 在 `build → auto → plan → review → minimal → build` 循环；状态栏 `CollaborationModeButton` 同步展示（auto 下显示「Auto · 有效模式」），点击标签弹出模式列表可定向切换；**Agent 生成/执行中（`isStreaming`）禁用切换**——标签降级为纯 hover 提示（含锁定说明）、`Shift + Tab` 以 warning toast 提示运行中不可切换；输入容器与其中控件（麦克风 / 加号 / 模型选择 / 发送按钮；用量胶囊保持透明）统一按展示模式叠加模式底纹（`data-agent-mode` + `--agent-mode-*-tint`，auto 跟随有效模式、有效 build 回退 auto 色；控件底纹叠加在自身底色之上）；下拉弹层与 Tooltip 位于浮层、保持默认外观，状态栏不变色；卡片一键采纳经 `setEffectiveMode` 退出只读模式；新会话启动模式取 `agent.permissions.collaborationMode`（缺省 `build`）。
+- **契约**：`CollaborationMode = "build" | "auto" | "plan" | "review" | "minimal"`；循环顺序与 `nextCollaborationMode` 由 `COLLABORATION_MODE_ORDER` 单一来源定义；`switch_mode` 可达目标由 `SWITCH_MODE_TARGETS`（build/plan/review，永久排除 minimal）定义；历史会话中的 `"default"` 与已移除的 `"design"` 由 `normalizeCollaborationMode` 归一化为 `"build"`。
 - **提示词**：`SystemPromptManager` 的 COLLABORATION_MODE 段（order 380）按模式返回对应英文指令模板；Plan / Review 模板中明确声明「模式不因用户语气或祈使句改变」与「写入工具被禁用」；Minimal 走 `complete` 独占段（见 §6）。
 - **历史条目**：切换模式会在会话中落一条 `mode_change` entry（`CollaborationModeSwitchMessage`，非 LLM 上下文，不注入模型；auto 编排的有效模式切换额外携带 `viaAuto: true`），执行流程列表（FlowList）以 «Mode Switched: Plan Mode» 独立步骤展示（模式标签 + «via Auto» 标签 + 职责说明、不计入对话轮次）；**会话尾部连续的切换消息（模型/模式）按同类原地合并**——来回切换只更新同一条目（entry payload 原地更新、seq 与位置不变），被真实对话消息打断后才新增条目；**用户切回本条连续切换运行开始前的基础模式（`from`）时整条撤销**——同步移除内存消息与 seq 对齐、删除对应 `mode_change` entry，`collaboration_mode_changed` 以 `removedMessage` 通知 renderer 删除该项（`viaAuto` 条目与模型切换不参与撤销；旧数据无 `from` 时退回原地合并）；草稿态（会话尚未落库）切换只更新运行时模式，不产生条目。
-- **运行时门禁**：Plan / Review / Design 下 `write` / `edit` / `apply_patch` / `todowrite` / `memory` 由 `PermissionManager` 直接 deny（`design` 另禁 `wireframe`，`plan` 另禁 `question`——提问由内嵌 grill-me 的纯文本逐题协议承担），模型收到带模式说明的错误结果并以对应 XML 协议输出；Minimal 下仅 `bash` / `read` / `write` / `edit` 放行（`background: true` 参数拒绝），注册表激活层同步收窄（见 permissions.md §2）。
+- **运行时门禁**：Plan / Review 下 `write` / `edit` / `apply_patch` / `todowrite` / `memory` 由 `PermissionManager` 直接 deny（`plan` 另禁 `question`——提问由内嵌 grill-me 的纯文本逐题协议承担），模型收到带模式说明的错误结果并以对应 XML 协议输出；Minimal 下仅 `bash` / `read` / `write` / `edit` 放行（`background: true` 参数拒绝），注册表激活层同步收窄（见 permissions.md §2）。
 - **子代理派发**：`task` 由 `agent.permissions.modes.<mode>.subagents` 白名单控制——非 build 模式缺省仅允许内置探索子代理 `explorer`，可勾选其他或自定义角色（空数组 = 全禁）；Minimal 无 `task` 工具、不可派发；能力集含模式硬基线工具的角色（含未限制能力集）在该模式下永久禁用（设置页锁定 + 门控拒绝）；父模式硬基线经 `parentMode` 叠加到子代理的每次工具调用，派发不能绕过只读约束；模式段同时声明该限制，`task` 工具描述的 `Available agent types` 按模式裁剪（模型可见目录 = 实际可派发角色）。
-- **共享解析**：`utils.ts` 的 `parseTextWithProposedPlan()` 是统一标签提取器——同一段助手文本中按出现顺序识别 `<review_findings>` / `<proposed_plan>` / `<front_design>` / `<front_design_update>`，拆成结构化块与普通文本块，支持标签未闭合的流式容错与多块级联解析；结构化块同时驱动 `AgentMessageList`（聊天流卡片）与 `AgentExecutionFlowList`（执行步骤），两处复用同一卡片组件。
+- **共享解析**：`utils.ts` 的 `parseTextWithProposedPlan()` 是统一标签提取器——同一段助手文本中按出现顺序识别 `<review_findings>` / `<proposed_plan>` / `<grill_question>`，拆成结构化块与普通文本块，支持标签未闭合的流式容错与多块级联解析；结构化块同时驱动 `AgentMessageList`（聊天流卡片）与 `AgentExecutionFlowList`（执行步骤），两处复用同一卡片组件。
 
 ---
 
 ## 2. Auto Mode（自动编排）
 
-Auto 是编排基础模式：会话的门禁 / 提示词 / 子代理白名单始终按**有效模式**（effective mode）计算，模型经 `switch_mode` 工具在 `plan / review / design / build` 间自行切换，`minimal` 永久不可达（切换目标与 `task` 派发参数均拒绝）。
+Auto 是编排基础模式：会话的门禁 / 提示词 / 子代理白名单始终按**有效模式**（effective mode）计算，模型经 `switch_mode` 工具在 `plan / review / build` 间自行切换，`minimal` 永久不可达（切换目标与 `task` 派发参数均拒绝）。
 
 ### 2.1 双层状态模型
 
 - **基础模式**（`host.collaborationMode`）：用户选择；状态栏弹层 / `Shift + Tab` / 设置页默认值经 `setCollaborationMode` 整体替换——切到具体模式即退出 Auto（有效模式覆盖被清除）；切回 `auto` 时有效模式重置为 `build`。
 - **有效模式**（`host.effectiveMode`）：非 auto 基础模式恒等于基础模式；auto 下缺省 `build`，由 `switch_mode`（模型自决）或 `setEffectiveMode`（卡片采纳路径统一入口：base 为 auto 时只重置有效模式，否则等价于基础模式切换）更新。
 - **事件与历史**：`collaboration_mode_changed` 携带 `{ mode, effectiveMode }` 与可选的 `message`（新增/合并条目）或 `removedMessage`（撤销条目）；auto 编排的有效模式切换落 `mode_change` 条目（payload `viaAuto: true`），尾部连续切换仍原地合并（合并时清除上一条的 `viaAuto` 残留）；用户基础模式切换「切回运行起点」的整条撤销不作用于 `viaAuto` 条目。
-- **提示词装配**：`buildCollaborationModePrompt(base, effective)` 组合——auto 基础模式注入《Auto 编排策略》（六条判定规则，`autoModePrompt.ts`），有效模式为 plan / review / design 时叠加对应模式契约段；`minimal` 独占段不受影响。
+- **提示词装配**：`buildCollaborationModePrompt(base, effective)` 组合——auto 基础模式注入《Auto 编排策略》（三条判定规则，`autoModePrompt.ts`），有效模式为 plan / review 时叠加对应模式契约段；`minimal` 独占段不受影响。
 - **门禁**：提示词段、工具硬基线、`task` 角色裁剪、registry 激活集全部按有效模式计算；`switch_mode` 工具仅在 auto 基础模式的激活集中出现，门控层另有防御纵深拒绝（非 auto 调用直接 deny，即便被白名单放行）。
 
-### 2.2 切换策略（六条判定规则）
+### 2.2 切换策略（三条判定规则）
 
 1. 默认 build 直接执行小型、清晰、低风险改动，不切模式；一次有意义的阶段变化才切一次；用户对模式的显式要求永远优先。
 2. 跨多文件/模块、新功能与 API/schema/数据模型设计、需求含糊或多方案权衡、高风险不可逆操作、用户明确要计划 → 切 `plan`，走 `<proposed_plan>` 协议并结束回合等用户审批。
 3. 用户要求审查/审计 → 切 `review` 输出 `<review_findings>`；实现完重大或高风险改动后，派发 `task(mode="review")` 子代理做隔离验证，把结论并入完成汇报；琐碎改动跳过自审。
-4. UI / 页面 / 原型设计 → 切 `design` 走 `<front_design>` 协议（只读）。
-5. 需要用户交互/审批的协议产物必须**内联自产**（计划卡、审查卡、设计画布）；隔离探查、草稿、并行扇出走 `task` 派发（其产出只是文本工具结果，不回传卡片）。
-6. 只读模式回 `build` 由模型在用户批准后自行完成（不得在展示计划的同一轮切回）；`minimal` 永久不可达；不要为小改动反复横跳。
+4. 需要用户交互/审批的协议产物必须**内联自产**（计划卡、审查卡）；隔离探查、草稿、并行扇出走 `task` 派发（其产出只是文本工具结果，不回传卡片）。
+5. 只读模式回 `build` 由模型在用户批准后自行完成（不得在展示计划的同一轮切回）；`minimal` 永久不可达；不要为小改动反复横跳。
 
 ### 2.3 `switch_mode` 工具与切换审计
 
 - **激活**：`switch_mode` 仅在 auto 基础模式装配进激活工具集（`ALL_TOOL_NAMES` + `sessionRunnerAgentFactory` 激活收窄）；工具描述内嵌判定规则与退出约束。
-- **即时性**：进入只读模式（plan / review / design）即时生效（当轮门控立即生效）；工具结果同步返回目标模式的契约与退出约束（系统提示词在下一轮 `ensureReady` 重建时才更新）。
+- **即时性**：进入只读模式（plan / review）即时生效（当轮门控立即生效）；工具结果同步返回目标模式的契约与退出约束（系统提示词在下一轮 `ensureReady` 重建时才更新）。
 - **自行退出（无宿主二次确认）**：用户批准后（点击计划/审查卡片，或在对话中明确要求继续），模型自行调用 `switch_mode("build")` 退出只读模式，即时生效并落 `mode_change` 条目（`viaAuto: true`）供审计；状态栏即时显示 `Auto · Build`，执行流程视图以独立步骤展示切换。计划/审查卡片的采纳按钮仍走 `setEffectiveMode`（用户点击直达）。
 - **提示词约束**：输出 `<proposed_plan>` 的计划轮不得同轮调用 `switch_mode("build")`（用户尚未批准）；用户未批准前模型须留在当前模式等待。
 
 ### 2.4 模式子代理派发（`task` 的 `mode` 参数）
 
-- `task`（单任务与批量 `tasks[]` 项）新增可选 `mode`（`build | plan | review | design`），**仅 auto 基础模式**可用；其他基础模式传参直接拒绝（不会静默忽略）。
+- `task`（单任务与批量 `tasks[]` 项）新增可选 `mode`（`build | plan | review`），**仅 auto 基础模式**可用；其他基础模式传参直接拒绝（不会静默忽略）。
 - 子代理按该模式渲染系统提示词（`renderSubagentSystemPrompt(..., modeOverride)`，缺省缺口走 `agent.subagents.mode` 快照）并叠加模式硬基线：只读模式下子代理的写操作由父门控 deny（父模式基线以有效模式叠加）。
 - **角色兼容**：`roleBlockedTools(role.permissions, childMode)` 非空时拒绝派发（单任务整单、批量整批早退）；续接子代理不接受 `mode` 变更；嵌套派发继承父模式且不再接受 `mode`（禁止嵌套编排）。
-- **产出边界**：子代理输出只是文本工具结果，**不渲染协议卡片**；需要用户审批或交互的 `<proposed_plan>` / `<review_findings>` / `<front_design>` 必须由主 agent 内联切换到对应模式自行输出。
+- **产出边界**：子代理输出只是文本工具结果，**不渲染协议卡片**；需要用户审批或交互的 `<proposed_plan>` / `<review_findings>` 必须由主 agent 内联切换到对应模式自行输出。
 
 ### 2.5 权限语义
 
@@ -160,167 +159,6 @@ Auto 是编排基础模式：会话的门禁 / 提示词 / 子代理白名单始
 
 ---
 
-## 5. Front Design（design 模式）
-
-### 5.1 模式与提示词契约 (`systemPromptManager.ts`, order 380)
-
-`design` 模式下注入专用英文提示词，核心约束：
-
-- 工具级门禁：与 plan/review 共享同一只读硬基线并额外禁用 `wireframe`（见 permissions.md §2），可经 `agent.permissions.modes.design` 白名单进一步收紧。
-
-- 所有前端原型必须通过 `<front_design>` 协议输出完整 HTML；`mode="tailwindcss"`（默认）或 `mode="css"`。
-- **默认修改基线（`<current_design>`）**：画布有激活设计时，发送端自动注入其完整 HTML 为 `<current_design id title mode version>`，紧随其后注入 `<design_outline>` 结构大纲；提示词规定默认修改基线而非重建，仅当用户**明确要求新建**（"make a new one" 等）时才省略 `parent_id`。`mode` 属性默认沿用基线。
-- **修改通道按影响面选择（默认局部补丁）**：局部可定位的改动（某张卡片/某个区块/某个按钮）与**新增内容**都必须走 `<front_design_update>`，只输出受影响或新增的标记；仅当改动覆盖整篇（整体换风格、骨架重排、多处无关区域同时改）才回退 `<front_design parent_id>` 全量重写，且重写时禁止改名文档标题、禁止重排/重绘未触及区块、必须沿用基线 body 布局类。避免"一句话改动 → 全文重生成"造成的成本与无关漂移。
-- **更新动作（`action`）**：`replace`（默认，片段替换目标子树）/ `append`、`prepend`（插入目标容器内部末尾/开头，用于新增区块）/ `before`、`after`（插入目标同级前后）。`<html>`/`<body>` 不支持兄弟插入（直接失败）。未知动作归一化为 `replace`。新增类请求因此无需重写整篇文档。
-- **同轮多补丁链式累积**：一轮回复中的多个 `<front_design_update>` 按出现顺序依次缝合，后一个补丁基于前一个结果（版本链 `patch1 → patch2`），避免多区域修改互相覆盖而被迫重写。
-- **结构大纲（`<design_outline>`，嵌套在基线块内）**：由 `buildDesignOutline()` 从基线 HTML 现算（`body > tag:nth-child(n)` 路径选择器 + 标签/类名/文本预览，深度 4、上限 40 条），与基线严格同源，宿主保证选择器可命中；模型应**逐字复用**大纲选择器，必要时可追加一层子级步骤（如 `> summary`），无匹配节点时才自行从基线推导选择器（优先 `#id`/`[data-section]`，退化 `:nth-child()` 路径）。选择器无法解析时补丁会被丢弃。
-- **意图含糊先反问**：无法判定"新建 vs 修改"时必须先调用 `question` 工具澄清，该轮不得输出 `<front_design>`；视觉细节（配色/间距/字体）不反问，由模型自行决策。
-- 二次修改时提示词会收到 `<referenced_design>` 基准代码，输出必须携带 `parent_id="{referenced_id}"`，且仍输出完整可执行 HTML（不允许片段 diff）。显式引用优先于 `<current_design>`。
-- 定向节点修改（`@design:{id}#{selector}`）时提示词会收到 `<global_styling_context>` 与 `<target_element>`，模型必须原样使用该 `target` 输出 `<front_design_update parent_id target>` 且**只输出目标节点的替换子树**（`replace` 动作下含目标元素自身标签与属性）。
-- **布局完整性契约**：全视口单焦点页面（登录/注册/404/空状态/单卡片）必须显式水平+垂直居中（`min-h-screen flex items-center justify-center` 或 `min-height:100vh; display:flex`）；常规页面顶部对齐 + `max-w-* mx-auto` 水平约束；提示词示例本身即为居中型布局。
-- **`wireframe` 工具禁用**：design 模式下 `PermissionManager` 对 `wireframe` 硬拦截（模式硬基线 `MODE_MUTATION_REASONS.design`，不进入审批弹窗），提示词同步声明禁用；布局结构必须直接表达在 `<front_design>` HTML 中。
-- 工程品味约束：优先原生 `<details>` / `<dialog>` / CSS `:has()` 等原语，慎写脆弱 JS；必要脚本使用 IIFE 并规避 `DOMContentLoaded` 依赖。
-
-```xml
-<front_design id="design-2" parent_id="design-1" title="登录页 (渐变紫)" mode="tailwindcss">
-<!DOCTYPE html> ... </front_design>
-
-<front_design_update parent_id="design-1" target="#hero-cta" title="更新行动按钮">
-  <button id="hero-cta" class="...">立即开始体验</button>
-</front_design_update>
-
-<front_design_update parent_id="design-1" target="body > main" action="append" title="新增登录卡片">
-  <section id="login-card" class="...">...</section>
-</front_design_update>
-```
-
-### 5.2 数据结构与存储
-
-```typescript
-// ChatBlock 中的设计块（types.ts）
-export interface FrontDesignData {
-  id: string
-  parentId?: string | null
-  version?: number
-  title?: string
-  target?: string | null   // front_design_update 的目标选择器
-  isUpdate?: boolean
-  html: string
-  raw: string
-  isStreaming?: boolean
-  sessionId?: string | null
-  mode?: "tailwindcss" | "css"
-  designDir?: string
-}
-
-// 响应式单例存储（frontDesignStore.ts）
-export interface FrontDesignItem {
-  id: string
-  parentId?: string | null
-  version?: number
-  title: string
-  html: string
-  updatedAt: number
-  isStreaming?: boolean
-  sessionId?: string | null
-  mode?: "tailwindcss" | "css"
-  designDir?: string
-}
-```
-
-`frontDesignStore` 关键行为：
-
-- **响应式订阅**：`subscribe/getState/useFrontDesign` 基于 `useSyncExternalStore`；`getDesign` / `getActiveDesign` / `getParentDesign` / `getDesignVersions` / `getRootDesigns` 提供谱系查询。侧边栏按"设计族"渲染：每个根节点一行，版本经工具栏下拉切换（`getDesignVersions`），版本不再单独成行。
-- **版本派生链**：`registerDesign` 依据 `parent_id`、同会话同名设计推断派生关系；跨轮次流式二次修改自动生成 `-v{n}` 新版本而**不覆盖**旧版本；同一次流式更新就地更新同一项；防御自引用环。
-- **稳定设计 id**：设计 id 前缀取消息时间戳（base36，`toChatMessage` → `buildStableDesignBaseId`），实时流式、消息定稿与会话恢复三条路径解析结果一致，避免依赖聊天消息自增 id 造成重启后 id 漂移、`parent_id` 失效。属性提取对 `id=` 做边界保护，`parent_id="x"` / `parentId="x"` 不会被误认为标签自身 id。
-- **恢复期版本链回落**：历史消息中的 `parent_id` 若指向已不存在的旧 id（老数据漂移），恢复时回落到同会话版本链头，保证同一设计的多个版本聚合在单一根节点下，不在侧边栏拆成独立条目。
-- **会话归属**：设计项记录 `sessionId`，草稿设计在会话落库后回填；`@` 提及与左栏均按当前会话过滤。
-- **激活联动**：`autoActivate` 时激活目标设计并在必要时切换到宿主 Tab。
-- **纯内存**：不写 localStorage（启动时清除历史遗留 key）。
-
-### 5.3 解析、热更新与落盘
-
-1. **流式解析**：标签提取器识别 `<front_design ...>` 与 `<front_design_update ...>`，提取 `id` / `parent_id` / `title` / `mode` / `target` 属性，生成 `kind: "frontDesign"` 块并实时写入 `frontDesignStore`。
-2. **聊天卡片**：`FrontDesignCard` 展示标题、`v{n}` 版本徽标、血缘链接、代码预览与【基于此迭代】按钮。
-3. **设计画布**：`/design` 路由的 `FrontDesignPage` 订阅 store 热更新，将 HTML 注入沙箱 Iframe（`sandbox="allow-scripts allow-same-origin"`），使用 `agentApi.compileTailwind(html)` 实时编译 Tailwind JIT；支持 Desktop / Tablet / Mobile 视口切换、刷新与复制代码。
-4. **三件套落盘**：`agentApi.saveFrontDesign` 将设计拆分为 `index.html` / `style.css` / `script.js` 写入 `~/.lx/session/{sessionId}/design/{designId}/`；`openDesignDir` 在系统文件管理器中打开。
-6. **左栏谱系**：`FrontDesignLeftSideBar` 按根节点聚合版本，展示原型演进历史。
-
-### 5.4 二次修改与 `@` 设计提及
-
-**引用 Token**：
-
-```text
-@design:{id}                         全量原型引用
-@design:{id}#{selector} ({element})  局部节点引用
-```
-
-匹配正则（`agentMarkdownInputUtils.ts` 的 `extractDesignMentions`）同时支持 `#id` 与 `#[data-design-id=...]` 两种选择器形态，并支持光标处整块删除。
-
-- **`@` 综合提及面板**：聚合文件 / Skill / 子代理角色 / 当前会话设计卡片，设计项带 Palette 图标、标题、代码行数与 `Design` 标签；选中插入 `@design:{id} ({title}) `。
-- **快捷迭代入口**：`FrontDesignCard` 与 `FrontDesignPage` 工具栏的【基于此迭代】自动切到 `design` 模式、填入引用并聚焦当前 Tab 输入框。
-- **发送端上下文注入（Zero Tool-Call）**：`useAgentChat.sendMessage` 经 `utils/designReferenceInjection.ts` 的 `buildDesignReferenceBlocks` 解析引用并直接注入基准代码，模型首轮即可见，无需读盘：
-  - 无 `target`：注入完整 `<referenced_design id title mode>`（基准 HTML 全文）。
-  - 带 `target`：调用 `extractDesignTargetContext` 做分层切片，仅注入 `<global_styling_context>`（主题、`html/body` 类名、标题）与 `<target_element selector>`（目标节点 `outerHTML`），避免携带数百行无关结构；目标未命中时降级全量注入。
-  - **隐式基线**：`design` 模式下无任何显式 `@design` 引用且画布有激活设计时，注入 `<current_design id title mode version>`（完整 HTML）（块内嵌套 `<design_outline>` 结构大纲选择器清单）作为默认修改基线；激活设计已绑定会话时要求与当前会话一致（草稿放行），跨会话不注入。显式引用存在时自动基线让位。
-  - 清洗用户气泡：`<referenced_design>` 与 `<current_design>` 块（含嵌套大纲）均不显示在用户消息文本中（`cleanUserPrompt`）。
-
-### 5.5 画布检查器与 DOM 定向更新
-
-**Visual Inspector（点选微调）**：
-
-- `FrontDesignPage` 顶部 `MousePointerClick` 开关维护 `isInspectorActive`。
-- 激活后向 iframe `contentDocument` 注入捕获阶段监听（`mousemove` / `click` / `mouseout`），`preventDefault + stopPropagation` 阻断原型自身交互；悬浮显示高亮框与 `tag#id | 宽×高` 标签。
-- 点击元素调用 `generateElementSelector(element)` 生成稳定锚点，优先级：
-  1. 已有唯一 `#id`；
-  2. `[data-section="..."]`；
-  3. 已有 `[data-design-id="..."]`；
-  4. 无标识时注入 `data-design-id="el-..."`，并同步刷回当前设计项 HTML 保持引用一致。
-- 生成的 Token `@design:{id}#{target} ({element}) ` 通过 `agentTabStore.insertPromptToActiveTab()` 注入激活 Tab 并切回聊天页。
-
-**DOM 树定向缝合器 (`utils/designSynthesizer.ts`)**：
-
-```typescript
-synthesizeDesignUpdate(baseHtml, targetSelector, newFragmentHtml): { ok, synthesizedHtml?, error? }
-extractDesignTargetContext(html, targetSelector): { ok, globalContext?, targetElementHtml?, error? }
-generateElementSelector(element): { selector, description, injectedAttr? }
-```
-
-- 基于 `DOMParser` 克隆基准原型，`querySelector` 定位目标后 `replaceWith` 新子树，序列化生成完整且合法的 `v2` 快照并注册派生版本（`parentId` + `version` 递增）。
-- 选择器归一化容错（多余 `#`、属性引号）；`data-design-id` 失配时按「tagName + class 全等且唯一」回退匹配。
-
-**容灾与降级**：
-
-- 目标节点未命中、选择器非法或 DOM 解析失败：弹出 `frontDesign.updateTargetNotFound` Toast，**放弃该次更新，不落库破损版本**。
-- 模型输出全量 `<front_design parent_id>` 时保持既有全量派生链路，不阻断。
-
-### 5.6 路由与组件清单
-
-| 位置 | 内容 |
-|---|---|
-| `lib/pageRoutes.ts` / `lib/navigationItems.ts` | `design: "/design"`，左栏底部 Palette 导航项 |
-| `routes/PageRouter.tsx` / `App.tsx` | 注册 `FrontDesignPage` 与专属 `FrontDesignLeftSideBar` |
-| `features/agent/components/blocks/FrontDesignCard.tsx` | 聊天流设计卡片（版本徽标 / 血缘 / 迭代入口 / 展开预览） |
-| `pages/front-design/FrontDesignPage.tsx` | 设计画布容器：组合工具栏与画布，编排导出/复制/刷新动作 |
-| `pages/front-design/hooks/useDesignTheme.ts` | 主题持久化、系统深浅色订阅与 `effectiveMode` 计算 |
-| `pages/front-design/hooks/useDesignPreview.ts` | Tailwind 编译、沙箱文档构建、iframe 增量更新与落盘同步 |
-| `pages/front-design/hooks/useDesignInspector.ts` | Inspector 开关、快捷键、iframe 浮层与 `@design` 引用回填 |
-| `pages/front-design/components/FrontDesignToolbar.tsx` | 顶部工具栏（版本 / 视口 / 主题 / Inspector / 复制 / 打开设计目录） |
-| `pages/front-design/components/FrontDesignCanvas.tsx` | 空状态提示与沙箱 iframe 预览 |
-| `pages/front-design/components/FrontDesignLeftSideBar.tsx` | 设计族谱与版本导航 |
-| `features/agent/hooks/frontDesignStore.ts` | 响应式单例存储与版本谱系 |
-| `features/agent/utils/designSynthesizer.ts` | DOM 切片提取、选择器生成与定向缝合纯函数 |
-| `features/agent/utils/designOutline.ts` | 基线结构大纲生成（`body > tag:nth-child(n)` 路径选择器清单），供模型选择 `<front_design_update target>` |
-| `features/agent/utils/designReferenceInjection.ts` | 显式引用与隐式 `<current_design>` 基线的上下文注入纯函数 |
-
-### 5.7 已知限制
-
-- 设计看板状态为纯内存单例，应用重启后不自动恢复；可用数据源是聊天消息中的协议原文与 `~/.lx/session/.../design/` 下的落盘文件。
-- Inspector 依赖 iframe 同源访问（`allow-same-origin`）；跨源或沙箱策略收紧时高亮与点选不可用。
-- 版本派生在模型未输出 `parent_id` 且标题相同的情况下按标题推断，标题被大改时会视为独立根设计。
-
----
-
 ## 6. Minimal Mode（极简终端 + 读写）
 
 最小工具集的轻量模式，用于测试与对比模型基础表现。**有意偏离 dsh minimal**：dsh `presets/minimal.patch.yml` 只组合 persona（`complete`）+ persistent-shell（shell-only），本实现在此之上额外开放 `read` / `write` / `edit`（文件读写有专用工具后不再依赖 shell 转义与 heredoc）：
@@ -337,10 +175,9 @@ generateElementSelector(element): { selector, description, injectedAttr? }
 
 | 命名空间 | 用途 |
 | :--- | :--- |
-| `agent.collaborationModeBuild` / `collaborationModeAuto` / `collaborationModePlan` / `collaborationModeReview` / `collaborationModeDesign` / `collaborationModeMinimal` | 状态栏模式名、模式列表与切换提示 |
+| `agent.collaborationModeBuild` / `collaborationModeAuto` / `collaborationModePlan` / `collaborationModeReview` / `collaborationModeMinimal` | 状态栏模式名、模式列表与切换提示 |
 | `agent.modeSwitchViaAuto` | FlowList 中 auto 编排切换的「Auto 编排」标签 |
 | `agent.plan.*` | 计划卡片：`cardTitle` / `acceptAndExecute` / `planAccepted` / `copyPlan` / `copySuccess` |
 | `agent.review.*` | 审查卡片：`badge` / `applyFixes` / `fillInput` / `noFindings` / `selectedCount` 等 |
-| `frontDesign.*` | 设计卡片与画布：`iterateAction` / `basedOnPrefix` / `versionBadge` / `inspectMode` / `viewportDesktop|Tablet|Mobile` / `openDesignDir` / `updateTargetNotFound` 等 |
 
 全部文案经 `useTranslation` 输出，禁止硬编码与原生 `title` 属性；样式统一使用 `--color-theme-*` CSS Token。

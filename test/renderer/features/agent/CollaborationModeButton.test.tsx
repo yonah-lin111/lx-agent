@@ -73,11 +73,11 @@ describe("CollaborationModeButton 模式展示与点击选择", () => {
     ).toBeTruthy()
   })
 
-  it("点击弹出六种模式列表（含 Auto）：当前项勾选，选择后回调并关闭", async () => {
+  it("点击弹出五种模式列表（含 Auto）：当前项勾选，选择后回调并关闭", async () => {
     const onModeChange = vi.fn()
-    render(<CollaborationModeButton mode="design" onModeChange={onModeChange} />)
+    render(<CollaborationModeButton mode="review" onModeChange={onModeChange} />)
 
-    fireEvent.click(screen.getByText("Design"))
+    fireEvent.click(screen.getByText("Review"))
 
     const listbox = await screen.findByRole("listbox")
     expect(listbox).toBeTruthy()
@@ -87,10 +87,9 @@ describe("CollaborationModeButton 模式展示与点击选择", () => {
       "Auto Mode",
       "Plan Mode",
       "Review Mode",
-      "Design Mode",
       "Minimal Mode",
     ])
-    expect(screen.getByRole("option", { name: "Design Mode" }).getAttribute("aria-selected")).toBe(
+    expect(screen.getByRole("option", { name: "Review Mode" }).getAttribute("aria-selected")).toBe(
       "true",
     )
     expect(screen.getByRole("option", { name: "Minimal Mode" }).getAttribute("aria-selected")).toBe(

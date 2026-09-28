@@ -21,7 +21,7 @@ interface CollaborationModeButtonProps {
 }
 
 /**
- * Agent 状态栏协作模式指示（Build / Auto / Plan / Review / Design / Minimal 展示与点击选择）。
+ * Agent 状态栏协作模式指示（Build / Auto / Plan / Review / Minimal 展示与点击选择）。
  * auto 基础模式下标签显示为「Auto · {有效模式}」，颜色随有效模式变化以体现当前约束。
  */
 export const CollaborationModeButton = ({

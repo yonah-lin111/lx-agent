@@ -17,7 +17,6 @@ import type {
   AgentInputSessionItem,
   AgentMentionItem,
 } from "../../AgentInputCommandPanels"
-import { getDesignMentionDeletionRange } from "../agentMarkdownInputUtils"
 import type { AgentInputActiveMode, AgentInputPastePanelState } from "../types"
 
 interface UseAgentInputKeymapProps {
@@ -519,18 +518,8 @@ export const useAgentInputKeymap = ({
               const cursor = view.state.selection.main
               if (cursor.from !== cursor.to) return false
 
-              // 优先匹配 Design 模式提及的快速整块删除
-              const docText = view.state.doc.toString()
-              const designRange = getDesignMentionDeletionRange(docText, cursor.from)
-              if (designRange) {
-                view.dispatch({
-                  changes: { from: designRange.from, to: designRange.to, insert: "" },
-                  selection: { anchor: designRange.from },
-                })
-                return true
-              }
-
               // 匹配 @agentMode 模式提及的快速整块删除
+              const docText = view.state.doc.toString()
               const modeRange = getAgentModeMentionDeletionRange(docText, cursor.from)
               if (modeRange) {
                 view.dispatch({
