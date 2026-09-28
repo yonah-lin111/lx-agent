@@ -299,6 +299,23 @@ export const upsertSwitchMessage = (
   return [...messages, incoming]
 }
 
+/**
+ * 移除切换类消息：撤销"切回原模式"时，在尾部连续切换块内按 role + timestamp 删除对应条目（其余切换项保留）。
+ */
+export const removeSwitchMessage = (
+  messages: ChatMessage[],
+  removed: Pick<ChatMessage, "role" | "timestamp">,
+): ChatMessage[] => {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const current = messages[index]
+    if (!SWITCH_MESSAGE_ROLES.has(current.role)) break
+    if (current.role === removed.role && current.timestamp === removed.timestamp) {
+      return messages.filter((_, target) => target !== index)
+    }
+  }
+  return messages
+}
+
 // 将展示条目转回 shared AgentMessage（恢复会话时发送给 main）。
 export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
   messages.flatMap((message): AgentMessage[] => {

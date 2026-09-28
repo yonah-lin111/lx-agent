@@ -94,6 +94,7 @@ export const switchCollaborationMode = (
 ): { ok: true } => {
   const normalized = normalizeCollaborationMode(mode)
   const nextEffective = normalized === "auto" ? "build" : normalized
+  const previousMode = host.collaborationMode
   const changed = host.collaborationMode !== normalized || host.effectiveMode !== nextEffective
   host.collaborationMode = normalized
   host.effectiveMode = nextEffective
@@ -103,7 +104,7 @@ export const switchCollaborationMode = (
     emitModeChanged(host)
     return { ok: true }
   }
-  commitModeChange(host, normalized, {})
+  commitModeChange(host, normalized, { from: previousMode })
   return { ok: true }
 }
 
@@ -122,6 +123,7 @@ export const switchEffectiveMode = (
   if (host.collaborationMode !== "auto") {
     return switchCollaborationMode(host, normalized)
   }
+  const previousMode = host.effectiveMode
   const changed = host.effectiveMode !== normalized
   host.effectiveMode = normalized
   host.builtSignature = ""
@@ -130,28 +132,32 @@ export const switchEffectiveMode = (
     emitModeChanged(host)
     return { ok: true }
   }
-  commitModeChange(host, normalized, { viaAuto: true })
+  commitModeChange(host, normalized, { viaAuto: true, from: previousMode })
   return { ok: true }
 }
 
 // 广播模式状态（基础模式 + 有效模式）。
 const emitModeChanged = (
   host: SessionRunnerHost,
-  options?: { message?: CollaborationModeSwitchMessage },
+  options?: {
+    message?: CollaborationModeSwitchMessage
+    removedMessage?: CollaborationModeSwitchMessage
+  },
 ): void => {
   host.emitEvent({
     type: "collaboration_mode_changed",
     mode: host.collaborationMode,
     effectiveMode: host.effectiveMode,
     ...(options?.message ? { message: options.message } : {}),
+    ...(options?.removedMessage ? { removedMessage: options.removedMessage } : {}),
   })
 }
 
-// 落 mode_change 条目并广播：会话尾部连续切换消息原地合并（同 v1），草稿态只广播。
+// 落 mode_change 条目并广播：尾部连续切换原地合并；用户切回运行起点模式时整条撤销；草稿态只广播。
 const commitModeChange = (
   host: SessionRunnerHost,
   mode: CollaborationMode,
-  options: { viaAuto?: boolean },
+  options: { viaAuto?: boolean; from?: CollaborationMode },
 ): void => {
   const sessionId = host.currentSessionId
   const sessionPersisted = sessionId
@@ -166,17 +172,40 @@ const commitModeChange = (
     role: "modeSwitch",
     mode,
     timestamp: Date.now(),
+    ...(options.from !== undefined ? { from: options.from } : {}),
     ...(options.viaAuto ? { viaAuto: true } : {}),
   }
 
-  const trailing = findTrailingSwitchMessage(host, "modeSwitch")
-  if (trailing && trailing.role === "modeSwitch") {
-    const previousTimestamp = trailing.timestamp
-    Object.assign(trailing, { ...message, isInitial: trailing.isInitial })
-    // Object.assign 不删除键：基础模式切换不得残留上一条 viaAuto 标记。
-    if (message.viaAuto === undefined) delete trailing.viaAuto
-    updateSwitchEntryPayload(sessionId, "mode_change", "modeSwitch", previousTimestamp, trailing)
-    emitModeChanged(host, { message: trailing })
+  const trailing = findTrailingSwitchEntry(host, "modeSwitch")
+  if (trailing && trailing.message.role === "modeSwitch") {
+    // 用户切回本条连续切换运行开始前的模式：整条 run 净效果为零，移除已添加的条目（不入库、不留痕）。
+    if (
+      !options.viaAuto &&
+      !trailing.message.viaAuto &&
+      !trailing.message.isInitial &&
+      trailing.message.from !== undefined &&
+      trailing.message.from === mode
+    ) {
+      removeTrailingSwitchMessage(host, trailing.message, trailing.index)
+      emitModeChanged(host, { removedMessage: trailing.message })
+      return
+    }
+    const previousTimestamp = trailing.message.timestamp
+    // 旧数据（缺 from）保持缺省：run 起点未知，合并后仍不可撤销。
+    const runFrom = trailing.message.from
+    Object.assign(trailing.message, { ...message, isInitial: trailing.message.isInitial })
+    // Object.assign 不删除键：合并保留本条 run 的起点模式与清除上一条 viaAuto 标记。
+    if (runFrom !== undefined) trailing.message.from = runFrom
+    else delete trailing.message.from
+    if (message.viaAuto === undefined) delete trailing.message.viaAuto
+    updateSwitchEntryPayload(
+      sessionId,
+      "mode_change",
+      "modeSwitch",
+      previousTimestamp,
+      trailing.message,
+    )
+    emitModeChanged(host, { message: trailing.message })
     return
   }
 
@@ -250,21 +279,63 @@ export const switchProject = (
 // 切换类消息角色：会话尾部连续出现时按同类合并，避免来回切换刷屏（位置/ID 保持不变）。
 const SWITCH_MESSAGE_ROLES = new Set<AgentMessage["role"]>(["modelSwitch", "modeSwitch"])
 
-// 从会话尾部向前扫描连续的切换消息，命中同类时返回该条目（越过非切换消息即停止）。
-const findTrailingSwitchMessage = (
+// 从会话尾部向前扫描连续的切换消息，命中同类时返回该条目及其下标（越过非切换消息即停止）。
+const findTrailingSwitchEntry = (
   host: SessionRunnerHost,
   role: "modelSwitch" | "modeSwitch",
-): ModelSwitchMessage | CollaborationModeSwitchMessage | undefined => {
+): { message: ModelSwitchMessage | CollaborationModeSwitchMessage; index: number } | undefined => {
   const messages = host.agent?.state.messages ?? []
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index]
     if (!SWITCH_MESSAGE_ROLES.has(message.role)) return undefined
     if (message.role === role) {
-      return message as ModelSwitchMessage | CollaborationModeSwitchMessage
+      return {
+        message: message as ModelSwitchMessage | CollaborationModeSwitchMessage,
+        index,
+      }
     }
   }
   return undefined
 }
+
+// 从会话尾部向前扫描连续的切换消息，命中同类时返回该条目（越过非切换消息即停止）。
+const findTrailingSwitchMessage = (
+  host: SessionRunnerHost,
+  role: "modelSwitch" | "modeSwitch",
+): ModelSwitchMessage | CollaborationModeSwitchMessage | undefined =>
+  findTrailingSwitchEntry(host, role)?.message
+
+// 撤销尾部连续切换记录：同步移除内存消息与 seq 对齐，并删除对应 DB entry（切回原模式，不留历史痕迹）。
+const removeTrailingSwitchMessage = (
+  host: SessionRunnerHost,
+  message: CollaborationModeSwitchMessage,
+  index: number,
+): void => {
+  host.agent?.state.removeMessageAt(index)
+  const seqs = host.turnStore.getMessageSeqs()
+  if (seqs.length > index) seqs.splice(index, 1)
+  const sessionId = host.currentSessionId
+  if (sessionId) {
+    deleteSwitchEntry(sessionId, "mode_change", "modeSwitch", message.timestamp)
+  }
+}
+
+// 按 role + timestamp 定位切换 entry（payload 原地更新与撤销删除共用）。
+const findSwitchEntry = (
+  sessionId: string,
+  entryType: "model_change" | "mode_change",
+  role: "modelSwitch" | "modeSwitch",
+  timestamp: number,
+) =>
+  agentSessionService.listEntries(sessionId).find((entry) => {
+    if (entry.type !== entryType) return false
+    try {
+      const parsed = JSON.parse(entry.payload) as { role?: string; timestamp?: number }
+      return parsed.role === role && parsed.timestamp === timestamp
+    } catch {
+      return false
+    }
+  })
 
 // 原地更新同一条切换 entry 的 payload（按 role + timestamp 定位，seq 与位置不变）。
 const updateSwitchEntryPayload = (
@@ -274,19 +345,21 @@ const updateSwitchEntryPayload = (
   timestamp: number,
   message: AgentMessage,
 ): void => {
-  const target = agentSessionService
-    .listEntries(sessionId)
-    .filter((entry) => entry.type === entryType)
-    .find((entry) => {
-      try {
-        const parsed = JSON.parse(entry.payload) as { role?: string; timestamp?: number }
-        return parsed.role === role && parsed.timestamp === timestamp
-      } catch {
-        return false
-      }
-    })
+  const target = findSwitchEntry(sessionId, entryType, role, timestamp)
   if (!target) return
   agentSessionService.updateEntryPayload(target.external_id, JSON.stringify(message))
+}
+
+// 删除同一条切换 entry（用户切回运行起点模式时整条撤销，不留库内痕迹）。
+const deleteSwitchEntry = (
+  sessionId: string,
+  entryType: "model_change" | "mode_change",
+  role: "modelSwitch" | "modeSwitch",
+  timestamp: number,
+): void => {
+  const target = findSwitchEntry(sessionId, entryType, role, timestamp)
+  if (!target) return
+  agentSessionService.deleteEntries([target.external_id])
 }
 
 // 切换会话模型：落库 model_change entry 并插入 modelSwitch 消息（仅 variant 变化时不落库）。

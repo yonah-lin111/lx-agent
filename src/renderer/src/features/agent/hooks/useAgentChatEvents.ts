@@ -11,6 +11,7 @@ import {
   extractQuestionAnswers,
   extractSubagentData,
   extractSubagentsData,
+  removeSwitchMessage,
   toChatMessage,
   upsertSwitchMessage,
 } from "@/features/agent/utils"
@@ -389,6 +390,13 @@ export const useAgentChatEvents = ({
               currentSessionIdRef.current,
             )
             setMessages((prev) => upsertSwitchMessage(prev, item))
+          }
+          if (event.removedMessage) {
+            // 用户切回先前模式：主进程已删除该历史条目，renderer 同步移除对应切换项。
+            const removed = event.removedMessage
+            setMessages((prev) =>
+              removeSwitchMessage(prev, { role: removed.role, timestamp: removed.timestamp }),
+            )
           }
           if (event.effectiveMode === "plan") {
             successToast(t("agent.collaborationModeSwitchedToPlan"))

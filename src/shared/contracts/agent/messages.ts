@@ -104,6 +104,8 @@ export interface ModelSwitchMessage {
 export interface CollaborationModeSwitchMessage {
   role: "modeSwitch"
   mode: CollaborationMode
+  // 本条连续切换运行开始前的基础模式；切回该模式时整条切换记录被撤销（旧数据缺省）。
+  from?: CollaborationMode
   timestamp: number
   // 是否为会话创建时的初始模式条目
   isInitial?: boolean
