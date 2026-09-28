@@ -106,6 +106,8 @@ export type MutableAgentState = Omit<
   appendMessage(message: AgentMessage): void
   // 移除并返回最后一条消息（空数组返回 undefined）。
   removeLastMessage(): AgentMessage | undefined
+  // 移除并返回指定下标的消息（越界返回 undefined）。
+  removeMessageAt(index: number): AgentMessage | undefined
 }
 
 function createMutableAgentState(
@@ -129,7 +131,7 @@ function createMutableAgentState(
       tools = nextTools.slice()
     },
     // 读取用途；返回快照副本，消费方无法通过引用旁路修改内部数组。
-    // 变更请走 appendMessage / removeLastMessage。
+    // 变更请走 appendMessage / removeLastMessage / removeMessageAt。
     get messages() {
       return messages.slice()
     },
@@ -141,6 +143,10 @@ function createMutableAgentState(
     },
     removeLastMessage() {
       return messages.pop()
+    },
+    removeMessageAt(index: number) {
+      if (index < 0 || index >= messages.length) return undefined
+      return messages.splice(index, 1)[0]
     },
     isStreaming: false,
     streamingMessage: undefined,

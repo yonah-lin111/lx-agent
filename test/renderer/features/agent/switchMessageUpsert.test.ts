@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { ChatMessage } from "@/features/agent/types"
-import { upsertSwitchMessage } from "@/features/agent/utils"
+import { removeSwitchMessage, upsertSwitchMessage } from "@/features/agent/utils"
 
 const modeSwitch = (id: string, mode: "plan" | "review", timestamp = 1): ChatMessage => ({
   id,
@@ -66,5 +66,31 @@ describe("upsertSwitchMessage 会话尾部连续切换合并", () => {
   it("非切换消息按普通追加处理", () => {
     const messages = upsertSwitchMessage([], user("u1"))
     expect(messages).toHaveLength(1)
+  })
+})
+
+describe("removeSwitchMessage 撤销切回模式的历史条目", () => {
+  it("尾部连续切换块内按 role + timestamp 删除，混合尾巴只删 modeSwitch", () => {
+    const messages: ChatMessage[] = [modeSwitch("m1", "plan", 10), modelSwitch("s1", "gpt-4o", 20)]
+    const next = removeSwitchMessage(messages, { role: "modeSwitch", timestamp: 10 })
+
+    expect(next).toHaveLength(1)
+    expect(next[0].role).toBe("modelSwitch")
+  })
+
+  it("timestamp 不匹配时不删除", () => {
+    const messages = [modeSwitch("m1", "plan", 10)]
+    const next = removeSwitchMessage(messages, { role: "modeSwitch", timestamp: 11 })
+    expect(next).toHaveLength(1)
+  })
+
+  it("被真实消息打断的条目（非尾部连续块）不删除", () => {
+    const messages: ChatMessage[] = [
+      modeSwitch("m1", "plan", 10),
+      user("u1"),
+      modeSwitch("m2", "review", 20),
+    ]
+    const next = removeSwitchMessage(messages, { role: "modeSwitch", timestamp: 10 })
+    expect(next).toHaveLength(3)
   })
 })
