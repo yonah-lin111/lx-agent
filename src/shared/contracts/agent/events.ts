@@ -93,6 +93,8 @@ export type AgentEvent =
       effectiveMode: CollaborationMode
       // 模式切换历史条目（会话尾部连续切换时原地更新，renderer 直接保证不刷屏）。
       message?: CollaborationModeSwitchMessage
+      // 被撤销的历史条目（用户切回运行起点模式时整条移除；renderer 按 role + timestamp 删除）。
+      removedMessage?: CollaborationModeSwitchMessage
     }
   | { type: "session_title"; sessionId: string; tabId?: string; title: string | null }
   | { type: "permission_request"; sessionId?: string; tabId?: string; request: PermissionRequest }

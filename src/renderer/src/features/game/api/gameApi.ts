@@ -10,5 +10,7 @@ export const gameApi = {
   remove: (id: number): Promise<void> => window.api.game.remove(id),
   markPlayed: (id: number): Promise<GameRomEntry> => window.api.game.markPlayed(id),
   writeSave: (id: number, data: Uint8Array): Promise<void> => window.api.game.writeSave(id, data),
+  writeState: (id: number, slot: number, data: Uint8Array): Promise<void> =>
+    window.api.game.writeState(id, slot, data),
   getRuntimeConfig: (): Promise<GameRuntimeConfig> => window.api.game.getRuntimeConfig(),
 }

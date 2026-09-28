@@ -578,7 +578,7 @@ export function createDefaultSystemPromptManager(
     text: DEFAULT_BEHAVIOR_PROMPT,
   })
 
-  // 380: 协作模式 (Collaboration Mode: Build / Auto / Plan / Review / Design)
+  // 380: 协作模式 (Collaboration Mode: Build / Auto / Plan / Review / Minimal)
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.COLLABORATION_MODE,
     order: PROMPT_ORDERS.COLLABORATION_MODE,

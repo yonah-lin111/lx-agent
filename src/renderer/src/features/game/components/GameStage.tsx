@@ -1,11 +1,12 @@
 import { GAME_PROTOCOL, GAME_WEBVIEW_PARTITION, type GameRomEntry } from "@shared/contracts/game"
-import { ArrowLeft, Gamepad2, RotateCcw } from "lucide-react"
+import { Gamepad2, Pause, Play, RotateCcw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { useLxToast } from "@/components/ui/LxToast"
 import { gameApi } from "@/features/game/api/gameApi"
+import { GamePauseOverlay } from "@/features/game/components/GamePauseOverlay"
 import { useTranslation } from "@/i18n"
 
 // guest → host 的上报通道与 host → guest 的下发通道（与 guest-preload.cjs 保持一致）。
@@ -25,26 +26,46 @@ interface WebviewElement extends HTMLElement {
 
 // guest 上报消息。
 interface GameGuestMessage {
-  type: "ready" | "started" | "save" | "save-restored" | "escape" | "flushed" | "error" | "speed"
+  type:
+    | "ready"
+    | "started"
+    | "save"
+    | "state"
+    | "save-restored"
+    | "escape"
+    | "flushed"
+    | "error"
+    | "speed"
   data?: unknown
   message?: string
   // 当前倍速（仅 speed 消息携带）。
   ratio?: number
+  // 快速存档槽位（仅 state 消息携带）。
+  slot?: number
 }
 
 type StageStatus = "loading" | "running" | "error"
 
 export interface GameStageProps {
   entry: GameRomEntry
-  onExit: () => void
+  // 覆盖层收起（最小化）时为 true：暂停模拟器并保留会话。
+  isSuspended: boolean
+  onMinimize: () => void
+  onClose: () => void
 }
 
 /**
- * 整页模拟器视图：webview 加载自托管 EmulatorJS 宿主页，经 preload 桥回传存档与退出信号。
+ * 模拟器舞台：webview 加载自托管 EmulatorJS 宿主页，经 preload 桥回传存档与按键信号。
  *
+ * ESC 只切换暂停/恢复，不再退出；关闭入口由覆盖层顶栏与暂停面板提供。
  * 退出流程：先请求 guest flush SRAM（收到 flushed 回执或 1.5s 超时）再卸载 webview。
  */
-export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element => {
+export const GameStage = ({
+  entry,
+  isSuspended,
+  onMinimize,
+  onClose,
+}: GameStageProps): React.JSX.Element => {
   const { t, locale } = useTranslation()
   const { error: errorToast } = useLxToast()
 
@@ -61,11 +82,28 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
   }, [isGuestReady])
   const [runId, setRunId] = useState(0)
   const [speedRatio, setSpeedRatio] = useState(1)
+  const [isPaused, setIsPaused] = useState(false)
 
   // 重新加载 guest（换游戏或重试）时先把倍速徽标归位，等 guest 上报真实值。
   useEffect(() => {
     setSpeedRatio(1)
   }, [entry.id, runId])
+
+  // 最小化到顶部栏入口时强制暂停，恢复展开后保持暂停态等待用户继续。
+  useEffect(() => {
+    if (isSuspended) setIsPaused(true)
+  }, [isSuspended])
+
+  // 暂停状态变化时下发 guest 命令（未就绪时忽略）。
+  useEffect(() => {
+    const webview = webviewRef.current
+    if (!webview || !isGuestReady || status !== "running") return
+    try {
+      webview.send(HOST_CHANNEL, { type: isPaused ? "pause" : "resume" })
+    } catch {
+      // jsdom 等环境没有注入 send，忽略即可。
+    }
+  }, [isPaused, isGuestReady, status])
 
   // 预加载脚本路径由主进程按 dev / 打包两种目录解析。
   useEffect(() => {
@@ -97,13 +135,13 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
     return `${GAME_PROTOCOL}://emulator/wrapper.html?${params.toString()}`
   }, [entry.id, locale])
 
-  const requestExit = useCallback((): void => {
+  const requestClose = useCallback((): void => {
     if (isExitingRef.current) return
     isExitingRef.current = true
 
     const webview = webviewRef.current
     const finish = (): void => {
-      onExit()
+      onClose()
     }
     if (!webview || status === "error") {
       finish()
@@ -126,13 +164,13 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
       flushResolverRef.current = null
       finish()
     }
-  }, [onExit, status])
+  }, [onClose, status])
 
   // 消息回调经 ref 转发，避免 status 变化重建 webview 监听。
-  const requestExitRef = useRef(requestExit)
+  const requestCloseRef = useRef(requestClose)
   useEffect(() => {
-    requestExitRef.current = requestExit
-  }, [requestExit])
+    requestCloseRef.current = requestClose
+  }, [requestClose])
 
   useEffect(() => {
     const webview = webviewRef.current
@@ -160,8 +198,16 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
               .catch(() => errorToast(t("game.error.saveFailed")))
           }
           break
+        case "state":
+          if (payload.data instanceof Uint8Array && typeof payload.slot === "number") {
+            void gameApi
+              .writeState(entry.id, payload.slot, payload.data)
+              .catch(() => errorToast(t("game.error.saveFailed")))
+          }
+          break
         case "escape":
-          requestExitRef.current()
+          // ESC 只切换暂停/恢复，绝不关闭游戏（关闭由顶栏与暂停面板的按钮触发）。
+          setIsPaused((current) => !current)
           break
         case "flushed":
           flushResolverRef.current?.()
@@ -202,7 +248,7 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
       webview.removeEventListener("did-fail-load", handleFailed)
       webview.removeEventListener("render-process-gone", handleFailed)
 
-      // 卸载兜底（例如切换主页视图）：请求 guest 立即 flush，并以一次性监听器把 SRAM 落盘。
+      // 卸载兜底（例如关闭游戏）：请求 guest 立即 flush，并以一次性监听器把 SRAM 落盘。
       const handleLastSave = (event: Event): void => {
         const message = event as unknown as { channel?: string; args?: unknown[] }
         if (message.channel !== GUEST_CHANNEL) return
@@ -223,6 +269,7 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
   const handleRetry = (): void => {
     setStatus("loading")
     setIsGuestReady(false)
+    setIsPaused(false)
     setRunId((current) => current + 1)
   }
 
@@ -231,11 +278,14 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
       <div className="game-stage-toolbar flex min-w-0 shrink-0 items-center gap-2">
         <LxIconButton
           size="small"
-          aria-label={t("game.stage.back")}
-          title={{ content: t("game.stage.back"), placement: "bottom" }}
-          onClick={requestExit}
+          aria-label={isPaused ? t("game.builtin.resume") : t("game.builtin.pause")}
+          title={{
+            content: isPaused ? t("game.builtin.resume") : t("game.builtin.pause"),
+            placement: "bottom",
+          }}
+          onClick={() => setIsPaused((current) => !current)}
         >
-          <ArrowLeft />
+          {isPaused ? <Play /> : <Pause />}
         </LxIconButton>
         <Gamepad2 className="game-stage-icon h-4 w-4 shrink-0 text-emerald-400" />
         <span className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
@@ -251,7 +301,7 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
           {t("game.stage.speed", { ratio: speedRatio })}
         </span>
         <span className="shrink-0 font-mono text-xs text-[var(--color-theme-text-subtle)]">
-          {t("game.stage.exitHint")}
+          {t("game.stage.pauseHint")}
         </span>
       </div>
 
@@ -273,6 +323,14 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
           text={t("game.stage.loading")}
           rounded="rounded-[var(--theme-radius-base)]"
         />
+
+        {isPaused && status !== "error" ? (
+          <GamePauseOverlay
+            onResume={() => setIsPaused(false)}
+            onMinimize={onMinimize}
+            onClose={() => requestCloseRef.current()}
+          />
+        ) : null}
 
         {status === "error" ? (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/80 px-6 text-center">
@@ -297,9 +355,9 @@ export const GameStage = ({ entry, onExit }: GameStageProps): React.JSX.Element 
                 textClass="text-white/70"
                 hoverBgClass="hover:bg-white/10"
                 className="cursor-pointer rounded-[6px] border border-white/15"
-                onClick={requestExit}
+                onClick={() => requestCloseRef.current()}
               >
-                <span>{t("game.stage.back")}</span>
+                <span>{t("game.overlay.close")}</span>
               </LxIconButton>
             </div>
           </div>

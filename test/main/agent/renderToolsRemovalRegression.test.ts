@@ -39,13 +39,12 @@ describe("Render Tools Removal & Question Contract System Regression (Main)", ()
     }
   })
 
-  it("SystemPromptManager 在 design 协作模式下不注入已废弃的 render 工具说明", async () => {
+  it("SystemPromptManager 在非 build 协作模式下不注入已废弃的 render 工具说明", async () => {
     const manager = createDefaultSystemPromptManager()
-    const assembly = await manager.assemble({ collaborationMode: "design" })
+    const assembly = await manager.assemble({ collaborationMode: "review" })
     for (const tool of BANNED_TOOLS) {
       expect(assembly.rendered).not.toContain(tool)
     }
-    expect(assembly.rendered).toContain("<front_design")
   })
 
   describe("question 工具契约严格校验", () => {

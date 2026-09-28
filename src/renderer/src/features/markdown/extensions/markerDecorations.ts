@@ -10,7 +10,6 @@ import { extractAgentMentions } from "@/features/markdown/extensions/markdownAge
 import { extractAgentModeMentions } from "@/features/markdown/extensions/markdownAgentModeMentions"
 import {
   isPathUnderReferencedRoots,
-  MARKDOWN_DESIGN_MENTION_PATTERN,
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/features/markdown/extensions/markdownFileMentions"
 import { extractMcpMentions } from "@/features/markdown/extensions/markdownMcpMentions"
@@ -92,14 +91,6 @@ export const scanMarkdownTokensInLine = (
   }
 
   const mentionRanges: { from: number; to: number }[] = []
-  for (const match of line.matchAll(MARKDOWN_DESIGN_MENTION_PATTERN)) {
-    if (match.index === undefined) continue
-    const start = match.index
-    const end = match.index + match[0].length
-    mentionRanges.push({ from: start, to: end })
-    addMarker(start, end, "cm-md-design-mention")
-  }
-
   for (const mention of extractAgentMentions(line)) {
     mentionRanges.push({ from: mention.start, to: mention.end })
     addMarker(mention.start, mention.end, "cm-md-agent-mention")

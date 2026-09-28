@@ -111,7 +111,7 @@ describe("narrowActivationByMode 模式白名单收窄", () => {
   })
 
   it("其余模式原样透传激活集", () => {
-    for (const mode of ["build", "plan", "review", "design"] as const) {
+    for (const mode of ["build", "plan", "review"] as const) {
       expect(narrowActivationByMode(mode, tools, mcp, true)).toEqual({
         tools,
         mcp,

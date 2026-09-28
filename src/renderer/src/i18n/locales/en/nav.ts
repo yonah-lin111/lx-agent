@@ -3,7 +3,6 @@ export const nav = {
   project: "Projects",
   ui: "UI Preview",
   settings: "Settings",
-  design: "Front Design",
   openclaw: "OpenClaw",
   expandSidebar: "Expand Sidebar",
   collapseSidebar: "Collapse Sidebar",

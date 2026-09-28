@@ -208,7 +208,7 @@ describe("Render Tools Removal & Question UI System Regression (Renderer)", () =
     })
   })
 
-  describe("4. FrontDesign 依赖的 HTML 净化功能无损保留", () => {
+  describe("4. HTML 净化功能无损保留", () => {
     it("sanitizeHtmlDocument 保持严格过滤可执行恶意脚本，同时保留 UI 结构", () => {
       const rawHtml = `
         <!DOCTYPE html>

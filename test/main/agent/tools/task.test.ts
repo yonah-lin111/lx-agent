@@ -1498,7 +1498,7 @@ describe("task 子代理派发模式（auto 编排）", () => {
     const result = await tool.execute("call-mode-5", {
       tasks: [
         { description: "合法项", prompt: "p", agent_type: "explorer", mode: "review" },
-        { description: "冲突项", prompt: "p", agent_type: "worker", mode: "design" },
+        { description: "冲突项", prompt: "p", agent_type: "worker", mode: "plan" },
       ],
     })
     expect(resultText(result)).toContain("tasks[1]")

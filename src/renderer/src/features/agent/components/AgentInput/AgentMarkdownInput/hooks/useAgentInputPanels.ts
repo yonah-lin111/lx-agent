@@ -14,8 +14,6 @@ import type { Locale } from "@shared/settings"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
-import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
-import { type FrontDesignItem, frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import type { GitWorktreeOption } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
@@ -40,7 +38,6 @@ import {
 } from "../../AgentInputCommandPanels"
 import {
   collapsePlaceholderArgument,
-  DESIGN_MENTION_TAG,
   filterAgentModeMentionCandidates,
   filterClawMentionCandidates,
   filterSkillsByQuery,
@@ -52,7 +49,6 @@ import {
   getSkillMentionQuery,
   HISTORY_PROMPT_COMMAND,
   isFuzzyMatch,
-  isKindTagMatch,
   isSubagentTagMatch,
 } from "../agentMarkdownInputUtils"
 import type { AgentInputActiveMode, AgentMarkdownInputProps } from "../types"
@@ -590,35 +586,6 @@ export const useAgentInputPanels = ({
     return getMentionMcpCandidates(mcpCandidates, mention.query)
   }, [activeMode, value, mcpCandidates, editorViewRef])
 
-  const matchedMentionDesigns = useMemo<FrontDesignItem[]>(() => {
-    if (activeMode !== "file") return []
-    const view = editorViewRef.current
-    const cursor = view?.state.selection.main.head ?? value.length
-    const mention = getMentionQuery(value, cursor)
-    if (!mention) return []
-    const q = mention.query.toLowerCase()
-
-    const currentSessionId =
-      agentTabStore.getActiveTab()?.sessionId ?? sessionListStore.getCurrentSessionId()
-
-    const allDesigns = frontDesignStore.getAllDesigns()
-    const sessionDesigns = allDesigns.filter((d) => {
-      if (currentSessionId) {
-        return d.sessionId === currentSessionId
-      }
-      return true
-    })
-
-    if (!q) return sessionDesigns
-
-    // tag 模糊命中种类名时整类返回（如 `@des`），与标题/id 取并集。
-    if (isKindTagMatch(q, DESIGN_MENTION_TAG)) return sessionDesigns
-
-    return sessionDesigns.filter(
-      (d) => isFuzzyMatch(q, d.title.toLowerCase()) || isFuzzyMatch(q, d.id.toLowerCase()),
-    )
-  }, [activeMode, value, editorViewRef])
-
   const allowedAutoModes = useMemo<readonly CollaborationMode[]>(() => {
     return getEffectiveAutoTargets(autoEnabledModes)
   }, [autoEnabledModes])
@@ -645,10 +612,6 @@ export const useAgentInputPanels = ({
       kind: "agentMode",
       ...item,
     }))
-    const designItems: AgentMentionItem[] = matchedMentionDesigns.map((design) => ({
-      kind: "design",
-      design,
-    }))
     const skillItems: AgentMentionItem[] = matchedMentionSkills.map((skill) => ({
       kind: "skill",
       skill,
@@ -670,19 +633,10 @@ export const useAgentInputPanels = ({
       kind: "claw",
       claw,
     }))
-    return [
-      ...modeItems,
-      ...designItems,
-      ...subagentItems,
-      ...skillItems,
-      ...mcpItems,
-      ...fileItems,
-      ...clawItems,
-    ]
+    return [...modeItems, ...subagentItems, ...skillItems, ...mcpItems, ...fileItems, ...clawItems]
   }, [
     activeMode,
     matchedMentionAgentModes,
-    matchedMentionDesigns,
     matchedMentionSkills,
     matchedMentionSubagents,
     matchedMentionMcpServers,
@@ -878,8 +832,7 @@ export const useAgentInputPanels = ({
           currentPath ||
           skillsRef.current.length > 0 ||
           subagentCandidatesRef.current.length > 0 ||
-          mcpCandidatesRef.current.length > 0 ||
-          frontDesignStore.getAllDesigns().length > 0)
+          mcpCandidatesRef.current.length > 0)
       ) {
         setActiveMode("file")
         setFileIndex(0)

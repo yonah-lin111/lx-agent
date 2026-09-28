@@ -58,32 +58,9 @@ export const sanitizePathSegment = (value: string): string => {
 }
 
 /**
- * 获取指定会话的前端设计目录。
- * 会话 id 与设计 id 均可能来自模型输出，落盘前统一消毒，避免非法路径或目录越界。
- */
-export const getSessionDesignDir = (sessionId: string, designId: string): string =>
-  join(
-    getAppDataRoot(),
-    "session",
-    sanitizePathSegment(sessionId),
-    "design",
-    sanitizePathSegment(designId),
-  )
-
-/**
- * 获取游戏数据根目录（导入的 ROM 与应用侧存档）。
+ * 获取游戏数据根目录（每个游戏一个以标题命名的子目录，内含 ROM 与存档）。
  */
 export const getGameDir = (): string => join(getAppDataRoot(), "game")
-
-/**
- * 获取游戏 ROM 存放目录（文件名固定为 <entryId>.gba）。
- */
-export const getGameRomsDir = (): string => join(getGameDir(), "roms")
-
-/**
- * 获取游戏存档根目录（每条例目一个子目录，内含 sram.sav 与 sram.sav.bak）。
- */
-export const getGameSavesDir = (): string => join(getGameDir(), "saves")
 
 /**
  * 检测并创建 SQLite 数据库存储目录。

@@ -5,29 +5,28 @@ import { useCallback, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { useLxToast } from "@/components/ui/LxToast"
-import { BuiltinGameStage } from "@/features/game/builtin/components/BuiltinGameStage"
 import { BUILTIN_GAMES } from "@/features/game/builtin/constants"
 import { useBuiltinBestScores } from "@/features/game/builtin/hooks/useBuiltinBestScores"
-import type { BuiltinGameId } from "@/features/game/builtin/types"
 import { BuiltinGameCard } from "@/features/game/components/BuiltinGameCard"
 import { GameCard } from "@/features/game/components/GameCard"
-import { GameStage } from "@/features/game/components/GameStage"
 import { useGameEntries } from "@/features/game/hooks/useGameEntries"
+import { useGameSessionStore } from "@/features/game/hooks/useGameSessionStore"
 import { GAME_INVALID_REASON_KEYS } from "@/features/game/utils"
 import { useTranslation } from "@/i18n"
 
 /**
- * 渲染游戏视图：内置小游戏与导入的本地 GBA ROM 分区展示，点卡片进入对应游戏舞台。
+ * 渲染游戏库视图：内置小游戏与导入的本地 GBA ROM 分区展示；
+ * 点卡片只写入会话 Store 开局，实际舞台由 App 级游戏覆盖层承载（切页不卸载）。
  */
 export const GameDashboard = (): React.JSX.Element => {
   const { t } = useTranslation()
   const { success, error, info } = useLxToast()
   const { entries, isLoading, hasError, reload, importFromDialog, rename, remove } =
     useGameEntries()
-  const { bestScores, submitScore } = useBuiltinBestScores()
+  const { bestScores } = useBuiltinBestScores()
+  const startRom = useGameSessionStore((state) => state.startRom)
+  const startBuiltin = useGameSessionStore((state) => state.startBuiltin)
 
-  const [activeEntry, setActiveEntry] = useState<GameRomEntry | null>(null)
-  const [activeBuiltinGameId, setActiveBuiltinGameId] = useState<BuiltinGameId | null>(null)
   const [isImporting, setIsImporting] = useState(false)
 
   const handleImport = useCallback(async (): Promise<void> => {
@@ -91,26 +90,6 @@ export const GameDashboard = (): React.JSX.Element => {
     [error, remove, success, t],
   )
 
-  const handleStageExit = useCallback((): void => {
-    setActiveEntry(null)
-    void reload()
-  }, [reload])
-
-  if (activeEntry) {
-    return <GameStage entry={activeEntry} onExit={handleStageExit} />
-  }
-
-  if (activeBuiltinGameId) {
-    return (
-      <BuiltinGameStage
-        gameId={activeBuiltinGameId}
-        bestScores={bestScores}
-        submitScore={submitScore}
-        onExit={() => setActiveBuiltinGameId(null)}
-      />
-    )
-  }
-
   return (
     <div className="game-dashboard relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-4 custom-scrollbar [scrollbar-gutter:stable]">
       <section className="game-dashboard-header flex min-w-0 items-center gap-2">
@@ -152,7 +131,7 @@ export const GameDashboard = (): React.JSX.Element => {
               key={meta.id}
               meta={meta}
               bestScore={bestScores[meta.id] ?? 0}
-              onPlay={setActiveBuiltinGameId}
+              onPlay={startBuiltin}
             />
           ))}
         </div>
@@ -194,7 +173,7 @@ export const GameDashboard = (): React.JSX.Element => {
               <GameCard
                 key={entry.id}
                 entry={entry}
-                onPlay={setActiveEntry}
+                onPlay={startRom}
                 onRename={handleRename}
                 onRemove={handleRemove}
               />

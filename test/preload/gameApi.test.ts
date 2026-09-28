@@ -20,6 +20,7 @@ describe("preload game API", () => {
   it("暴露 game API 并通过共享 channel 转发全部方法", async () => {
     const api = exposeInMainWorld.mock.calls[0]?.[1]
     const saveBytes = new Uint8Array([1, 2, 3])
+    const stateBytes = new Uint8Array([4, 5, 6])
 
     await api.game.list()
     await api.game.importFromDialog()
@@ -27,6 +28,7 @@ describe("preload game API", () => {
     await api.game.remove(3)
     await api.game.markPlayed(3)
     await api.game.writeSave(3, saveBytes)
+    await api.game.writeState(3, 2, stateBytes)
     await api.game.getRuntimeConfig()
 
     expect(exposeInMainWorld).toHaveBeenCalledWith("api", expect.any(Object))
@@ -37,6 +39,7 @@ describe("preload game API", () => {
       [GAME_CHANNELS.remove, 3],
       [GAME_CHANNELS.markPlayed, 3],
       [GAME_CHANNELS.writeSave, 3, saveBytes],
+      [GAME_CHANNELS.writeState, 3, 2, stateBytes],
       [GAME_CHANNELS.getRuntimeConfig],
     ])
   })

@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import type { GameRomEntry } from "@shared/contracts/game"
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
-import { act } from "react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { GameStage } from "@/features/game/components/GameStage"
+import { GameStage, type GameStageProps } from "@/features/game/components/GameStage"
 
 const createEntry = (patch: Partial<GameRomEntry> = {}): GameRomEntry => ({
   id: 3,
@@ -20,6 +19,7 @@ const createApiMock = () => ({
   getRuntimeConfig: vi.fn().mockResolvedValue({ guestPreloadUrl: "file:///tmp/guest-preload.cjs" }),
   markPlayed: vi.fn().mockResolvedValue(createEntry()),
   writeSave: vi.fn().mockResolvedValue(undefined),
+  writeState: vi.fn().mockResolvedValue(undefined),
 })
 
 const installApi = (api: ReturnType<typeof createApiMock>): void => {
@@ -27,11 +27,29 @@ const installApi = (api: ReturnType<typeof createApiMock>): void => {
   window.api = { game: api }
 }
 
+type StageOverrides = Partial<Pick<GameStageProps, "isSuspended" | "onMinimize" | "onClose">>
+
 // 等待 webview 挂载并注入 Electron 的 send 方法替身。
 const mountStage = async (
-  onExit = vi.fn(),
-): Promise<{ webview: HTMLElement; send: ReturnType<typeof vi.fn>; onExit: typeof onExit }> => {
-  render(<GameStage entry={createEntry()} onExit={onExit} />)
+  overrides: StageOverrides = {},
+): Promise<{
+  webview: HTMLElement
+  send: ReturnType<typeof vi.fn>
+  onMinimize: ReturnType<typeof vi.fn>
+  onClose: ReturnType<typeof vi.fn>
+  rerender: (next: StageOverrides) => void
+}> => {
+  const onMinimize = (overrides.onMinimize ?? vi.fn()) as ReturnType<typeof vi.fn>
+  const onClose = (overrides.onClose ?? vi.fn()) as ReturnType<typeof vi.fn>
+  const props: GameStageProps = {
+    entry: createEntry(),
+    isSuspended: false,
+    onMinimize: onMinimize as GameStageProps["onMinimize"],
+    onClose: onClose as GameStageProps["onClose"],
+    ...overrides,
+  }
+
+  const view = render(<GameStage {...props} />)
 
   const webview = await waitFor(() => {
     const element = document.querySelector("webview")
@@ -43,7 +61,13 @@ const mountStage = async (
 
   const send = vi.fn()
   Object.assign(webview, { send })
-  return { webview, send, onExit }
+  return {
+    webview,
+    send,
+    onMinimize,
+    onClose,
+    rerender: (next) => view.rerender(<GameStage {...props} {...next} />),
+  }
 }
 
 const dispatchGuestMessage = (webview: HTMLElement, payload: unknown): void => {
@@ -98,6 +122,29 @@ describe("GameStage", () => {
     })
   })
 
+  it("收到 state 上报后按槽位写入快速存档", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { webview } = await mountStage()
+    dispatchGuestMessage(webview, { type: "state", slot: 2, data: new Uint8Array([4, 5, 6]) })
+
+    await waitFor(() => {
+      expect(api.writeState).toHaveBeenCalledWith(3, 2, new Uint8Array([4, 5, 6]))
+    })
+  })
+
+  it("state 上报缺少槽位或数据时不写入", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { webview } = await mountStage()
+    dispatchGuestMessage(webview, { type: "state", data: new Uint8Array([4, 5, 6]) })
+    dispatchGuestMessage(webview, { type: "state", slot: 2 })
+
+    expect(api.writeState).not.toHaveBeenCalled()
+  })
+
   it("收到 speed 上报后顶部徽标显示当前倍速", async () => {
     const api = createApiMock()
     installApi(api)
@@ -110,20 +157,71 @@ describe("GameStage", () => {
     expect(screen.getByText("Speed ×8")).toBeDefined()
   })
 
-  it("ESC 退出：先请求 flush，收到回执后退出", async () => {
+  it("ESC 只切换暂停/恢复并下发 guest 命令，不关闭游戏", async () => {
     const api = createApiMock()
     installApi(api)
 
-    const { webview, send, onExit } = await mountStage()
+    const { webview, send, onClose } = await mountStage()
+    dispatchGuestMessage(webview, { type: "started" })
+
     dispatchGuestMessage(webview, { type: "escape" })
 
+    expect(screen.getByText("Paused")).toBeDefined()
+    expect(onClose).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(send).toHaveBeenCalledWith("lx-game-host", { type: "pause" })
+    })
+
+    dispatchGuestMessage(webview, { type: "escape" })
+
+    expect(screen.queryByText("Paused")).toBeNull()
+    await waitFor(() => {
+      expect(send).toHaveBeenCalledWith("lx-game-host", { type: "resume" })
+    })
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it("暂停面板可最小化，最小化不销毁会话", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { onMinimize } = await mountStage()
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }))
+    fireEvent.click(screen.getByRole("button", { name: "Minimize" }))
+
+    expect(onMinimize).toHaveBeenCalledTimes(1)
+  })
+
+  it("暂停面板关闭游戏：先请求 flush，收到回执后关闭", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { webview, send, onClose } = await mountStage()
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }))
+    fireEvent.click(screen.getByRole("button", { name: "Close game" }))
+
     expect(send).toHaveBeenCalledWith("lx-game-host", { type: "flush" })
-    expect(onExit).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
 
     dispatchGuestMessage(webview, { type: "flushed" })
 
     await waitFor(() => {
-      expect(onExit).toHaveBeenCalledTimes(1)
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it("覆盖层最小化挂起时强制暂停并下发 pause", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { webview, send, rerender } = await mountStage()
+    dispatchGuestMessage(webview, { type: "started" })
+
+    rerender({ isSuspended: true })
+
+    expect(screen.getByText("Paused")).toBeDefined()
+    await waitFor(() => {
+      expect(send).toHaveBeenCalledWith("lx-game-host", { type: "pause" })
     })
   })
 
@@ -154,7 +252,14 @@ describe("GameStage", () => {
       const api = createApiMock()
       installApi(api)
 
-      render(<GameStage entry={createEntry()} onExit={vi.fn()} />)
+      render(
+        <GameStage
+          entry={createEntry()}
+          isSuspended={false}
+          onMinimize={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      )
       await act(async () => {})
       expect(document.querySelector("webview")).not.toBeNull()
 
@@ -177,6 +282,7 @@ describe("GameStage", () => {
 
     expect(await screen.findByText("Failed to load the emulator")).toBeDefined()
     expect(screen.getByRole("button", { name: "Retry" })).toBeDefined()
+    expect(screen.getByRole("button", { name: "Close game" })).toBeDefined()
   })
 
   it("运行时配置读取失败时展示错误态", async () => {
@@ -184,7 +290,14 @@ describe("GameStage", () => {
     api.getRuntimeConfig.mockRejectedValue(new Error("no config"))
     installApi(api)
 
-    render(<GameStage entry={createEntry()} onExit={vi.fn()} />)
+    render(
+      <GameStage
+        entry={createEntry()}
+        isSuspended={false}
+        onMinimize={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(await screen.findByText("Failed to load the emulator")).toBeDefined()
   })

@@ -8,10 +8,10 @@ import { PageContent } from "@/components/layout/PageContent"
 import { RightSideBar } from "@/components/layout/RightSidebar"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxToastProvider } from "@/components/ui/LxToast"
+import { GameOverlay } from "@/features/game"
 import { useNotificationClickRouter } from "@/features/notification"
 import { I18nProvider } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
-import { FrontDesignLeftSideBar } from "@/pages/front-design"
 import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
 import { OpenClawLeftSideBar } from "@/pages/openclaw/components/OpenClawLeftSideBar"
 import { ProjectLeftSideBar } from "@/pages/project/components/ProjectLeftSideBar"
@@ -61,7 +61,6 @@ export const App = () => {
   const renderLeftSideBarContent = (): React.JSX.Element => {
     if (pathname === PAGE_ROUTES.home) return <HomeLeftSideBar />
     if (pathname === PAGE_ROUTES.ui) return <UiLeftSideBar />
-    if (pathname === PAGE_ROUTES.design) return <FrontDesignLeftSideBar />
     if (pathname === PAGE_ROUTES.settings) return <SettingsLeftSideBar />
     if (pathname === PAGE_ROUTES.openclaw) return <OpenClawLeftSideBar />
     return <ProjectLeftSideBar />
@@ -83,6 +82,7 @@ export const App = () => {
                   <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
                     <PageRouter />
                     <LxLoadingOverlay isLoading={isPageLoading} text="Loading page..." />
+                    <GameOverlay />
                   </div>
                 </PageContent>
               </div>

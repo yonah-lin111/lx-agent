@@ -2261,18 +2261,6 @@
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
-/* FrontDesign: 樱花粉石 */
-[data-theme="pixel"] .agent-execution-flow-step-header .lx-tag.border-pink-500\/10,
-[data-theme="pixel"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-palette) {
-  background-color: #2b1723 !important;
-  color: #f472b6 !important;
-}
-[data-theme="pixel"] .agent-execution-flow-step-header .lx-tag.border-pink-500\/10 svg,
-[data-theme="pixel"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-palette) svg {
-  color: #f472b6 !important;
-  filter: drop-shadow(1px 1px 0px #000000);
-}
-
 /* Hook: 铜矿暖橙 */
 [data-theme="pixel"] .agent-execution-flow-step-header .lx-tag.border-orange-500\/10,
 [data-theme="pixel"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-webhook) {
@@ -2322,17 +2310,6 @@
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(85, 255, 85, 0.15) !important;
-}
-
-/* 3. Pink / FrontDesign: 柔和暗樱花粉石方块 */
-[data-theme="pixel"] .agent-execution-flow-step-body--pink,
-[data-theme="pixel"] .agent-execution-flow-step-body--frontDesign {
-  background-color: #1a1218 !important;
-  border-top: 2px solid #000000 !important;
-  color: #fce7f3 !important;
-  box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
-    inset -1px -1px 0px 0px rgba(244, 114, 182, 0.15) !important;
 }
 
 /* 4. Hook: 铜矿暖橙石质方块 */
@@ -2907,147 +2884,6 @@
 
 [data-theme="pixel"] .agent-execution-flow-review-content {
   width: 100% !important;
-}
-
-/* ========================================================
- * 17. Front Design Mode 前端设计卡片 (FrontDesignCard) 柔和樱花粉石
- * ======================================================== */
-[data-theme="pixel"] .front-design-card {
-  border: 2px solid #000000 !important;
-  background-color: #1a1218 !important; /* 柔和暗樱花黑曜调 */
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
-}
-
-[data-theme="pixel"] .front-design-header {
-  border-bottom: 2px solid #000000 !important;
-}
-
-[data-theme="pixel"] .front-design-footer {
-  border-top: 2px solid #000000 !important;
-}
-
-[data-theme="pixel"] .front-design-icon-wrapper {
-  border: 2px solid #000000 !important;
-  background-color: #271622 !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
-    1px 1px 0px 0px #000000 !important;
-}
-
-[data-theme="pixel"] .front-design-icon-wrapper svg {
-  color: #f472b6 !important;
-  filter: drop-shadow(1px 1px 0px #000000);
-}
-
-[data-theme="pixel"] .front-design-badge {
-  border: 1px solid #000000 !important;
-  background-color: #38192a !important;
-  color: #fbcfe8 !important;
-  font-family: var(--theme-font-family) !important;
-  font-weight: 700;
-  border-radius: 0px !important;
-  text-shadow: 1px 1px 0px #000000;
-}
-
-[data-theme="pixel"] .front-design-title {
-  font-family: var(--theme-font-family) !important;
-  color: #fce7f3 !important;
-  font-weight: 700;
-  text-shadow: 1px 1px 0px #000000;
-}
-
-[data-theme="pixel"] .front-design-summary {
-  border: 1px solid #000000 !important;
-  background-color: #120c10 !important;
-  border-radius: 0px !important;
-  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8) !important;
-}
-
-[data-theme="pixel"] .front-design-open-btn {
-  font-family: var(--theme-font-family) !important;
-  border: 2px solid #000000 !important;
-  background-color: #831843 !important; /* 柔和暗深樱桃粉色 */
-  color: #ffffff !important;
-  border-radius: 0px !important;
-  font-weight: 700;
-  text-shadow: 1px 1px 0px #000000;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
-}
-
-[data-theme="pixel"] .front-design-open-btn:hover:not(:disabled) {
-  background-color: #9d174d !important;
-}
-
-[data-theme="pixel"] .front-design-dir-btn {
-  font-family: var(--theme-font-family) !important;
-  border: 2px solid #000000 !important;
-  background-color: #1b1624 !important;
-  color: #f472b6 !important;
-  border-radius: 0px !important;
-  font-weight: 700;
-  text-shadow: 1px 1px 0px #000000;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
-    1px 1px 0px 0px #000000 !important;
-}
-
-[data-theme="pixel"] .front-design-dir-btn:hover:not(:disabled) {
-  background-color: #251e32 !important;
-}
-
-[data-theme="pixel"] .front-design-code-container {
-  border: 1px solid #000000 !important;
-  background-color: #0e0a0d !important;
-  border-radius: 0px !important;
-  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8) !important;
-}
-
-[data-theme="pixel"] .front-design-expand-toggle {
-  font-family: var(--theme-font-family) !important;
-  color: #f472b6 !important;
-  text-shadow: 1px 1px 0px #000000;
-}
-
-[data-theme="pixel"] .agent-execution-flow-design-content {
-  width: 100% !important;
-}
-
-[data-theme="pixel"] .front-design-empty-icon {
-  border: 2px solid #000000 !important;
-  background-color: #271622 !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
-}
-
-[data-theme="pixel"] .front-design-empty-icon svg {
-  color: #f472b6 !important;
-  filter: drop-shadow(1px 1px 0px #000000);
-}
-
-[data-theme="pixel"] .front-design-empty-title {
-  font-family: var(--theme-font-family) !important;
-  color: #55ffff !important;
-  font-weight: 700 !important;
-  text-shadow: 1px 1px 0px #000000;
-}
-
-[data-theme="pixel"] .front-design-empty-desc {
-  font-family: var(--theme-font-family) !important;
-  color: #a6a6bc !important;
-  text-shadow: 1px 1px 0px #000000;
 }
 
 /* ========================================================

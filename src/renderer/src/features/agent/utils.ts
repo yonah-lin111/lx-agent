@@ -56,15 +56,12 @@ export const parseQuestionAnswersFromText = (text: string): QuestionAnswer[] | u
   return answers.length > 0 ? answers : undefined
 }
 
-// 清洗用户输入纯文本（剥离 <skill ...>、<referenced_design ...> 与 <current_design ...> 注入块与命令前缀）。
+// 清洗用户输入纯文本（剥离 <skill ...> 注入块与命令前缀）。
 export const cleanUserPrompt = (
   rawText: string,
   options?: { isSteer?: boolean; command?: { kind?: string; name: string } },
 ): string => {
-  let cleaned = rawText
-    .replace(/<skill\b[\s\S]*?<\/skill>\s*/gi, "")
-    .replace(/<referenced_design\b[\s\S]*?(?:<\/referenced_design>|$)\s*/gi, "")
-    .replace(/<current_design\b[\s\S]*?(?:<\/current_design>|$)\s*/gi, "")
+  let cleaned = rawText.replace(/<skill\b[\s\S]*?<\/skill>\s*/gi, "")
 
   if (options?.isSteer || options?.command?.name === "steer") {
     cleaned = cleaned.replace(/^\s*\/steer(?=[\s:-]|$)[\s:-]*/, "").trim()
@@ -96,17 +93,10 @@ export {
 } from "./utils/tagContentParsers"
 
 // 将 shared AgentMessage 转换为展示条目。
-// 设计 id 前缀：以消息时间戳（base36）为稳定锚点，保证同一消息在任何路径解析出的设计 id 一致。
-export const buildStableDesignBaseId = (timestamp: number | undefined): string =>
-  typeof timestamp === "number" && Number.isFinite(timestamp)
-    ? `d${timestamp.toString(36)}`
-    : "design"
-
 export const toChatMessage = (
   message: AgentMessage,
   isStreaming: boolean,
   id: string,
-  sessionId?: string | null,
 ): ChatMessage => {
   if (message.role === "user") {
     const text = Array.isArray(message.content)
@@ -232,16 +222,7 @@ export const toChatMessage = (
 
   const blocks: ChatBlock[] = message.content.flatMap((block) => {
     if (block.type === "text") {
-      return parseTextWithProposedPlan(
-        block.text,
-        block.durationMs,
-        // 设计 id 前缀用消息时间戳（实时与恢复两条路径一致），
-        // 避免依赖聊天消息自增 id 导致重启后设计 id 漂移、版本链 parent_id 解析失败。
-        buildStableDesignBaseId(message.timestamp),
-        sessionId,
-        message.timestamp,
-        isStreaming,
-      )
+      return parseTextWithProposedPlan(block.text, block.durationMs, isStreaming)
     }
     if (block.type === "thinking") {
       return [{ kind: "thinking", text: block.thinking, durationMs: block.durationMs }]
@@ -297,6 +278,23 @@ export const upsertSwitchMessage = (
     }
   }
   return [...messages, incoming]
+}
+
+/**
+ * 移除切换类消息：撤销"切回原模式"时，在尾部连续切换块内按 role + timestamp 删除对应条目（其余切换项保留）。
+ */
+export const removeSwitchMessage = (
+  messages: ChatMessage[],
+  removed: Pick<ChatMessage, "role" | "timestamp">,
+): ChatMessage[] => {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const current = messages[index]
+    if (!SWITCH_MESSAGE_ROLES.has(current.role)) break
+    if (current.role === removed.role && current.timestamp === removed.timestamp) {
+      return messages.filter((_, target) => target !== index)
+    }
+  }
+  return messages
 }
 
 // 将展示条目转回 shared AgentMessage（恢复会话时发送给 main）。
@@ -394,7 +392,6 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
         if (block.kind === "proposedPlan") return [{ type: "text", text: block.plan.raw }]
         if (block.kind === "reviewFindings") return [{ type: "text", text: block.findings.raw }]
         if (block.kind === "grillQuestion") return [{ type: "text", text: block.grill.raw }]
-        if (block.kind === "frontDesign") return [{ type: "text", text: block.design.raw }]
         if (block.kind === "toolCall") {
           return [
             {

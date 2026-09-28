@@ -1,5 +1,7 @@
 export type { GameCardProps } from "./components/GameCard"
 export { GameDashboard } from "./components/GameDashboard"
+export { GameOverlay } from "./components/GameOverlay"
 export type { GameStageProps } from "./components/GameStage"
 export { useGameEntries } from "./hooks/useGameEntries"
+export { type GameSession, useGameSessionStore } from "./hooks/useGameSessionStore"
 export { formatPlayedAt, formatRomSize, GAME_INVALID_REASON_KEYS } from "./utils"

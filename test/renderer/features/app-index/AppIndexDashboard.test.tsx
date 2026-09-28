@@ -103,7 +103,6 @@ describe("AppIndexDashboard", () => {
       "Schedule",
       "Usage",
       "Games",
-      "Front Design",
       "OpenClaw",
       "UI Preview",
       "Settings",

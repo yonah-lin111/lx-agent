@@ -9,9 +9,9 @@ import {
 // 权限确认模式（default / acceptEdits / bypassPermissions 三态）。
 export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions"
 
-// 协作模式（build / auto / plan / review / design / minimal，支持向后兼容 "default" 归一化为 "build"）。
+// 协作模式（build / auto / plan / review / minimal，支持向后兼容 "default" / "design" 归一化为 "build"）。
 // auto 为编排基础模式：模型经 switch_mode 工具自行切出有效模式（effectiveMode），退出只读模式需用户批准。
-export type CollaborationMode = "build" | "auto" | "plan" | "review" | "design" | "minimal"
+export type CollaborationMode = "build" | "auto" | "plan" | "review" | "minimal"
 
 // 协作模式循环顺序（Shift+Tab 循环、设置页展示与默认模式选择共用同一来源）。
 export const COLLABORATION_MODE_ORDER: readonly CollaborationMode[] = [
@@ -19,15 +19,14 @@ export const COLLABORATION_MODE_ORDER: readonly CollaborationMode[] = [
   "auto",
   "plan",
   "review",
-  "design",
   "minimal",
 ]
 
 // switch_mode 工具可达的目标模式（auto 不可达自身，minimal 永久排除在 auto 编排之外）。
-export const SWITCH_MODE_TARGETS = ["build", "plan", "review", "design"] as const
+export const SWITCH_MODE_TARGETS = ["build", "plan", "review"] as const
 
 // Auto 模式可配置启用的目标模式（build 始终内置支持，不可关闭；minimal 永久不可达）。
-export const AUTO_CONFIGURABLE_MODES = ["plan", "review", "design"] as const
+export const AUTO_CONFIGURABLE_MODES = ["plan", "review"] as const
 export type AutoConfigurableMode = (typeof AUTO_CONFIGURABLE_MODES)[number]
 
 // 计算当前生效的 Auto 模式可达目标（build 始终包含）。
@@ -77,10 +76,8 @@ export const MODE_BLOCKED_TOOLS: readonly string[] = [
   "memory",
 ]
 
-// 模式附加硬拦截：Plan Mode 禁用 question 工具（提问由内嵌 grill-me 技能的纯文本逐题协议承担）；
-// Design Mode 禁用 wireframe（原型交付走 <front_design> 协议）。
+// 模式附加硬拦截：Plan Mode 禁用 question 工具（提问由内嵌 grill-me 技能的纯文本逐题协议承担）。
 const PLAN_BLOCKED_TOOLS: readonly string[] = ["question"]
-const DESIGN_BLOCKED_TOOLS: readonly string[] = ["wireframe"]
 
 // Minimal Mode 工具白名单：终端 + 文件读写；搜索/列目录走 bash，其余工具一律硬拦截
 // （fail-closed，新增工具默认被拦截）。有意偏离 dsh minimal 的 shell-only 基线（见 docs/agent/modes.md §6）。
@@ -106,7 +103,6 @@ const MODE_BLOCKED_TOOL_SETS: Record<CollaborationMode, ReadonlySet<string>> = {
   auto: EMPTY_TOOL_SET,
   plan: new Set([...MODE_BLOCKED_TOOLS, ...PLAN_BLOCKED_TOOLS]),
   review: BASE_MODE_BLOCKED_TOOLS,
-  design: new Set([...MODE_BLOCKED_TOOLS, ...DESIGN_BLOCKED_TOOLS]),
   // Minimal 为白名单模式，无黑名单；限制由 getModeAllowedTools 承担。
   minimal: EMPTY_TOOL_SET,
 }
@@ -137,7 +133,6 @@ export const isToolBlockedByMode = (mode: CollaborationMode, toolName: string): 
 export const DEFAULT_MODE_SUBAGENT_ROLES: Partial<Record<CollaborationMode, readonly string[]>> = {
   plan: ["explorer"],
   review: ["explorer"],
-  design: ["explorer"],
 }
 
 /**
@@ -182,7 +177,7 @@ export interface PermissionSettings {
   ask: string[]
   // 协作模式能力权限覆盖：缺省 = 不限制（仅受模式硬基线约束）；显式白名单只能收紧。
   modes?: Partial<Record<CollaborationMode, CapabilityPermissions>>
-  // Auto 编排模式下允许模型自主切换及 @agentMode 补全的模式列表（缺省 = ["plan", "review", "design"]）。
+  // Auto 编排模式下允许模型自主切换及 @agentMode 补全的模式列表（缺省 = ["plan", "review"]）。
   autoEnabledModes?: AutoConfigurableMode[]
 }
 

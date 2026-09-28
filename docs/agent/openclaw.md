@@ -111,7 +111,7 @@ LX Agent 通过 WebSocket 接入 OpenClaw 生态：多实例 Gateway 管理、�
 - 面板组件：`AgentInputCommandPanel`（命令）、`AgentInputFilePanel`（提及）、`OpenClawPickerPanel`（办公区/员工选择）；
 - 纯函数：`getMentionQuery`、`isFuzzyMatch`、`getAgentPanelPosition`。
 
-仅实现 OpenClaw 需要的三种面板：`/` 命令、当前办公区内的 `@claw` 提及、`/office` 选择面板；本地会话专属面板（model / worktree / project / session / skill / design / 文件提及）不接入。
+仅实现 OpenClaw 需要的三种面板：`/` 命令、当前办公区内的 `@claw` 提及、`/office` 选择面板；本地会话专属面板（model / worktree / project / session / skill / 文件提及）不接入。
 
 输入框底部为 `OpenClawTargetSelect`（当前办公区员工多选）：只列员工、不切换办公区，按钮按未选中 / 单个 / 多个显示「选择员工」/ 员工名 / `N 名员工`；办公区切换由左栏办公区列表或 `/office` 面板负责。
 

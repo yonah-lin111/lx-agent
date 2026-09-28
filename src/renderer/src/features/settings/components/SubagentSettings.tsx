@@ -347,7 +347,6 @@ export const SubagentSettings = (): React.JSX.Element => {
                 { value: "build", label: t("agent.collaborationModeBuild") },
                 { value: "plan", label: t("agent.collaborationModePlan") },
                 { value: "review", label: t("agent.collaborationModeReview") },
-                { value: "design", label: t("agent.collaborationModeDesign") },
               ]}
               onChange={handleModeChange}
             />

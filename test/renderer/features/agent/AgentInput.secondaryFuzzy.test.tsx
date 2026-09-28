@@ -39,12 +39,6 @@ vi.mock("@/features/agent/hooks/sessionListStore", () => ({
   },
 }))
 
-vi.mock("@/features/agent/hooks/frontDesignStore", () => ({
-  frontDesignStore: {
-    getAllDesigns: vi.fn().mockReturnValue([]),
-  },
-}))
-
 // 渲染面板 hook 的最小参数。
 const renderPanels = (params: {
   value: string

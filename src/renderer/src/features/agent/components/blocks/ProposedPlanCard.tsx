@@ -131,7 +131,7 @@ export const ProposedPlanCard = ({
           bgClass="border-emerald-500/30 bg-emerald-500/20"
           textClass="text-emerald-300"
         >
-          {rawLineCount} {t("frontDesign.lines")}
+          {rawLineCount} {t("agent.planLines")}
         </LxTag>
       </div>
 

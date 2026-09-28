@@ -1,5 +1,4 @@
 import type {
-  FrontDesignUpdateAction,
   GrillQuestionData,
   GrillQuestionOption,
   ReviewFindingItem,
@@ -7,59 +6,8 @@ import type {
   ReviewSeverity,
 } from "../types"
 
-// 结构化标签内容解析器：把各协议标签的正文解析为结构化数据（plan / review / grill / front design 属性）。
+// 结构化标签内容解析器：把各协议标签的正文解析为结构化数据（plan / review / grill）。
 // 与标签切分逻辑（structuredTags）拆分职责，保持单文件小体量。
-
-const UPDATE_ACTIONS = new Set<string>(["replace", "append", "prepend", "before", "after"])
-
-// 归一化模型给出的更新动作；未知值一律退回 replace。
-const normalizeUpdateAction = (value: string | undefined): FrontDesignUpdateAction => {
-  const normalized = value?.trim().toLowerCase()
-  return normalized && UPDATE_ACTIONS.has(normalized)
-    ? (normalized as FrontDesignUpdateAction)
-    : "replace"
-}
-
-export const extractFrontDesignAttributes = (
-  tagStr: string,
-): {
-  title?: string
-  id?: string
-  parentId?: string
-  mode?: "tailwindcss" | "css"
-  target?: string
-  action: FrontDesignUpdateAction
-} => {
-  const titleMatch = /title=["']([^"']*)["']/i.exec(tagStr)
-  // 边界保护：`parent_id="x"` / `parentId="x"` 中的 `id=` 不得被误认为本标签自身的 id。
-  const idMatch = /(?<![A-Za-z0-9_-])id=["']([^"']*)["']/i.exec(tagStr)
-  const parentIdMatch = /(?:parent_id|parentId)=["']([^"']*)["']/i.exec(tagStr)
-  const modeMatch = /mode=["']([^"']*)["']/i.exec(tagStr)
-  const actionMatch = /action=["']([^"']*)["']/i.exec(tagStr)
-  let target: string | undefined
-  const bracketTargetMatch = /target=["']?(\[[^\]]+\])["']?/i.exec(tagStr)
-  if (bracketTargetMatch) {
-    target = bracketTargetMatch[1].replace(
-      /\[\s*([a-zA-Z0-9_-]+)\s*=\s*["']?([^"'\]\s]+)["']?\s*\]/g,
-      "[$1=$2]",
-    )
-  } else {
-    const targetMatch = /target=["']([^"']*)["']/i.exec(tagStr)
-    target = targetMatch ? targetMatch[1].trim() : undefined
-  }
-
-  const rawMode = modeMatch ? modeMatch[1].trim().toLowerCase() : undefined
-  const mode = rawMode === "css" ? "css" : "tailwindcss"
-
-  return {
-    title: titleMatch ? titleMatch[1].trim() : undefined,
-    id: idMatch ? idMatch[1].trim() : undefined,
-    parentId: parentIdMatch ? parentIdMatch[1].trim() : undefined,
-    mode,
-    target,
-    action: normalizeUpdateAction(actionMatch?.[1]),
-  }
-}
 
 // 提取计划内容中的首个标题（支持 # 或 ##）。
 export const extractPlanTitle = (content: string): string | undefined => {

@@ -8,8 +8,6 @@ describe("filterAgentModeMentionCandidates 模式补全过滤", () => {
     if (key === "agent.collaborationModePlanDesc") return "先出计划再落地"
     if (key === "agent.collaborationModeReview") return "审查模式"
     if (key === "agent.collaborationModeReviewDesc") return "只读审查代码"
-    if (key === "agent.collaborationModeDesign") return "设计模式"
-    if (key === "agent.collaborationModeDesignDesc") return "前端原型开发"
     if (key === "agent.collaborationModeBuild") return "构建模式"
     if (key === "agent.collaborationModeBuildDesc") return "执行修改"
     return key
@@ -19,7 +17,7 @@ describe("filterAgentModeMentionCandidates 模式补全过滤", () => {
 
   it("空查询返回所有有效目标模式", () => {
     const results = filterAgentModeMentionCandidates(allTargets, "", dummyT)
-    expect(results.map((r) => r.mode)).toEqual(["build", "plan", "review", "design"])
+    expect(results.map((r) => r.mode)).toEqual(["build", "plan", "review"])
   })
 
   it("通过模式名称模糊过滤", () => {

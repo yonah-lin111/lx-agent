@@ -16,6 +16,7 @@ vi.mock("@/services/gameRomService", () => ({
     remove: vi.fn(),
     markPlayed: vi.fn(),
     writeSave: vi.fn(),
+    writeState: vi.fn(),
   },
 }))
 
@@ -72,22 +73,25 @@ describe("game IPC handlers", () => {
     expect(result).toEqual(results)
   })
 
-  it("重命名 / 删除 / 标记游玩 / 写入存档转发给 service", async () => {
+  it("重命名 / 删除 / 标记游玩 / 写入存档与快速存档转发给 service", async () => {
     const { gameRomService } = await import("@/services/gameRomService")
     const handlers = await registerHandlers()
     const saveBytes = new Uint8Array([1, 2, 3])
+    const stateBytes = new Uint8Array([4, 5, 6])
 
     handlers.get(GAME_CHANNELS.list)?.({})
     handlers.get(GAME_CHANNELS.rename)?.({}, 3, "新标题")
     handlers.get(GAME_CHANNELS.remove)?.({}, 3)
     handlers.get(GAME_CHANNELS.markPlayed)?.({}, 3)
     handlers.get(GAME_CHANNELS.writeSave)?.({}, 3, saveBytes)
+    handlers.get(GAME_CHANNELS.writeState)?.({}, 3, 2, stateBytes)
 
     expect(gameRomService.list).toHaveBeenCalledTimes(1)
     expect(gameRomService.rename).toHaveBeenCalledWith(3, "新标题")
     expect(gameRomService.remove).toHaveBeenCalledWith(3)
     expect(gameRomService.markPlayed).toHaveBeenCalledWith(3)
     expect(gameRomService.writeSave).toHaveBeenCalledWith(3, saveBytes)
+    expect(gameRomService.writeState).toHaveBeenCalledWith(3, 2, stateBytes)
   })
 
   it("运行时配置返回 guest preload 的 file:// URL", async () => {

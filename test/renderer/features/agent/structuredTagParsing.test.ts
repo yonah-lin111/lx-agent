@@ -5,8 +5,7 @@ import { describe, expect, it } from "vitest"
 import { parseTextWithProposedPlan, toAgentMessages, toChatMessage } from "@/features/agent/utils"
 
 // 流式调用：未闭合标签允许渐进渲染。
-const parseStreaming = (text: string) =>
-  parseTextWithProposedPlan(text, undefined, undefined, undefined, undefined, true)
+const parseStreaming = (text: string) => parseTextWithProposedPlan(text, undefined, true)
 
 describe("结构化标签解析：定稿必须闭合，流式允许未闭合", () => {
   it("定稿消息中行内引用 <proposed_plan> 不产出计划块", () => {
@@ -21,10 +20,14 @@ describe("结构化标签解析：定稿必须闭合，流式允许未闭合", (
     expect(blocks.every((block) => block.kind === "text")).toBe(true)
   })
 
-  it("定稿消息中行内引用 <front_design> / <front_design_update> 不产出设计块", () => {
-    const raw = "design：按 `<front_design>` 与 `<front_design_update>` 协议输出原型。"
-    const blocks = parseTextWithProposedPlan(raw)
-    expect(blocks.every((block) => block.kind === "text")).toBe(true)
+  it("design 已移除：<front_design> 引用与成对闭合标签都只作为普通文本", () => {
+    const inlineRaw = "design：按 `<front_design>` 与 `<front_design_update>` 协议输出原型。"
+    const inlineBlocks = parseTextWithProposedPlan(inlineRaw)
+    expect(inlineBlocks).toEqual([{ kind: "text", text: inlineRaw, durationMs: undefined }])
+
+    const pairedRaw = '<front_design title="Navbar">\n<nav class="flex">x</nav>\n</front_design>'
+    const pairedBlocks = parseTextWithProposedPlan(pairedRaw)
+    expect(pairedBlocks).toEqual([{ kind: "text", text: pairedRaw, durationMs: undefined }])
   })
 
   it("流式消息中未闭合标签仍产出结构化块（渐进渲染）", () => {
@@ -32,12 +35,6 @@ describe("结构化标签解析：定稿必须闭合，流式允许未闭合", (
     expect(planBlocks[1]?.kind).toBe("proposedPlan")
     if (planBlocks[1]?.kind === "proposedPlan") {
       expect(planBlocks[1].plan.isStreaming).toBe(true)
-    }
-
-    const designBlocks = parseStreaming('<front_design title="Navbar">\n<nav class="flex">')
-    expect(designBlocks[0]?.kind).toBe("frontDesign")
-    if (designBlocks[0]?.kind === "frontDesign") {
-      expect(designBlocks[0].design.isStreaming).toBe(true)
     }
   })
 

@@ -5,7 +5,6 @@ import type React from "react"
 import { useCallback, useRef } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
-import type { FrontDesignItem } from "@/features/agent/hooks/frontDesignStore"
 import type { GitWorktreeOption } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import {
@@ -669,26 +668,6 @@ export const useAgentInputActions = ({
     [editorViewRef, setActiveMode],
   )
 
-  const selectDesign = useCallback(
-    (design: FrontDesignItem): void => {
-      const view = editorViewRef.current
-      if (!view) return
-      const text = view.state.doc.toString()
-      const cursor = view.state.selection.main.head
-      const mention = getMentionQuery(text, cursor)
-      if (!mention) return
-      const title = design.title || "Frontend Prototype"
-      const insert = `@design:${design.id} (${title}) `
-      view.dispatch({
-        changes: { from: mention.start, to: cursor, insert },
-        selection: { anchor: mention.start + insert.length },
-      })
-      view.focus()
-      setActiveMode(null)
-    },
-    [editorViewRef, setActiveMode],
-  )
-
   const selectClawAgent = useCallback(
     (candidate: ClawMentionCandidate): void => {
       const view = editorViewRef.current
@@ -800,7 +779,6 @@ export const useAgentInputActions = ({
     selectFile,
     selectSkill,
     selectSkillFromMention,
-    selectDesign,
     selectClawAgent,
     selectSubagentMention,
     selectMcpServer,

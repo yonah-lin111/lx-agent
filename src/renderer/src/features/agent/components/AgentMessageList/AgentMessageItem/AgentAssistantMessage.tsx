@@ -18,7 +18,6 @@ import {
   AgentWebSearchBlock,
   AgentWireframeCallBlock,
   type ExecutionItemMeta,
-  FrontDesignCard,
   GrillQuestionCard,
   ProposedPlanCard,
   ReviewFindingsCard,
@@ -229,16 +228,6 @@ export const AgentAssistantMessage = ({
                 <GrillQuestionCard
                   key={groupIndex}
                   grill={group.block.grill}
-                  isStreaming={group.isStreaming}
-                />
-              )
-            }
-
-            if (group.kind === "frontDesign") {
-              return (
-                <FrontDesignCard
-                  key={groupIndex}
-                  design={group.block.design}
                   isStreaming={group.isStreaming}
                 />
               )

@@ -166,6 +166,10 @@
     }, SPEED_APPLY_DELAY_MS)
   }
 
+  // 快速存档：槽位取值 1~9（与 EmulatorJS 设置一致）。
+  var STATE_SLOT_COUNT = 9
+  var STATE_SLOT_DEFAULT = 1
+
   // 切到指定档位并把当前倍速上报宿主页顶部徽标。
   function setSpeedStep(index) {
     speedStepIndex = (index + SPEED_STEPS.length) % SPEED_STEPS.length
@@ -216,6 +220,54 @@
     saveListenerAttached = true
   }
 
+  function normalizeStateSlot(raw) {
+    var slot = parseInt(raw, 10)
+    if (isNaN(slot) || slot < 1 || slot > STATE_SLOT_COUNT) return STATE_SLOT_DEFAULT
+    return slot
+  }
+
+  // 快速存档改由应用侧托管：保存上报宿主落盘，读取走 lx-game:// 协议，不落内存文件系统。
+  function installStateBridge() {
+    var manager = getGameManager()
+    if (!manager || manager.__lxStateBridge === true) return
+    var loadState = manager.loadState.bind(manager)
+
+    manager.quickSave = function (slot) {
+      var normalized = normalizeStateSlot(slot)
+      try {
+        report("state", { slot: normalized, data: manager.getState() })
+        return true
+      } catch (error) {
+        return false
+      }
+    }
+
+    manager.quickLoad = function (slot) {
+      var normalized = normalizeStateSlot(slot)
+      window
+        .fetch("state/" + entryId + "/" + normalized, { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) {
+            var emulator = window.EJS_emulator
+            if (emulator && typeof emulator.displayMessage === "function") {
+              emulator.displayMessage(
+                emulator.localization("NO SAVE STATE IN SLOT") + " " + normalized,
+              )
+            }
+            return
+          }
+          return response.arrayBuffer().then(function (buffer) {
+            loadState(new Uint8Array(buffer))
+          })
+        })
+        .catch(function () {
+          // 读取失败静默：不打断游戏。
+        })
+    }
+
+    manager.__lxStateBridge = true
+  }
+
   function startAutosave() {
     if (autosaveTimer) window.clearInterval(autosaveTimer)
     autosaveTimer = window.setInterval(flushSave, AUTOSAVE_INTERVAL_MS)
@@ -263,7 +315,8 @@
   window.EJS_gameName = "lx-game-" + entryId
   window.EJS_defaultControls = GBA_DEFAULT_CONTROLS
   // 快进由宿主页的 Tab 倍速统一接管：隐藏 EmulatorJS 自带的快进菜单项，避免出现第二套入口。
-  window.EJS_hideSettings = ["fastForward", "ff-ratio"]
+  // 快速存档位置固定为应用侧托管，隐藏会诱导下载/浏览器存储的“存档位置”设置。
+  window.EJS_hideSettings = ["fastForward", "ff-ratio", "save-state-location"]
   window.EJS_language = language
   window.EJS_disableAutoLang = true
   window.EJS_color = color
@@ -272,7 +325,8 @@
   window.EJS_disableDatabases = true
   // 仓库内只携带未压缩源码（GPL 源码分发要求），以 debug 模式直接加载 data/src。
   window.EJS_DEBUG_XX = true
-  // 存档由应用侧托管：隐藏 EmulatorJS 自带的存档文件按钮；restart/cheat/netplay 等一并隐藏。
+  // 存档由应用侧托管：隐藏 EmulatorJS 自带的存档文件按钮；save/load state 按钮会下载或选择本地
+  // 文件（路径选择），快速存档统一走右键菜单 Quick Save/Quick Load；restart/cheat/netplay 等一并隐藏。
   window.EJS_Buttons = {
     restart: false,
     cheat: false,
@@ -282,15 +336,19 @@
     exitEmulation: false,
     saveSavFiles: false,
     loadSavFiles: false,
+    saveState: false,
+    loadState: false,
   }
 
   window.EJS_ready = function () {
     attachSaveListener()
+    installStateBridge()
     report("ready")
   }
 
   window.EJS_onGameStart = function () {
     attachSaveListener()
+    installStateBridge()
     report("started")
     // 每局都从 1x 开始：上次的高倍速不该悄悄带到下一局。
     setSpeedStep(0)
@@ -356,6 +414,17 @@
     if (message.type === "flush") {
       flushSave()
       report("flushed")
+      return
+    }
+    // 宿主暂停/恢复（最小化、ESC 切换）：模拟器核心自行处理播放状态。
+    if (message.type === "pause" || message.type === "resume") {
+      var emulator = window.EJS_emulator
+      if (!emulator || emulator.started !== true) return
+      if (message.type === "pause") {
+        emulator.pause()
+      } else {
+        emulator.play()
+      }
     }
   })
 })()

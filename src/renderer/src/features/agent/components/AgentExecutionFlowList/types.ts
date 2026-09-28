@@ -10,7 +10,6 @@ import {
   FileText,
   MessageCircleQuestion,
   Minimize2,
-  Palette,
   Search,
   ShieldAlert,
   Sparkles,
@@ -250,8 +249,6 @@ export const getKindMeta = (
         labelKey: "agent.grillQuestionBadge",
         tagColor: "sky",
       }
-    case "frontDesign":
-      return { icon: Palette, labelKey: "frontDesign.designCardBadge", tagColor: "pink" }
     case "error": {
       const isAborted = step.errorContent?.isAborted ?? step.errorContent?.stopReason === "aborted"
       if (isAborted) {

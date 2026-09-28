@@ -109,7 +109,6 @@ export const useFlowSteps = ({
         step.kind === "error" ||
         step.kind === "proposedPlan" ||
         step.kind === "reviewFindings" ||
-        step.kind === "frontDesign" ||
         step.kind === "grillQuestion" ||
         step.toolContent?.toolName === "todowrite" ||
         step.toolContent?.toolName === "wireframe" ||
@@ -179,7 +178,6 @@ export const useFlowSteps = ({
       step.kind === "subagent" ||
       step.kind === "proposedPlan" ||
       step.kind === "reviewFindings" ||
-      step.kind === "frontDesign" ||
       step.kind === "grillQuestion"
     ) {
       return false

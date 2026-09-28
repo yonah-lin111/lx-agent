@@ -41,7 +41,7 @@ export interface CollaborationModePermissionsProps {
 }
 
 /**
- * 设置页"协作模式权限"卡片：Build / Auto / Plan / Review / Design / Minimal 六行能力权限覆盖。
+ * 设置页"协作模式权限"卡片：面板展示的协作模式能力权限覆盖。
  * 非 build 模式的写操作硬基线不可放开（UI 锁定、保存时由主进程规范化剥离）；
  * Auto 为编排基础模式（无硬基线，配置作为附加收紧层与有效模式白名单求交）；
  * Minimal 为白名单模式（bash + read/write/edit），只读展示、不可编辑。

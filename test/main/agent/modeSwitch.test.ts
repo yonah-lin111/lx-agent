@@ -181,24 +181,100 @@ describe("Collaboration Mode Switch Entries", () => {
 
     agentRunner.setCollaborationMode("plan", sessionId)
     agentRunner.setCollaborationMode("review", sessionId)
-    agentRunner.setCollaborationMode("build", sessionId)
 
     const entries = agentSessionService.listEntries(sessionId)
     const modeEntries = entries.filter((e) => e.type === "mode_change")
     expect(modeEntries).toHaveLength(1)
-    expect(JSON.parse(modeEntries[0].payload).mode).toBe("build")
+    const payload = JSON.parse(modeEntries[0].payload) as { mode: string; from?: string }
+    expect(payload.mode).toBe("review")
+    // run 起点模式（首次切换前的基础模式）随首条 payload 落库并在合并时保留。
+    expect(payload.from).toBe("build")
 
     const modeEvents = events.filter(
       (e): e is Extract<AgentEvent, { type: "collaboration_mode_changed" }> =>
         e.type === "collaboration_mode_changed",
     )
-    // 三次切换都广播事件，但后两次合并到同一条 message 上（mode 依次更新）。
-    expect(modeEvents.map((e) => e.mode)).toEqual(["plan", "review", "build"])
-    expect(modeEvents[2].message?.mode).toBe("build")
+    // 两次切换都广播事件，第二次合并到同一条 message 上（mode 更新为 review）。
+    expect(modeEvents.map((e) => e.mode)).toEqual(["plan", "review"])
+    expect(modeEvents[1].message?.mode).toBe("review")
+    expect(modeEvents[1].removedMessage).toBeUndefined()
 
     // 会话恢复后只有一条模式切换消息
     const restored = await agentRunner.restoreSession(sessionId)
     expect(restored.messages.filter((m) => m.role === "modeSwitch")).toHaveLength(1)
+  })
+
+  it("用户切回运行起点模式：build → plan → build 整条撤销，不留 mode_change 条目", async () => {
+    const { agentRunner, agentSessionService } = await importModules()
+    const events: AgentEvent[] = []
+    agentRunner.attachEventSink((ev) => events.push(ev as AgentEvent))
+    const sessionId = await createSession(agentRunner)
+    const runner = agentRunner.getRunner(sessionId)
+    expect(runner).toBeDefined()
+
+    agentRunner.setCollaborationMode("plan", sessionId)
+    const planEntries = agentSessionService
+      .listEntries(sessionId)
+      .filter((e) => e.type === "mode_change")
+    expect(planEntries).toHaveLength(1)
+    expect(JSON.parse(planEntries[0].payload).mode).toBe("plan")
+
+    const messagesAfterPlan = runner!.agent!.state.messages.length
+    const seqsAfterPlan = runner!.getTurnStore().getMessageSeqs().length
+    expect(seqsAfterPlan).toBe(messagesAfterPlan)
+
+    agentRunner.setCollaborationMode("build", sessionId)
+
+    // 撤销事件：无新增 message，携带被移除的条目，模式状态照常回到 build。
+    const cancelEvent = events.at(-1) as Extract<AgentEvent, { type: "collaboration_mode_changed" }>
+    expect(cancelEvent.mode).toBe("build")
+    expect(cancelEvent.effectiveMode).toBe("build")
+    expect(cancelEvent.message).toBeUndefined()
+    expect(cancelEvent.removedMessage?.role).toBe("modeSwitch")
+    expect(cancelEvent.removedMessage?.mode).toBe("plan")
+    expect(cancelEvent.removedMessage?.from).toBe("build")
+
+    // DB 无 mode_change；内存消息与 seq 对齐同步回退。
+    expect(
+      agentSessionService.listEntries(sessionId).filter((e) => e.type === "mode_change"),
+    ).toHaveLength(0)
+    expect(runner!.agent!.state.messages.length).toBe(messagesAfterPlan - 1)
+    expect(runner!.getTurnStore().getMessageSeqs().length).toBe(seqsAfterPlan - 1)
+
+    // 恢复会话：模式切换消息不残留。
+    const restored = await agentRunner.restoreSession(sessionId)
+    expect(restored.messages.filter((m) => m.role === "modeSwitch")).toHaveLength(0)
+  })
+
+  it("混合尾部：撤销仅删除 modeSwitch，保留 modelSwitch", async () => {
+    const { agentRunner, agentSessionService } = await importModules()
+    const events: AgentEvent[] = []
+    agentRunner.attachEventSink((ev) => events.push(ev as AgentEvent))
+    const sessionId = await createSession(agentRunner)
+
+    agentRunner.setCollaborationMode("plan", sessionId)
+    const modelRes = agentRunner.switchModel(
+      { provider: "anthropic", model: "claude-3-5-sonnet-20241022" },
+      sessionId,
+    )
+    expect(modelRes.ok).toBe(true)
+
+    agentRunner.setCollaborationMode("build", sessionId)
+
+    const entries = agentSessionService.listEntries(sessionId)
+    expect(entries.filter((e) => e.type === "mode_change")).toHaveLength(0)
+    // 初始模型条目 + 本次模型切换条目均保留。
+    expect(entries.filter((e) => e.type === "model_change")).toHaveLength(2)
+
+    const cancelEvent = events.at(-1) as Extract<AgentEvent, { type: "collaboration_mode_changed" }>
+    expect(cancelEvent.removedMessage?.mode).toBe("plan")
+    expect(cancelEvent.message).toBeUndefined()
+
+    const restored = await agentRunner.restoreSession(sessionId)
+    expect(restored.messages.filter((m) => m.role === "modeSwitch")).toHaveLength(0)
+    expect(restored.messages.filter((m) => m.role === "modelSwitch").length).toBeGreaterThanOrEqual(
+      1,
+    )
   })
 
   it("真实消息打断后再次切换会新增条目；模式未变化时不产生条目", async () => {
@@ -261,6 +337,54 @@ describe("Collaboration Mode Switch Entries", () => {
     } else {
       throw new Error("restored modeSwitch message missing")
     }
+  })
+
+  it("viaAuto 有效模式连续切回不撤销（审计条目保留，原地合并）", async () => {
+    const { agentRunner, agentSessionService } = await importModules()
+    const sessionId = await createSession(agentRunner)
+
+    agentRunner.setCollaborationMode("auto", sessionId)
+    agentRunner.setEffectiveMode("plan", sessionId)
+    agentRunner.setEffectiveMode("build", sessionId)
+
+    // 目标 build 等于 run 起点，但条目带 viaAuto：不得撤销，仅原地合并。
+    const modeEntries = agentSessionService
+      .listEntries(sessionId)
+      .filter((entry) => entry.type === "mode_change")
+    expect(modeEntries).toHaveLength(1)
+    const payload = JSON.parse(modeEntries[0].payload) as { mode: string; viaAuto?: boolean }
+    expect(payload.mode).toBe("build")
+    expect(payload.viaAuto).toBe(true)
+  })
+
+  it("旧数据（无 from）退回原地合并，不撤销", async () => {
+    const { agentRunner, agentSessionService } = await importModules()
+    const sessionId = await createSession(agentRunner)
+
+    agentRunner.setCollaborationMode("plan", sessionId)
+    // 模拟升级前的旧条目：从 payload 与内存消息中移除 from。
+    const entry = agentSessionService.listEntries(sessionId).find((e) => e.type === "mode_change")
+    expect(entry).toBeDefined()
+    const legacyPayload = JSON.parse(entry!.payload) as Record<string, unknown>
+    delete legacyPayload.from
+    agentSessionService.updateEntryPayload(entry!.external_id, JSON.stringify(legacyPayload))
+    const runner = agentRunner.getRunner(sessionId)
+    const legacyMessage = runner!.agent!.state.messages.find((m) => m.role === "modeSwitch")
+    if (legacyMessage?.role === "modeSwitch") {
+      delete legacyMessage.from
+    } else {
+      throw new Error("modeSwitch message missing")
+    }
+
+    agentRunner.setCollaborationMode("build", sessionId)
+
+    const modeEntries = agentSessionService
+      .listEntries(sessionId)
+      .filter((e) => e.type === "mode_change")
+    expect(modeEntries).toHaveLength(1)
+    const payload = JSON.parse(modeEntries[0].payload) as { mode: string; from?: string }
+    expect(payload.mode).toBe("build")
+    expect(payload.from).toBeUndefined()
   })
 
   it("非 auto 基础模式下 setEffectiveMode 等价于基础模式切换（卡片采纳统一入口）", async () => {
@@ -332,14 +456,14 @@ describe("Collaboration Mode Switch Entries", () => {
     // 初始处于 auto 模式（effective build）
     const initialPrompt = runner!.agent?.state.systemPrompt ?? ""
     expect(initialPrompt).toContain('<collaboration_mode name="auto">')
-    expect(initialPrompt).not.toContain('<collaboration_mode name="design"')
+    expect(initialPrompt).not.toContain('<collaboration_mode name="review"')
 
-    // 动态调用 setEffectiveMode("design")
-    runner!.setEffectiveMode("design")
+    // 动态调用 setEffectiveMode("review")
+    runner!.setEffectiveMode("review")
 
-    // 验证 systemPrompt 立即被动态重构为包含 design 模式契约
+    // 验证 systemPrompt 立即被动态重构为包含 review 模式契约
     const updatedPrompt = runner!.agent?.state.systemPrompt ?? ""
     expect(updatedPrompt).toContain('<collaboration_mode name="auto">')
-    expect(updatedPrompt).toContain('<collaboration_mode name="design"')
+    expect(updatedPrompt).toContain('<collaboration_mode name="review"')
   })
 })

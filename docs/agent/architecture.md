@@ -8,7 +8,7 @@ LX Agent 的 Agent 能力（对话 + 工具 + 协作）运行于 Electron main �
 - [runtime.md](./runtime.md)：Turn 状态机、Unified Exec 执行引擎、上下文治理、Token Saver、子代理池与角色治理、记忆与后台作业
 - [tools.md](./tools.md)：内置工具全集（文件/检索/补丁/记忆/MCP/Skill/图片查看）与提示词装配规范、生命周期钩子
 - [permissions.md](./permissions.md)：五模式硬门禁、三档沙箱策略、Guardian 防护网与多级审批
-- [modes.md](./modes.md)：Plan / Review / Design 三模式的输出协议、解析契约与交互卡片（含 Front Design 画布）
+- [modes.md](./modes.md)：Plan / Review 两模式的输出协议、解析契约与交互卡片
 - [openclaw.md](./openclaw.md)：OpenClaw Gateway 接入的页面、会话扇出与跨页委派
 
 ---
@@ -58,7 +58,7 @@ flowchart TD
 ### 1.1 一次对话的完整数据流
 
 1. **输入与路由**：Renderer 发起 `sendMessage(text, options)`，经 `AgentSendContext` 携带 `sessionId` / `tabId` → Main `agentHandlers` → `SessionRunnerManager.getOrCreateRunner()` 按 `sess:<id>` / `tab:<id>` 键取到对应 `AgentSessionRunner`。若该会话正在流式运行，消息默认进入 FIFO `InputQueue`（上限 20 条），或通过 `delivery: "steer"` 转换为即时插话。
-2. **环境切片与装配**：`TurnContext` 冻结当前 Turn 的 `cwd`、`is_worktree`、`git_branch`、协作模式（`build`/`plan`/`review`/`design`/`minimal`）、沙箱策略等不可变快照；`SystemPromptManager` 按 order 分层动态拼装（见 tools.md §3）。
+2. **环境切片与装配**：`TurnContext` 冻结当前 Turn 的 `cwd`、`is_worktree`、`git_branch`、协作模式（`build`/`plan`/`review`/`minimal`）、沙箱策略等不可变快照；`SystemPromptManager` 按 order 分层动态拼装（见 tools.md §3）。
 3. **驱动循环 (Agent Loop)**：
    - 构造 `LlmMessage` 列表，执行上下文修剪（`ContextPruner`）与记忆/任务状态注入（`transformContext`）。
    - 调用 `aiSdkStreamFn` 发起流式推理，由 `IdleWatchdog`（默认 60s）监控防止网络半开假死；出站请求副本按 Token Saver 配置压缩与风格注入（见 runtime.md §4.6），落库与 UI 保持原始内容。
@@ -241,7 +241,6 @@ type AgentMessage =
 | **模板与技能** | `listPromptTemplates` / `listSkills` / `getSkillContent` / `suggestedQuestions` | Slash 模板、Skill 列表与建议问题 |
 | **作业管理** | `listJobs` / `killJob` / `removeJob` / `clearSettledJobs` / `readJobOutput` | 后台长时进程管控 |
 | **导出集成** | `exportSession` / `copySession` / `openFileAt` / `showItemInFolder` | 会话格式化导出与本地文件跳转 |
-| **前端设计** | `compileTailwind` / `saveFrontDesign` / `openDesignDir` | Tailwind JIT 编译、设计三件套落盘与目录打开 |
 | **下行事件** | `event` | 主进程 → Renderer 的唯一事件广播通道 |
 
 ---
@@ -265,9 +264,9 @@ Renderer 侧 `agentTabStore`（`features/agent/hooks/agentTabStore.ts`）管理�
 Renderer 采用 **Feature-First** 模块化设计（`src/renderer/src/features/agent/`）：
 
 1. **输入与交互区 (`AgentInput`)**：Markdown 编辑、`@` 综合提及（文件 / Skill / 子代理角色 / 设计卡片）、`$` Skill 面板、`/` Slash 模板补全、多级 Esc 梯次打断、排队状态气泡。
-2. **消息流渲染 (`AgentMessageList`)**：Block 级折叠聚合（普通工具组、文件 Diff 组、思考折叠、子代理链路），结构化卡片（`ProposedPlanCard` / `ReviewFindingsCard` / `FrontDesignCard`）与 `AgentViewImageBlock` 图片块。
+2. **消息流渲染 (`AgentMessageList`)**：Block 级折叠聚合（普通工具组、文件 Diff 组、思考折叠、子代理链路），结构化卡片（`ProposedPlanCard` / `ReviewFindingsCard`）与 `AgentViewImageBlock` 图片块。
 3. **全景执行面板 (`AgentExecutionFlowList`)**：
-   - 将底层消息流与 `PromptAssembly` 统一投影为标准执行步骤序列（`system` / `user` / `assistant` / `thinking` / `tool` / `subagent` / `compaction` / `undo` / `modelSwitch` / `error` / `proposedPlan` / `reviewFindings` / `frontDesign`）。
+   - 将底层消息流与 `PromptAssembly` 统一投影为标准执行步骤序列（`system` / `user` / `assistant` / `thinking` / `tool` / `subagent` / `compaction` / `undo` / `modelSwitch` / `error` / `proposedPlan` / `reviewFindings`）。
    - 专用渲染分发器：`FlowToolBash`（命令高亮、退出码、终端窗格）、`FlowToolFileOps`（行级 Diff 统计）、`FlowToolSearch`（搜索命中概览）、`FlowToolViewImage`（缩略图与元信息）。
    - 聚合 Telemetry 指标：单步耗时 `durationMs`、Token 明细、缓存命中状态与 Token Saver 生效标注。
 4. **状态栏 (`AgentStatusBar`)**：协作模式按钮（五态循环 + 点击列表定向切换）、权限请求面板与沙箱盾牌（`PermissionStatusButton`）、后台作业状态与 `AgentContextUsagePill` 容量指示。

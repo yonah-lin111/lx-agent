@@ -15,6 +15,9 @@ export const GAME_ROM_MAX_BYTES = 64 * 1024 * 1024
 // 单条游戏条目标题长度上限。
 export const GAME_TITLE_MAX_LENGTH = 120
 
+// 快速存档（save state）槽位数量，槽位取值为 1..GAME_STATE_SLOT_COUNT。
+export const GAME_STATE_SLOT_COUNT = 9
+
 // 一条已导入的游戏条目（标题默认取 ROM 文件名，可改名）。
 export interface GameRomEntry {
   id: number
@@ -55,6 +58,7 @@ export interface GameApi {
     remove: (id: number) => Promise<void>
     markPlayed: (id: number) => Promise<GameRomEntry>
     writeSave: (id: number, data: Uint8Array) => Promise<void>
+    writeState: (id: number, slot: number, data: Uint8Array) => Promise<void>
     getRuntimeConfig: () => Promise<GameRuntimeConfig>
   }
 }

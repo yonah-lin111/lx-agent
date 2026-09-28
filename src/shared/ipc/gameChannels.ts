@@ -6,5 +6,6 @@ export const GAME_CHANNELS = {
   remove: "game:remove",
   markPlayed: "game:markPlayed",
   writeSave: "game:writeSave",
+  writeState: "game:writeState",
   getRuntimeConfig: "game:getRuntimeConfig",
 } as const

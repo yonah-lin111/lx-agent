@@ -66,18 +66,16 @@ beforeEach(() => {
 })
 
 describe("CollaborationModePermissions", () => {
-  it("渲染五种模式行，非 build 模式展示永久禁用硬基线", async () => {
+  it("渲染四种模式行，非 build 模式展示永久禁用硬基线", async () => {
     renderComponent(baseSettings())
 
     expect(await screen.findByText("Build Mode")).toBeTruthy()
     expect(screen.getByText("Plan Mode")).toBeTruthy()
     expect(screen.getByText("Review Mode")).toBeTruthy()
-    expect(screen.getByText("Design Mode")).toBeTruthy()
     expect(screen.getByText("Minimal Mode")).toBeTruthy()
-    // build / minimal 无硬基线锁定提示；plan/review/design 三行展示同一硬基线文案。
-    expect(screen.getAllByText(/Permanently disabled:/)).toHaveLength(3)
-    // design 行额外展示 wireframe。
-    expect(screen.getAllByText(/wireframe/)).toHaveLength(1)
+    expect(screen.queryByText("Design Mode")).toBeNull()
+    // build / minimal 无硬基线锁定提示；plan/review 两行展示同一硬基线文案。
+    expect(screen.getAllByText(/Permanently disabled:/)).toHaveLength(2)
   })
 
   it("Minimal 行为只读白名单：仅展示允许工具、无编辑入口", async () => {
@@ -90,28 +88,26 @@ describe("CollaborationModePermissions", () => {
     expect(screen.getByRole("button", { name: "Edit permissions Build Mode" })).toBeTruthy()
   })
 
-  it("编辑 design：硬基线工具锁定不可勾选，确认后写入白名单", async () => {
+  it("编辑 review：硬基线工具锁定不可勾选，确认后写入白名单", async () => {
     const setSettings = renderComponent(baseSettings())
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit permissions Design Mode" }))
-    // 锁定行（6 个硬基线工具 + worker 角色，其能力集含硬基线工具）始终可见且无勾选框。
-    expect(await screen.findAllByText("Permanently disabled")).toHaveLength(7)
+    fireEvent.click(screen.getByRole("button", { name: "Edit permissions Review Mode" }))
+    // 锁定行（5 个硬基线工具 + worker 角色，其能力集含硬基线工具）始终可见且无勾选框。
+    expect(await screen.findAllByText("Permanently disabled")).toHaveLength(6)
     expect(screen.queryByRole("checkbox", { name: "write" })).toBeNull()
 
     // 打开 tools 限制（预置除硬基线外的全选），取消 grep。
     fireEvent.click(screen.getByRole("checkbox", { name: /^Tools/ }))
     expect(screen.queryByRole("checkbox", { name: "write" })).toBeNull()
-    expect(screen.queryByRole("checkbox", { name: "wireframe" })).toBeNull()
     expect(screen.getByRole("checkbox", { name: "read" })).toBeTruthy()
     fireEvent.click(screen.getByRole("checkbox", { name: "grep" }))
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }))
 
     await waitFor(() => expect(setSettings).toHaveBeenCalledTimes(1))
     const next = setSettings.mock.calls[0][0] as PermissionSettingsConfig
-    expect(next.modes?.design?.tools).toContain("read")
-    expect(next.modes?.design?.tools).not.toContain("grep")
-    expect(next.modes?.design?.tools).not.toContain("write")
-    expect(next.modes?.design?.tools).not.toContain("wireframe")
+    expect(next.modes?.review?.tools).toContain("read")
+    expect(next.modes?.review?.tools).not.toContain("grep")
+    expect(next.modes?.review?.tools).not.toContain("write")
   })
 
   it("取消限制后确认删除该模式覆盖节点", async () => {

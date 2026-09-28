@@ -53,12 +53,6 @@ vi.mock("@/features/agent/hooks/agentTabStore", () => ({
   },
 }))
 
-vi.mock("@/features/agent/hooks/frontDesignStore", () => ({
-  frontDesignStore: {
-    getAllDesigns: vi.fn().mockReturnValue([]),
-  },
-}))
-
 // 中英文 tag 映射：与面板实际渲染一致。
 const tagT = ((key: string): string => {
   if (key === "agent.subagentMentionTag") return "子代理"
@@ -206,26 +200,6 @@ describe("@ 面板 hook tag 通道集成", () => {
     })
     none.unmount()
     vi.mocked(settingsApi.getSubagentBuiltins).mockResolvedValue([])
-  })
-
-  it("@des 整类返回设计", async () => {
-    const { frontDesignStore } = await import("@/features/agent/hooks/frontDesignStore")
-    vi.mocked(frontDesignStore.getAllDesigns).mockReturnValue([
-      {
-        id: "d1",
-        title: "Landing",
-        html: "<div></div>",
-        updatedAt: 1,
-        sessionId: null,
-      },
-    ])
-    const { result, unmount } = renderMentionPanels("@des")
-    activateFileMode(result, "@des")
-    await waitFor(() => {
-      expect(result.current.mentionItems.some((i) => i.kind === "design")).toBe(true)
-    })
-    unmount()
-    vi.mocked(frontDesignStore.getAllDesigns).mockReturnValue([])
   })
 
   it("@cla 整类返回 claw，实例名参与匹配", async () => {

@@ -18,6 +18,7 @@ vi.mock("@/services/gameRomService", () => ({
   gameRomService: {
     getRomFilePath: vi.fn(),
     readSave: vi.fn(),
+    readState: vi.fn(),
   },
 }))
 
@@ -131,5 +132,32 @@ describe("gameProtocol", () => {
       throw new Error("GAME_ENTRY_NOT_FOUND")
     })
     expect(handler(createRequest("lx-game://emulator/sav/9")).status).toBe(404)
+  })
+
+  it("快速存档路由按槽位返回字节，缺失为 404，非法槽位为 400", async () => {
+    const { gameRomService } = await import("@/services/gameRomService")
+    vi.mocked(gameRomService.readState).mockReturnValue(Buffer.from([4, 5, 6]))
+
+    const handler = await captureHandler()
+    const response = handler(createRequest("lx-game://emulator/state/2/3"))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toBe("application/octet-stream")
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([4, 5, 6]))
+    expect(gameRomService.readState).toHaveBeenCalledWith(2, 3)
+
+    vi.mocked(gameRomService.readState).mockReturnValue(null)
+    expect(handler(createRequest("lx-game://emulator/state/2/3")).status).toBe(404)
+
+    expect(handler(createRequest("lx-game://emulator/state/2/0")).status).toBe(400)
+    expect(handler(createRequest("lx-game://emulator/state/2/10")).status).toBe(400)
+    expect(handler(createRequest("lx-game://emulator/state/2/abc")).status).toBe(400)
+    expect(handler(createRequest("lx-game://emulator/state/2")).status).toBe(400)
+
+    vi.mocked(gameRomService.readState).mockImplementation(() => {
+      throw new Error("GAME_ENTRY_NOT_FOUND")
+    })
+    expect(handler(createRequest("lx-game://emulator/state/9/1")).status).toBe(404)
   })
 })

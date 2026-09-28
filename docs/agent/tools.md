@@ -62,7 +62,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | **系统** | `time` | `{}` | 获取当前系统精确时间戳、本地格式化时间与时区 |
 | **记忆与规划** | `memory` | `{ action: "view" \| "save" \| "search" \| "delete"; scope?: "user" \| "project"; type?: "user" \| "workflow"; name?; content?; query? }` | 双作用域 XML 记忆管理（`memory.xml`；只存用户习惯与可复用流程；豁免工具） |
 | | `todowrite` | `{ todos: { content; status }[] }` | 任务清单状态机整表替换；驱动状态栏与执行面板；Plan/Review 模式下被硬拦截 |
-| | `wireframe` | `{ name; layout; description? }` | 记录并展示 ASCII 线框图（Unicode 制表符）辅助 UI 布局评审；design 模式下被硬拦截（布局直接走 `<front_design>`）；参数名不得使用 `title`（见 §1.1） |
+| | `wireframe` | `{ name; layout; description? }` | 记录并展示 ASCII 线框图（Unicode 制表符）辅助 UI 布局评审；参数名不得使用 `title`（见 §1.1） |
 | **语言服务** | `lsp` | `{ operation; filePath; line?; character?; query? }` | 9 种 LSP 语义操作：`goToDefinition` / `findReferences` / `hover` / `documentSymbol` / `workspaceSymbol` / `goToImplementation` / `prepareCallHierarchy` / `incomingCalls` / `outgoingCalls`；支持懒安装 |
 | **交互与协作** | `question` | `{ questions: { question; header; options; multiple? }[] }` | 向用户发起结构化交互式提问（支持 Markdown 与选项选择） |
 | | `task` | `{ description; prompt; agent_type?; name?; subagent_id? }` 或 `{ tasks: { description; prompt; agent_type?; name? }[] }` | 单任务模式启动独立子代理或向 `SubagentPool` 续接；批量模式（`tasks[]`，上限 64 项）一次扇出多个新子代理并行执行、按输入顺序回传结构化结果数组与 `details.subagents`；角色目录注入工具描述，工具集取父激活集与角色白名单交集，模型按 `role.model → defaultModel → 父模型` 覆盖，协作模式按 `agent.subagents.mode`（缺省 `build`，不继承主 Agent）绑定提示词与门禁；并发 `maxConcurrent` 顶层 FIFO 排队、嵌套 fail-fast，嵌套深度 `maxDepth` 1–5（详见 runtime.md §5） |
@@ -104,7 +104,7 @@ export const PROMPT_ORDERS = {
   CURRENT_TIME: 355,            // <current_time> 动态时间感知
   CONTEXT_WINDOW_GUIDANCE: 358, // <context_window_guidance> 容量双阈值告警
   SANDBOX_POLICY: 360,          // <sandbox_policy> 沙箱级别声明
-  COLLABORATION_MODE: 380,      // 模式模板（build / plan / review / design；minimal 为 complete 独占段）
+  COLLABORATION_MODE: 380,      // 模式模板（build / plan / review；minimal 为 complete 独占段）
   INTERCEPTOR: 400,             // 拦截器保留位
 } as const
 ```
@@ -306,7 +306,7 @@ stdout（camelCase 严格 JSON，允许为空）：
 
 ## 8. view_image 图片查看与投递管道
 
-`view_image` 让模型直接查看项目内本地图片，覆盖 Front Design 产出审查、报错截图定位、设计稿/图表解读三类场景；对齐主流 CLI agent 的本地图片查看能力。
+`view_image` 让模型直接查看项目内本地图片，覆盖设计稿审查、报错截图定位、图表解读三类场景；对齐主流 CLI agent 的本地图片查看能力。
 
 ### 8.1 工具契约 (`src/main/agent/tools/viewImage.ts`)
 

@@ -90,4 +90,21 @@ describe("我的世界主题游戏视图", () => {
     expect(viewportBlock).toContain("border: 2px solid #000000 !important")
     expect(viewportBlock).toContain("background-color: #000000 !important")
   })
+
+  it("游戏覆盖层使用像素浮雕容器，顶栏为黑色分隔线", () => {
+    const overlayBlock = getRuleBlock('[data-theme="pixel"] .game-overlay {')
+    expect(overlayBlock).toContain("border-radius: 0px !important")
+    expect(overlayBlock).toContain("border: 2px solid #000000 !important")
+    expect(overlayBlock).toContain("background-color: #1e1e2a !important")
+
+    const toolbarBlock = getRuleBlock('[data-theme="pixel"] .game-overlay-toolbar {')
+    expect(toolbarBlock).toContain("border-bottom: 2px solid #000000 !important")
+    expect(toolbarBlock).toContain("text-shadow: 1px 1px 0px #000000")
+  })
+
+  it("顶部栏游戏入口进行中时使用金锭橙像素字色", () => {
+    const block = getRuleBlock('[data-theme="pixel"] .header-game-icon[data-game-active="true"] {')
+    expect(block).toContain("color: #ffaa00 !important")
+    expect(block).toContain("drop-shadow(1px 1px 0px #000000)")
+  })
 })
