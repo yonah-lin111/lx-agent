@@ -48,7 +48,7 @@ const stubReducedMotion = (matches: boolean): void => {
   )
 }
 
-// 容器 200px 宽、6 项各 24px、间距 4px，居中排布。
+// 容器 200px 宽、5 项各 24px、间距 4px 排布。
 const stubDockRects = (): void => {
   const container = document.querySelector(".sidebar-dock-nav") as HTMLElement
   const items = Array.from(document.querySelectorAll(".sidebar-dock-item")) as HTMLElement[]
@@ -201,7 +201,7 @@ describe("LeftSideBarDockNav", () => {
       </MemoryRouter>,
     )
 
-    expect(document.querySelectorAll(".sidebar-dock-item").length).toBe(6)
+    expect(document.querySelectorAll(".sidebar-dock-item").length).toBe(5)
     expect(screen.getByLabelText("Open UI Preview Page").getAttribute("aria-current")).toBe("page")
     expect(screen.getByLabelText("Open Home Page").getAttribute("aria-current")).toBeNull()
   })
@@ -228,7 +228,7 @@ describe("LeftSideBarDockNav", () => {
     expect(parseScale(transforms[1])).toBeCloseTo(1.281, 3)
     // 写入样式前按 2 位小数取整：9.375 → 9.38
     expect(parseTranslateX(transforms[1])).toBe(9.38)
-    expect(parseScale(transforms[5])).toBe(1)
+    expect(parseScale(transforms[4])).toBe(1)
   })
 
   it("指针离开后复位全部变换", () => {
@@ -241,7 +241,7 @@ describe("LeftSideBarDockNav", () => {
     expect(readDockTransforms().some((transform) => transform !== "")).toBe(true)
 
     fireEvent.pointerLeave(container)
-    expect(readDockTransforms()).toEqual(["", "", "", "", "", ""])
+    expect(readDockTransforms()).toEqual(["", "", "", "", ""])
   })
 
   it("窗口尺寸变化时复位全部变换", () => {
@@ -254,7 +254,7 @@ describe("LeftSideBarDockNav", () => {
     expect(readDockTransforms().some((transform) => transform !== "")).toBe(true)
 
     fireEvent(window, new Event("resize"))
-    expect(readDockTransforms()).toEqual(["", "", "", "", "", ""])
+    expect(readDockTransforms()).toEqual(["", "", "", "", ""])
   })
 
   it("系统减少动态效果时不做放大", () => {
@@ -266,7 +266,7 @@ describe("LeftSideBarDockNav", () => {
       clientX: 130,
     })
 
-    expect(readDockTransforms()).toEqual(["", "", "", "", "", ""])
+    expect(readDockTransforms()).toEqual(["", "", "", "", ""])
   })
 
   it("折叠态不启用放大", () => {
@@ -278,7 +278,7 @@ describe("LeftSideBarDockNav", () => {
     expect(container.className).toContain("flex-col")
     fireEvent.pointerMove(container, { clientX: 130 })
 
-    expect(readDockTransforms()).toEqual(["", "", "", "", "", ""])
+    expect(readDockTransforms()).toEqual(["", "", "", "", ""])
   })
 })
 
@@ -299,7 +299,7 @@ describe("LeftSideBar 集成", () => {
       </MemoryRouter>,
     )
 
-    expect(document.querySelectorAll(".sidebar-dock-item").length).toBe(6)
+    expect(document.querySelectorAll(".sidebar-dock-item").length).toBe(5)
 
     fireEvent.click(screen.getByLabelText("Collapse Sidebar"))
 
