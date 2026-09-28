@@ -614,7 +614,7 @@ export const AgentPage = ({
     btwAnchorsRef.current = anchors
   }, [messages, btwOwnerKey, isRestoring])
 
-  // Shift + Tab 快捷键：在整个 AgentPage 范围内切换协作模式（Build / Plan / Review / Design 循环切换）
+  // Shift + Tab 快捷键：在整个 AgentPage 范围内切换协作模式（Build / Plan / Review 循环切换）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Tab" || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) {

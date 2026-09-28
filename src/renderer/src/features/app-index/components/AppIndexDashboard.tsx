@@ -8,7 +8,6 @@ import {
   Gamepad2,
   type LucideIcon,
   MessageSquarePlus,
-  Palette,
   Settings,
 } from "lucide-react"
 import { useCallback } from "react"
@@ -78,14 +77,6 @@ const QUICK_ENTRIES: QuickEntry[] = [
     icon: Gamepad2,
     iconClassName: "text-amber-400",
     path: `${PAGE_ROUTES.home}?${HOME_VIEW_QUERY_KEY}=game`,
-  },
-  {
-    id: "design",
-    labelKey: "nav.design",
-    descriptionKey: "home.index.designDesc",
-    icon: Palette,
-    iconClassName: "text-fuchsia-400",
-    path: PAGE_ROUTES.design,
   },
   {
     id: "openclaw",

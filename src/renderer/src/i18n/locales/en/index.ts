@@ -1,7 +1,6 @@
 import { agent } from "./agent"
 import { bottomBar } from "./bottomBar"
 import { common } from "./common"
-import { frontDesign } from "./frontDesign"
 import { game } from "./game"
 import { git } from "./git"
 import { header } from "./header"
@@ -34,7 +33,6 @@ export const en = {
   git,
   project,
   uiPreview,
-  frontDesign,
   game,
 }
 

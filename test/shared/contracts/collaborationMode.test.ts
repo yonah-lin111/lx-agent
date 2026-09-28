@@ -12,25 +12,23 @@ import {
 import { describe, expect, it } from "vitest"
 
 describe("协作模式契约", () => {
-  it("模式顺序与循环切换：build → auto → plan → review → design → minimal → build", () => {
-    expect(COLLABORATION_MODE_ORDER).toEqual([
-      "build",
-      "auto",
-      "plan",
-      "review",
-      "design",
-      "minimal",
-    ])
+  it("模式顺序与循环切换：build → auto → plan → review → minimal → build", () => {
+    expect(COLLABORATION_MODE_ORDER).toEqual(["build", "auto", "plan", "review", "minimal"])
     expect(nextCollaborationMode("build")).toBe("auto")
     expect(nextCollaborationMode("auto")).toBe("plan")
     expect(nextCollaborationMode("plan")).toBe("review")
-    expect(nextCollaborationMode("review")).toBe("design")
-    expect(nextCollaborationMode("design")).toBe("minimal")
+    expect(nextCollaborationMode("review")).toBe("minimal")
     expect(nextCollaborationMode("minimal")).toBe("build")
   })
 
+  it("design 已移除：不在顺序 / 切换目标集合中，历史值与非法值一样回退 build", () => {
+    expect(COLLABORATION_MODE_ORDER as readonly string[]).not.toContain("design")
+    expect(SWITCH_MODE_TARGETS as readonly string[]).not.toContain("design")
+    expect(normalizeCollaborationMode("design")).toBe("build")
+  })
+
   it("switch_mode 目标集合：minimal / auto 不可达", () => {
-    expect(SWITCH_MODE_TARGETS).toEqual(["build", "plan", "review", "design"])
+    expect(SWITCH_MODE_TARGETS).toEqual(["build", "plan", "review"])
   })
 
   it("归一化：合法模式保留（含 auto / minimal），历史 default 与非法值回退 build", () => {
@@ -74,7 +72,7 @@ describe("协作模式契约", () => {
     }
   })
 
-  it("黑名单模式保持原语义：build / auto 不拦截，plan/review 拦写操作，plan 另拦 question，design 另拦 wireframe", () => {
+  it("黑名单模式保持原语义：build / auto 不拦截，plan/review 拦写操作，plan 另拦 question", () => {
     expect(isToolBlockedByMode("auto", "write")).toBe(false)
     expect([...getModeBlockedTools("auto")]).toEqual([])
     expect(isToolBlockedByMode("build", "write")).toBe(false)
@@ -87,12 +85,11 @@ describe("协作模式契约", () => {
       "write",
     ])
     expect(isToolBlockedByMode("review", "todowrite")).toBe(true)
-    // question 仅被 plan 硬拦截：review / design 不受影响。
+    // question 仅被 plan 硬拦截：review 不受影响；wireframe 不再有模式硬基线。
     expect(isToolBlockedByMode("plan", "question")).toBe(true)
     expect(isToolBlockedByMode("review", "question")).toBe(false)
-    expect(isToolBlockedByMode("design", "question")).toBe(false)
-    expect(isToolBlockedByMode("design", "wireframe")).toBe(true)
     expect(isToolBlockedByMode("plan", "wireframe")).toBe(false)
+    expect(isToolBlockedByMode("review", "wireframe")).toBe(false)
     expect(isToolBlockedByMode("plan", "read")).toBe(false)
   })
 

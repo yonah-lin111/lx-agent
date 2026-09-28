@@ -62,7 +62,7 @@ describe("Plan Mode 内嵌 grill-me 技能", () => {
 
   it("auto 基础模式叠加有效 plan 模式时同样注入 grill-me；其余模式不注入", () => {
     expect(buildCollaborationModePrompt("auto", "plan")).toContain('<skill name="grill-me">')
-    for (const mode of ["build", "review", "design"] as const) {
+    for (const mode of ["build", "review"] as const) {
       expect(buildCollaborationModePrompt(mode, mode)).not.toContain("grill-me")
     }
   })

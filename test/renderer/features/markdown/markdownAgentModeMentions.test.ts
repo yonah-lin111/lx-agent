@@ -75,7 +75,7 @@ describe("getAgentModeMentionDeletionRange 快速删除范围计算", () => {
   })
 
   it("光标在 token 内部时返回 null，降级为单字符编辑", () => {
-    const text = "@agentMode:design"
+    const text = "@agentMode:plan"
     expect(getAgentModeMentionDeletionRange(text, 5)).toBeNull()
   })
 

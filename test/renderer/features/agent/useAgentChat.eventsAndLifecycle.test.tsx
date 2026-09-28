@@ -137,9 +137,9 @@ describe("useAgentChat 事件路由剩余分支", () => {
     expect(result.current.effectiveMode).toBe("plan")
 
     act(() => {
-      eventHandler({ type: "collaboration_mode_changed", mode: "design", effectiveMode: "design" })
+      eventHandler({ type: "collaboration_mode_changed", mode: "review", effectiveMode: "review" })
     })
-    expect(result.current.collaborationMode).toBe("design")
+    expect(result.current.collaborationMode).toBe("review")
 
     // auto 编排：基础模式保持 auto，有效模式独立更新。
     act(() => {

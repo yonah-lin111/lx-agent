@@ -55,7 +55,7 @@ Controls the **interactive approval behavior** between Agent and human user.
 
 The collaboration mode used when a new session starts (new tab / after app restart). Switch temporarily from the status bar mode tag or with Shift + Tab.
 
-- **Build / Plan / Review / Design**: same as the status bar collaboration modes.
+- **Build / Plan / Review**: same as the status bar collaboration modes.
 - **Minimal**: terminal + file read/write mode (\`bash\` / \`read\` / \`write\` / \`edit\`), useful for testing and comparing basic model performance.
 - **Effective**: applies to new sessions only; temporary switches in current sessions are not overwritten.`,
   autoModeAvailableModes: "Auto Mode Target Modes",
@@ -68,7 +68,6 @@ Configure the allowed target modes in Auto Orchestration Mode.
 - **Build**: Execution mode, always enabled.
 - **Plan**: Architecture and implementation planning mode. When disabled, Auto Mode will not automatically switch to Plan Mode, and @agentMode completions will omit it.
 - **Review**: Read-only code audit and verification mode.
-- **Design**: Front-end prototyping mode.
 
 Note: This setting only constrains Auto mode decisions and @ completions; manual mode switching in the status bar is never restricted.`,
   autoModeBuildFixed: "Always Enabled (Built-in)",
@@ -91,15 +90,14 @@ Note: This setting only constrains Auto mode decisions and @ completions; manual
   // Collaboration Mode Permissions
   collaborationModePermissions: "Collaboration Mode Permissions",
   collaborationModePermissionsDesc:
-    "Configure capabilities for each collaboration mode (Build / Plan / Review / Design / Minimal); configuration can only narrow the hard baseline, never widen it.",
+    "Configure capabilities for each collaboration mode (Build / Plan / Review / Minimal); configuration can only narrow the hard baseline, never widen it.",
   collaborationModePermissionsDoc: `### Collaboration Mode Permissions
 
-Configure independent capability allowlists for the five collaboration modes (Build / Plan / Review / Design / Minimal).
+Configure independent capability allowlists for the four collaboration modes (Build / Plan / Review / Minimal).
 
 - **Non-Build hard baseline**: \`write\` / \`edit\` / \`apply_patch\` / \`todowrite\` / \`memory\` are permanently disabled and cannot be re-enabled by configuration.
 - **Minimal Mode allowlist**: only \`bash\` / \`read\` / \`write\` / \`edit\` are allowed (background job flags and every other tool are permanently disabled); not editable.
 - **Sub-agent dispatch**: \`task\` is controlled by the \`subagents\` group. Non-Build modes default to the built-in explorer sub-agent only; other or custom roles can be checked in. Sub-agent tool calls also inherit the parent mode's hard baseline.
-- **Design Mode**: additionally disables \`wireframe\` (deliver prototypes via the \`<front_design>\` protocol).
 - **Semantics**: an unrestricted group is bounded only by the hard baseline; a restricted group keeps only the checked items (none checked = group fully disabled).
 - **Effective**: applies from the next turn; hard-baseline tools are stripped from saved allowlists automatically.`,
   collaborationModePermissionsEdit: "Edit permissions",

@@ -50,7 +50,7 @@ export const permissions = {
 
 新建会话（新标签页 / 应用重启后）启动时使用的协作模式，可在状态栏点击模式标签或使用 Shift + Tab 临时切换。
 
-- **Build / Plan / Review / Design**：与状态栏协作模式一致。
+- **Build / Plan / Review**：与状态栏协作模式一致。
 - **Minimal**：仅开放终端与文件读写工具（\`bash\` / \`read\` / \`write\` / \`edit\`）的极简模式，适合测试与对比模型基础表现。
 - **生效时机**：仅对新建会话生效；当前会话的临时切换不会被覆盖。`,
   autoModeAvailableModes: "Auto 模式可用目标模式 (Auto Mode Targets)",
@@ -63,7 +63,6 @@ export const permissions = {
 - **Build**：执行模式，始终内置启用。
 - **Plan**：复杂任务规划模式。未勾选时，Auto 模式将不会自动切换到 Plan 模式，@agentMode 补全候选亦不展示。
 - **Review**：代码审查与验证模式。未勾选时停用自动审查。
-- **Design**：前端原型设计模式。未勾选时停用自动设计。
 
 注：该设置仅约束 Auto 编排的自主决策和补全，不限制你在状态栏手动全局切换模式。`,
   autoModeBuildFixed: "始终启用 (Built-in)",
@@ -86,15 +85,14 @@ export const permissions = {
   // Collaboration Mode Permissions
   collaborationModePermissions: "协作模式权限 (Collaboration Mode Permissions)",
   collaborationModePermissionsDesc:
-    "为 Build / Plan / Review / Design / Minimal 五种协作模式分别配置可用能力；配置只能收紧，无法放开硬基线。",
+    "为 Build / Plan / Review / Minimal 四种协作模式分别配置可用能力；配置只能收紧，无法放开硬基线。",
   collaborationModePermissionsDoc: `### 协作模式权限
 
-为五种协作模式（Build / Plan / Review / Design / Minimal）独立配置能力白名单。
+为四种协作模式（Build / Plan / Review / Minimal）独立配置能力白名单。
 
 - **非 Build 模式硬基线**：\`write\` / \`edit\` / \`apply_patch\` / \`todowrite\` / \`memory\` 永久禁用，权限配置无法放开。
 - **Minimal 模式白名单**：仅允许 \`bash\` / \`read\` / \`write\` / \`edit\`（后台作业参数与其余全部工具永久禁用），不可编辑。
 - **子代理派发**：\`task\` 由 \`subagents\` 组控制；非 Build 模式缺省仅允许内置探索子代理 \`explorer\`，可另行勾选其他或自定义角色；子代理的工具调用同样继承父模式硬基线。
-- **Design 模式**：在上述基线之外额外禁用 \`wireframe\`（原型交付走 \`<front_design>\` 协议）。
 - **配置语义**：每组关闭 = 不限制（仅受硬基线约束）；打开后勾选白名单，一项都不勾 = 该组全禁。
 - **生效时机**：下一轮对话生效；硬基线工具在保存时自动从白名单中剥离。`,
   collaborationModePermissionsEdit: "编辑权限",

@@ -104,26 +104,6 @@ export interface GrillQuestionData {
   isStreaming?: boolean
 }
 
-// 前端设计数据结构。
-// 定向更新动作：replace（默认）/ append / prepend / before / after
-export type FrontDesignUpdateAction = "replace" | "append" | "prepend" | "before" | "after"
-
-export interface FrontDesignData {
-  id: string
-  parentId?: string | null
-  version?: number
-  title?: string
-  target?: string | null
-  action?: FrontDesignUpdateAction
-  isUpdate?: boolean
-  html: string
-  raw: string
-  isStreaming?: boolean
-  sessionId?: string | null
-  mode?: "tailwindcss" | "css"
-  designDir?: string
-}
-
 // 消息内容块渲染视图。
 export type ChatBlock =
   | { kind: "text"; text: string; durationMs?: number }
@@ -141,11 +121,6 @@ export type ChatBlock =
   | {
       kind: "grillQuestion"
       grill: GrillQuestionData
-      durationMs?: number
-    }
-  | {
-      kind: "frontDesign"
-      design: FrontDesignData
       durationMs?: number
     }
   | {
@@ -269,7 +244,6 @@ export type ExecutionStepKind =
   | "error"
   | "proposedPlan"
   | "reviewFindings"
-  | "frontDesign"
   | "grillQuestion"
   | "hook"
 
@@ -350,8 +324,6 @@ export interface ExecutionStep {
   reviewFindingsContent?: ReviewFindingsData
   // grill-me 逐题盘问内容。
   grillQuestionContent?: GrillQuestionData
-  // 前端设计原型内容。
-  frontDesignContent?: FrontDesignData
   // 模型切换/初始模型内容。
   modelSwitchContent?: ExecutionModelSwitchContent
   // 协作模式切换内容。

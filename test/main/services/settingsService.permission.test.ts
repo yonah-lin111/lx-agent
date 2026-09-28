@@ -179,11 +179,11 @@ describe("settingsService 权限配置", () => {
       },
     })
 
+    // design 已移除：历史配置中的 design 键在读取时被过滤掉。
     expect(getPermissionSettings().modes).toEqual({
       build: { tools: ["read", "write"] },
       plan: { tools: ["read", "wireframe"], websearch: ["web_search"] },
       review: { tools: [], mcp: ["codegraph"], skills: ["deploy"] },
-      design: { tools: ["read"] },
     })
   })
 
@@ -227,23 +227,19 @@ describe("settingsService 权限配置", () => {
       allow: [],
       deny: [],
       ask: [],
+      // 历史配置可能残留 design 键：用类型断言模拟存量数据，验证保存时被丢弃。
       modes: {
         build: { tools: ["write", "read"] },
         review: { tools: ["read", "write", "memory", "task"] },
         design: { tools: ["read", "wireframe"] },
-      },
+      } as never,
     })
 
-    const config = readConfig()
-    expect(config.agent).toMatchObject({
-      permissions: {
-        modes: {
-          build: { tools: ["write", "read"] },
-          // task 由 subagents 白名单控制，不再作为硬基线剥离。
-          review: { tools: ["read", "task"] },
-          design: { tools: ["read"] },
-        },
-      },
+    // design 已移除：保存时被丢弃，不落盘。
+    expect(getPermissionSettings().modes).toEqual({
+      build: { tools: ["write", "read"] },
+      // task 由 subagents 白名单控制，不再作为硬基线剥离。
+      review: { tools: ["read", "task"] },
     })
   })
 
@@ -255,7 +251,8 @@ describe("settingsService 权限配置", () => {
         },
       },
     })
-    expect(getPermissionSettings().autoEnabledModes).toEqual(["plan", "review", "design"])
+    // design 已移除：历史 autoEnabledModes 中的 design 读取时被过滤。
+    expect(getPermissionSettings().autoEnabledModes).toEqual(["plan", "review"])
 
     savePermissionSettings({
       defaultMode: "default",

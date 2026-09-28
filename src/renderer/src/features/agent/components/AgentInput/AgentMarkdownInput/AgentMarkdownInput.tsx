@@ -181,8 +181,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const selectMentionItem = (item: AgentMentionItem): void => {
       if (item.kind === "skill") {
         actions.selectSkillFromMention(item.skill)
-      } else if (item.kind === "design") {
-        actions.selectDesign(item.design)
       } else if (item.kind === "subagent") {
         actions.selectSubagentMention(item.subagent)
       } else if (item.kind === "mcp") {

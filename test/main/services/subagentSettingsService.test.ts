@@ -262,9 +262,12 @@ describe("getSubagentSettings", () => {
   it("非法 mode 告警并忽略（缺省回退 build），合法 mode 保留", () => {
     writeConfig({ agent: { subagents: { roles: {}, mode: "default" } } })
     expect(getSubagentSettings()).toEqual({ roles: {}, maxDepth: 1 })
-    expect(warnMessages().some((m) => m.includes("mode 须为 build | plan | review | design"))).toBe(
-      true,
-    )
+    expect(warnMessages().some((m) => m.includes("mode 须为 build | plan | review"))).toBe(true)
+
+    // design 已移除：历史子代理 mode 同样告警并回退 build。
+    writeConfig({ agent: { subagents: { roles: {}, mode: "design" } } })
+    expect(getSubagentSettings()).toEqual({ roles: {}, maxDepth: 1 })
+    expect(warnMessages().some((m) => m.includes("mode 须为 build | plan | review"))).toBe(true)
 
     writeConfig({ agent: { subagents: { roles: {}, mode: "plan" } } })
     expect(getSubagentSettings().mode).toBe("plan")

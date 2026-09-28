@@ -21,7 +21,7 @@ let eventHandler: EventHandler
 
 // 主进程模式事件（驱动渲染层基础模式与 auto 有效模式状态）。
 const emitMode = (
-  mode: "build" | "auto" | "plan" | "review" | "design" | "minimal",
+  mode: "build" | "auto" | "plan" | "review" | "minimal",
   effectiveMode: typeof mode = mode,
 ): void => {
   eventHandler({
@@ -50,8 +50,8 @@ describe("useAgentChat 协作模式切换", () => {
     const { result } = renderHook(() => useAgentChat(undefined, "tab-1", "session-1"))
     await act(async () => {})
 
-    act(() => emitMode("design"))
-    expect(result.current.collaborationMode).toBe("design")
+    act(() => emitMode("review"))
+    expect(result.current.collaborationMode).toBe("review")
 
     act(() => result.current.toggleCollaborationMode())
     expect(agentApi.setCollaborationMode).toHaveBeenCalledWith("minimal", "session-1", "tab-1")

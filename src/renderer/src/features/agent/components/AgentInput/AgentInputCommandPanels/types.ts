@@ -1,6 +1,5 @@
 import type { CollaborationMode, SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import type { FrontDesignItem } from "@/features/agent/hooks/frontDesignStore"
 
 export interface AgentInputCommand {
   id: string
@@ -49,10 +48,6 @@ export type AgentMentionItem =
   | {
       kind: "file"
       file: ProjectFileEntry
-    }
-  | {
-      kind: "design"
-      design: FrontDesignItem
     }
   | {
       kind: "subagent"

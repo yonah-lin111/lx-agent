@@ -456,14 +456,14 @@ describe("Collaboration Mode Switch Entries", () => {
     // 初始处于 auto 模式（effective build）
     const initialPrompt = runner!.agent?.state.systemPrompt ?? ""
     expect(initialPrompt).toContain('<collaboration_mode name="auto">')
-    expect(initialPrompt).not.toContain('<collaboration_mode name="design"')
+    expect(initialPrompt).not.toContain('<collaboration_mode name="review"')
 
-    // 动态调用 setEffectiveMode("design")
-    runner!.setEffectiveMode("design")
+    // 动态调用 setEffectiveMode("review")
+    runner!.setEffectiveMode("review")
 
-    // 验证 systemPrompt 立即被动态重构为包含 design 模式契约
+    // 验证 systemPrompt 立即被动态重构为包含 review 模式契约
     const updatedPrompt = runner!.agent?.state.systemPrompt ?? ""
     expect(updatedPrompt).toContain('<collaboration_mode name="auto">')
-    expect(updatedPrompt).toContain('<collaboration_mode name="design"')
+    expect(updatedPrompt).toContain('<collaboration_mode name="review"')
   })
 })

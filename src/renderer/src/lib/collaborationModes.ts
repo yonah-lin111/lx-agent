@@ -1,6 +1,6 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
 import type { LucideIcon } from "lucide-react"
-import { Compass, Palette, ShieldAlert, Terminal, Workflow, Zap } from "lucide-react"
+import { Compass, ShieldAlert, Terminal, Workflow, Zap } from "lucide-react"
 import type { LxTagColor } from "@/components/ui/LxTag"
 import type { TranslationKey } from "@/i18n"
 
@@ -49,14 +49,6 @@ export const COLLABORATION_MODE_META: Record<
     color: "purple",
     iconClass: "text-purple-400/80",
     Icon: ShieldAlert,
-  },
-  design: {
-    shortName: "Design",
-    labelKey: "agent.collaborationModeDesign",
-    descKey: "agent.collaborationModeDesignDesc",
-    color: "pink",
-    iconClass: "text-pink-400/80",
-    Icon: Palette,
   },
   minimal: {
     shortName: "Minimal",

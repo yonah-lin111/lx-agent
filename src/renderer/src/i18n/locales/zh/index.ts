@@ -2,7 +2,6 @@ import type { TranslationDictionary } from "../en"
 import { agent } from "./agent"
 import { bottomBar } from "./bottomBar"
 import { common } from "./common"
-import { frontDesign } from "./frontDesign"
 import { game } from "./game"
 import { git } from "./git"
 import { header } from "./header"
@@ -35,6 +34,5 @@ export const zh: TranslationDictionary = {
   git,
   project,
   uiPreview,
-  frontDesign,
   game,
 }

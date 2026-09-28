@@ -9,7 +9,6 @@ const sidebarEntry = path.join(repoRoot, "src/renderer/src/components/layout/Lef
 const sidebarContentFiles = [
   "src/renderer/src/pages/home/components/HomeLeftSideBar.tsx",
   "src/renderer/src/pages/ui/components/UiLeftSideBar.tsx",
-  "src/renderer/src/pages/front-design/components/FrontDesignLeftSideBar.tsx",
   "src/renderer/src/pages/settings/components/SettingsLeftSideBar.tsx",
   "src/renderer/src/pages/openclaw/components/OpenClawLeftSideBar.tsx",
   "src/renderer/src/pages/project/components/ProjectLeftSideBar.tsx",

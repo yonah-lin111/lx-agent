@@ -12,7 +12,6 @@ export const home = {
     scheduleDesc: "规划并跟踪每日待办",
     usageDesc: "Token、成本与请求明细",
     gameDesc: "导入本地 GBA ROM 并游玩",
-    designDesc: "预览 Agent 生成的前端原型",
     openclawDesc: "向智能体团队派发任务",
     uiDesc: "浏览共享组件库",
     settingsDesc: "模型、权限与偏好设置",

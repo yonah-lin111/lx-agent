@@ -8,7 +8,7 @@ const SWITCH_MODE_INPUT_SCHEMA = z.object({
   mode: z
     .enum(SWITCH_MODE_TARGETS)
     .describe(
-      "Target collaboration mode: 'plan' (design before implementing), 'review' (read-only audit), 'design' (front-end prototyping), 'build' (execute).",
+      "Target collaboration mode: 'plan' (design before implementing), 'review' (read-only audit), 'build' (execute).",
     ),
   reason: z
     .string()
@@ -35,8 +35,6 @@ const MODE_SWITCH_GUIDANCE: Record<(typeof SWITCH_MODE_TARGETS)[number], string>
   plan: "Switched to Plan Mode (strictly read-only). System prompt updated to Plan Mode contract (<proposed_plan>). Mutating tools are now hard-blocked.",
   review:
     "Switched to Review Mode (strictly read-only audit). System prompt updated to Review Mode contract (<review_findings>). Mutating tools are now hard-blocked.",
-  design:
-    "Switched to Front Design Mode (read-only prototyping). System prompt updated to Front Design contract (<front_design>). Pure runnable HTML required; mutating tools and wireframe are hard-blocked.",
   build: "Switched to Build Mode. Execution is enabled: proceed with implementation.",
 }
 
@@ -55,8 +53,7 @@ export const createSwitchModeTool = (
     "Switch the collaboration mode of this session (Auto orchestration).",
     "Use 'plan' before implementing work that spans multiple files, introduces architecture/API/schema decisions, has ambiguous requirements, or is risky to reverse; deliver the plan strictly inside <proposed_plan> and end your turn.",
     "Use 'review' for read-only audits and verification passes (deliver <review_findings>).",
-    'Use \'design\' for front-end UI prototypes; you MUST deliver a complete runnable HTML document inside <front_design title="..." mode="tailwindcss|css"> (never output Markdown or documentation inside it).',
-    "Use 'build' to resume execution after the user approves the plan or design; never switch back to build in the same turn you presented the plan.",
+    "Use 'build' to resume execution after the user approves the plan; never switch back to build in the same turn you presented the plan.",
     "Do not switch for small, clear, low-risk changes — stay in the current mode.",
   ].join(" "),
   inputSchema: SWITCH_MODE_INPUT_SCHEMA,

@@ -23,10 +23,6 @@ export {
   AgentWireframeCallBlock,
   type AgentWireframeCallBlockProps,
 } from "./AgentWireframeCallBlock"
-export {
-  FrontDesignCard,
-  type FrontDesignCardProps,
-} from "./FrontDesignCard"
 export { GrillQuestionCard, type GrillQuestionCardProps } from "./GrillQuestionCard"
 export {
   ProposedPlanCard,

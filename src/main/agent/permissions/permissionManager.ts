@@ -40,8 +40,6 @@ const MODE_MUTATION_REASONS: Record<Exclude<CollaborationMode, "build" | "auto">
   plan: "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite, memory) are strictly prohibited in Plan Mode. Sub-agent dispatch is limited to the configured role allow-list. Please finalize your plan using <proposed_plan> tags.",
   review:
     "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite, memory) are strictly prohibited in Review Mode. Sub-agent dispatch is limited to the configured role allow-list. Please output structured findings using <review_findings> tags.",
-  design:
-    "Action denied: Current collaboration mode is Front Design Mode. Mutating actions (write, edit, apply_patch, todowrite, memory) and the wireframe tool are strictly prohibited in Design Mode. Sub-agent dispatch is limited to the configured role allow-list. Deliver prototypes using <front_design> tags instead.",
   minimal:
     "Action denied: Current collaboration mode is Minimal Mode. Only the bash terminal and the read/write/edit file tools are available: use bash for directory listing, searching, and commands, and read/write/edit for file contents. Sub-agent, web, skill, todo, memory, and MCP tools are strictly prohibited.",
 }
@@ -69,7 +67,6 @@ const MODE_LABELS: Record<CollaborationMode, string> = {
   auto: "Auto Mode",
   plan: "Plan Mode",
   review: "Review Mode",
-  design: "Design Mode",
   minimal: "Minimal Mode",
 }
 
@@ -300,7 +297,7 @@ class PermissionManager {
       }
     }
 
-    // 1. 协作模式硬基线：非 build 模式严禁写操作、todowrite 任务清单与 memory 写入；design 另禁 wireframe；
+    // 1. 协作模式硬基线：非 build 模式严禁写操作、todowrite 任务清单与 memory 写入；
     //    minimal 为白名单模式（仅 bash，fail-closed），并额外拒绝后台作业参数。
     //    该基线为模式身份约束，权限配置不可放开；子代理调用传入 parentMode 时父模式基线同样生效。
     for (const baselineMode of [collaborationMode, parentMode]) {

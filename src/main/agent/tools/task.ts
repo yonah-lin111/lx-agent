@@ -55,7 +55,7 @@ const TASK_ITEM_SCHEMA = z.object({
     .enum(SWITCH_MODE_TARGETS)
     .optional()
     .describe(
-      "Delegation mode (Auto orchestration only): 'build' (default), 'plan' (read-only planning draft), 'review' (read-only audit), 'design' (read-only prototyping).",
+      "Delegation mode (Auto orchestration only): 'build' (default), 'plan' (read-only planning draft), 'review' (read-only audit).",
     ),
   name: z.string().optional().describe("Sub-agent name or role (e.g., 'code-explorer' / 'coder')"),
 })
@@ -81,7 +81,7 @@ const TASK_INPUT_SCHEMA = z
       .enum(SWITCH_MODE_TARGETS)
       .optional()
       .describe(
-        "Single-task mode: delegation mode (Auto orchestration only): 'build' (default), 'plan' (read-only planning draft), 'review' (read-only audit), 'design' (read-only prototyping).",
+        "Single-task mode: delegation mode (Auto orchestration only): 'build' (default), 'plan' (read-only planning draft), 'review' (read-only audit).",
       ),
     name: z
       .string()
@@ -192,7 +192,7 @@ const BASE_DESCRIPTION =
 
 // auto 编排下的派发模式说明（仅在基础模式为 auto 时追加到工具描述）。
 const AUTO_MODE_DESCRIPTION = [
-  "Available delegation modes (Auto orchestration): 'build' executes work (default), 'plan' runs a read-only planning draft, 'review' runs a read-only audit with the 4-dimension rubric, 'design' runs a read-only front-end prototyping discipline.",
+  "Available delegation modes (Auto orchestration): 'build' executes work (default), 'plan' runs a read-only planning draft, 'review' runs a read-only audit with the 4-dimension rubric.",
   "Sub-agents run under the selected mode's tool restrictions and return plain text only: their output never renders as a UI card, so switch yourself inline (switch_mode) when the user must approve or interact with the artifact.",
 ].join(" ")
 

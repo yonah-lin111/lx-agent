@@ -4,6 +4,5 @@ export const PAGE_ROUTES = {
   project: "/project",
   settings: "/settings",
   ui: "/ui",
-  design: "/design",
   openclaw: "/openclaw",
 } as const

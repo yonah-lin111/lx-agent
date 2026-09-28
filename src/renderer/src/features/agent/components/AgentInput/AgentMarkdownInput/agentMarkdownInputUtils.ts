@@ -184,9 +184,6 @@ export const isFuzzyMatch = (query: string, keyword: string): boolean => {
 // @ 提及面板的 Skill 种类 tag 文本。
 export const SKILL_MENTION_TAG = "skill"
 
-// @ 提及面板的 Design 种类 tag 文本。
-export const DESIGN_MENTION_TAG = "design"
-
 // @ 提及面板的 OpenClaw 种类 tag 文本。
 export const CLAW_MENTION_TAG = "claw"
 
@@ -459,68 +456,6 @@ export const getSkillMentionQuery = (
   const query = value.slice(start + 1, cursor)
   if (/[\s\n]/.test(query)) return null
   return { start, query }
-}
-
-export interface DesignMention {
-  id: string
-  target?: string
-  title?: string
-  fullMatch: string
-  start: number
-  end: number
-}
-
-export const extractDesignMentions = (text: string): DesignMention[] => {
-  const regex =
-    /(?<![\w\[])@design:([a-zA-Z0-9_-]+)(?:#(?:(\[[^\]\r\n]+\])|([^\s()]+)))?(?:\s*\(([^()\r\n]*)\))?/g
-  const matches: DesignMention[] = []
-  let match: RegExpExecArray | null = null
-  while ((match = regex.exec(text)) !== null) {
-    const rawTarget = match[2] || match[3]
-    matches.push({
-      id: match[1],
-      target: rawTarget?.trim() || undefined,
-      title: match[4]?.trim() || undefined,
-      fullMatch: match[0],
-      start: match.index,
-      end: match.index + match[0].length,
-    })
-  }
-  return matches
-}
-
-export interface DesignTokenDeletionRange {
-  from: number
-  to: number
-}
-
-/**
- * 计算光标处于 @design 提及末尾时的整块快速删除范围。
- * 1. 光标紧贴末尾字符或右括号处（例如 `@design:... (span)|`）：整块删除，若后续紧邻单个空格一并移除。
- * 2. 光标位于末尾单个空格之后（例如 `@design:... (span) |`）：整块删除，包括该尾随空格。
- * 3. 光标处于 Token 内部：返回 null，降级为默认的单字符编辑。
- */
-export const getDesignMentionDeletionRange = (
-  text: string,
-  cursor: number,
-): DesignTokenDeletionRange | null => {
-  const mentions = extractDesignMentions(text)
-  for (const mention of mentions) {
-    // 1. 光标紧贴末尾字符或右括号处
-    if (cursor === mention.end) {
-      const to = text[cursor] === " " ? cursor + 1 : cursor
-      return { from: mention.start, to }
-    }
-    // 2. 光标在末尾单个空格之后
-    if (cursor === mention.end + 1 && text[mention.end] === " ") {
-      return { from: mention.start, to: cursor }
-    }
-    // 3. 光标在 Token 内部时降级
-    if (cursor > mention.start && cursor < mention.end) {
-      return null
-    }
-  }
-  return null
 }
 
 export { cleanUserPrompt } from "@/features/agent/utils"

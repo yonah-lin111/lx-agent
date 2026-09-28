@@ -261,7 +261,7 @@ describe("agent IPC handlers", () => {
     )
   })
 
-  it("setCollaborationMode handler 校验模式（允许 build/plan/review/design/minimal/default）并转发到 agentRunner", async () => {
+  it("setCollaborationMode handler 校验模式（允许 build/plan/review/minimal/default，design 已移除）并转发到 agentRunner", async () => {
     vi.resetModules()
     const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
     const { agentRunner } = await import("@/agent/agentRunner")
@@ -278,9 +278,14 @@ describe("agent IPC handlers", () => {
     expect(invalidResult).toEqual({ ok: false, error: "协作模式参数无效。" })
     expect(agentRunner.setCollaborationMode).not.toHaveBeenCalled()
 
-    // 合法模式（design）被放行并转发
-    await handler(undefined, "design", "sess-1", "tab-1")
-    expect(agentRunner.setCollaborationMode).toHaveBeenCalledWith("design", "sess-1", "tab-1")
+    // design 已移除：作为非法模式被拦截
+    const designResult = await handler(undefined, "design", "sess-1", "tab-1")
+    expect(designResult).toEqual({ ok: false, error: "协作模式参数无效。" })
+    expect(agentRunner.setCollaborationMode).not.toHaveBeenCalledWith("design", "sess-1", "tab-1")
+
+    // 合法模式（review）被放行并转发
+    await handler(undefined, "review", "sess-1", "tab-1")
+    expect(agentRunner.setCollaborationMode).toHaveBeenCalledWith("review", "sess-1", "tab-1")
 
     // 合法模式（minimal）被放行并转发
     await handler(undefined, "minimal", "sess-1", "tab-1")
