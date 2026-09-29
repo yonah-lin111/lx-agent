@@ -337,7 +337,6 @@ export const agent = {
   revertTurnFilesSuccess: "已回退该轮 {{count}} 个文件",
   deleteTurnKeepFiles: "仅删除本轮",
   deleteTurnRevertFiles: "回退文件并删除本轮（{{count}} 个）",
-  deleteTurnRevertWarning: "可能覆盖后续修改",
   commandSteerDesc: "即时插话（引导运行中 Agent 转向）",
   commandModelDesc: "切换 AI 模型",
   commandGitWorktreeDesc: "切换 git 工作区",

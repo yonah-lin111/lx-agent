@@ -347,7 +347,6 @@ export const agent = {
   revertTurnFilesSuccess: "Reverted {{count}} file(s) from this turn",
   deleteTurnKeepFiles: "Delete turn only",
   deleteTurnRevertFiles: "Revert files & delete turn ({{count}})",
-  deleteTurnRevertWarning: "May overwrite later changes",
   commandSteerDesc: "Steer running Agent in real-time",
   commandModelDesc: "Switch AI model",
   commandGitWorktreeDesc: "Switch git worktree",

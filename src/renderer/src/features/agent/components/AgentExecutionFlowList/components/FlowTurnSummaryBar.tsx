@@ -18,8 +18,6 @@ type FlowTurnSummaryBarProps = {
   canDeleteTurn: boolean
   // 本轮文件改动数（>0 时删除菜单提供"回退文件并删除本轮"选项）。
   fileChangeCount?: number
-  // 该轮之后仍有用户轮：回退文件可能覆盖后续修改，菜单内提示。
-  hasSubsequentUserMessage?: boolean
   onDeleteMessage?: (messageId: string, revertFiles: boolean) => void
   settings: ModelSettingsState
 }
@@ -34,7 +32,6 @@ export const FlowTurnSummaryBar = ({
   turnMessageId,
   canDeleteTurn,
   fileChangeCount = 0,
-  hasSubsequentUserMessage = false,
   onDeleteMessage,
   settings,
 }: FlowTurnSummaryBarProps): React.JSX.Element => {
@@ -49,13 +46,6 @@ export const FlowTurnSummaryBar = ({
           className="agent-turn-delete-revert"
           prefix={<RotateCcw className="h-3.5 w-3.5 shrink-0 text-amber-300/80" />}
           label={t("agent.deleteTurnRevertFiles", { count: fileChangeCount })}
-          suffix={
-            hasSubsequentUserMessage ? (
-              <span className="shrink-0 text-xs text-amber-300/60">
-                {t("agent.deleteTurnRevertWarning")}
-              </span>
-            ) : undefined
-          }
           onClick={() => {
             if (turnMessageId) onDeleteMessage?.(turnMessageId, true)
           }}

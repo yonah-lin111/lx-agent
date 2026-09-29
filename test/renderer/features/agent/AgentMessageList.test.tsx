@@ -165,6 +165,67 @@ describe("AgentMessageList", () => {
     expect(screen.getAllByRole("button", { name: "Copy message" }).length).toBe(1)
   })
 
+  it("删除按钮只出现在最后一条助手消息：中间轮次不展示，尾部撤销摘要不影响", async () => {
+    const onDeleteMessage = vi.fn()
+    const messages: ChatMessage[] = [
+      userMessage("u-1", "第一轮问题"),
+      {
+        id: "a-1",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "第一轮回答" }],
+        isStreaming: false,
+        timestamp: 2000,
+      },
+      userMessage("u-2", "第二轮问题"),
+      {
+        id: "a-2",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "第二轮回答" }],
+        isStreaming: false,
+        timestamp: 4000,
+      },
+    ]
+
+    const { rerender } = render(
+      <AgentMessageList
+        messages={messages}
+        onSelectPrompt={vi.fn()}
+        onDeleteMessage={onDeleteMessage}
+      />,
+    )
+
+    // 两轮均渲染操作行，但删除按钮仅一个（最后一条助手消息 a-2）。
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete message" })
+    expect(deleteButtons.length).toBe(1)
+
+    fireEvent.click(deleteButtons[0]!)
+    fireEvent.click(
+      document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Confirm"], button[aria-label="确认"]',
+      )!,
+    )
+    expect(onDeleteMessage).toHaveBeenCalledWith("a-2")
+
+    // 尾部追加撤销摘要（非对话条目）：删除入口仍保持在最后一条助手消息上。
+    rerender(
+      <AgentMessageList
+        messages={[
+          ...messages,
+          {
+            id: "undo-1",
+            role: "undoSummary",
+            blocks: [],
+            isStreaming: false,
+            timestamp: 5000,
+          },
+        ]}
+        onSelectPrompt={vi.fn()}
+        onDeleteMessage={onDeleteMessage}
+      />,
+    )
+    expect(screen.getAllByRole("button", { name: "Delete message" }).length).toBe(1)
+  })
+
   it("用户消息与其后 AI 回复合并为 QA 对，未吸顶时绝对定位容器不渲染", () => {
     const messages: ChatMessage[] = [
       userMessage("qa-q", "问题一"),

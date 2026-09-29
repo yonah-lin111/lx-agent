@@ -38,6 +38,8 @@ type FlowListElementProps = {
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   onFillInput?: (text: string) => void
   onDeleteMessage?: (messageId: string, revertFiles: boolean) => void
+  // 可删除目标消息 id（会话最后一条助手消息；仅该轮展示删除入口）。
+  deletableMessageId?: string
   onContinue?: () => void
   settings: ModelSettingsState
 }
@@ -70,6 +72,7 @@ export const FlowListElement = ({
   onApplyReviewFixes,
   onFillInput,
   onDeleteMessage,
+  deletableMessageId,
   onContinue,
   settings,
 }: FlowListElementProps): React.JSX.Element => {
@@ -119,8 +122,13 @@ export const FlowListElement = ({
   const turnMessageId = elementTurnIndex > 0 ? turnMessageIdMap.get(elementTurnIndex) : undefined
   const isTurnRunning =
     runningTurnSet.has(elementTurnIndex) || (isStreaming && elementTurnIndex === maxTurn)
+  // 仅会话最后一条助手消息所在轮次可删除（不允许删除中间轮次）。
   const canDeleteTurn =
-    !readOnly && Boolean(onDeleteMessage) && Boolean(turnMessageId) && !isTurnRunning
+    !readOnly &&
+    Boolean(onDeleteMessage) &&
+    turnMessageId !== undefined &&
+    turnMessageId === deletableMessageId &&
+    !isTurnRunning
 
   const hasTurnSummaryPills =
     turnStats &&
@@ -258,7 +266,6 @@ export const FlowListElement = ({
           turnStats={turnStats}
           turnMessageId={turnMessageId}
           fileChangeCount={turnFileChanges?.summary.files.length ?? 0}
-          hasSubsequentUserMessage={elementTurnIndex < maxUserTurnIndex}
           canDeleteTurn={canDeleteTurn}
           onDeleteMessage={onDeleteMessage}
           settings={settings}

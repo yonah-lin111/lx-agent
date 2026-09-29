@@ -2,6 +2,7 @@ import { ArrowDownToLine, ChevronUp, Workflow } from "lucide-react"
 import { forwardRef, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useModelSettings } from "@/features/agent/hooks/modelsStore"
+import { findDeletableAssistantMessageId } from "@/features/agent/messageGrouping"
 import { buildFlowFileChangesByTurn } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { AgentSubagentPanel } from "../panels/AgentSubagentPanel"
@@ -64,6 +65,9 @@ export const AgentExecutionFlowList = forwardRef<
 
     // 每轮文件修改汇总：在该轮末尾（最后一个步骤之后）统一展示。
     const fileChangesByTurn = useMemo(() => buildFlowFileChangesByTurn(steps), [steps])
+
+    // 删除入口只出现在最后一条助手消息所在轮次（与消息列表同一规则）。
+    const deletableMessageId = useMemo(() => findDeletableAssistantMessageId(messages), [messages])
 
     const { turnStatsMap, turnMessageIdMap, runningTurnSet, stats, filterCounts } = useFlowStats({
       steps,
@@ -176,6 +180,7 @@ export const AgentExecutionFlowList = forwardRef<
                       onApplyReviewFixes={onApplyReviewFixes}
                       onFillInput={onFillInput}
                       onDeleteMessage={onDeleteMessage}
+                      deletableMessageId={deletableMessageId}
                       onContinue={onContinue}
                       settings={settings}
                     />

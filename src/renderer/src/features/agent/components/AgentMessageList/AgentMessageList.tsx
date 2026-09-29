@@ -14,7 +14,11 @@ import {
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
 import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSuggestedPromptCards"
-import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
+import {
+  buildQaGroups,
+  findDeletableAssistantMessageId,
+  groupAgentMessages,
+} from "@/features/agent/messageGrouping"
 import type {
   ChatBlock,
   ChatMessage,
@@ -163,6 +167,11 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
     }, [messageGroups])
 
     const lastGroup = messageGroups.at(-1)
+    // 删除入口只出现在最后一条助手消息上（尾部撤销/压缩等条目不影响判定）。
+    const deletableAssistantId = useMemo(
+      () => findDeletableAssistantMessageId(messages),
+      [messages],
+    )
     // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙。
     const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
     // 各 QA 组的 DOM 引用（按组头消息 id 索引），用于侧边栏展开时的视口锚点恢复。
@@ -525,7 +534,11 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                           isLastGroupAi ? onSendSuggestedQuestion : undefined
                         }
                         onEchoToInput={isLastGroupAi ? onEchoToInput : undefined}
-                        onDelete={isLastGroupAi ? onDeleteMessage : undefined}
+                        onDelete={
+                          assistant.message.id === deletableAssistantId
+                            ? onDeleteMessage
+                            : undefined
+                        }
                         onOpenSubagent={onOpenSubagent}
                         canContinue={isLastGroupAi ? canContinue : false}
                         onContinue={isLastGroupAi ? onContinue : undefined}
