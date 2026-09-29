@@ -1,7 +1,8 @@
 import { ArrowDownToLine, ChevronUp, Workflow } from "lucide-react"
-import { forwardRef, useEffect, useState } from "react"
+import { forwardRef, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useModelSettings } from "@/features/agent/hooks/modelsStore"
+import { buildFlowFileChangesByStepId } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { AgentSubagentPanel } from "../panels/AgentSubagentPanel"
 import { AgentExecutionFlowEmpty } from "./AgentExecutionFlowEmpty"
@@ -60,6 +61,9 @@ export const AgentExecutionFlowList = forwardRef<
       toggleGroupExpanded,
       isGroupExpanded,
     } = useFlowSteps({ messages, promptAssembly, isStreaming, activeFilter })
+
+    // 每轮文件修改汇总：挂在各轮最后一个 assistant 步骤展开区底部。
+    const fileChangesByStepId = useMemo(() => buildFlowFileChangesByStepId(steps), [steps])
 
     const { turnStatsMap, turnMessageIdMap, runningTurnSet, stats, filterCounts } = useFlowStats({
       steps,
@@ -153,6 +157,7 @@ export const AgentExecutionFlowList = forwardRef<
                       renderedFlowElements={renderedFlowElements}
                       turnStatsMap={turnStatsMap}
                       turnMessageIdMap={turnMessageIdMap}
+                      fileChangesByStepId={fileChangesByStepId}
                       runningTurnSet={runningTurnSet}
                       hasNonGroupableAfterByIndex={hasNonGroupableAfterByIndex}
                       maxUserTurnIndex={maxUserTurnIndex}

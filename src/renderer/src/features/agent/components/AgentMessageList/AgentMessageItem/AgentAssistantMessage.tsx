@@ -18,6 +18,7 @@ import {
   AgentWebSearchBlock,
   AgentWireframeCallBlock,
   type ExecutionItemMeta,
+  FileChangesCard,
   GrillQuestionCard,
   ProposedPlanCard,
   ReviewFindingsCard,
@@ -95,6 +96,7 @@ export const AgentAssistantMessage = ({
     webSearchCallGroupById,
     skillCallGroupById,
     executionGroups,
+    messageFileChanges,
     assistantError,
     isStreamingNow,
     hasOutput,
@@ -239,7 +241,7 @@ export const AgentAssistantMessage = ({
                   key={groupIndex}
                   toolCall={group.block}
                   toolResult={toolResultByToolCallId.get(group.block.toolCallId)}
-                  diff={diffByToolCallId.get(group.block.toolCallId)}
+                  diff={diffByToolCallId.get(group.block.toolCallId)?.[0]}
                   defaultExpanded={isStreamingNow}
                 />
               )
@@ -396,6 +398,8 @@ export const AgentAssistantMessage = ({
             return <AgentExecutionGroup key={groupIndex} items={executionItems} />
           })}
         </div>
+        {/* 文件修改统计：本条回复内 edit/write/apply_patch 的 diff 汇总（含续写消息）。 */}
+        {messageFileChanges && <FileChangesCard summary={messageFileChanges} className="mt-1.5" />}
         {assistantError && (
           <div className="agent-message-error-container mt-2 flex flex-col gap-1.5">
             <div className="border-t border-white/10" />

@@ -1,6 +1,7 @@
 import { Compass, Cpu, Layers, Minimize2, RefreshCw, Undo2 } from "lucide-react"
 import { Fragment } from "react"
 import type { ExecutionStep, ProposedPlanData, ReviewFindingItem } from "@/features/agent/types"
+import type { FileChangeSummary } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowGroup } from "../AgentExecutionFlowGroup"
 import { AgentExecutionFlowItemMemo } from "../AgentExecutionFlowItemMemo"
@@ -13,6 +14,8 @@ type FlowListElementProps = {
   renderedFlowElements: FlowRenderElement[]
   turnStatsMap: Map<number, TurnStats>
   turnMessageIdMap: Map<number, string>
+  // 该轮文件修改汇总（键为 assistant 步骤 id；仅对应轮次最后一个 assistant 步骤命中）。
+  fileChangesByStepId: Map<string, FileChangeSummary>
   runningTurnSet: Set<number>
   hasNonGroupableAfterByIndex: boolean[]
   maxUserTurnIndex: number
@@ -43,6 +46,7 @@ export const FlowListElement = ({
   renderedFlowElements,
   turnStatsMap,
   turnMessageIdMap,
+  fileChangesByStepId,
   runningTurnSet,
   hasNonGroupableAfterByIndex,
   maxUserTurnIndex,
@@ -200,6 +204,7 @@ export const FlowListElement = ({
           onApplyReviewFixes={onApplyReviewFixes}
           onFillInput={onFillInput}
           hasSubsequentUserMessage={element.step.turnIndex < maxUserTurnIndex}
+          fileChanges={fileChangesByStepId.get(element.step.id)}
         />
       ) : (
         <AgentExecutionFlowGroup

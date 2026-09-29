@@ -29,6 +29,7 @@ import { promptTemplateLoader } from "@/agent/prompts/promptTemplateLoader"
 import { questionManager } from "@/agent/question/questionManager"
 import { getUserSkillDirs, skillLoader, stripFrontmatter } from "@/agent/skills/skillLoader"
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
+import { resolveOpenFilePath } from "@/agent/tools/path-utils"
 import { getStandardSkillsDir } from "@/paths"
 import { notificationService } from "@/services/notificationService"
 
@@ -555,7 +556,9 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     if (typeof filePath !== "string" || !filePath || typeof line !== "number") {
       return { ok: false }
     }
-    return openFileAt(filePath, line)
+    // diff 等场景存工作区相对路径；按当前会话 cwd 解析，避免打包环境 main cwd 不可靠。
+    const targetPath = resolveOpenFilePath(filePath, agentRunner.getCurrentCwd(), existsSync)
+    return openFileAt(targetPath, line)
   })
 
   ipcMain.handle(AGENT_CHANNELS.showItemInFolder, (_, filePath: unknown) => {

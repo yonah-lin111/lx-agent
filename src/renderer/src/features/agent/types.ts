@@ -148,6 +148,8 @@ export type ChatBlock =
       isError: boolean
       durationMs?: number
       diff?: AgentDiff
+      // 多文件可视化 diff（apply_patch 工具结果落库，恢复后重建统计卡片）。
+      diffs?: AgentDiff[]
       // 子代理面板数据（随 task 工具结果落库，恢复后重建弹窗）。
       subagent?: SubagentData
       // 批量扇出子代理数据（随 task 批量模式结果落库，恢复后重建弹窗）。
@@ -397,6 +399,8 @@ export interface ExecutionToolContent {
   isError?: boolean
   durationMs?: number
   diff?: AgentDiff
+  // 多文件可视化 diff（apply_patch 工具产物，驱动执行流文件统计卡片）。
+  diffs?: AgentDiff[]
   lsp?: LspToolDetails
   // 图片查看结果（view_image 工具；驱动执行流程图片块渲染）。
   image?: ViewImageDetails

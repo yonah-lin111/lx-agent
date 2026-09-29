@@ -1,6 +1,11 @@
 import { useMemo } from "react"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import type { AgentDiff, ChatBlock, ChatMessage, LspToolDetails } from "@/features/agent/types"
+import {
+  buildFileChangeSummary,
+  type FileChangeSummary,
+  isFileChangeTool,
+} from "@/features/agent/utils/fileChanges"
 import type { DisplayGroup, ExecutionGroup, QaUsage, ToolCallBlock } from "../types"
 import {
   calculateQaUsage,
@@ -20,13 +25,15 @@ export interface MessageItemGroupsResult {
   displayBlocks: { block: ChatBlock; isStreaming: boolean }[]
   qaUsage: QaUsage | null
   toolResultByToolCallId: Map<string, Extract<ChatBlock, { kind: "toolResult" }>>
-  diffByToolCallId: Map<string, AgentDiff>
+  diffByToolCallId: Map<string, AgentDiff[]>
   lspDetailsByToolCallId: Map<string, LspToolDetails>
   mergeableToolCallGroupById: Map<string, ToolCallBlock[]>
   mcpCallGroupById: Map<string, ToolCallBlock[]>
   webSearchCallGroupById: Map<string, ToolCallBlock[]>
   skillCallGroupById: Map<string, ToolCallBlock[]>
   executionGroups: DisplayGroup[]
+  // 本条消息（含续写）的文件修改统计（edit/write/apply_patch diff 聚合）。
+  messageFileChanges: FileChangeSummary | null
   assistantError: string | undefined
   isStreamingNow: boolean
   hasOutput: boolean
@@ -81,12 +88,59 @@ export const useMessageItemGroups = (
             ): item is {
               block: Extract<ChatBlock, { kind: "toolResult" }>
               isStreaming: boolean
-            } => item.block.kind === "toolResult" && item.block.diff !== undefined,
+            } =>
+              item.block.kind === "toolResult" &&
+              (item.block.diff !== undefined || item.block.diffs !== undefined),
           )
-          .map((item) => [item.block.toolCallId, item.block.diff as AgentDiff]),
+          .map((item) => {
+            const diffs = item.block.diffs?.length
+              ? item.block.diffs
+              : item.block.diff
+                ? [item.block.diff]
+                : []
+            return [item.block.toolCallId, diffs] as const
+          }),
       ),
     [displayBlocks],
   )
+
+  // toolCall 参数表（diff 缺失文件名的历史消息回退解析路径）。
+  const toolCallArgsByToolCallId = useMemo(
+    () =>
+      new Map(
+        displayBlocks
+          .filter(
+            (
+              item,
+            ): item is {
+              block: Extract<ChatBlock, { kind: "toolCall" }>
+              isStreaming: boolean
+            } => item.block.kind === "toolCall",
+          )
+          .map((item) => [item.block.toolCallId, item.block.args] as const),
+      ),
+    [displayBlocks],
+  )
+
+  const messageFileChanges = useMemo(() => {
+    const entries: { diff: AgentDiff; fallbackPath?: string }[] = []
+    for (const { block } of displayBlocks) {
+      if (block.kind !== "toolResult" || !isFileChangeTool(block.toolName)) continue
+      const diffs = block.diffs?.length ? block.diffs : block.diff ? [block.diff] : []
+      if (diffs.length === 0) continue
+      const args = toolCallArgsByToolCallId.get(block.toolCallId)
+      const fallbackPath =
+        typeof args?.filePath === "string"
+          ? args.filePath
+          : typeof args?.path === "string"
+            ? args.path
+            : undefined
+      for (const diff of diffs) {
+        entries.push({ diff, fallbackPath })
+      }
+    }
+    return buildFileChangeSummary(entries)
+  }, [displayBlocks, toolCallArgsByToolCallId])
 
   const lspDetailsByToolCallId = useMemo(
     () =>
@@ -354,6 +408,7 @@ export const useMessageItemGroups = (
     webSearchCallGroupById,
     skillCallGroupById,
     executionGroups,
+    messageFileChanges,
     assistantError,
     isStreamingNow,
     hasOutput,

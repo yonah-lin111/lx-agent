@@ -198,6 +198,7 @@ export const toChatMessage = (
           isError: message.isError,
           durationMs: message.durationMs,
           ...(message.diff ? { diff: message.diff } : {}),
+          ...(message.diffs ? { diffs: message.diffs } : {}),
           ...(message.subagent ? { subagent: message.subagent } : {}),
           ...(message.subagents ? { subagents: message.subagents } : {}),
           ...(message.lsp ? { lsp: message.lsp } : {}),

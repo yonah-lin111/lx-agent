@@ -1,4 +1,5 @@
 import { memo } from "react"
+import { isSameFileChangeSummary } from "@/features/agent/utils/fileChanges"
 import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
 
 // 仅比较数据 props：step 引用经 reuseExecutionSteps 稳定；回调每次渲染换新闭包，不参与比较。
@@ -6,6 +7,8 @@ export const AgentExecutionFlowItemMemo = memo(AgentExecutionFlowItem, (prev, ne
   return (
     prev.step === next.step &&
     prev.isExpanded === next.isExpanded &&
-    prev.hasSubsequentUserMessage === next.hasSubsequentUserMessage
+    prev.hasSubsequentUserMessage === next.hasSubsequentUserMessage &&
+    // 聚合结果每次重算新建对象，按结构判定是否真正变化。
+    isSameFileChangeSummary(prev.fileChanges, next.fileChanges)
   )
 })

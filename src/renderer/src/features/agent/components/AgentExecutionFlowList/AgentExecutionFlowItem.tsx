@@ -20,6 +20,7 @@ import {
   extractSkillBlock,
 } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import {
+  FileChangesCard,
   GrillQuestionCard,
   ProposedPlanCard,
   ReviewFindingsCard,
@@ -28,6 +29,7 @@ import {
   ToolCallTitle,
 } from "@/features/agent/components/blocks"
 import type { ExecutionStep, ProposedPlanData, ReviewFindingItem } from "@/features/agent/types"
+import type { FileChangeSummary } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
 import { FlowItemCompactionContent } from "./FlowItemCompactionContent"
@@ -61,6 +63,8 @@ export interface AgentExecutionFlowItemProps {
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   onFillInput?: (text: string) => void
   hasSubsequentUserMessage?: boolean
+  // 该轮文件修改汇总（仅挂在每轮最后一个 assistant 步骤上）。
+  fileChanges?: FileChangeSummary
 }
 
 /**
@@ -75,6 +79,7 @@ export const AgentExecutionFlowItem = ({
   onApplyReviewFixes,
   onFillInput,
   hasSubsequentUserMessage = false,
+  fileChanges,
 }: AgentExecutionFlowItemProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
@@ -622,6 +627,13 @@ export const AgentExecutionFlowItem = ({
           {/* 异常/中断详情 */}
           {step.errorContent && (
             <FlowItemErrorContent content={step.errorContent} fallbackTitle={step.title} />
+          )}
+
+          {/* 本轮文件修改汇总：展开区底部展示，点击文件打开定位变更行 */}
+          {fileChanges && (
+            <div className="agent-execution-flow-file-changes mt-2">
+              <FileChangesCard summary={fileChanges} />
+            </div>
           )}
         </div>
       ) : null}

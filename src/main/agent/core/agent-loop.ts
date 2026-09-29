@@ -955,6 +955,7 @@ function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResul
   const details = finalized.result.details as
     | {
         diff?: AgentDiff
+        diffs?: AgentDiff[]
         subagent?: SubagentData
         subagents?: SubagentData[]
         lsp?: LspToolDetails
@@ -962,6 +963,7 @@ function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResul
       }
     | undefined
   const diff = details?.diff
+  const diffs = details?.diffs
   const subagent = details?.subagent
   const subagents = details?.subagents
   const lsp = details?.lsp
@@ -975,6 +977,7 @@ function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResul
     timestamp: Date.now(),
     ...(finalized.durationMs !== undefined ? { durationMs: finalized.durationMs } : {}),
     ...(diff ? { diff } : {}),
+    ...(diffs && diffs.length > 0 ? { diffs } : {}),
     ...(subagent ? { subagent } : {}),
     ...(subagents && subagents.length > 0 ? { subagents } : {}),
     ...(lsp ? { lsp } : {}),

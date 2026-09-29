@@ -16,3 +16,14 @@ export const pathExists = async (filePath: string): Promise<boolean> => {
     return false
   }
 }
+
+// 解析待打开文件路径：相对路径按工作区 cwd 解析，解析结果不存在或 cwd 缺失时回退原路径。
+export const resolveOpenFilePath = (
+  filePath: string,
+  cwd: string | undefined,
+  exists: (candidate: string) => boolean,
+): string => {
+  if (isAbsolute(filePath) || !cwd) return filePath
+  const resolved = resolveToCwd(filePath, cwd)
+  return exists(resolved) ? resolved : filePath
+}
