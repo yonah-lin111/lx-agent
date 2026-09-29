@@ -2333,19 +2333,17 @@ describe("AgentExecutionFlowList", () => {
     // 验证 assistant 步骤上存在删除按钮
     const deleteBtn = screen.getByRole("button", { name: /删除轮次|Delete turn/i })
     expect(deleteBtn).not.toBeNull()
-    // 点击删除按钮唤起确认气泡
+    // 点击删除按钮弹出 LxNavItem 选项菜单：该轮无文件改动 → 仅"仅删除本轮"单行。
     fireEvent.click(deleteBtn)
 
-    // 获取确认气泡中的确认按钮（jsdom 下无真实布局 coords 为 null 样式为 visibility: hidden）
-    const confirmBtn = document.querySelector(
-      'button[aria-label="Confirm"], button[aria-label="确认"]',
-    ) as HTMLButtonElement
-    expect(confirmBtn).not.toBeNull()
-    fireEvent.click(confirmBtn)
+    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+    expect(keepRow).not.toBeNull()
+    expect(document.querySelector(".agent-turn-delete-revert")).toBeNull()
+    fireEvent.click(keepRow!)
 
-    // 验证 onDeleteMessage 被正确调用并传入 a-1 的 messageId
+    // 验证 onDeleteMessage 被正确调用并传入 a-1 的 messageId 与显式 revertFiles=false
     expect(onDeleteMessage).toHaveBeenCalledTimes(1)
-    expect(onDeleteMessage).toHaveBeenCalledWith("a-1")
+    expect(onDeleteMessage).toHaveBeenCalledWith("a-1", false)
   })
 
   it("当处于只读模式或未提供 onDeleteMessage 时，assistant 步骤不展示删除按钮", () => {
@@ -2402,13 +2400,11 @@ describe("AgentExecutionFlowList", () => {
     expect(deleteBtn).not.toBeNull()
     fireEvent.click(deleteBtn)
 
-    const confirmBtn = document.querySelector(
-      'button[aria-label="Confirm"], button[aria-label="确认"]',
-    ) as HTMLButtonElement
-    expect(confirmBtn).not.toBeNull()
-    fireEvent.click(confirmBtn)
+    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+    expect(keepRow).not.toBeNull()
+    fireEvent.click(keepRow!)
 
-    expect(onDeleteMessage).toHaveBeenCalledWith("a-error")
+    expect(onDeleteMessage).toHaveBeenCalledWith("a-error", false)
   })
 
   it("正确渲染 turn、modelSwitch、undo、compaction 分割线的图标、文字与样式", () => {

@@ -3,7 +3,7 @@ import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPan
 import { useTranslation } from "@/i18n"
 import { panelClassName } from "../utils"
 
-export interface AgentUndoConfirmPanelProps {
+export interface AgentUndoOptionsPanelProps {
   isOpen: boolean
   position: CSSProperties | null
   activeIndex: number
@@ -11,23 +11,36 @@ export interface AgentUndoConfirmPanelProps {
 }
 
 /**
- * 渲染 /undo 删除会话二次确认面板。
+ * 渲染 /undo 三选一选项面板（参考 Claude rewind）：
+ * 回退文件并撤销对话 / 仅撤销对话 / 仅回退文件（保留对话）/ 取消。
  */
-export const AgentUndoConfirmPanel = ({
+export const AgentUndoOptionsPanel = ({
   isOpen,
   position,
   activeIndex,
   onSelect,
-}: AgentUndoConfirmPanelProps): React.JSX.Element | null => {
+}: AgentUndoOptionsPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const panelData = position !== null ? { position, activeIndex } : null
 
   const options = [
     {
-      id: "confirm",
-      label: t("agent.confirmUndo"),
-      desc: t("agent.undoConfirmDesc"),
+      id: "revert_and_delete",
+      label: t("agent.undoOptionRevertAndDelete"),
+      desc: t("agent.undoOptionRevertAndDeleteDesc"),
       danger: true,
+    },
+    {
+      id: "delete_only",
+      label: t("agent.undoOptionDeleteOnly"),
+      desc: t("agent.undoOptionDeleteOnlyDesc"),
+      danger: false,
+    },
+    {
+      id: "revert_only",
+      label: t("agent.undoOptionRevertOnly"),
+      desc: t("agent.undoOptionRevertOnlyDesc"),
+      danger: false,
     },
     {
       id: "cancel",
@@ -39,7 +52,7 @@ export const AgentUndoConfirmPanel = ({
 
   return (
     <LxCommandPanel
-      ariaLabel={t("agent.undoConfirmTitle")}
+      ariaLabel={t("agent.undoTitle")}
       className={panelClassName}
       data={panelData}
       scrollActiveItem
@@ -48,7 +61,7 @@ export const AgentUndoConfirmPanel = ({
       {(displayData) => (
         <>
           <div className="px-2.5 py-1.5 text-xs font-medium text-white/50 border-b border-white/10 mb-1">
-            {t("agent.undoConfirmTitle")}
+            {t("agent.undoTitle")}
           </div>
           {options.map((opt, index) => {
             const isActive = index === displayData.activeIndex

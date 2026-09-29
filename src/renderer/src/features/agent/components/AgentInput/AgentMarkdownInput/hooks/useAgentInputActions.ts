@@ -2,9 +2,10 @@ import type { EditorView } from "@codemirror/view"
 import type { CollaborationMode, SkillItem } from "@shared/contracts/agent"
 import { cleanWorkspacePath, type ProjectFileEntry } from "@shared/project"
 import type React from "react"
-import { useCallback, useRef } from "react"
+import { useCallback } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
+import type { AgentUndoOption } from "@/features/agent/types"
 import type { GitWorktreeOption } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import {
@@ -43,7 +44,8 @@ interface UseAgentInputActionsProps {
   // /btw 发送回调（问题文本；主输入框路由到侧问线）。
   onBtwSendRef?: React.RefObject<((question: string) => void) | undefined>
   onClear?: () => void
-  onUndo?: () => void
+  // /undo 选项面板选择回调（回退文件并撤销对话 / 仅撤销对话 / 仅回退文件）。
+  onUndoOption?: (option: AgentUndoOption) => void
   onCompact?: () => void
   onModelChange?: (value: string) => void
   onWorktreeSelect?: (path: string) => void
@@ -54,9 +56,8 @@ interface UseAgentInputActionsProps {
   // 是否可用 /btw（无 QA 的主会话拦截发送并提示）。
   canUseBtw?: boolean
   currentSessionId?: string | null
-  isOnlyOneTurnLeft?: () => boolean
   setActiveMode: (mode: AgentInputActiveMode) => void
-  setUndoConfirmIndex: React.Dispatch<React.SetStateAction<number>>
+  setUndoOptionIndex: React.Dispatch<React.SetStateAction<number>>
   updatePanelPosition: () => void
   setBlockCommands: React.Dispatch<React.SetStateAction<MarkdownBlockCommand[]>>
   setBlockCommandPosition: React.Dispatch<React.SetStateAction<React.CSSProperties | undefined>>
@@ -75,7 +76,6 @@ export const useAgentInputActions = ({
   onSendRef,
   onBtwSendRef,
   onClear,
-  onUndo,
   onCompact,
   onModelChange,
   onWorktreeSelect,
@@ -85,9 +85,8 @@ export const useAgentInputActions = ({
   allowProjectChange = true,
   canUseBtw = true,
   currentSessionId,
-  isOnlyOneTurnLeft,
   setActiveMode,
-  setUndoConfirmIndex,
+  setUndoOptionIndex,
   updatePanelPosition,
   setBlockCommands,
   setBlockCommandPosition,
@@ -98,9 +97,6 @@ export const useAgentInputActions = ({
   warningToast,
   t,
 }: UseAgentInputActionsProps) => {
-  const isOnlyOneTurnLeftRef = useRef(isOnlyOneTurnLeft)
-  isOnlyOneTurnLeftRef.current = isOnlyOneTurnLeft
-
   // 清空编辑器与外部输入状态（命令执行后统一收口）。
   const clearEditor = useCallback((): void => {
     onChangeRef.current("")
@@ -260,27 +256,16 @@ export const useAgentInputActions = ({
         return
       }
 
-      // 拦截 /undo 相关命令
+      // 拦截 /undo 相关命令：统一打开三选一选项面板（不再直接执行）。
       if (
         text === "/undo" ||
         text.startsWith("/undo ") ||
         text.startsWith("/undo:") ||
         text.startsWith("/undo-")
       ) {
-        if (isOnlyOneTurnLeftRef.current?.()) {
-          setActiveMode("undo_confirm")
-          setUndoConfirmIndex(0)
-          updatePanelPosition()
-          return
-        }
-        onChangeRef.current("")
-        const view = editorViewRef.current
-        if (view) {
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: "" },
-          })
-        }
-        onUndo?.()
+        setActiveMode("undo_options")
+        setUndoOptionIndex(0)
+        updatePanelPosition()
         return
       }
 
@@ -381,11 +366,10 @@ export const useAgentInputActions = ({
       record,
       onCompact,
       onClear,
-      onUndo,
       executeExport,
       clearEditor,
       setActiveMode,
-      setUndoConfirmIndex,
+      setUndoOptionIndex,
       updatePanelPosition,
       successToast,
       errorToast,
@@ -424,13 +408,10 @@ export const useAgentInputActions = ({
         onChangeRef.current("")
         onClear?.()
       } else if (command.id === "undo") {
-        if (isOnlyOneTurnLeftRef.current?.()) {
-          setActiveMode("undo_confirm")
-          setUndoConfirmIndex(0)
-          updatePanelPosition()
-          return
-        }
-        onUndo?.()
+        // 统一打开三选一选项面板（不再直接执行）。
+        setActiveMode("undo_options")
+        setUndoOptionIndex(0)
+        updatePanelPosition()
       } else if (command.id === "steer") {
         const insertText = "/steer -prompt"
         onChangeRef.current(insertText)
@@ -523,11 +504,10 @@ export const useAgentInputActions = ({
       editorViewRef,
       onChangeRef,
       onClear,
-      onUndo,
       onCompact,
       executeExport,
       setActiveMode,
-      setUndoConfirmIndex,
+      setUndoOptionIndex,
       updatePanelPosition,
     ],
   )

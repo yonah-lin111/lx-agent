@@ -31,8 +31,8 @@ interface UseAgentInputKeymapProps {
   // Panels & modes
   activeModeRef: React.RefObject<AgentInputActiveMode>
   setActiveMode: (mode: AgentInputActiveMode) => void
-  undoConfirmIndexRef: React.RefObject<number>
-  setUndoConfirmIndex: React.Dispatch<React.SetStateAction<number>>
+  undoOptionIndexRef: React.RefObject<number>
+  setUndoOptionIndex: React.Dispatch<React.SetStateAction<number>>
   commandIndexRef: React.RefObject<number>
   setCommandIndex: React.Dispatch<React.SetStateAction<number>>
   matchedCommandsRef: React.RefObject<AgentInputCommand[]>
@@ -77,7 +77,7 @@ interface UseAgentInputKeymapProps {
   selectSession: (session: AgentInputSessionItem) => void
   selectMentionItem: (item: AgentMentionItem) => void
   selectSkill: (skill: any) => void
-  selectUndoConfirm: (index: number) => void
+  selectUndoOption: (index: number) => void
   selectBlockCommand: (cmd: MarkdownBlockCommand) => void
   onChangeRef: React.RefObject<(value: string) => void>
   // Streaming & Stop
@@ -98,8 +98,8 @@ export const useAgentInputKeymap = ({
   selectPasteReference,
   activeModeRef,
   setActiveMode,
-  undoConfirmIndexRef,
-  setUndoConfirmIndex,
+  undoOptionIndexRef,
+  setUndoOptionIndex,
   commandIndexRef,
   setCommandIndex,
   matchedCommandsRef,
@@ -140,7 +140,7 @@ export const useAgentInputKeymap = ({
   selectSession,
   selectMentionItem,
   selectSkill,
-  selectUndoConfirm,
+  selectUndoOption,
   selectBlockCommand,
   onChangeRef,
   isStreamingRef,
@@ -171,8 +171,8 @@ export const useAgentInputKeymap = ({
   selectMentionItemRef.current = selectMentionItem
   const selectSkillRef = useRef(selectSkill)
   selectSkillRef.current = selectSkill
-  const selectUndoConfirmRef = useRef(selectUndoConfirm)
-  selectUndoConfirmRef.current = selectUndoConfirm
+  const selectUndoOptionRef = useRef(selectUndoOption)
+  selectUndoOptionRef.current = selectUndoOption
   const selectBlockCommandRef = useRef(selectBlockCommand)
   selectBlockCommandRef.current = selectBlockCommand
   const warningToastRef = useRef(warningToast)
@@ -192,8 +192,8 @@ export const useAgentInputKeymap = ({
                 setPasteIndex((i) => (i + 1) % count)
                 return true
               }
-              if (activeModeRef.current === "undo_confirm") {
-                setUndoConfirmIndex((i) => (i + 1) % 2)
+              if (activeModeRef.current === "undo_options") {
+                setUndoOptionIndex((i) => (i + 1) % 4)
                 return true
               }
               if (activeModeRef.current === "command" && matchedCommandsRef.current.length > 0) {
@@ -262,8 +262,8 @@ export const useAgentInputKeymap = ({
                 setPasteIndex((i) => (i - 1 + count) % count)
                 return true
               }
-              if (activeModeRef.current === "undo_confirm") {
-                setUndoConfirmIndex((i) => (i - 1 + 2) % 2)
+              if (activeModeRef.current === "undo_options") {
+                setUndoOptionIndex((i) => (i - 1 + 4) % 4)
                 return true
               }
               if (activeModeRef.current === "command" && matchedCommandsRef.current.length > 0) {
@@ -406,8 +406,8 @@ export const useAgentInputKeymap = ({
                 const selected = opts[pasteIndexRef.current] ?? opts[0]
                 return selectPasteReferenceRef.current(selected?.id ?? "reference")
               }
-              if (activeModeRef.current === "undo_confirm") {
-                selectUndoConfirmRef.current(undoConfirmIndexRef.current)
+              if (activeModeRef.current === "undo_options") {
+                selectUndoOptionRef.current(undoOptionIndexRef.current)
                 return true
               }
               if (activeModeRef.current === "historyPrompt") {
@@ -577,8 +577,8 @@ export const useAgentInputKeymap = ({
       setPasteIndex,
       activeModeRef,
       setActiveMode,
-      undoConfirmIndexRef,
-      setUndoConfirmIndex,
+      undoOptionIndexRef,
+      setUndoOptionIndex,
       commandIndexRef,
       setCommandIndex,
       matchedCommandsRef,

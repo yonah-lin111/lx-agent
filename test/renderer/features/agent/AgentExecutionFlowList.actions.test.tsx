@@ -190,17 +190,20 @@ describe("AgentExecutionFlowList 交互动作", () => {
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 1000, behavior: "smooth" })
   })
 
-  it("turn 汇总行的删除按钮经二次确认后回传 onDeleteMessage", () => {
+  it("turn 汇总行的删除按钮弹出选项菜单并回传 onDeleteMessage", () => {
     const onDeleteMessage = vi.fn()
     render(<AgentExecutionFlowList messages={turnMessages()} onDeleteMessage={onDeleteMessage} />)
 
     const summary = screen.getByTestId("turn-summary-1")
     fireEvent.click(within(summary).getByLabelText("Delete turn"))
 
-    // 二次确认由 LxTooltip 确认气泡承载
-    fireEvent.click(screen.getByLabelText("Confirm"))
+    // 无文件改动：菜单仅含"仅删除本轮"。
+    expect(document.querySelector(".agent-turn-delete-revert")).toBeNull()
+    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+    expect(keepRow).not.toBeNull()
+    fireEvent.click(keepRow!)
 
-    expect(onDeleteMessage).toHaveBeenCalledWith("a1")
+    expect(onDeleteMessage).toHaveBeenCalledWith("a1", false)
   })
 
   it("点击 subagent 名称打开面板并可关闭", () => {

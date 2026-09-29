@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useImperativeHandle, useRef } from "reac
 import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { usePromptHistory } from "@/features/agent/hooks/usePromptHistory"
+import type { AgentUndoOption } from "@/features/agent/types"
 import { GitWorktreeCommandMenu } from "@/features/git"
 import { MarkdownPasteCommandMenu } from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import { markdownMarkerHighlight } from "@/features/markdown/extensions/markdownEditorExtensions"
@@ -22,7 +23,7 @@ import {
   AgentInputSessionPanel,
   type AgentMentionItem,
   AgentSkillMentionPanel,
-  AgentUndoConfirmPanel,
+  AgentUndoOptionsPanel,
 } from "../AgentInputCommandPanels"
 import { agentEditorTheme, agentHighlightStyle } from "./AgentMarkdownInputTheme"
 import { useAgentInputActions } from "./hooks/useAgentInputActions"
@@ -69,8 +70,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       inputMode,
       autoEnabledModes,
       onClear,
-      onUndo,
-      isOnlyOneTurnLeft,
+      onUndoOption,
       onCompact,
       onAddFiles,
       panelAnchorRef,
@@ -153,7 +153,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onSendRef,
       onBtwSendRef,
       onClear,
-      onUndo,
+      onUndoOption,
       onCompact,
       onModelChange,
       onWorktreeSelect,
@@ -163,9 +163,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       allowProjectChange,
       canUseBtw,
       currentSessionId,
-      isOnlyOneTurnLeft,
       setActiveMode: panels.setActiveMode,
-      setUndoConfirmIndex: panels.setUndoConfirmIndex,
+      setUndoOptionIndex: panels.setUndoOptionIndex,
       updatePanelPosition: panels.updatePanelPosition,
       setBlockCommands: panels.setBlockCommands,
       setBlockCommandPosition: panels.setBlockCommandPosition,
@@ -194,16 +193,24 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       }
     }
 
-    // /undo 二次确认面板选择：索引 0 为确认删除，其余仅关闭面板。
-    const selectUndoConfirm = (index: number): void => {
+    // /undo 选项面板选择：0 回退文件并撤销对话 / 1 仅撤销对话 / 2 仅回退文件 / 3 取消。
+    const selectUndoOption = (index: number): void => {
       panels.setActiveMode(null)
-      if (index !== 0) return
+      const option: AgentUndoOption | undefined =
+        index === 0
+          ? "revert_and_delete"
+          : index === 1
+            ? "delete_only"
+            : index === 2
+              ? "revert_only"
+              : undefined
+      if (!option) return
       const view = editorViewRef.current
       if (view) {
         view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
       }
       onChangeRef.current("")
-      onUndo?.()
+      onUndoOption?.(option)
     }
 
     // 按键与快捷键映射
@@ -217,8 +224,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       selectPasteReference: paste.selectPasteReference,
       activeModeRef: panels.activeModeRef,
       setActiveMode: panels.setActiveMode,
-      undoConfirmIndexRef: panels.undoConfirmIndexRef,
-      setUndoConfirmIndex: panels.setUndoConfirmIndex,
+      undoOptionIndexRef: panels.undoOptionIndexRef,
+      setUndoOptionIndex: panels.setUndoOptionIndex,
       commandIndexRef: panels.commandIndexRef,
       setCommandIndex: panels.setCommandIndex,
       matchedCommandsRef: panels.matchedCommandsRef,
@@ -259,7 +266,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       selectSession: actions.selectSession,
       selectSkill: actions.selectSkill,
       selectMentionItem,
-      selectUndoConfirm,
+      selectUndoOption,
       selectBlockCommand: actions.selectBlockCommand,
       onChangeRef,
       isStreamingRef,
@@ -405,11 +412,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           activeIndex={panels.historyPromptIndex}
           onSelect={actions.selectHistoryPrompt}
         />
-        <AgentUndoConfirmPanel
-          isOpen={panels.isUndoConfirmMode}
+        <AgentUndoOptionsPanel
+          isOpen={panels.isUndoOptionsMode}
           position={panels.panelPosition}
-          activeIndex={panels.undoConfirmIndex}
-          onSelect={selectUndoConfirm}
+          activeIndex={panels.undoOptionIndex}
+          onSelect={selectUndoOption}
         />
         <AgentInputModelPanel
           isOpen={panels.isModelMode}

@@ -168,4 +168,64 @@ describe("AgentExecutionFlowList 文件修改统计", () => {
     )
     expect(screen.queryByTestId("flow-file-revert-item")).toBeNull()
   })
+
+  it("删除按钮弹出 LxNavItem 选项菜单：回退文件并删除 / 仅删除", () => {
+    const onDeleteMessage = vi.fn()
+    const finalMessage: ChatMessage = {
+      id: "assistant-final",
+      role: "assistant",
+      model: "gpt-4o",
+      blocks: [{ kind: "text", text: "修改完成" }],
+      isStreaming: false,
+      timestamp: 3000,
+    }
+    render(
+      <AgentExecutionFlowList
+        messages={[makeUserMessage(), makeEditAssistantMessage("assistant-1"), finalMessage]}
+        isStreaming={false}
+        sessionId="session-1"
+        onDeleteMessage={onDeleteMessage}
+      />,
+    )
+
+    // 点击删除按钮：菜单含两行（N=1 个文件改动）。
+    fireEvent.click(screen.getByRole("button", { name: "Delete turn" }))
+    const revertRow = document.querySelector<HTMLElement>(".agent-turn-delete-revert")
+    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+    expect(revertRow).not.toBeNull()
+    expect(keepRow).not.toBeNull()
+
+    fireEvent.click(revertRow!)
+    expect(onDeleteMessage).toHaveBeenCalledWith(expect.any(String), true)
+
+    // 重新展开菜单：选择"仅删除本轮"传 revertFiles=false。
+    fireEvent.click(screen.getByRole("button", { name: "Delete turn" }))
+    fireEvent.click(document.querySelector<HTMLElement>(".agent-turn-delete-keep")!)
+    expect(onDeleteMessage).toHaveBeenLastCalledWith(expect.any(String), false)
+  })
+
+  it("删除按钮菜单：该轮无文件改动时仅保留「仅删除本轮」单行", () => {
+    const onDeleteMessage = vi.fn()
+    const plainAssistant: ChatMessage = {
+      id: "assistant-plain",
+      role: "assistant",
+      model: "gpt-4o",
+      blocks: [{ kind: "text", text: "没有改动" }],
+      isStreaming: false,
+      timestamp: 2000,
+    }
+    render(
+      <AgentExecutionFlowList
+        messages={[makeUserMessage(), plainAssistant]}
+        isStreaming={false}
+        sessionId="session-1"
+        onDeleteMessage={onDeleteMessage}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete turn" }))
+    expect(document.querySelector(".agent-turn-delete-revert")).toBeNull()
+    fireEvent.click(document.querySelector<HTMLElement>(".agent-turn-delete-keep")!)
+    expect(onDeleteMessage).toHaveBeenCalledWith(expect.any(String), false)
+  })
 })

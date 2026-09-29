@@ -304,8 +304,8 @@ export interface AgentExecutionFlowListProps {
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   // 审查项回填到输入框
   onFillInput?: (text: string) => void
-  // 删除指定 AI 消息所在的一轮对话
-  onDeleteMessage?: (messageId: string) => void
+  // 删除指定 AI 消息所在的一轮对话；revertFiles 为该轮文件是否一并回退（显式选择）。
+  onDeleteMessage?: (messageId: string, revertFiles: boolean) => void
   // 子代理面板开合回传（父级据此遮盖并 inert 输入区与状态栏）
   onSubagentPanelOpenChange?: (isOpen: boolean) => void
   // 是否只读模式

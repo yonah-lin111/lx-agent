@@ -100,7 +100,7 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
       ).toBeTruthy()
     })
 
-    it("单次回调确认：点击删除唤起气泡，点击取消不触发删除，点击确认精准触发", () => {
+    it("单次回调：点击删除弹出选项菜单，点击菜单行精准触发（无文件改动仅一行）", () => {
       const onDeleteMessage = vi.fn()
       render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
 
@@ -109,32 +109,16 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
         name: /删除轮次|Delete turn/i,
       })
 
-      // 点击删除按钮唤起确认气泡
+      // 点击删除按钮弹出 LxNavItem 选项菜单：无文件改动 → 仅"仅删除本轮"。
       fireEvent.click(deleteBtn)
-
-      // 验证气泡内展示是否删除当前轮次的提示文案
-      expect(
-        screen.getByText(/是否删除当前轮次|Are you sure you want to delete this turn/i),
-      ).not.toBeNull()
-
-      // 点击取消
-      const cancelBtn = document.querySelector(
-        'button[aria-label="Cancel"], button[aria-label="取消"]',
-      ) as HTMLButtonElement
-      expect(cancelBtn).not.toBeNull()
-      fireEvent.click(cancelBtn)
+      expect(document.querySelector(".agent-turn-delete-revert")).toBeNull()
+      const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+      expect(keepRow).not.toBeNull()
       expect(onDeleteMessage).not.toHaveBeenCalled()
-
-      // 再次点击删除并确认
-      fireEvent.click(deleteBtn)
-      const confirmBtn = document.querySelector(
-        'button[aria-label="Confirm"], button[aria-label="确认"]',
-      ) as HTMLButtonElement
-      expect(confirmBtn).not.toBeNull()
-      fireEvent.click(confirmBtn)
+      fireEvent.click(keepRow!)
 
       expect(onDeleteMessage).toHaveBeenCalledTimes(1)
-      expect(onDeleteMessage).toHaveBeenCalledWith("a-1")
+      expect(onDeleteMessage).toHaveBeenCalledWith("a-1", false)
     })
   })
 
@@ -242,13 +226,11 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
       expect(deleteBtn).not.toBeNull()
 
       fireEvent.click(deleteBtn)
-      const confirmBtn = document.querySelector(
-        'button[aria-label="Confirm"], button[aria-label="确认"]',
-      ) as HTMLButtonElement
-      expect(confirmBtn).not.toBeNull()
-      fireEvent.click(confirmBtn)
+      const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+      expect(keepRow).not.toBeNull()
+      fireEvent.click(keepRow!)
 
-      expect(onDeleteMessage).toHaveBeenCalledWith("a-err")
+      expect(onDeleteMessage).toHaveBeenCalledWith("a-err", false)
     })
 
     it("多轮对话中各自 Turn 底部拥有独立的删除按钮且互不干扰", () => {
@@ -294,13 +276,12 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
 
       // 删除第二轮
       fireEvent.click(deleteBtn2)
-      const confirmBtn = document.querySelector(
-        'button[aria-label="Confirm"], button[aria-label="确认"]',
-      ) as HTMLButtonElement
-      fireEvent.click(confirmBtn)
+      const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+      expect(keepRow).not.toBeNull()
+      fireEvent.click(keepRow!)
 
       expect(onDeleteMessage).toHaveBeenCalledTimes(1)
-      expect(onDeleteMessage).toHaveBeenCalledWith("a-2")
+      expect(onDeleteMessage).toHaveBeenCalledWith("a-2", false)
     })
   })
 })

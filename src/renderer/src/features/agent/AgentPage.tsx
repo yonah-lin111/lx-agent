@@ -94,8 +94,7 @@ export const AgentPage = ({
     canContinue,
     stopStreaming,
     createNewChat,
-    undoLastTurn,
-    isOnlyOneTurnLeft,
+    applyUndoOption,
     compactChat,
     deleteTurn,
     restoreChat,
@@ -1107,8 +1106,7 @@ export const AgentPage = ({
           canUseBtw={hasMainUserMessage}
           onStop={handleStop}
           onClear={handleNewChat}
-          onUndo={undoLastTurn}
-          isOnlyOneTurnLeft={isOnlyOneTurnLeft}
+          onUndoOption={applyUndoOption}
           onCompact={compactChat}
           selectedModel={selectedModel}
           selectedVariant={selectedVariant}

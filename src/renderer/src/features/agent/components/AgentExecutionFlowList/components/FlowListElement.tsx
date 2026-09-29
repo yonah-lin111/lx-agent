@@ -37,7 +37,7 @@ type FlowListElementProps = {
   onAcceptPlan?: (plan: ProposedPlanData) => void
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   onFillInput?: (text: string) => void
-  onDeleteMessage?: (messageId: string) => void
+  onDeleteMessage?: (messageId: string, revertFiles: boolean) => void
   onContinue?: () => void
   settings: ModelSettingsState
 }
@@ -257,6 +257,8 @@ export const FlowListElement = ({
           turnIndex={elementTurnIndex}
           turnStats={turnStats}
           turnMessageId={turnMessageId}
+          fileChangeCount={turnFileChanges?.summary.files.length ?? 0}
+          hasSubsequentUserMessage={elementTurnIndex < maxUserTurnIndex}
           canDeleteTurn={canDeleteTurn}
           onDeleteMessage={onDeleteMessage}
           settings={settings}

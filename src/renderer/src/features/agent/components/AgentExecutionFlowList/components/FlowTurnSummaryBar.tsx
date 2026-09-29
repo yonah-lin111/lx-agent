@@ -1,5 +1,6 @@
-import { Trash2 } from "lucide-react"
+import { RotateCcw, Trash2 } from "lucide-react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { getModelDisplayName } from "@/features/agent/hooks/modelsStore"
 import { useTranslation } from "@/i18n"
@@ -15,22 +16,63 @@ type FlowTurnSummaryBarProps = {
   turnStats?: TurnStats
   turnMessageId?: string
   canDeleteTurn: boolean
-  onDeleteMessage?: (messageId: string) => void
+  // 本轮文件改动数（>0 时删除菜单提供"回退文件并删除本轮"选项）。
+  fileChangeCount?: number
+  // 该轮之后仍有用户轮：回退文件可能覆盖后续修改，菜单内提示。
+  hasSubsequentUserMessage?: boolean
+  onDeleteMessage?: (messageId: string, revertFiles: boolean) => void
   settings: ModelSettingsState
 }
 
 /**
  * 渲染 turn 结束时的综合执行数据统计与整轮删除按钮。
+ * 删除按钮弹出 click 触发的 LxNavItem 选项菜单：回退文件并删除本轮（N 个）/ 仅删除本轮。
  */
 export const FlowTurnSummaryBar = ({
   turnIndex,
   turnStats,
   turnMessageId,
   canDeleteTurn,
+  fileChangeCount = 0,
+  hasSubsequentUserMessage = false,
   onDeleteMessage,
   settings,
 }: FlowTurnSummaryBarProps): React.JSX.Element => {
   const { t } = useTranslation()
+
+  const deleteMenu = (
+    <div className="flex min-w-48 flex-col gap-0.5" aria-label={t("agent.deleteTurn")}>
+      {fileChangeCount > 0 && (
+        <LxNavItem
+          level={3}
+          size="small"
+          className="agent-turn-delete-revert"
+          prefix={<RotateCcw className="h-3.5 w-3.5 shrink-0 text-amber-300/80" />}
+          label={t("agent.deleteTurnRevertFiles", { count: fileChangeCount })}
+          suffix={
+            hasSubsequentUserMessage ? (
+              <span className="shrink-0 text-xs text-amber-300/60">
+                {t("agent.deleteTurnRevertWarning")}
+              </span>
+            ) : undefined
+          }
+          onClick={() => {
+            if (turnMessageId) onDeleteMessage?.(turnMessageId, true)
+          }}
+        />
+      )}
+      <LxNavItem
+        level={3}
+        size="small"
+        className="agent-turn-delete-keep"
+        prefix={<Trash2 className="h-3.5 w-3.5 shrink-0 text-red-400/80" />}
+        label={t("agent.deleteTurnKeepFiles")}
+        onClick={() => {
+          if (turnMessageId) onDeleteMessage?.(turnMessageId, false)
+        }}
+      />
+    </div>
+  )
 
   return (
     <div
@@ -40,15 +82,11 @@ export const FlowTurnSummaryBar = ({
       {/* 删除整轮问答按钮：始终显示，位于模型名称左侧并同行 */}
       {canDeleteTurn && turnMessageId && (
         <LxTooltip
-          hover={{
-            content: t("agent.deleteTurn"),
-            placement: "top",
-          }}
-          click={{
-            content: t("agent.deleteTurnConfirm"),
-            placement: "top",
-            onConfirm: () => onDeleteMessage?.(turnMessageId),
-          }}
+          trigger="click"
+          closeOnContentClick
+          content={deleteMenu}
+          contentClassName="!p-1"
+          placement="top"
         >
           <LxIconButton
             size="small"

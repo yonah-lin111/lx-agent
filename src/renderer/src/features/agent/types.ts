@@ -231,6 +231,9 @@ export interface AgentPromptCard {
   prompt: string
 }
 
+// 撤销选项：回退文件并撤销对话 / 仅撤销对话 / 仅回退文件（保留对话）。
+export type AgentUndoOption = "revert_and_delete" | "delete_only" | "revert_only"
+
 // 执行步骤类型。
 export type ExecutionStepKind =
   | "system"
