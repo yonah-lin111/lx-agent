@@ -18,6 +18,7 @@ import {
 } from "@/services/agentSessionService"
 import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { isContextOverflowFailure } from "./compaction"
+import { markPendingRevertsAnnounced } from "./fileRevertMarks"
 import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
 import type { ChildCallInput } from "./subagent/subagentRunner"
 import { parsePatch } from "./tools/applyPatchParser"
@@ -697,6 +698,8 @@ export class TurnStore {
           })
         }
       }
+      // 回退提示已随本轮注入：flush 成功即标记已告知（事务回滚则不标记，下轮补发）。
+      markPendingRevertsAnnounced(sessionId, Date.now())
     })
 
     // 事务提交成功后才更新内存对齐（回滚时不得追加幽灵 seq）。

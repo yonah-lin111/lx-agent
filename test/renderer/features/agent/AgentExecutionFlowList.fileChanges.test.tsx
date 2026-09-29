@@ -4,6 +4,7 @@ import type { AgentDiff } from "@shared/contracts/agent"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList/AgentExecutionFlowList"
+import { agentFileRevertStore } from "@/features/agent/hooks/agentFileRevertStore"
 import type { ChatMessage } from "@/features/agent/types"
 
 // jsdom ResizeObserver stub（气泡与折叠动画依赖）。
@@ -62,6 +63,7 @@ const makeEditAssistantMessage = (id: string): ChatMessage => ({
 describe("AgentExecutionFlowList 文件修改统计", () => {
   beforeEach(() => {
     cleanup()
+    agentFileRevertStore.clearSession("session-1")
   })
 
   it("每轮文件修改汇总渲染在该轮最后一个步骤之后，而非步骤内部", () => {
@@ -125,5 +127,45 @@ describe("AgentExecutionFlowList 文件修改统计", () => {
     expect(screen.getByTestId("file-changes-card")).not.toBeNull()
     fireEvent.click(screen.getByText("1 file changed"))
     expect(document.querySelector(".agent-file-changes-revert")).not.toBeNull()
+  })
+
+  it("源轮存在回退标记时在卡片后渲染已回退 item（可展开文件清单）", () => {
+    agentFileRevertStore.setSessionMarks("session-1", [
+      { userMessageTimestamp: 1000, file: "src/a.ts", revertedAt: 456 },
+    ])
+
+    render(
+      <AgentExecutionFlowList
+        messages={[makeUserMessage(), makeEditAssistantMessage("assistant-1")]}
+        isStreaming={false}
+        sessionId="session-1"
+      />,
+    )
+
+    const item = screen.getByTestId("flow-file-revert-item")
+    expect(item).not.toBeNull()
+    // 文件清单默认折叠，展开后显示路径与回退时间。
+    expect(document.querySelector(".agent-flow-file-revert-list")).toBeNull()
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".agent-flow-file-revert-header")!)
+    expect(document.querySelector(".agent-flow-file-revert-list")).not.toBeNull()
+    expect(document.querySelector(".agent-flow-file-revert-path")?.textContent).toBe("src/a.ts")
+
+    // item 位于文件统计卡片之后（同一轮末尾）。
+    const wrapper = document.querySelector(".agent-execution-flow-file-changes")
+    expect(wrapper).not.toBeNull()
+    expect(
+      (wrapper as Node).compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it("无回退标记时不渲染已回退 item", () => {
+    render(
+      <AgentExecutionFlowList
+        messages={[makeUserMessage(), makeEditAssistantMessage("assistant-1")]}
+        isStreaming={false}
+        sessionId="session-1"
+      />,
+    )
+    expect(screen.queryByTestId("flow-file-revert-item")).toBeNull()
   })
 })

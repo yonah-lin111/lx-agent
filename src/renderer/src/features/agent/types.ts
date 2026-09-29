@@ -443,6 +443,8 @@ export interface ExecutionUndoContent {
   }[]
   toolCallCount?: number
   fileChangeCount?: number
+  // 本轮文件改动是否已被回退（删除/撤销时的显式选择；仅展示用）。
+  filesReverted?: boolean
   undoneAt?: number
 }
 

@@ -1,11 +1,13 @@
 import { Compass, Cpu, Layers, Minimize2, RefreshCw, Undo2 } from "lucide-react"
 import { Fragment } from "react"
 import { FileChangesCard } from "@/features/agent/components/blocks"
+import { useAgentFileReverts } from "@/features/agent/hooks/agentFileRevertStore"
 import type { ExecutionStep, ProposedPlanData, ReviewFindingItem } from "@/features/agent/types"
 import type { FlowFileChangesEntry } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowGroup } from "../AgentExecutionFlowGroup"
 import { AgentExecutionFlowItemMemo } from "../AgentExecutionFlowItemMemo"
+import { FlowFileRevertItem } from "../FlowFileRevertItem"
 import type { FilterKind, FlowRenderElement, ModelSettingsState, TurnStats } from "../types"
 import { FlowTurnSummaryBar } from "./FlowTurnSummaryBar"
 
@@ -105,6 +107,14 @@ export const FlowListElement = ({
     sessionId && turnFileChanges?.userMessageTimestamp !== undefined
       ? { sessionId, userMessageTimestamp: turnFileChanges.userMessageTimestamp }
       : undefined
+  // 该轮已回退文件标记：源轮末尾渲染"已回退"item（仅执行流展示）。
+  const sessionFileReverts = useAgentFileReverts(sessionId)
+  const turnFileRevertMarks =
+    turnFileChanges?.userMessageTimestamp !== undefined
+      ? sessionFileReverts.filter(
+          (mark) => mark.userMessageTimestamp === turnFileChanges.userMessageTimestamp,
+        )
+      : []
 
   const turnMessageId = elementTurnIndex > 0 ? turnMessageIdMap.get(elementTurnIndex) : undefined
   const isTurnRunning =
@@ -234,6 +244,11 @@ export const FlowListElement = ({
         <div className="agent-execution-flow-file-changes mt-1.5 w-full">
           <FileChangesCard summary={turnFileChanges.summary} revertTarget={turnFileChangesRevert} />
         </div>
+      )}
+
+      {/* 本轮已回退文件 item：挂在源轮文件统计卡片之后（仅执行流展示，消息列表不渲染） */}
+      {isTurnEnd && turnFileRevertMarks.length > 0 && (
+        <FlowFileRevertItem marks={turnFileRevertMarks} className="mt-1.5" />
       )}
 
       {/* 当该 turn 结束时，在下一行左侧展示该 turn 的综合执行数据统计及删除按钮 */}

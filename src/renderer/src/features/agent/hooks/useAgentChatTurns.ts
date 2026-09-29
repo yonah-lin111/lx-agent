@@ -2,6 +2,7 @@ import type { AgentUndoDiffSummary } from "@shared/contracts/agent"
 import { useCallback } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
 import type { AgentInputFile } from "@/features/agent/components/AgentInput"
+import { agentFileRevertStore } from "@/features/agent/hooks/agentFileRevertStore"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import type { AgentChatCore, AgentChatFrames } from "@/features/agent/hooks/useAgentChat.types"
@@ -103,7 +104,7 @@ export const useAgentChatTurns = ({
   // 删除一轮对话：移除该轮（问题 + 回答 + 工具调用）并插入撤销摘要，同步 main 侧上下文与 DB。
   // 未命中 DB 用户消息 timestamp（幽灵消息）时仅做本地移除。
   const removeTurn = useCallback(
-    (userIndex: number): void => {
+    (userIndex: number, revertFiles?: boolean): void => {
       const list = messagesRef.current
       const userTimestamp = list[userIndex]?.timestamp
       let nextUserIndex = list.length
@@ -170,6 +171,10 @@ export const useAgentChatTurns = ({
         }
       }
 
+      // 删除/撤销的文件回退语义：显式参数优先；缺省保持"仅末轮回退"旧行为（选项面板接入前的过渡）。
+      const isLastUserTurn = !list.slice(nextUserIndex).some((message) => message.role === "user")
+      const shouldRevertFiles = revertFiles ?? isLastUserTurn
+
       const undoSummaryMessage: ChatMessage = {
         id: `undo-summary-${Date.now()}`,
         role: "undoSummary",
@@ -186,6 +191,7 @@ export const useAgentChatTurns = ({
           toolCalls,
           toolCallCount: toolCalls.length,
           fileChangeCount: diffs.length,
+          filesReverted: shouldRevertFiles && diffs.length > 0,
           undoneAt: Date.now(),
         },
       }
@@ -225,9 +231,11 @@ export const useAgentChatTurns = ({
 
       const sessionId = currentSessionIdRef.current
       if (sessionId && typeof userTimestamp === "number") {
+        // 该轮已消失：本地回退标记同步清除（源轮 item 一并消失）。
+        agentFileRevertStore.removeTurnMarks(sessionId, userTimestamp)
         // 落库成功后再刷新列表，避免读到删除前的旧会话。
         void agentApi
-          .deleteMessageTurn(sessionId, userTimestamp)
+          .deleteMessageTurn(sessionId, userTimestamp, shouldRevertFiles)
           .then(() => {
             void sessionListStore.refresh()
           })

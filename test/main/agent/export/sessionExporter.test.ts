@@ -104,6 +104,7 @@ describe("Session Export & Share System (v10)", () => {
       { content: "读取当前 auth.ts", status: "completed" },
       { content: "重构校验逻辑", status: "in_progress" },
     ],
+    fileReverts: [],
   }
 
   describe("HTML Template & Generator", () => {

@@ -5,12 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/features/agent/api/agentApi", () => ({
   agentApi: {
     openFileAt: vi.fn(() => Promise.resolve({ ok: true })),
-    revertFileChange: vi.fn(() => Promise.resolve({ ok: true })),
+    revertFileChange: vi.fn(() => Promise.resolve({ ok: true, revertedAt: 123, file: "src/a.ts" })),
   },
 }))
 
 import { agentApi } from "@/features/agent/api/agentApi"
 import { FileChangesCard } from "@/features/agent/components/blocks"
+import { agentFileRevertStore } from "@/features/agent/hooks/agentFileRevertStore"
 import type { FileChangeSummary } from "@/features/agent/utils/fileChanges"
 
 // jsdom ResizeObserver stub（Tooltip 定位依赖）。
@@ -36,6 +37,7 @@ describe("FileChangesCard", () => {
   beforeEach(() => {
     cleanup()
     vi.clearAllMocks()
+    agentFileRevertStore.clearSession("session-1")
   })
 
   it("折叠态显示文件数与增删行总数，不渲染文件列表；卡片与汇总行占满 100% 宽度", () => {
@@ -145,6 +147,42 @@ describe("FileChangesCard", () => {
     await waitFor(() =>
       expect(agentApi.revertFileChange).toHaveBeenCalledWith("session-1", 1000, "src/a.ts"),
     )
+    // 回退成功后写入标记：条目置灰 + "已回退"标签 + 折叠态计数。
+    await waitFor(() => {
+      expect(agentFileRevertStore.getMarks("session-1")).toEqual([
+        { userMessageTimestamp: 1000, file: "src/a.ts", revertedAt: 123 },
+      ])
+    })
+    expect(document.querySelector(".agent-file-changes-reverted-tag")?.textContent).toBe("Reverted")
+    expect(document.querySelector(".agent-file-changes-reverted-count")?.textContent).toBe(
+      "· 1 reverted",
+    )
+    expect(document.querySelector(".agent-file-changes-path")?.className).toContain("line-through")
+  })
+
+  it("已有回退标记的条目显示置灰、标签与折叠态计数", () => {
+    agentFileRevertStore.setSessionMarks("session-1", [
+      { userMessageTimestamp: 1000, file: "src/a.ts", revertedAt: 456 },
+    ])
+    render(
+      <FileChangesCard
+        summary={makeSummary([
+          { filePath: "src/a.ts", added: 10, removed: 2 },
+          { filePath: "src/b.ts", added: 5, removed: 1 },
+        ])}
+        revertTarget={{ sessionId: "session-1", userMessageTimestamp: 1000 }}
+      />,
+    )
+
+    expect(document.querySelector(".agent-file-changes-reverted-count")?.textContent).toBe(
+      "· 1 reverted",
+    )
+    fireEvent.click(screen.getByText("2 files changed"))
+
+    const items = document.querySelectorAll<HTMLElement>(".agent-file-changes-item")
+    expect(items[0].querySelector(".agent-file-changes-reverted-tag")).not.toBeNull()
+    expect(items[0].querySelector(".agent-file-changes-path")?.className).toContain("line-through")
+    expect(items[1].querySelector(".agent-file-changes-reverted-tag")).toBeNull()
   })
 
   it("回退失败（ok:false）不抛错且状态复位", async () => {

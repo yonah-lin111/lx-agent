@@ -4,12 +4,16 @@ import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } f
 import { dirname, isAbsolute, join, resolve } from "node:path"
 import { getAppDataRoot } from "@/paths"
 
-// 文件变更项（新增/修改/删除；新格式携带文件级前置镜像 blob）。
+// 文件变更项（新增/修改/删除；新格式携带文件级前置镜像 blob 与回退标记）。
 export interface SnapshotFileChange {
   status: "A" | "M" | "D"
   file: string
   // 文件级前置镜像的 git blob 哈希（新格式；缺失时按旧格式 hash_start tree 回滚）。
   blob?: string
+  // 最近一次用户回退时间（毫秒；有值 = 已回退，卡片标记与 flowlist 回退 item 用）。
+  revertedAt?: number
+  // 回退提示已注入 agent 并随该轮 flush 落库的时间（避免重复注入）。
+  revertAnnouncedAt?: number
 }
 
 // 大文件 blob 读取上限（默认 1MB 不够，快照恢复按内容整体写回）。

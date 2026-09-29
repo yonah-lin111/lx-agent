@@ -7,6 +7,8 @@ import type {
   AgentForkResult,
   AgentMessage,
   AgentRestoredSession,
+  AgentRevertFileResult,
+  AgentRevertTurnFilesResult,
   AgentSendContext,
   AgentSendOptions,
   AgentSendResult,
@@ -34,9 +36,10 @@ import {
 } from "@shared/contracts/sessionProjection"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
-import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
+import { gitSnapshotService } from "@/services/gitSnapshotService"
 import { getAppDataRoot } from "../paths"
 import { copySessionText, exportSessionToFile } from "./export/sessionExporter"
+import { listSessionFileReverts, markFilesReverted, parseSnapshotChanges } from "./fileRevertMarks"
 import { jobRegistry } from "./jobs/jobRegistry"
 import { AgentSessionRunner } from "./sessionRunner"
 import { spillManager } from "./spill/spillManager"
@@ -233,6 +236,7 @@ export class SessionRunnerManager {
       messages: runner.getCompactor().withSummary(messages),
       activeCapabilities: capabilities,
       todos,
+      fileReverts: listSessionFileReverts(sessionId),
     }
   }
 
@@ -245,30 +249,58 @@ export class SessionRunnerManager {
     return runner ? runner.getTurnStore().getProjection() : createInitialSessionProjectionState()
   }
 
-  // 回退单个文件到指定轮次开始前的快照状态（无快照 / 文件未变更返回 ok:false）。
+  // 回退单个文件到指定轮次开始前的快照状态；成功记录已回退标记（无快照 / 文件未变更返回 ok:false）。
   public revertFileChange(
     sessionId: string,
     userMessageTimestamp: number,
     filePath: string,
-  ): { ok: boolean } {
+  ): AgentRevertFileResult {
     const session = agentSessionService.getSession(sessionId)
     if (!session) return { ok: false }
     const snapshot = agentSessionService.getSnapshotByUserTimestamp(sessionId, userMessageTimestamp)
     if (!snapshot) return { ok: false }
     try {
-      const changes = JSON.parse(snapshot.files_changed) as SnapshotFileChange[]
+      const changes = parseSnapshotChanges(snapshot.files_changed)
       const relativePath = toSnapshotRelativePath(session.cwd, filePath)
       const change = changes.find((item) => item.file === relativePath)
       if (!change) return { ok: false }
       gitSnapshotService.restoreSnapshot(session.cwd, snapshot.hash_start, [change])
-      return { ok: true }
+      const revertedAt = Date.now()
+      markFilesReverted(sessionId, userMessageTimestamp, [relativePath], revertedAt)
+      return { ok: true, revertedAt, file: relativePath }
     } catch {
       // 快照损坏或回滚异常：静默失败，由渲染端提示。
       return { ok: false }
     }
   }
 
-  public deleteMessageTurn(sessionId: string, userMessageTimestamp: number): void {
+  // 仅回退指定轮次修改的文件（保留对话）；记录已回退标记供卡片/flowlist 展示与下轮注入。
+  public revertTurnFiles(
+    sessionId: string,
+    userMessageTimestamp: number,
+  ): AgentRevertTurnFilesResult {
+    const session = agentSessionService.getSession(sessionId)
+    if (!session) return { ok: false, error: "SESSION_NOT_FOUND" }
+    const snapshot = agentSessionService.getSnapshotByUserTimestamp(sessionId, userMessageTimestamp)
+    if (!snapshot) return { ok: false, error: "SNAPSHOT_NOT_FOUND" }
+    try {
+      const changes = parseSnapshotChanges(snapshot.files_changed)
+      const files = changes.map((change) => change.file)
+      gitSnapshotService.restoreSnapshot(session.cwd, snapshot.hash_start, changes)
+      const revertedAt = Date.now()
+      markFilesReverted(sessionId, userMessageTimestamp, files, revertedAt)
+      return { ok: true, files, revertedAt }
+    } catch {
+      return { ok: false, error: "REVERT_FAILED" }
+    }
+  }
+
+  // 删除一轮对话；revertFiles 由调用方显式选择（true 时先按该轮快照回退文件，再删消息与快照行）。
+  public deleteMessageTurn(
+    sessionId: string,
+    userMessageTimestamp: number,
+    revertFiles: boolean,
+  ): void {
     const allEntries = agentSessionService.listEntries(sessionId)
     let startSeq: number | undefined
     for (const entry of allEntries) {
@@ -303,21 +335,10 @@ export class SessionRunnerManager {
     }
 
     const runner = this.getRunner(sessionId)
-    let isLastUserTurn = true
-    for (const entry of allEntries) {
-      if (entry.seq <= startSeq || entry.type !== "message") continue
-      let isUser = false
-      try {
-        isUser = (JSON.parse(entry.payload) as AgentMessage).role === "user"
-      } catch {
-        // 忽略
-      }
-      if (isUser) {
-        isLastUserTurn = false
-        break
-      }
-    }
-    if (isLastUserTurn && runner) {
+    const hadSnapshot = Boolean(
+      agentSessionService.getSnapshotByUserTimestamp(sessionId, userMessageTimestamp),
+    )
+    if (revertFiles && runner) {
       runner.getTurnStore().revertTurnFiles(sessionId, userMessageTimestamp)
     }
 
@@ -410,6 +431,7 @@ export class SessionRunnerManager {
         toolCalls,
         toolCallCount: toolCalls.length,
         fileChangeCount: diffs.length,
+        filesReverted: revertFiles && hadSnapshot,
         undoneAt: Date.now(),
       },
     }
@@ -698,6 +720,7 @@ export class SessionRunnerManager {
         messages,
         activeCapabilities: { tools: [], mcp: [], skills: [] },
         todos: [],
+        fileReverts: [],
       }
     }
 
@@ -738,6 +761,7 @@ export class SessionRunnerManager {
         messages,
         activeCapabilities: { tools: [], mcp: [], skills: [] },
         todos: [],
+        fileReverts: [],
       }
     }
 

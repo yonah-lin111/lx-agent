@@ -521,15 +521,21 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     agentRunner.deleteSessions(validIds)
   })
 
-  ipcMain.handle(AGENT_CHANNELS.deleteMessageTurn, (_, sessionId: unknown, timestamp: unknown) => {
-    if (typeof sessionId !== "string" || !sessionId.trim()) {
-      throw new Error("INVALID_SESSION_ID")
-    }
-    if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) {
-      throw new Error("INVALID_MESSAGE_TIMESTAMP")
-    }
-    agentRunner.deleteMessageTurn(sessionId, timestamp)
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.deleteMessageTurn,
+    (_, sessionId: unknown, timestamp: unknown, revertFiles: unknown) => {
+      if (typeof sessionId !== "string" || !sessionId.trim()) {
+        throw new Error("INVALID_SESSION_ID")
+      }
+      if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) {
+        throw new Error("INVALID_MESSAGE_TIMESTAMP")
+      }
+      if (typeof revertFiles !== "boolean") {
+        throw new Error("INVALID_REVERT_FILES")
+      }
+      agentRunner.deleteMessageTurn(sessionId, timestamp, revertFiles)
+    },
+  )
 
   ipcMain.handle(AGENT_CHANNELS.forkSession, (_, sessionId: unknown, timestamp: unknown) => {
     if (typeof sessionId !== "string" || !sessionId.trim()) {
@@ -574,6 +580,21 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
         return { ok: false }
       }
       return agentRunner.revertFileChange(sessionId, userMessageTimestamp, filePath)
+    },
+  )
+
+  ipcMain.handle(
+    AGENT_CHANNELS.revertTurnFiles,
+    (_, sessionId: unknown, userMessageTimestamp: unknown) => {
+      if (
+        typeof sessionId !== "string" ||
+        !sessionId ||
+        typeof userMessageTimestamp !== "number" ||
+        !Number.isFinite(userMessageTimestamp)
+      ) {
+        return { ok: false, error: "INVALID_INPUT" }
+      }
+      return agentRunner.revertTurnFiles(sessionId, userMessageTimestamp)
     },
   )
 
