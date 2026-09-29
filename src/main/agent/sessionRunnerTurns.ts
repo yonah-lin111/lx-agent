@@ -42,7 +42,6 @@ export const runSessionTurn = async (
     return { ok: false, error: promptHooks.error }
   }
   beginSessionTurn(host, text)
-  host.turnStore.captureSnapshot()
 
   if (isNewSession && host.turnStore.getSessionInput()) {
     let createResult:
@@ -195,7 +194,6 @@ export const continueChat = async (
   const continueText = prompt?.trim() || "请继续输出刚才被中断的内容。"
   agent.steer({ role: "user", content: continueText, timestamp: Date.now() })
   beginSessionTurn(host, continueText)
-  host.turnStore.captureSnapshot()
   try {
     await agent.continue()
     if (host.turnStore.consumeOverflow()) {

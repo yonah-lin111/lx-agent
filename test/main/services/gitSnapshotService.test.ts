@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -13,19 +14,11 @@ import { gitSnapshotService } from "@/services/gitSnapshotService"
 let workDir: string
 let appDataDir: string
 
-const runGit = (args: string[], cwd = workDir): void => {
-  execFileSync("git", args, { cwd, stdio: "ignore" })
-}
-
 describe("gitSnapshotService", () => {
   beforeEach(() => {
-    workDir = mkdtempSync(join(tmpdir(), "lx-git-snap-"))
-    appDataDir = mkdtempSync(join(tmpdir(), "lx-git-appdata-"))
+    workDir = mkdtempSync(join(tmpdir(), "lx-snap-"))
+    appDataDir = mkdtempSync(join(tmpdir(), "lx-snap-appdata-"))
     holder.appDataRoot = appDataDir
-    runGit(["init", "-q"])
-    writeFileSync(join(workDir, "base.txt"), "v1\n", "utf8")
-    runGit(["add", "-A"])
-    runGit(["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init"])
   })
 
   afterEach(() => {
@@ -33,45 +26,58 @@ describe("gitSnapshotService", () => {
     rmSync(appDataDir, { recursive: true, force: true })
   })
 
-  it("捕获快照、计算变更并回滚到起始快照", () => {
-    const start = gitSnapshotService.capture(workDir)
-    expect(start).toBeTruthy()
+  it("非 git 目录：捕获文件前置镜像并按变更列表恢复（修改还原 / 新增删除）", () => {
+    writeFileSync(join(workDir, "base.txt"), "v1\n", "utf8")
+    const blob = gitSnapshotService.hashFile(workDir, join(workDir, "base.txt"))
+    expect(blob).toBeTruthy()
 
     // 修改 + 新增。
     writeFileSync(join(workDir, "base.txt"), "v2\n", "utf8")
     writeFileSync(join(workDir, "new.txt"), "new\n", "utf8")
-    const end = gitSnapshotService.capture(workDir)
-    expect(end).toBeTruthy()
-    expect(end).not.toBe(start)
 
-    const changes = gitSnapshotService.diff(start!, end!, workDir)
-    expect(changes).toEqual(
-      expect.arrayContaining([
-        { status: "M", file: "base.txt" },
-        { status: "A", file: "new.txt" },
-      ]),
-    )
+    gitSnapshotService.restoreSnapshot(workDir, "", [
+      { status: "M", file: "base.txt", blob: blob! },
+      { status: "A", file: "new.txt" },
+    ])
 
-    // 回滚到起始快照：base.txt 恢复 v1，new.txt 删除。
-    gitSnapshotService.revert(workDir, start!, changes)
     expect(readFileSync(join(workDir, "base.txt"), "utf8")).toBe("v1\n")
     expect(existsSync(join(workDir, "new.txt"))).toBe(false)
   })
 
-  it("无变更时两次快照哈希相同（不产生 diff 项）", () => {
-    const start = gitSnapshotService.capture(workDir)
-    const end = gitSnapshotService.capture(workDir)
-    expect(start).toBe(end)
-    expect(gitSnapshotService.diff(start!, end!, workDir)).toEqual([])
+  it("删除的文件可从前置镜像重建（D）", () => {
+    writeFileSync(join(workDir, "gone.txt"), "content\n", "utf8")
+    const blob = gitSnapshotService.hashFile(workDir, join(workDir, "gone.txt"))
+    expect(blob).toBeTruthy()
+    rmSync(join(workDir, "gone.txt"))
+
+    gitSnapshotService.restoreSnapshot(workDir, "", [
+      { status: "D", file: "gone.txt", blob: blob! },
+    ])
+
+    expect(readFileSync(join(workDir, "gone.txt"), "utf8")).toBe("content\n")
   })
 
-  it("非 git 仓库返回 null / 空（静默降级）", () => {
-    const plainDir = mkdtempSync(join(tmpdir(), "lx-plain-"))
-    try {
-      expect(gitSnapshotService.capture(plainDir)).toBeNull()
-      expect(gitSnapshotService.diff("a", "b", plainDir)).toEqual([])
-    } finally {
-      rmSync(plainDir, { recursive: true, force: true })
-    }
+  it("历史整树快照：hash_start 非空时仍按 git checkout 回滚", () => {
+    execFileSync("git", ["init", "-q"], { cwd: workDir, stdio: "ignore" })
+    writeFileSync(join(workDir, "base.txt"), "v1\n", "utf8")
+    // 触发隐藏仓库初始化后手工构建 v1 快照 tree（模拟历史行的 hash_start）。
+    expect(gitSnapshotService.hashFile(workDir, join(workDir, "base.txt"))).toBeTruthy()
+    const gitDir = join(
+      appDataDir,
+      "snapshots",
+      createHash("sha256").update(workDir).digest("hex").slice(0, 12),
+      ".git",
+    )
+    execFileSync("git", ["--git-dir", gitDir, "--work-tree", workDir, "add", "-A"], {
+      stdio: "ignore",
+    })
+    const tree = execFileSync("git", ["--git-dir", gitDir, "--work-tree", workDir, "write-tree"], {
+      encoding: "utf8",
+    }).trim()
+
+    writeFileSync(join(workDir, "base.txt"), "v2\n", "utf8")
+    gitSnapshotService.restoreSnapshot(workDir, tree, [{ status: "M", file: "base.txt" }])
+
+    expect(readFileSync(join(workDir, "base.txt"), "utf8")).toBe("v1\n")
   })
 })

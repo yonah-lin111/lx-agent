@@ -245,7 +245,7 @@ export class SessionRunnerManager {
     return runner ? runner.getTurnStore().getProjection() : createInitialSessionProjectionState()
   }
 
-  // 回退单个文件到指定轮次开始前的快照状态（非 git / 无快照 / 文件未变更返回 ok:false）。
+  // 回退单个文件到指定轮次开始前的快照状态（无快照 / 文件未变更返回 ok:false）。
   public revertFileChange(
     sessionId: string,
     userMessageTimestamp: number,
@@ -260,7 +260,7 @@ export class SessionRunnerManager {
       const relativePath = toSnapshotRelativePath(session.cwd, filePath)
       const change = changes.find((item) => item.file === relativePath)
       if (!change) return { ok: false }
-      gitSnapshotService.revert(session.cwd, snapshot.hash_start, [change])
+      gitSnapshotService.restoreSnapshot(session.cwd, snapshot.hash_start, [change])
       return { ok: true }
     } catch {
       // 快照损坏或回滚异常：静默失败，由渲染端提示。

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs"
 import type {
   AgentCapabilitySnapshot,
   AgentEvent,
@@ -19,6 +20,8 @@ import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnaps
 import { isContextOverflowFailure } from "./compaction"
 import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
 import type { ChildCallInput } from "./subagent/subagentRunner"
+import { parsePatch } from "./tools/applyPatchParser"
+import { resolveToCwd, toSnapshotRelativePath } from "./tools/path-utils"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./tools/truncate"
 
 // 会话归属上下文。
@@ -108,6 +111,45 @@ export const isOverflowFailure = (message: AgentMessage): boolean =>
   message.stopReason === "error" &&
   isContextOverflowFailure(message.errorMessage ?? "")
 
+// 单个文件的前置镜像（写工具执行前捕获；回退时写回/删除）。
+type PendingFilePreImage = {
+  // 工作区相对路径（posix）。
+  file: string
+  absolutePath: string
+  // 捕获时文件是否存在（不存在 = 本轮新增，回退为删除）。
+  preExisted: boolean
+  // 原始内容 blob（preExisted 且哈希成功时提供）。
+  blob?: string
+}
+
+// 文件修改工具（edit/write/apply_patch）的目标路径解析：相对工作区归一化为 posix 相对路径。
+const collectFileMutationPaths = (
+  toolName: string,
+  args: unknown,
+  cwd: string,
+): { file: string; absolutePath: string }[] => {
+  if (!args || typeof args !== "object") return []
+  const record = args as Record<string, unknown>
+  const resolveOne = (value: string): { file: string; absolutePath: string } => {
+    const absolutePath = resolveToCwd(value, cwd)
+    return { file: toSnapshotRelativePath(cwd, absolutePath), absolutePath }
+  }
+
+  if (toolName === "edit" || toolName === "write") {
+    const raw = typeof record.path === "string" ? record.path : record.filePath
+    return typeof raw === "string" && raw.trim() ? [resolveOne(raw)] : []
+  }
+  if (toolName === "apply_patch") {
+    if (typeof record.patch !== "string") return []
+    try {
+      return parsePatch(record.patch).actions.map((action) => resolveOne(action.path))
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
 // turn 缓冲与持久化：缓冲 agent 事件、落库消息/调用/快照/任务清单，维护消息 → DB seq 对齐。
 export class TurnStore {
   // 当前 turn 的落盘输入；beginTurn 时捕获，flushTurn 事务内消费。
@@ -125,8 +167,10 @@ export class TurnStore {
   private currentRunGeneration = -1
   // 消息 → DB seq 对齐（与 agent.state.messages 下标一一对应；未落库消息为 -1 恒保留）。
   private messageSeqs: number[] = []
-  // 当前 turn 的起始快照哈希（beginTurn 后捕获；flushTurn 落库后清空）。
-  private pendingSnapshotStart: string | null = null
+  // 本轮文件前置镜像（键为工作区相对路径；每个文件本轮首次捕获优先，flushTurn 落库后清空）。
+  private pendingFilePreImages = new Map<string, PendingFilePreImage>()
+  // 成功执行的写工具调用 → 其触达的相对路径（据此生成本轮快照变更列表）。
+  private fileToolPathsByCallId = new Map<string, string[]>()
   // 当前 turn 复制完成后的附件文件列表（写入 user message payloads 的 files 属性中）。
   private pendingCopiedFiles: AttachedFile[] | null = null
   // 本次 run 是否检测到 context-overflow 错误（不落库，force 压缩后自动重试一次）。
@@ -157,6 +201,8 @@ export class TurnStore {
     this.runMessages = []
     this.pendingCalls.clear()
     this.pendingChildCalls.clear()
+    this.pendingFilePreImages.clear()
+    this.fileToolPathsByCallId.clear()
     // 跨轮 pending 状态清零，避免上一轮残留污染本轮落库。
     this.pendingTodo = null
     this.pendingCopiedFiles = null
@@ -178,7 +224,8 @@ export class TurnStore {
     this.pendingCalls.clear()
     this.pendingChildCalls.clear()
     this.currentRunGeneration = -1
-    this.pendingSnapshotStart = null
+    this.pendingFilePreImages.clear()
+    this.fileToolPathsByCallId.clear()
     // 被丢弃轮次的 pending 状态不得带入下一轮落库。
     this.pendingTodo = null
     this.pendingCopiedFiles = null
@@ -278,34 +325,61 @@ export class TurnStore {
     this.mcpServerByToolName = map
   }
 
-  // turn 起始快照：cwd 是 git 仓库才记录 tree hash，否则 null（静默降级）。
-  captureSnapshot(): string | null {
+  // 写工具执行前捕获目标文件原始内容（每个文件本轮首次捕获优先；供回退）。
+  private captureFilePreImages(toolCallId: string, toolName: string, args: unknown): void {
     const cwd = this.deps.getCwd()
-    if (!cwd) return null
-    this.pendingSnapshotStart = gitSnapshotService.capture(cwd)
-    return this.pendingSnapshotStart
+    if (!cwd) return
+    const paths = collectFileMutationPaths(toolName, args, cwd)
+    if (paths.length === 0) return
+    for (const path of paths) {
+      if (this.pendingFilePreImages.has(path.file)) continue
+      const preExisted = existsSync(path.absolutePath)
+      const blob = preExisted ? gitSnapshotService.hashFile(cwd, path.absolutePath) : null
+      this.pendingFilePreImages.set(path.file, {
+        file: path.file,
+        absolutePath: path.absolutePath,
+        preExisted,
+        ...(blob ? { blob } : {}),
+      })
+    }
+    this.fileToolPathsByCallId.set(
+      toolCallId,
+      paths.map((path) => path.file),
+    )
   }
 
-  // 计算本轮快照记录：hash_end + 变更列表；无变更/非 git 返回 null（并清理起始哈希）。
-  computeSnapshotRecord(messages: AgentMessage[]): {
-    userMessageTimestamp: number
-    hashStart: string
-    hashEnd: string
-    changes: SnapshotFileChange[]
-  } | null {
-    const hashStart = this.pendingSnapshotStart
-    this.pendingSnapshotStart = null
-    const cwd = this.deps.getCwd()
-    if (!hashStart || !cwd) return null
-    const hashEnd = gitSnapshotService.capture(cwd)
-    if (!hashEnd || hashEnd === hashStart) return null
-    const changes = gitSnapshotService.diff(hashStart, hashEnd, cwd)
-    const userTimestamp = messages.find((message) => message.role === "user")?.timestamp
-    if (changes.length === 0 || userTimestamp === undefined) return null
-    return { userMessageTimestamp: userTimestamp, hashStart, hashEnd, changes }
+  // 生成本轮快照变更列表：成功写工具触达的文件按当前状态判定 A/M/D（未变化的文件跳过）。
+  private collectSnapshotChanges(): SnapshotFileChange[] {
+    const byFile = new Map<string, SnapshotFileChange>()
+    for (const files of this.fileToolPathsByCallId.values()) {
+      for (const file of files) {
+        if (byFile.has(file)) continue
+        const preImage = this.pendingFilePreImages.get(file)
+        if (!preImage) continue
+        const existsNow = existsSync(preImage.absolutePath)
+        if (!preImage.preExisted && !existsNow) continue
+        const status: SnapshotFileChange["status"] = !preImage.preExisted
+          ? "A"
+          : existsNow
+            ? "M"
+            : "D"
+        byFile.set(file, {
+          status,
+          file,
+          ...(status !== "A" && preImage.blob ? { blob: preImage.blob } : {}),
+        })
+      }
+    }
+    return [...byFile.values()]
   }
 
-  // 回滚一轮的文件改动（仅当被删轮是最后一条用户消息轮；git 仓库才生效）。
+  // 清理本轮文件前置镜像缓冲。
+  private resetPendingFileSnapshots(): void {
+    this.pendingFilePreImages.clear()
+    this.fileToolPathsByCallId.clear()
+  }
+
+  // 回滚一轮的文件改动（文件级前置镜像逐文件恢复；历史整树快照走 git checkout）。
   revertTurnFiles(sessionId: string, userMessageTimestamp: number): void {
     const session = agentSessionService.getSession(sessionId)
     if (!session) return
@@ -313,7 +387,7 @@ export class TurnStore {
     if (!snapshot) return
     try {
       const changes = JSON.parse(snapshot.files_changed) as SnapshotFileChange[]
-      gitSnapshotService.revert(session.cwd, snapshot.hash_start, changes)
+      gitSnapshotService.restoreSnapshot(session.cwd, snapshot.hash_start, changes)
     } catch {
       // 快照损坏回滚失败：静默，仅删消息（尽力而为）。
     }
@@ -359,6 +433,8 @@ export class TurnStore {
           finishedAt: null,
           parentCallId: null,
         })
+        // 文件级前置镜像：写工具执行前捕获目标文件原始内容（回退依据）。
+        this.captureFilePreImages(event.toolCallId, event.toolName, event.args)
         break
 
       case "tool_execution_end": {
@@ -367,6 +443,10 @@ export class TurnStore {
           call.status = event.isError ? "error" : "success"
           call.result = truncateForStore(event.result)
           call.finishedAt = Date.now()
+        }
+        // 写工具失败：其前置镜像不纳入本轮快照变更（未实际修改文件）。
+        if (event.isError) {
+          this.fileToolPathsByCallId.delete(event.toolCallId)
         }
         // todowrite：解析整表清单 → 更新内存 + 推送事件（清单由 flushTurn 同事务落 todo entry）。
         if (event.toolName === "todowrite" && !event.isError) {
@@ -494,15 +574,16 @@ export class TurnStore {
     const calls = [...this.pendingCalls.values()]
     const childCalls = [...this.pendingChildCalls.values()]
     const pendingTodo = this.pendingTodo
+    const snapshotChanges = this.collectSnapshotChanges()
     this.sessionInput = null
     this.runMessages = []
     this.pendingCalls.clear()
     this.pendingChildCalls.clear()
     this.pendingTodo = null
     this.currentRunGeneration = -1
+    this.resetPendingFileSnapshots()
 
     if (!input || messages.length === 0) {
-      this.pendingSnapshotStart = null
       return
     }
 
@@ -523,9 +604,7 @@ export class TurnStore {
       }
     })
 
-    // 文件快照：git 操作（add/write-tree/diff）放事务外，避免阻塞 DB 事务。
-    const snapshotRecord = this.computeSnapshotRecord(messages)
-
+    // 文件快照：blob 哈希（hash-object）在工具执行前已捕获，此处仅消费内存缓冲。
     // 本轮消息的 DB seq（事务提交成功后才写回内存对齐数组）。
     const appendedSeqs: number[] = []
     agentSessionService.transaction(() => {
@@ -603,17 +682,20 @@ export class TurnStore {
       }
 
       agentSessionService.touchSession(sessionId, now)
-      // 本轮文件快照（hash_start → hash_end + 变更列表）。
-      if (snapshotRecord) {
-        agentSessionService.insertSnapshot({
-          externalId: createExternalId(),
-          sessionId,
-          userMessageTimestamp: snapshotRecord.userMessageTimestamp,
-          hashStart: snapshotRecord.hashStart,
-          hashEnd: snapshotRecord.hashEnd,
-          filesChanged: JSON.stringify(snapshotRecord.changes),
-          createdAt: now,
-        })
+      // 本轮文件快照（文件级前置镜像变更列表；无变更不落库）。
+      if (snapshotChanges.length > 0) {
+        const userTimestamp = messages.find((message) => message.role === "user")?.timestamp
+        if (userTimestamp !== undefined) {
+          agentSessionService.insertSnapshot({
+            externalId: createExternalId(),
+            sessionId,
+            userMessageTimestamp: userTimestamp,
+            hashStart: "",
+            hashEnd: "",
+            filesChanged: JSON.stringify(snapshotChanges),
+            createdAt: now,
+          })
+        }
       }
     })
 
