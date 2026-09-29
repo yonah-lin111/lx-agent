@@ -23,7 +23,7 @@ export interface FileChangeRevertTarget {
   userMessageTimestamp: number
 }
 
-// 执行流单个 assistant 步骤的文件修改挂载项。
+// 执行流单个轮次的文件修改挂载项。
 export interface FlowFileChangesEntry {
   summary: FileChangeSummary
   // 该轮用户消息时间戳（回退快照定位；缺失时不提供回退）。
@@ -77,20 +77,14 @@ export const buildFileChangeSummary = (entries: FileChangeEntry[]): FileChangeSu
   }
 }
 
-// 按工具步骤聚合该 turn 的文件修改，返回"该 turn 最后一个 assistant 步骤 id → 汇总"映射。
-export const buildFlowFileChangesByStepId = (
+// 按 turn 聚合该轮全部写工具 diff，返回"轮次 → 该轮文件修改汇总"映射（轮次末尾统一展示）。
+export const buildFlowFileChangesByTurn = (
   steps: ExecutionStep[],
-): Map<string, FlowFileChangesEntry> => {
+): Map<number, FlowFileChangesEntry> => {
   const entriesByTurn = new Map<number, FileChangeEntry[]>()
-  // 顺序遍历后写覆盖：得到每个 turn 最后一个 assistant 步骤与用户消息时间戳。
-  const lastAssistantStepIdByTurn = new Map<number, string>()
   const userTimestampByTurn = new Map<number, number>()
 
   for (const step of steps) {
-    if (step.kind === "assistant") {
-      lastAssistantStepIdByTurn.set(step.turnIndex, step.id)
-      continue
-    }
     if (step.kind === "user") {
       if (step.timestamp !== undefined) userTimestampByTurn.set(step.turnIndex, step.timestamp)
       continue
@@ -121,42 +115,15 @@ export const buildFlowFileChangesByStepId = (
     entriesByTurn.set(step.turnIndex, turnEntries)
   }
 
-  const summaryByStepId = new Map<string, FlowFileChangesEntry>()
+  const entryByTurn = new Map<number, FlowFileChangesEntry>()
   for (const [turnIndex, entries] of entriesByTurn) {
-    const assistantStepId = lastAssistantStepIdByTurn.get(turnIndex)
-    if (!assistantStepId) continue
     const summary = buildFileChangeSummary(entries)
     if (!summary) continue
     const userMessageTimestamp = userTimestampByTurn.get(turnIndex)
-    summaryByStepId.set(assistantStepId, {
+    entryByTurn.set(turnIndex, {
       summary,
       ...(userMessageTimestamp !== undefined ? { userMessageTimestamp } : {}),
     })
   }
-  return summaryByStepId
-}
-
-// 文件修改汇总结构比较（供 memo 判定聚合结果是否变化）。
-export const isSameFileChangeSummary = (
-  prev: FileChangeSummary | null | undefined,
-  next: FileChangeSummary | null | undefined,
-): boolean => {
-  if (prev === next) return true
-  if (!prev && !next) return true
-  if (!prev || !next) return false
-  if (prev.files.length !== next.files.length) return false
-  if (prev.totalAdded !== next.totalAdded || prev.totalRemoved !== next.totalRemoved) return false
-  for (let index = 0; index < prev.files.length; index++) {
-    const prevFile = prev.files[index]
-    const nextFile = next.files[index]
-    if (
-      prevFile.filePath !== nextFile.filePath ||
-      prevFile.added !== nextFile.added ||
-      prevFile.removed !== nextFile.removed ||
-      prevFile.line !== nextFile.line
-    ) {
-      return false
-    }
-  }
-  return true
+  return entryByTurn
 }

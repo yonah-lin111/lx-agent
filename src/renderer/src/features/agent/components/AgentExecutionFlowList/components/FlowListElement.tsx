@@ -1,5 +1,6 @@
 import { Compass, Cpu, Layers, Minimize2, RefreshCw, Undo2 } from "lucide-react"
 import { Fragment } from "react"
+import { FileChangesCard } from "@/features/agent/components/blocks"
 import type { ExecutionStep, ProposedPlanData, ReviewFindingItem } from "@/features/agent/types"
 import type { FlowFileChangesEntry } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
@@ -14,8 +15,8 @@ type FlowListElementProps = {
   renderedFlowElements: FlowRenderElement[]
   turnStatsMap: Map<number, TurnStats>
   turnMessageIdMap: Map<number, string>
-  // 该轮文件修改汇总（键为 assistant 步骤 id；仅对应轮次最后一个 assistant 步骤命中）。
-  fileChangesByStepId: Map<string, FlowFileChangesEntry>
+  // 该轮文件修改汇总（键为轮次；在该轮末尾统一展示）。
+  fileChangesByTurn: Map<number, FlowFileChangesEntry>
   runningTurnSet: Set<number>
   hasNonGroupableAfterByIndex: boolean[]
   maxUserTurnIndex: number
@@ -48,7 +49,7 @@ export const FlowListElement = ({
   renderedFlowElements,
   turnStatsMap,
   turnMessageIdMap,
-  fileChangesByStepId,
+  fileChangesByTurn,
   runningTurnSet,
   hasNonGroupableAfterByIndex,
   maxUserTurnIndex,
@@ -97,6 +98,13 @@ export const FlowListElement = ({
       prevElement.kind === "group")
 
   const turnStats = elementTurnIndex > 0 ? turnStatsMap.get(elementTurnIndex) : undefined
+
+  const turnFileChanges = elementTurnIndex > 0 ? fileChangesByTurn.get(elementTurnIndex) : undefined
+  // 文件回退上下文：会话与用户消息时间戳齐备时提供回退能力。
+  const turnFileChangesRevert =
+    sessionId && turnFileChanges?.userMessageTimestamp !== undefined
+      ? { sessionId, userMessageTimestamp: turnFileChanges.userMessageTimestamp }
+      : undefined
 
   const turnMessageId = elementTurnIndex > 0 ? turnMessageIdMap.get(elementTurnIndex) : undefined
   const isTurnRunning =
@@ -207,11 +215,6 @@ export const FlowListElement = ({
           onApplyReviewFixes={onApplyReviewFixes}
           onFillInput={onFillInput}
           hasSubsequentUserMessage={element.step.turnIndex < maxUserTurnIndex}
-          fileChanges={fileChangesByStepId.get(element.step.id)?.summary}
-          fileChangesUserMessageTimestamp={
-            fileChangesByStepId.get(element.step.id)?.userMessageTimestamp
-          }
-          sessionId={sessionId}
         />
       ) : (
         <AgentExecutionFlowGroup
@@ -224,6 +227,13 @@ export const FlowListElement = ({
           onOpenSubagent={onOpenSubagent}
           isStreamingActive={isGroupStreamingActive}
         />
+      )}
+
+      {/* 本轮文件修改汇总：固定在该轮最后一个步骤之后展示，不随流式新步骤漂移 */}
+      {isTurnEnd && turnFileChanges && (
+        <div className="agent-execution-flow-file-changes mt-1.5 w-full">
+          <FileChangesCard summary={turnFileChanges.summary} revertTarget={turnFileChangesRevert} />
+        </div>
       )}
 
       {/* 当该 turn 结束时，在下一行左侧展示该 turn 的综合执行数据统计及删除按钮 */}

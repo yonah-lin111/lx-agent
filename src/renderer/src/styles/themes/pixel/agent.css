@@ -3102,3 +3102,109 @@
 [data-theme="pixel"] .agent-execution-flow-grill-question-content {
   width: 100% !important;
 }
+
+/* ========================================================
+ * 20. 文件修改统计卡片 (FileChangesCard) - 扁平标题行与黑曜石明细槽
+ * ======================================================== */
+[data-theme="pixel"] .agent-file-changes-header {
+  font-family: var(--theme-font-family) !important;
+  border: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0px !important;
+  color: #c9c9dd !important;
+  text-shadow: 1px 1px 0px #000000;
+  padding: 2px 4px !important;
+}
+
+[data-theme="pixel"] .agent-file-changes-header:hover {
+  background-color: #262636 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="pixel"] .agent-file-changes-icon {
+  color: #55ff55 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="pixel"] .agent-file-changes-total-added,
+[data-theme="pixel"] .agent-file-changes-item-added {
+  color: #55ff55 !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-file-changes-total-removed,
+[data-theme="pixel"] .agent-file-changes-item-removed {
+  color: #ff5555 !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* 展开明细槽：黑曜石暗槽 + 直角 + 内凹阴影 */
+[data-theme="pixel"] .agent-file-changes-list {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="pixel"] .agent-file-changes-item {
+  border-radius: 0px !important;
+}
+
+[data-theme="pixel"] .agent-file-changes-item:hover {
+  background-color: #20202c !important;
+}
+
+/* 文件行打开按钮：扁平内联，不参与全局浮雕按钮皮肤 */
+[data-theme="pixel"] button.agent-file-changes-open,
+[data-theme="pixel"] .agent-file-changes-open {
+  font-family: var(--theme-font-family) !important;
+  border: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0px !important;
+  color: #d6d6e8 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] button.agent-file-changes-open:hover,
+[data-theme="pixel"] .agent-file-changes-open:hover {
+  color: #ffffff !important;
+}
+
+[data-theme="pixel"] .agent-file-changes-path {
+  font-family: var(--theme-font-family) !important;
+  color: #ececf6 !important;
+}
+
+[data-theme="pixel"] .agent-file-changes-file-icon {
+  color: #a6a6bc !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="pixel"] .agent-file-changes-open-icon {
+  color: #7f7f99 !important;
+}
+
+/* 回退按钮：扁平内联，悬停金矿橙黄 */
+[data-theme="pixel"] button.agent-file-changes-revert,
+[data-theme="pixel"] .agent-file-changes-revert {
+  border: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0px !important;
+  color: #a6a6bc !important;
+}
+
+[data-theme="pixel"] button.agent-file-changes-revert:hover:not(:disabled),
+[data-theme="pixel"] .agent-file-changes-revert:hover:not(:disabled) {
+  background-color: #2b2b3b !important;
+  color: #ffaa00 !important;
+}

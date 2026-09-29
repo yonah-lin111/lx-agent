@@ -57,14 +57,17 @@ export const FileChangesCard = ({
   }
 
   return (
-    <div data-testid="file-changes-card" className={`agent-file-changes min-w-0 ${className}`}>
+    <div
+      data-testid="file-changes-card"
+      className={`agent-file-changes w-full min-w-0 ${className}`}
+    >
       <button
         type="button"
         aria-expanded={isExpanded}
         onClick={() => setIsExpanded((previous) => !previous)}
-        className="agent-file-changes-header flex w-fit max-w-full items-center gap-1.5 rounded-[6px] px-1 py-0.5 text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-white/85 focus:outline-none"
+        className="agent-file-changes-header flex w-full items-center gap-1.5 rounded-[6px] px-1 py-0.5 text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-white/85 focus:outline-none"
       >
-        <FileDiff className="h-3.5 w-3.5 shrink-0 text-emerald-400/90" />
+        <FileDiff className="agent-file-changes-icon h-3.5 w-3.5 shrink-0 text-emerald-400/90" />
         <span className="agent-file-changes-count shrink-0">
           {fileCount === 1
             ? t("agent.filesChangedSingular")
@@ -79,11 +82,11 @@ export const FileChangesCard = ({
         <ChevronDown
           className={`h-3.5 w-3.5 shrink-0 text-white/35 transition-transform duration-200 ${
             isExpanded ? "" : "-rotate-90"
-          }`}
+          } ml-auto`}
         />
       </button>
       {isExpanded && (
-        <div className="agent-file-changes-list mt-1 flex flex-col gap-0.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.08))] bg-black/20 p-1">
+        <div className="agent-file-changes-list mt-1 flex w-full flex-col gap-0.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.08))] bg-black/20 p-1">
           {summary.files.map((file) => (
             <div
               key={file.filePath}
@@ -94,10 +97,10 @@ export const FileChangesCard = ({
                   type="button"
                   aria-label={t("agent.openFile")}
                   onClick={() => void agentApi.openFileAt(file.filePath, file.line)}
-                  className="flex min-w-0 flex-1 items-center gap-1.5 rounded-[4px] text-left focus:outline-none"
+                  className="agent-file-changes-open flex min-w-0 flex-1 items-center gap-1.5 rounded-[4px] text-left focus:outline-none"
                 >
-                  <FileCode className="h-3 w-3 shrink-0 text-white/35" />
-                  <span className="min-w-0 flex-1 truncate font-mono text-white/70">
+                  <FileCode className="agent-file-changes-file-icon h-3 w-3 shrink-0 text-white/35" />
+                  <span className="agent-file-changes-path min-w-0 flex-1 truncate font-mono text-white/70">
                     {file.filePath}
                   </span>
                   <span className="agent-file-changes-item-added shrink-0 font-mono text-emerald-400/90">
@@ -106,7 +109,7 @@ export const FileChangesCard = ({
                   <span className="agent-file-changes-item-removed shrink-0 font-mono text-rose-400/90">
                     −{file.removed}
                   </span>
-                  <ExternalLink className="h-3 w-3 shrink-0 text-white/25 transition-colors group-hover:text-white/60" />
+                  <ExternalLink className="agent-file-changes-open-icon h-3 w-3 shrink-0 text-white/25 transition-colors group-hover:text-white/60" />
                 </button>
               </LxTooltip>
               {revertTarget && (

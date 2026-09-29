@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { ExecutionStep, ExecutionToolContent } from "@/features/agent/types"
 import {
   buildFileChangeSummary,
-  buildFlowFileChangesByStepId,
-  isSameFileChangeSummary,
+  buildFlowFileChangesByTurn,
 } from "@/features/agent/utils/fileChanges"
 
 // 构造展示用 diff。
@@ -113,8 +112,8 @@ describe("buildFileChangeSummary", () => {
   })
 })
 
-describe("buildFlowFileChangesByStepId", () => {
-  it("按 turn 聚合写工具 diff 并挂到该轮最后一个 assistant 步骤（附带用户消息时间戳）", () => {
+describe("buildFlowFileChangesByTurn", () => {
+  it("按轮次聚合写工具 diff（附带该轮用户消息时间戳）", () => {
     const steps: ExecutionStep[] = [
       {
         id: "user-1",
@@ -145,7 +144,7 @@ describe("buildFlowFileChangesByStepId", () => {
         5,
       ),
       makeAssistantStep("assistant-turn2", 2, 6),
-      // turn 3 只有工具没有 assistant：不产生条目
+      // turn 3 只有工具没有 assistant：轮次末尾同样展示
       makeToolStep(
         "tool-3",
         3,
@@ -154,20 +153,22 @@ describe("buildFlowFileChangesByStepId", () => {
       ),
     ]
 
-    const result = buildFlowFileChangesByStepId(steps)
+    const result = buildFlowFileChangesByTurn(steps)
 
-    expect(result.has("assistant-early")).toBe(false)
-    expect(result.get("assistant-final")?.summary.files).toEqual([
+    expect(result.get(1)?.summary.files).toEqual([
       { filePath: "src/a.ts", added: 4, removed: 1, line: 1 },
     ])
-    expect(result.get("assistant-final")?.userMessageTimestamp).toBe(1000)
-    expect(result.get("assistant-turn2")?.summary.files).toEqual([
+    expect(result.get(1)?.userMessageTimestamp).toBe(1000)
+    expect(result.get(2)?.summary.files).toEqual([
       { filePath: "src/b.ts", added: 2, removed: 0, line: 1 },
       { filePath: "src/c.ts", added: 1, removed: 1, line: 1 },
     ])
     // turn 2 无用户步骤：无回退时间戳
-    expect(result.get("assistant-turn2")?.userMessageTimestamp).toBeUndefined()
-    expect(result.size).toBe(2)
+    expect(result.get(2)?.userMessageTimestamp).toBeUndefined()
+    expect(result.get(3)?.summary.files).toEqual([
+      { filePath: "src/d.ts", added: 1, removed: 0, line: 1 },
+    ])
+    expect(result.size).toBe(3)
   })
 
   it("忽略非文件修改工具与无 diff 的写工具步骤", () => {
@@ -177,35 +178,7 @@ describe("buildFlowFileChangesByStepId", () => {
       makeAssistantStep("assistant-1", 1, 3),
     ]
 
-    const result = buildFlowFileChangesByStepId(steps)
+    const result = buildFlowFileChangesByTurn(steps)
     expect(result.size).toBe(0)
-  })
-})
-
-describe("isSameFileChangeSummary", () => {
-  const base = buildFileChangeSummary([{ diff: makeDiff("src/a.ts", 1, 2) }])
-
-  it("同一引用或同结构判定相等", () => {
-    expect(isSameFileChangeSummary(base, base)).toBe(true)
-    const same = buildFileChangeSummary([{ diff: makeDiff("src/a.ts", 1, 2) }])
-    expect(isSameFileChangeSummary(base, same)).toBe(true)
-  })
-
-  it("缺省值处理与结构差异判定", () => {
-    expect(isSameFileChangeSummary(undefined, null)).toBe(true)
-    expect(isSameFileChangeSummary(base, null)).toBe(false)
-    expect(isSameFileChangeSummary(null, base)).toBe(false)
-
-    const differentAdded = buildFileChangeSummary([{ diff: makeDiff("src/a.ts", 9, 2) }])
-    expect(isSameFileChangeSummary(base, differentAdded)).toBe(false)
-
-    const differentFile = buildFileChangeSummary([{ diff: makeDiff("src/b.ts", 1, 2) }])
-    expect(isSameFileChangeSummary(base, differentFile)).toBe(false)
-
-    const moreFiles = buildFileChangeSummary([
-      { diff: makeDiff("src/a.ts", 1, 2) },
-      { diff: makeDiff("src/b.ts", 0, 0) },
-    ])
-    expect(isSameFileChangeSummary(base, moreFiles)).toBe(false)
   })
 })

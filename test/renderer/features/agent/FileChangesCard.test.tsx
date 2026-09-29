@@ -38,7 +38,7 @@ describe("FileChangesCard", () => {
     vi.clearAllMocks()
   })
 
-  it("折叠态显示文件数与增删行总数，不渲染文件列表", () => {
+  it("折叠态显示文件数与增删行总数，不渲染文件列表；卡片与汇总行占满 100% 宽度", () => {
     render(
       <FileChangesCard
         summary={makeSummary([
@@ -52,6 +52,11 @@ describe("FileChangesCard", () => {
     expect(document.querySelector(".agent-file-changes-total-added")?.textContent).toBe("+15")
     expect(document.querySelector(".agent-file-changes-total-removed")?.textContent).toBe("−3")
     expect(document.querySelector(".agent-file-changes-list")).toBeNull()
+
+    const card = screen.getByTestId("file-changes-card")
+    const header = document.querySelector(".agent-file-changes-header")
+    expect(card.className.split(" ")).toContain("w-full")
+    expect(header?.className.split(" ")).toContain("w-full")
   })
 
   it("单文件使用单数文案", () => {
