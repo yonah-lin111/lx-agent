@@ -1,4 +1,10 @@
-import { GAME_PROTOCOL, GAME_WEBVIEW_PARTITION, type GameRomEntry } from "@shared/contracts/game"
+import {
+  GAME_PROTOCOL,
+  GAME_WEBVIEW_PARTITION,
+  type GameKeymap,
+  type GameRomEntry,
+  resolveGameKeymapCodes,
+} from "@shared/contracts/game"
 import { Gamepad2, Pause, Play, RotateCcw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -6,6 +12,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { useLxToast } from "@/components/ui/LxToast"
 import { gameApi } from "@/features/game/api/gameApi"
+import { GameKeymapPanel } from "@/features/game/components/GameKeymapPanel"
 import { GamePauseOverlay } from "@/features/game/components/GamePauseOverlay"
 import { useTranslation } from "@/i18n"
 
@@ -67,7 +74,7 @@ export const GameStage = ({
   onClose,
 }: GameStageProps): React.JSX.Element => {
   const { t, locale } = useTranslation()
-  const { error: errorToast } = useLxToast()
+  const { success: successToast, error: errorToast } = useLxToast()
 
   const webviewRef = useRef<WebviewElement | null>(null)
   const flushResolverRef = useRef<(() => void) | null>(null)
@@ -83,6 +90,59 @@ export const GameStage = ({
   const [runId, setRunId] = useState(0)
   const [speedRatio, setSpeedRatio] = useState(1)
   const [isPaused, setIsPaused] = useState(false)
+  const [keymap, setKeymap] = useState<GameKeymap | null>(entry.keymap)
+  const [isKeymapOpen, setIsKeymapOpen] = useState(false)
+  const [isKeymapSaving, setIsKeymapSaving] = useState(false)
+
+  // 开局 URL 只携带进入该游戏时的键位快照；运行中改键走 keymap 消息即时下发，避免 webview 重载。
+  const initialKeymapRef = useRef<{ id: number; keymap: GameKeymap | null }>({
+    id: entry.id,
+    keymap: entry.keymap,
+  })
+  if (initialKeymapRef.current.id !== entry.id) {
+    initialKeymapRef.current = { id: entry.id, keymap: entry.keymap }
+  }
+
+  // guest 就绪后重放当前键位（覆盖 localStorage 里的历史改键），经 ref 读取最新值。
+  const keymapRef = useRef<GameKeymap | null>(keymap)
+  useEffect(() => {
+    keymapRef.current = keymap
+  }, [keymap])
+
+  // 切换游戏时重置面板状态与键位。
+  useEffect(() => {
+    setKeymap(entry.keymap)
+    setIsKeymapOpen(false)
+  }, [entry.id, entry.keymap])
+
+  const sendKeymap = useCallback((next: GameKeymap | null): void => {
+    const webview = webviewRef.current
+    if (!webview) return
+    try {
+      webview.send(HOST_CHANNEL, { type: "keymap", keys: resolveGameKeymapCodes(next) })
+    } catch {
+      // jsdom 等环境没有注入 send，忽略即可。
+    }
+  }, [])
+
+  const handleSaveKeymap = useCallback(
+    async (next: GameKeymap | null): Promise<void> => {
+      setIsKeymapSaving(true)
+      try {
+        const updated = await gameApi.saveKeymap(entry.id, next)
+        setKeymap(updated.keymap)
+        sendKeymap(updated.keymap)
+        setIsKeymapOpen(false)
+        successToast(t("game.keymap.saved"))
+      } catch (err) {
+        console.error("[GameStage] Failed to save keymap:", err)
+        errorToast(t("game.keymap.saveFailed"))
+      } finally {
+        setIsKeymapSaving(false)
+      }
+    },
+    [entry.id, errorToast, sendKeymap, successToast, t],
+  )
 
   // 重新加载 guest（换游戏或重试）时先把倍速徽标归位，等 guest 上报真实值。
   useEffect(() => {
@@ -131,6 +191,7 @@ export const GameStage = ({
       entry: String(entry.id),
       lang,
       color: accent || "#38bdf8",
+      keys: JSON.stringify(resolveGameKeymapCodes(initialKeymapRef.current.keymap)),
     })
     return `${GAME_PROTOCOL}://emulator/wrapper.html?${params.toString()}`
   }, [entry.id, locale])
@@ -185,6 +246,7 @@ export const GameStage = ({
       switch (payload.type) {
         case "ready":
           setIsGuestReady(true)
+          sendKeymap(keymapRef.current)
           break
         case "started":
           setIsGuestReady(true)
@@ -264,7 +326,7 @@ export const GameStage = ({
         webview.removeEventListener("ipc-message", handleLastSave)
       }
     }
-  }, [entry.id, errorToast, preloadUrl, runId, src, t])
+  }, [entry.id, errorToast, preloadUrl, runId, sendKeymap, src, t])
 
   const handleRetry = (): void => {
     setStatus("loading")
@@ -327,6 +389,7 @@ export const GameStage = ({
         {isPaused && status !== "error" ? (
           <GamePauseOverlay
             onResume={() => setIsPaused(false)}
+            onOpenKeymap={() => setIsKeymapOpen(true)}
             onMinimize={onMinimize}
             onClose={() => requestCloseRef.current()}
           />
@@ -363,6 +426,14 @@ export const GameStage = ({
           </div>
         ) : null}
       </div>
+
+      <GameKeymapPanel
+        isOpen={isKeymapOpen}
+        keymap={keymap}
+        isSaving={isKeymapSaving}
+        onClose={() => setIsKeymapOpen(false)}
+        onSave={(next) => void handleSaveKeymap(next)}
+      />
     </div>
   )
 }

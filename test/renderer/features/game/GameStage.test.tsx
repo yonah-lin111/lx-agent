@@ -12,6 +12,7 @@ const createEntry = (patch: Partial<GameRomEntry> = {}): GameRomEntry => ({
   createdAt: "2026-09-17T00:00:00.000Z",
   updatedAt: "2026-09-17T00:00:00.000Z",
   lastPlayedAt: null,
+  keymap: null,
   ...patch,
 })
 
@@ -20,14 +21,21 @@ const createApiMock = () => ({
   markPlayed: vi.fn().mockResolvedValue(createEntry()),
   writeSave: vi.fn().mockResolvedValue(undefined),
   writeState: vi.fn().mockResolvedValue(undefined),
+  saveKeymap: vi.fn().mockResolvedValue(createEntry()),
 })
+
+// 从 wrapper URL 中解析宿主下发的键位表。
+const readKeysParam = (src: string): Record<string, number> => {
+  const query = src.split("?")[1] ?? ""
+  return JSON.parse(new URLSearchParams(query).get("keys") ?? "{}")
+}
 
 const installApi = (api: ReturnType<typeof createApiMock>): void => {
   // @ts-expect-error Mock window.api
   window.api = { game: api }
 }
 
-type StageOverrides = Partial<Pick<GameStageProps, "isSuspended" | "onMinimize" | "onClose">>
+type StageOverrides = Partial<GameStageProps>
 
 // 等待 webview 挂载并注入 Electron 的 send 方法替身。
 const mountStage = async (
@@ -96,6 +104,85 @@ describe("GameStage", () => {
     expect(src).toContain("lang=")
     expect(src).toContain("color=")
     expect(webview.getAttribute("preload")).toBe("file:///tmp/guest-preload.cjs")
+  })
+
+  it("wrapper URL 携带默认键位表", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { webview } = await mountStage()
+    const keys = readKeysParam(webview.getAttribute("src") ?? "")
+
+    expect(keys.up).toBe(87)
+    expect(keys.a).toBe(74)
+    expect(keys.turboA).toBe(85)
+    expect(keys.speed).toBe(9)
+    expect(keys.pause).toBe(27)
+  })
+
+  it("条目覆盖键位时 URL 与就绪重发都使用覆盖值", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const { webview, send } = await mountStage({
+      entry: createEntry({ keymap: { a: "KeyX", pause: "KeyP" } }),
+    })
+    const keys = readKeysParam(webview.getAttribute("src") ?? "")
+    expect(keys.a).toBe(88)
+    expect(keys.pause).toBe(80)
+
+    dispatchGuestMessage(webview, { type: "ready" })
+
+    await waitFor(() => {
+      expect(send).toHaveBeenCalledWith("lx-game-host", {
+        type: "keymap",
+        keys: expect.objectContaining({ a: 88, pause: 80 }),
+      })
+    })
+  })
+
+  it("暂停面板打开快捷键面板：改键保存后即时下发并关闭", async () => {
+    const api = createApiMock()
+    api.saveKeymap.mockResolvedValue(createEntry({ keymap: { up: "KeyP" } }))
+    installApi(api)
+
+    const { send } = await mountStage()
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }))
+    fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }))
+    expect(screen.getByRole("heading", { name: "Shortcuts" })).toBeDefined()
+
+    fireEvent.click(screen.getByRole("button", { name: "Up" }))
+    fireEvent.keyDown(window, { code: "KeyP", keyCode: 80 })
+    fireEvent.click(screen.getByRole("button", { name: "Save" }))
+
+    await waitFor(() => {
+      expect(api.saveKeymap).toHaveBeenCalledWith(3, { up: "KeyP" })
+    })
+    await waitFor(() => {
+      expect(send).toHaveBeenCalledWith("lx-game-host", {
+        type: "keymap",
+        keys: expect.objectContaining({ up: 80 }),
+      })
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole("heading", { name: "Shortcuts" })).toBeNull()
+    })
+  })
+
+  it("快捷键保存失败时保持面板打开", async () => {
+    const api = createApiMock()
+    api.saveKeymap.mockRejectedValue(new Error("boom"))
+    installApi(api)
+
+    await mountStage()
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }))
+    fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }))
+    fireEvent.click(screen.getByRole("button", { name: "Save" }))
+
+    await waitFor(() => {
+      expect(api.saveKeymap).toHaveBeenCalledWith(3, null)
+    })
+    expect(screen.getByRole("heading", { name: "Shortcuts" })).toBeDefined()
   })
 
   it("收到 started 上报后标记最近游玩", async () => {

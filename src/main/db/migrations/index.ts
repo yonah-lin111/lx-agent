@@ -9,6 +9,7 @@ import { migration as migration0010 } from "./0010_create_usage_log"
 import { migration as migration0011 } from "./0011_create_schedule_item"
 import { migration as migration0013 } from "./0013_create_game_rom_entry"
 import { migration as migration0014 } from "./0014_add_agent_session_pinned"
+import { migration as migration0015 } from "./0015_add_game_rom_keymap"
 import type { Migration } from "./types"
 
 // 按版本升序排列的全部数据迁移。
@@ -24,4 +25,5 @@ export const migrations: Migration[] = [
   migration0011,
   migration0013,
   migration0014,
+  migration0015,
 ]
