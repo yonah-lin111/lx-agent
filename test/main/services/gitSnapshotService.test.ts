@@ -7,6 +7,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
@@ -88,6 +89,41 @@ describe("gitSnapshotService", () => {
     } finally {
       rmSync(otherDir, { recursive: true, force: true })
     }
+  })
+
+  it("pruneBlobs：仅删除过期且未被引用的松散对象，保留引用与宽限期内对象", () => {
+    writeFileSync(join(workDir, "keep.txt"), "keep\n", "utf8")
+    writeFileSync(join(workDir, "trash.txt"), "trash\n", "utf8")
+    writeFileSync(join(workDir, "fresh.txt"), "fresh\n", "utf8")
+    const keep = gitSnapshotService.hashFile(join(workDir, "keep.txt"))!
+    const trash = gitSnapshotService.hashFile(join(workDir, "trash.txt"))!
+    const fresh = gitSnapshotService.hashFile(join(workDir, "fresh.txt"))!
+    const objectsDir = join(appDataDir, "snapshots", "store", ".git", "objects")
+    const objectPath = (hash: string): string => join(objectsDir, hash.slice(0, 2), hash.slice(2))
+
+    // keep 与 trash 调整为一周前落盘：引用存活根不受年龄影响，孤儿超过宽限期被清除。
+    const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    utimesSync(objectPath(keep), lastWeek, lastWeek)
+    utimesSync(objectPath(trash), lastWeek, lastWeek)
+
+    const result = gitSnapshotService.pruneBlobs(new Set([keep]))
+
+    expect(result.removed).toBe(1)
+    expect(result.kept).toBe(2)
+    expect(result.freedBytes).toBeGreaterThan(0)
+    expect(existsSync(objectPath(trash))).toBe(false)
+    expect(existsSync(objectPath(keep))).toBe(true)
+    expect(existsSync(objectPath(fresh))).toBe(true)
+    // pack / info 目录不受影响。
+    expect(existsSync(join(objectsDir, "pack"))).toBe(true)
+  })
+
+  it("pruneBlobs：共享仓库不存在时返回零统计", () => {
+    expect(gitSnapshotService.pruneBlobs(new Set())).toEqual({
+      removed: 0,
+      kept: 0,
+      freedBytes: 0,
+    })
   })
 
   it("历史整树快照：hash_start 非空时仍按 git checkout 回滚", () => {

@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, isAbsolute, join, resolve } from "node:path"
 import { getAppDataRoot } from "@/paths"
 
@@ -14,6 +14,9 @@ export interface SnapshotFileChange {
 
 // 大文件 blob 读取上限（默认 1MB 不够，快照恢复按内容整体写回）。
 const MAX_BLOB_BYTES = 64 * 1024 * 1024
+
+// 未被引用 blob 的默认保留宽限期：覆盖「工具捕获 blob → 快照行落库」的在途窗口。
+const DEFAULT_BLOB_GRACE_MS = 24 * 60 * 60 * 1000
 
 /**
  * Git 快照服务。
@@ -152,6 +155,51 @@ export class GitSnapshotService {
       if (!change.blob) continue
       this.restoreBlob(change.blob, absolute)
     }
+  }
+
+  /**
+   * 标记-清除回收共享 blob 仓库：
+   * 仅删除「未被任何存活快照引用」且「落盘时间超过宽限期」的松散对象；
+   * pack / info 等非松散对象目录不动，单个对象异常静默跳过。
+   */
+  pruneBlobs(
+    referenced: ReadonlySet<string>,
+    options: { graceMs?: number; now?: number } = {},
+  ): { removed: number; kept: number; freedBytes: number } {
+    const result = { removed: 0, kept: 0, freedBytes: 0 }
+    const objectsDir = join(getAppDataRoot(), "snapshots", "store", ".git", "objects")
+    if (!existsSync(objectsDir)) return result
+    const graceMs = options.graceMs ?? DEFAULT_BLOB_GRACE_MS
+    const now = options.now ?? Date.now()
+
+    for (const dirName of readdirSync(objectsDir)) {
+      if (!/^[0-9a-f]{2}$/.test(dirName)) continue
+      let fileNames: string[]
+      try {
+        fileNames = readdirSync(join(objectsDir, dirName))
+      } catch {
+        continue
+      }
+      for (const fileName of fileNames) {
+        if (!/^[0-9a-f]{38}$/.test(fileName)) continue
+        const filePath = join(objectsDir, dirName, fileName)
+        try {
+          const stat = statSync(filePath)
+          if (!stat.isFile()) continue
+          // 存活根或宽限期内：保留。
+          if (referenced.has(dirName + fileName) || now - stat.mtimeMs < graceMs) {
+            result.kept += 1
+            continue
+          }
+          rmSync(filePath, { force: true })
+          result.removed += 1
+          result.freedBytes += stat.size
+        } catch {
+          // 对象并发创建/删除等竞态：静默跳过。
+        }
+      }
+    }
+    return result
   }
 }
 

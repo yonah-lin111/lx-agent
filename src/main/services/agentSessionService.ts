@@ -430,6 +430,14 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       .prepare("DELETE FROM agent_snapshot WHERE session_id = ? AND user_message_timestamp = ?")
       .run(sessionId, userMessageTimestamp)
   },
+
+  // 全量快照行的变更 JSON（快照垃圾回收的存活根集合，原样返回由调用方解析）。
+  listSnapshotFilesChanged(): string[] {
+    const rows = getConnection()
+      .prepare("SELECT files_changed FROM agent_snapshot")
+      .all() as Array<{ files_changed: string }>
+    return rows.map((row) => row.files_changed)
+  },
 })
 
 // 生成业务键（供 agent_session / entry / call 使用）。
