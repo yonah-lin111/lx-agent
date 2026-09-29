@@ -183,13 +183,25 @@ describe("FileChangesCard", () => {
     expect(items[0].querySelector(".agent-file-changes-reverted-tag")).not.toBeNull()
     expect(items[0].querySelector(".agent-file-changes-path")?.className).toContain("line-through")
     expect(items[1].querySelector(".agent-file-changes-reverted-tag")).toBeNull()
-    // 已回退条目的回退按钮禁用，未回退条目保持可用。
+    // 已回退条目的全部按钮禁用（打开/回退），未回退条目保持可用。
+    expect(items[0].querySelector<HTMLButtonElement>(".agent-file-changes-open")?.disabled).toBe(
+      true,
+    )
     expect(items[0].querySelector<HTMLButtonElement>(".agent-file-changes-revert")?.disabled).toBe(
       true,
+    )
+    expect(items[1].querySelector<HTMLButtonElement>(".agent-file-changes-open")?.disabled).toBe(
+      false,
     )
     expect(items[1].querySelector<HTMLButtonElement>(".agent-file-changes-revert")?.disabled).toBe(
       false,
     )
+
+    // 已回退条目点击打开不触发接口；未回退条目正常打开。
+    fireEvent.click(items[0].querySelector<HTMLButtonElement>(".agent-file-changes-open")!)
+    expect(agentApi.openFileAt).not.toHaveBeenCalled()
+    fireEvent.click(items[1].querySelector<HTMLButtonElement>(".agent-file-changes-open")!)
+    expect(agentApi.openFileAt).toHaveBeenCalledWith("src/b.ts", 1)
   })
 
   it("回退按钮悬停展示 tooltip（both 触发器），已回退条目展示回退时间", async () => {

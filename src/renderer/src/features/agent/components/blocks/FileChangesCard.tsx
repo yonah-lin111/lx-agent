@@ -155,6 +155,7 @@ export const FileChangesCard = ({
                       aria-label={t("agent.openFile")}
                       title={{ content: t("agent.openFile"), placement: "top" }}
                       className="agent-file-changes-open"
+                      disabled={revertedAt !== undefined}
                       onClick={() => void agentApi.openFileAt(file.filePath, file.line)}
                     >
                       <ExternalLink />
