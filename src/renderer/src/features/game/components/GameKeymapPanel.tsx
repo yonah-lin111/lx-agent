@@ -42,7 +42,7 @@ const MODIFIER_CODES = new Set([
 ])
 
 const ROW_CLASS =
-  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-[6px] border border-white/10 bg-white/5 px-3 py-2 text-left text-xs text-white/85 transition-colors hover:bg-white/10"
+  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-[6px] border border-white/10 bg-white/5 px-3 py-1.5 text-left text-xs text-white/85 transition-colors hover:bg-white/10"
 const ROW_ACTIVE_CLASS = "border-[var(--color-theme-accent)] bg-white/10"
 const ROW_CONFLICT_CLASS = "border-red-400/70"
 const VALUE_CLASS =
@@ -181,18 +181,15 @@ export const GameKeymapPanel = ({
   }
 
   return (
-    <LxModal isOpen={isOpen} title={t("game.keymap.title")} width={420} onClose={onClose}>
+    <LxModal isOpen={isOpen} title={t("game.keymap.title")} width={640} onClose={onClose}>
       <div className="flex flex-col gap-3 text-xs">
         <p className="text-white/55">{t("game.keymap.hint")}</p>
 
-        <div className="flex flex-col gap-1.5">
+        <div className="grid grid-cols-2 items-start gap-x-4 gap-y-1">
           <span className="text-white/45">{t("game.keymap.gamepadSection")}</span>
-          {GAMEPAD_ACTIONS.map(renderRow)}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
           <span className="text-white/45">{t("game.keymap.hotkeysSection")}</span>
-          {HOTKEY_ACTIONS.map(renderRow)}
+          <div className="flex flex-col gap-1">{GAMEPAD_ACTIONS.map(renderRow)}</div>
+          <div className="flex flex-col gap-1">{HOTKEY_ACTIONS.map(renderRow)}</div>
         </div>
 
         {conflictNotice ? (

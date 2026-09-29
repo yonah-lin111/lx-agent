@@ -141,15 +141,16 @@ describe("GameStage", () => {
     })
   })
 
-  it("暂停面板打开快捷键面板：改键保存后即时下发并关闭", async () => {
+  it("顶部快捷键入口打开面板并自动暂停：改键保存后即时下发并关闭", async () => {
     const api = createApiMock()
     api.saveKeymap.mockResolvedValue(createEntry({ keymap: { up: "KeyP" } }))
     installApi(api)
 
     const { send } = await mountStage()
-    fireEvent.click(screen.getByRole("button", { name: "Pause" }))
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }))
+
     expect(screen.getByRole("heading", { name: "Shortcuts" })).toBeDefined()
+    expect(screen.getByText("Paused")).toBeDefined()
 
     fireEvent.click(screen.getByRole("button", { name: "Up" }))
     fireEvent.keyDown(window, { code: "KeyP", keyCode: 80 })
@@ -169,13 +170,24 @@ describe("GameStage", () => {
     })
   })
 
+  it("暂停面板的快捷键入口也可打开面板", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    await mountStage()
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }))
+    const entries = screen.getAllByRole("button", { name: "Shortcuts" })
+    fireEvent.click(entries[entries.length - 1] as HTMLElement)
+
+    expect(screen.getByRole("heading", { name: "Shortcuts" })).toBeDefined()
+  })
+
   it("快捷键保存失败时保持面板打开", async () => {
     const api = createApiMock()
     api.saveKeymap.mockRejectedValue(new Error("boom"))
     installApi(api)
 
     await mountStage()
-    fireEvent.click(screen.getByRole("button", { name: "Pause" }))
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }))
     fireEvent.click(screen.getByRole("button", { name: "Save" }))
 

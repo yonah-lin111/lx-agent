@@ -5,7 +5,7 @@ import {
   type GameRomEntry,
   resolveGameKeymapCodes,
 } from "@shared/contracts/game"
-import { Gamepad2, Pause, Play, RotateCcw } from "lucide-react"
+import { Gamepad2, Keyboard, Pause, Play, RotateCcw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -348,6 +348,18 @@ export const GameStage = ({
           onClick={() => setIsPaused((current) => !current)}
         >
           {isPaused ? <Play /> : <Pause />}
+        </LxIconButton>
+        <LxIconButton
+          size="small"
+          aria-label={t("game.keymap.open")}
+          title={{ content: t("game.keymap.open"), placement: "bottom" }}
+          onClick={() => {
+            // 改键需要停止游戏输入，先暂停再打开面板。
+            setIsPaused(true)
+            setIsKeymapOpen(true)
+          }}
+        >
+          <Keyboard />
         </LxIconButton>
         <Gamepad2 className="game-stage-icon h-4 w-4 shrink-0 text-emerald-400" />
         <span className="truncate text-sm font-semibold text-[var(--color-theme-text)]">
