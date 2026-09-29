@@ -334,7 +334,7 @@ export class TurnStore {
     for (const path of paths) {
       if (this.pendingFilePreImages.has(path.file)) continue
       const preExisted = existsSync(path.absolutePath)
-      const blob = preExisted ? gitSnapshotService.hashFile(cwd, path.absolutePath) : null
+      const blob = preExisted ? gitSnapshotService.hashFile(path.absolutePath) : null
       this.pendingFilePreImages.set(path.file, {
         file: path.file,
         absolutePath: path.absolutePath,

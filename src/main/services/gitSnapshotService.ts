@@ -16,15 +16,13 @@ export interface SnapshotFileChange {
 const MAX_BLOB_BYTES = 64 * 1024 * 1024
 
 /**
- * Git 工作树快照服务。
+ * Git 快照服务。
  *
- * 对每个 cwd 建**隐藏 git 仓库**（{appData}/snapshots/{cwdHash}/.git）：cwd 为 git 仓库时
- * object DB 经 alternates 复用真实仓库的 objects（不重复存储），普通目录独立存储；
- * 快照操作一律 `--git-dir <hidden>`，不触碰真实仓库的 index/staging。
+ * 文件级前置镜像统一存于**共享 blob 仓库**（{appData}/snapshots/store/.git）：blob 内容寻址，
+ * 跨工作区天然去重，无需按 cwd 建库，也不触碰工作区（不建 .git、不改 index/staging）。
  *
- * 新快照为**文件级前置镜像**：写工具执行前把目标文件当前内容落为 blob（内容寻址去重），
- * 回退时逐文件写回/删除，不依赖 cwd 是否为 git 仓库；历史整树快照（hash_start tree）
- * 仍经 restoreSnapshot 内 git checkout 分支回滚。
+ * 历史整树快照（hash_start tree）仍按 cwd 使用独立隐藏仓库（{appData}/snapshots/{cwdHash}/.git，
+ * git 仓库经 alternates 复用真实仓库 objects），restoreSnapshot 检测到 hash_start 时走 checkout。
  */
 export class GitSnapshotService {
   // 真实 git 目录；cwd 非 git 仓库（rev-parse 失败）返回 null。
@@ -43,12 +41,12 @@ export class GitSnapshotService {
     }
   }
 
-  // cwd 的稳定哈希（隐藏仓库目录名）。
+  // cwd 的稳定哈希（历史整树快照的隐藏仓库目录名）。
   private hashCwd(cwd: string): string {
     return createHash("sha256").update(cwd).digest("hex").slice(0, 12)
   }
 
-  // 确保隐藏仓库就绪并返回其 git-dir；初始化失败返回 null。
+  // cwd 的隐藏仓库（历史整树快照专用）；初始化失败返回 null。
   private ensureRepo(cwd: string): string | null {
     const gitDir = join(getAppDataRoot(), "snapshots", this.hashCwd(cwd), ".git")
     if (!existsSync(gitDir)) {
@@ -66,6 +64,21 @@ export class GitSnapshotService {
     return gitDir
   }
 
+  // 共享 blob 仓库（所有工作区的文件前置镜像统一存储）；初始化失败返回 null。
+  private ensureBlobStore(): string | null {
+    try {
+      const storeDir = join(getAppDataRoot(), "snapshots", "store")
+      const gitDir = join(storeDir, ".git")
+      if (!existsSync(gitDir)) {
+        mkdirSync(storeDir, { recursive: true })
+        execFileSync("git", ["init", "-q"], { cwd: storeDir, stdio: "ignore" })
+      }
+      return gitDir
+    } catch {
+      return null
+    }
+  }
+
   private run(cwd: string, args: string[]): string {
     const gitDir = this.ensureRepo(cwd)
     if (!gitDir) throw new Error("Not a git repository")
@@ -75,27 +88,33 @@ export class GitSnapshotService {
     }).trim()
   }
 
-  // 将文件当前内容写入隐藏仓库对象库并返回 blob 哈希（内容寻址去重）；失败返回 null。
-  hashFile(cwd: string, absolutePath: string): string | null {
+  // 将文件当前内容写入共享 blob 仓库并返回 blob 哈希（内容寻址去重，跨工作区共享）；失败返回 null。
+  hashFile(absolutePath: string): string | null {
     try {
-      return this.run(cwd, ["hash-object", "-w", "--", absolutePath]) || null
+      const gitDir = this.ensureBlobStore()
+      if (!gitDir) return null
+      const output = execFileSync(
+        "git",
+        ["--git-dir", gitDir, "hash-object", "-w", "--", absolutePath],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      ).trim()
+      return output || null
     } catch {
       return null
     }
   }
 
-  // 将 blob 内容写回工作区文件（二进制安全，自动创建父目录）；失败静默降级。
-  restoreBlob(cwd: string, blob: string, file: string): void {
+  // 将共享仓库中的 blob 写回目标文件（二进制安全，自动创建父目录）；失败静默降级。
+  restoreBlob(blob: string, absolutePath: string): void {
     try {
-      const gitDir = this.ensureRepo(cwd)
+      const gitDir = this.ensureBlobStore()
       if (!gitDir) return
       const content = execFileSync("git", ["--git-dir", gitDir, "cat-file", "blob", blob], {
         stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: MAX_BLOB_BYTES,
       })
-      const absolute = join(cwd, file)
-      mkdirSync(dirname(absolute), { recursive: true })
-      writeFileSync(absolute, content)
+      mkdirSync(dirname(absolutePath), { recursive: true })
+      writeFileSync(absolutePath, content)
     } catch {
       // 快照损坏恢复失败：静默降级（尽力而为）。
     }
@@ -125,12 +144,13 @@ export class GitSnapshotService {
       return
     }
     for (const change of changes) {
+      const absolute = join(cwd, change.file)
       if (change.status === "A") {
-        rmSync(join(cwd, change.file), { force: true })
+        rmSync(absolute, { force: true })
         continue
       }
       if (!change.blob) continue
-      this.restoreBlob(cwd, change.blob, change.file)
+      this.restoreBlob(change.blob, absolute)
     }
   }
 }
