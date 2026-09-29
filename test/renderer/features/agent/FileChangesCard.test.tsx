@@ -183,6 +183,44 @@ describe("FileChangesCard", () => {
     expect(items[0].querySelector(".agent-file-changes-reverted-tag")).not.toBeNull()
     expect(items[0].querySelector(".agent-file-changes-path")?.className).toContain("line-through")
     expect(items[1].querySelector(".agent-file-changes-reverted-tag")).toBeNull()
+    // 已回退条目的回退按钮禁用，未回退条目保持可用。
+    expect(items[0].querySelector<HTMLButtonElement>(".agent-file-changes-revert")?.disabled).toBe(
+      true,
+    )
+    expect(items[1].querySelector<HTMLButtonElement>(".agent-file-changes-revert")?.disabled).toBe(
+      false,
+    )
+  })
+
+  it("回退按钮悬停展示 tooltip（both 触发器），已回退条目展示回退时间", async () => {
+    agentFileRevertStore.setSessionMarks("session-1", [
+      { userMessageTimestamp: 1000, file: "src/a.ts", revertedAt: 456 },
+    ])
+    render(
+      <FileChangesCard
+        summary={makeSummary([
+          { filePath: "src/a.ts", added: 10, removed: 2 },
+          { filePath: "src/b.ts", added: 5, removed: 1 },
+        ])}
+        revertTarget={{ sessionId: "session-1", userMessageTimestamp: 1000 }}
+      />,
+    )
+
+    fireEvent.click(screen.getByText("2 files changed"))
+    const triggers = document.querySelectorAll<HTMLElement>(".agent-file-changes-revert-trigger")
+    expect(triggers.length).toBe(2)
+
+    // 已回退条目：按钮禁用，悬停触发器仍展示回退时间。
+    expect(
+      triggers[0]!.querySelector<HTMLButtonElement>(".agent-file-changes-revert")?.disabled,
+    ).toBe(true)
+    fireEvent.mouseEnter(triggers[0]!)
+    expect(await screen.findByText(/Reverted at /)).not.toBeNull()
+    fireEvent.mouseLeave(triggers[0]!)
+
+    // 未回退条目：悬停展示回退动作说明。
+    fireEvent.mouseEnter(triggers[1]!)
+    expect(await screen.findByText("Revert File")).not.toBeNull()
   })
 
   it("回退失败（ok:false）不抛错且状态复位", async () => {

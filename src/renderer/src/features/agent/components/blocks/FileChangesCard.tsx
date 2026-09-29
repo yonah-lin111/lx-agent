@@ -161,25 +161,36 @@ export const FileChangesCard = ({
                     </LxIconButton>
                     {revertTarget && (
                       <LxTooltip
+                        trigger="both"
                         placement="top"
+                        content={
+                          revertedAt !== undefined
+                            ? t("agent.fileRevertedAt", {
+                                time: new Date(revertedAt).toLocaleString(),
+                              })
+                            : t("agent.revertFile")
+                        }
                         click={{
                           content: t("agent.revertFileConfirm", { file: file.filePath }),
                           placement: "top",
                         }}
                         onConfirm={() => void handleRevert(file)}
                       >
-                        <LxIconButton
-                          size="small"
-                          aria-label={t("agent.revertFile")}
-                          disabled={revertingPath !== null}
-                          className="agent-file-changes-revert"
-                        >
-                          {revertingPath === file.filePath ? (
-                            <Loader2 className="animate-spin" />
-                          ) : (
-                            <RotateCcw />
-                          )}
-                        </LxIconButton>
+                        {/* 包裹 span 承接 hover：禁用态按钮自身不再派发鼠标事件。 */}
+                        <span className="agent-file-changes-revert-trigger inline-flex shrink-0">
+                          <LxIconButton
+                            size="small"
+                            aria-label={t("agent.revertFile")}
+                            disabled={revertingPath !== null || revertedAt !== undefined}
+                            className="agent-file-changes-revert"
+                          >
+                            {revertingPath === file.filePath ? (
+                              <Loader2 className="animate-spin" />
+                            ) : (
+                              <RotateCcw />
+                            )}
+                          </LxIconButton>
+                        </span>
                       </LxTooltip>
                     )}
                   </>
