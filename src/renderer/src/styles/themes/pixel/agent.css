@@ -3104,23 +3104,32 @@
 }
 
 /* ========================================================
- * 20. 文件修改统计卡片 (FileChangesCard) - 扁平标题行与黑曜石明细槽
+ * 20. 文件修改统计卡片 (FileChangesCard) - 折叠标题栏与黑曜石明细槽
  * ======================================================== */
+/* 折叠标题栏：对齐执行流步骤的折叠面板样式（安山岩底 + 2px 黑框 + 内凹浮雕） */
 [data-theme="pixel"] .agent-file-changes-header {
   font-family: var(--theme-font-family) !important;
-  border: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
+  border: 2px solid #000000 !important;
+  background-color: #2a2638 !important;
   border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.16),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
   color: #c9c9dd !important;
   text-shadow: 1px 1px 0px #000000;
-  padding: 2px 4px !important;
+  padding: 3px 6px !important;
 }
 
 [data-theme="pixel"] .agent-file-changes-header:hover {
-  background-color: #262636 !important;
+  background-color: #343044 !important;
   color: #ffffff !important;
+}
+
+/* 折叠箭头：与步骤头部一致的面板文字色与硬阴影 */
+[data-theme="pixel"] .agent-file-changes-header svg:not(.agent-file-changes-icon) {
+  color: #a6a6bc !important;
+  filter: drop-shadow(1px 1px 0px #000000);
 }
 
 [data-theme="pixel"] .agent-file-changes-icon {
