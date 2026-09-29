@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -112,6 +112,8 @@ vi.mock("@/agent/stream/aiSdkStreamFn", async () => {
   return {
     createAiSdkStreamFn: () => async (_model: unknown, context: { messages: unknown[] }) => {
       holder.llmRequests.push(context.messages)
+      // 用户消息时间戳（毫秒）是轮次身份：延迟 2ms 模拟真实模型调用，避免连续轮次同毫秒碰撞。
+      await new Promise((resolve) => setTimeout(resolve, 2))
       const response = holder.streamResponses.shift()
       if (!response) {
         throw new Error("No more mock responses")
@@ -1107,6 +1109,91 @@ describe("agentRunner 持久化", () => {
       expect(
         agentRunner.revertFileChange(third.sessionId, userTimestamps[2]!, "missing.txt"),
       ).toEqual({ ok: false })
+    } finally {
+      rmSync(workDir, { recursive: true, force: true })
+    }
+  })
+
+  it("快照垃圾回收系统链路：删轮孤儿镜像被 GC 清除，存活轮次镜像仍可回滚", async () => {
+    const { agentRunner } = await importRunner()
+    const workDir = mkdtempSync(join(tmpdir(), "lx-snap-gc-"))
+    writeFileSync(join(workDir, "base.txt"), "v1\n", "utf8")
+    writeFileSync(join(workDir, "other.txt"), "o1\n", "utf8")
+    try {
+      // 第一轮正常（无文件变更）。
+      holder.streamResponses = [assistant([{ type: "text", text: "第一轮" }])]
+      const first = await agentRunner.send("问题1", undefined, { page: "/", cwd: workDir })
+      expect(first.ok).toBe(true)
+      if (!first.ok) return
+
+      // 第二轮：write 修改 base.txt（前置镜像 v1）。
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "write", { path: "base.txt", content: "v2\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第二轮完成" }]),
+      ]
+      const second = await agentRunner.send("问题2", undefined, { page: "/", cwd: workDir })
+      expect(second.ok).toBe(true)
+      if (!second.ok) return
+
+      // 第三轮（末轮）：write 修改 other.txt（前置镜像 o1）。
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc2", "write", { path: "other.txt", content: "o2\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第三轮完成" }]),
+      ]
+      const third = await agentRunner.send("问题3", undefined, { page: "/", cwd: workDir })
+      expect(third.ok).toBe(true)
+      if (!third.ok) return
+
+      // 从落库快照中取两轮的前置镜像 blob 与松散对象路径。
+      const objectPath = (blob: string): string =>
+        join(
+          holder.appDataRoot,
+          "snapshots",
+          "store",
+          ".git",
+          "objects",
+          blob.slice(0, 2),
+          blob.slice(2),
+        )
+      const rowBlob = (timestamp: number): string => {
+        const row = holder
+          .db!.prepare(
+            "SELECT files_changed FROM agent_snapshot WHERE session_id = ? AND user_message_timestamp = ?",
+          )
+          .get(third.sessionId, timestamp) as { files_changed: string }
+        const changes = JSON.parse(row.files_changed) as Array<{ blob?: string }>
+        return changes.find((change) => change.blob)!.blob!
+      }
+      const userTimestamps = readUserTimestamps(third.sessionId)
+      expect(userTimestamps).toHaveLength(3)
+      const keptBlob = rowBlob(userTimestamps[1]!)
+      const orphanBlob = rowBlob(userTimestamps[2]!)
+      expect(existsSync(objectPath(keptBlob))).toBe(true)
+      expect(existsSync(objectPath(orphanBlob))).toBe(true)
+
+      // 删除末轮：other.txt 用前置镜像回滚到 o1，该轮快照行删除 → 其镜像成为孤儿。
+      agentRunner.deleteMessageTurn(third.sessionId, userTimestamps[2]!)
+      expect(readFileSync(join(workDir, "other.txt"), "utf8")).toBe("o1\n")
+
+      // 两个镜像都调整为一周前落盘后执行标记-清除：无引用者删除，存活引用保留。
+      const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      utimesSync(objectPath(orphanBlob), lastWeek, lastWeek)
+      utimesSync(objectPath(keptBlob), lastWeek, lastWeek)
+      const { cleanOrphanSnapshotBlobs } = await import("@/services/snapshotCleanupService")
+      cleanOrphanSnapshotBlobs()
+
+      expect(existsSync(objectPath(orphanBlob))).toBe(false)
+      expect(existsSync(objectPath(keptBlob))).toBe(true)
+
+      // 存活镜像仍可用于删轮回滚（第二轮此刻已是末轮）：base.txt 恢复 v1。
+      agentRunner.deleteMessageTurn(third.sessionId, userTimestamps[1]!)
+      expect(readFileSync(join(workDir, "base.txt"), "utf8")).toBe("v1\n")
     } finally {
       rmSync(workDir, { recursive: true, force: true })
     }
