@@ -67,6 +67,8 @@ export interface AgentMessageListProps {
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   // 滚动导航状态变动通知（供外部按钮响应 disabled 状态更新）。
   onNavigationStateChange?: (state: { canScrollBottom: boolean }) => void
+  // 当前会话 id（文件修改回退等操作定位用；未落库会话缺省）。
+  sessionId?: string
 }
 
 const NEAR_BOTTOM_THRESHOLD = 250
@@ -97,6 +99,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       onAcceptPlan,
       onApplyReviewFixes,
       onNavigationStateChange,
+      sessionId,
     },
     ref,
   ): React.JSX.Element => {
@@ -529,6 +532,8 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                         onAcceptPlan={onAcceptPlan}
                         onApplyReviewFixes={onApplyReviewFixes}
                         hasSubsequentUserMessage={hasSubsequentUserMessage}
+                        sessionId={sessionId}
+                        userMessageTimestamp={userMessage?.timestamp}
                       />
                     )}
                   </div>

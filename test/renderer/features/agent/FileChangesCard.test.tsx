@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/features/agent/api/agentApi", () => ({
   agentApi: {
     openFileAt: vi.fn(() => Promise.resolve({ ok: true })),
+    revertFileChange: vi.fn(() => Promise.resolve({ ok: true })),
   },
 }))
 
@@ -75,15 +76,16 @@ describe("FileChangesCard", () => {
     expect(screen.getByText("src/a.ts")).not.toBeNull()
     expect(screen.getByText("src/b.ts")).not.toBeNull()
 
-    const fileButtons = document.querySelectorAll<HTMLButtonElement>(".agent-file-changes-item")
-    expect(fileButtons.length).toBe(2)
-    expect(fileButtons[0].querySelector(".agent-file-changes-item-added")?.textContent).toBe("+10")
-    expect(fileButtons[0].querySelector(".agent-file-changes-item-removed")?.textContent).toBe("−2")
+    const items = document.querySelectorAll(".agent-file-changes-item")
+    expect(items.length).toBe(2)
+    expect(items[0].querySelector(".agent-file-changes-item-added")?.textContent).toBe("+10")
+    expect(items[0].querySelector(".agent-file-changes-item-removed")?.textContent).toBe("−2")
 
-    fireEvent.click(fileButtons[0])
+    const openButtons = screen.getAllByRole("button", { name: "Open File" })
+    fireEvent.click(openButtons[0])
     expect(agentApi.openFileAt).toHaveBeenCalledWith("src/a.ts", 42)
 
-    fireEvent.click(fileButtons[1])
+    fireEvent.click(openButtons[1])
     expect(agentApi.openFileAt).toHaveBeenCalledWith("src/b.ts", 7)
   })
 
@@ -97,5 +99,68 @@ describe("FileChangesCard", () => {
 
     fireEvent.click(screen.getByText("1 file changed"))
     expect(document.querySelector(".agent-file-changes-list")).toBeNull()
+  })
+
+  it("未提供回退上下文时不渲染回退按钮", () => {
+    render(
+      <FileChangesCard summary={makeSummary([{ filePath: "src/a.ts", added: 1, removed: 0 }])} />,
+    )
+
+    fireEvent.click(screen.getByText("1 file changed"))
+    expect(document.querySelector(".agent-file-changes-revert")).toBeNull()
+  })
+
+  it("提供回退上下文时二次确认后调用回退接口", async () => {
+    render(
+      <FileChangesCard
+        summary={makeSummary([{ filePath: "src/a.ts", added: 10, removed: 2 }])}
+        revertTarget={{ sessionId: "session-1", userMessageTimestamp: 1000 }}
+      />,
+    )
+
+    fireEvent.click(screen.getByText("1 file changed"))
+    const revertButton = document.querySelector<HTMLButtonElement>(".agent-file-changes-revert")
+    expect(revertButton).not.toBeNull()
+
+    fireEvent.click(revertButton!)
+    // 二次确认气泡：点击确认后才执行回退。
+    const confirmButton = document.querySelector<HTMLButtonElement>(
+      'button[aria-label="Confirm"], button[aria-label="确认"]',
+    )
+    expect(confirmButton).not.toBeNull()
+    expect(agentApi.revertFileChange).not.toHaveBeenCalled()
+    fireEvent.click(confirmButton!)
+
+    await waitFor(() =>
+      expect(agentApi.revertFileChange).toHaveBeenCalledWith("session-1", 1000, "src/a.ts"),
+    )
+  })
+
+  it("回退失败（ok:false）不抛错且状态复位", async () => {
+    vi.mocked(agentApi.revertFileChange).mockResolvedValueOnce({ ok: false })
+    render(
+      <FileChangesCard
+        summary={makeSummary([{ filePath: "src/a.ts", added: 10, removed: 2 }])}
+        revertTarget={{ sessionId: "session-1", userMessageTimestamp: 1000 }}
+      />,
+    )
+
+    fireEvent.click(screen.getByText("1 file changed"))
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".agent-file-changes-revert")!)
+    fireEvent.click(
+      document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Confirm"], button[aria-label="确认"]',
+      )!,
+    )
+
+    await waitFor(() =>
+      expect(agentApi.revertFileChange).toHaveBeenCalledWith("session-1", 1000, "src/a.ts"),
+    )
+    // 失败后按钮恢复可用（无 pending 残留）。
+    await waitFor(() =>
+      expect(
+        document.querySelector<HTMLButtonElement>(".agent-file-changes-revert")?.disabled,
+      ).toBe(false),
+    )
   })
 })

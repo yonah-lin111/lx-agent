@@ -2,7 +2,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
-import { pathExists, resolveOpenFilePath, resolveToCwd } from "@/agent/tools/path-utils"
+import {
+  pathExists,
+  resolveOpenFilePath,
+  resolveToCwd,
+  toSnapshotRelativePath,
+} from "@/agent/tools/path-utils"
 
 // 每个用例独立临时目录，用后清理。
 const tmpDirs: string[] = []
@@ -62,5 +67,19 @@ describe("resolveOpenFilePath", () => {
     const absolute = join(tmpdir(), "elsewhere", "a.ts")
     expect(resolveOpenFilePath(absolute, cwd, () => true)).toBe(absolute)
     expect(resolveOpenFilePath("src/a.ts", undefined, () => true)).toBe("src/a.ts")
+  })
+})
+
+describe("toSnapshotRelativePath", () => {
+  const cwd = join(tmpdir(), "lx-project")
+
+  it("相对路径与带 ./ 前缀的路径解析为工作区相对 posix 路径", () => {
+    expect(toSnapshotRelativePath(cwd, "src/a.ts")).toBe("src/a.ts")
+    expect(toSnapshotRelativePath(cwd, "./src/a.ts")).toBe("src/a.ts")
+  })
+
+  it("工作区内绝对路径解析为相对路径，工作区外保留 ../ 前缀", () => {
+    expect(toSnapshotRelativePath(cwd, join(cwd, "src", "a.ts"))).toBe("src/a.ts")
+    expect(toSnapshotRelativePath(cwd, join(tmpdir(), "outside", "a.ts"))).toBe("../outside/a.ts")
   })
 })

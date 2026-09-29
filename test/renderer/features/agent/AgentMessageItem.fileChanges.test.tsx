@@ -146,4 +146,54 @@ describe("AgentMessageItem 文件修改统计", () => {
     expect(screen.getByText("2 files changed")).not.toBeNull()
     expect(document.querySelector(".agent-file-changes-total-added")?.textContent).toBe("+9")
   })
+
+  it("传入会话与用户消息时间戳时文件行提供回退按钮", () => {
+    const message = makeAssistantMessage([
+      {
+        kind: "toolCall",
+        toolCallId: "tc-1",
+        toolName: "edit",
+        args: { filePath: "src/a.ts" },
+        status: "done",
+      },
+      {
+        kind: "toolResult",
+        toolCallId: "tc-1",
+        toolName: "edit",
+        text: "ok",
+        isError: false,
+        diff: makeDiff("src/a.ts", 10, 2),
+      },
+    ])
+
+    render(<AgentMessageItem message={message} sessionId="session-1" userMessageTimestamp={1000} />)
+
+    fireEvent.click(screen.getByText("1 file changed"))
+    expect(document.querySelector(".agent-file-changes-revert")).not.toBeNull()
+  })
+
+  it("未传入回退上下文（子代理面板等只读场景）时不渲染回退按钮", () => {
+    const message = makeAssistantMessage([
+      {
+        kind: "toolCall",
+        toolCallId: "tc-1",
+        toolName: "edit",
+        args: { filePath: "src/a.ts" },
+        status: "done",
+      },
+      {
+        kind: "toolResult",
+        toolCallId: "tc-1",
+        toolName: "edit",
+        text: "ok",
+        isError: false,
+        diff: makeDiff("src/a.ts", 10, 2),
+      },
+    ])
+
+    render(<AgentMessageItem message={message} />)
+
+    fireEvent.click(screen.getByText("1 file changed"))
+    expect(document.querySelector(".agent-file-changes-revert")).toBeNull()
+  })
 })

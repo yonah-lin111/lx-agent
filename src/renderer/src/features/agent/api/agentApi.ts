@@ -141,6 +141,12 @@ export const agentApi = {
     window.api.agent.questionRespond(response),
   openFileAt: (filePath: string, line: number): Promise<{ ok: boolean }> =>
     window.api.agent.openFileAt(filePath, line),
+  revertFileChange: (
+    sessionId: string,
+    userMessageTimestamp: number,
+    filePath: string,
+  ): Promise<{ ok: boolean }> =>
+    window.api.agent.revertFileChange(sessionId, userMessageTimestamp, filePath),
   showItemInFolder: (filePath: string): Promise<{ ok: boolean }> =>
     window.api.agent.showItemInFolder(filePath),
   getContextUsage: (

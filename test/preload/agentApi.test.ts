@@ -89,6 +89,20 @@ describe("preload agent API", () => {
     expect(invoke).toHaveBeenNthCalledWith(3, AGENT_CHANNELS.deleteMessageTurn, "sess-1", 123456)
   })
 
+  it("revertFileChange 转发参数到共享 channel", async () => {
+    const api = exposeInMainWorld.mock.calls[0]?.[1]
+
+    await api.agent.revertFileChange("sess-1", 123456, "src/a.ts")
+
+    expect(invoke).toHaveBeenNthCalledWith(
+      1,
+      AGENT_CHANNELS.revertFileChange,
+      "sess-1",
+      123456,
+      "src/a.ts",
+    )
+  })
+
   it("suggestedQuestions 转发上下文与排除列表到共享 channel", async () => {
     const api = exposeInMainWorld.mock.calls[0]?.[1]
     const messages = [

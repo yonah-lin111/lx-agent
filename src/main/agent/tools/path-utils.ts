@@ -1,6 +1,6 @@
 import { constants } from "node:fs"
 import { access } from "node:fs/promises"
-import { isAbsolute, resolve } from "node:path"
+import { isAbsolute, relative, resolve, sep } from "node:path"
 
 // 解析为绝对路径：绝对路径规范化，相对路径以 cwd 为基准；读类工具不设路径边界（产品决策）。
 export const resolveToCwd = (filePath: string, cwd: string): string => {
@@ -26,4 +26,11 @@ export const resolveOpenFilePath = (
   if (isAbsolute(filePath) || !cwd) return filePath
   const resolved = resolveToCwd(filePath, cwd)
   return exists(resolved) ? resolved : filePath
+}
+
+// 解析为工作区相对路径（posix 分隔符）：与 git 快照变更列表的文件名格式对齐。
+export const toSnapshotRelativePath = (cwd: string, filePath: string): string => {
+  const absolute = isAbsolute(filePath) ? filePath : resolve(cwd, filePath)
+  const relativePath = relative(cwd, absolute)
+  return sep === "/" ? relativePath : relativePath.split(sep).join("/")
 }

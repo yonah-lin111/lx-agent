@@ -1057,6 +1057,76 @@ describe("agentRunner 持久化", () => {
     }
   })
 
+  it("revertFileChange 回退单个文件到该轮修改前（git 快照，覆盖后续修改）", async () => {
+    const { agentRunner } = await importRunner()
+    // 临时 git 仓库 cwd（快照回退前置条件）。
+    const gitDir = mkdtempSync(join(tmpdir(), "lx-git-revert-"))
+    execFileSync("git", ["init", "-q"], { cwd: gitDir, stdio: "ignore" })
+    writeFileSync(join(gitDir, "base.txt"), "base\n", "utf8")
+    execFileSync("git", ["add", "-A"], { cwd: gitDir, stdio: "ignore" })
+    execFileSync(
+      "git",
+      ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init"],
+      { cwd: gitDir, stdio: "ignore" },
+    )
+    try {
+      // 第一轮正常（无文件变更）。
+      holder.streamResponses = [assistant([{ type: "text", text: "第一轮" }])]
+      const first = await agentRunner.send("问题1", undefined, { page: "/", cwd: gitDir })
+      expect(first.ok).toBe(true)
+      if (!first.ok) return
+
+      // 第二轮：write 新增 test.txt（快照状态 A）。
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "write", { path: "test.txt", content: "content\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第二轮完成" }]),
+      ]
+      const second = await agentRunner.send("问题2", undefined, { page: "/", cwd: gitDir })
+      expect(second.ok).toBe(true)
+      if (!second.ok) return
+      // 模拟后续轮次又修改该文件：回退应一并覆盖。
+      writeFileSync(join(gitDir, "test.txt"), "later\n", "utf8")
+
+      // 第三轮：write 修改 base.txt（快照状态 M）。
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc2", "write", { path: "base.txt", content: "changed\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第三轮完成" }]),
+      ]
+      const third = await agentRunner.send("问题3", undefined, { page: "/", cwd: gitDir })
+      expect(third.ok).toBe(true)
+      if (!third.ok) return
+
+      const userTimestamps = readUserTimestamps(third.sessionId)
+      expect(userTimestamps).toHaveLength(3)
+
+      // 回退第二轮新增的文件：删除（含被后续修改覆盖的内容）。
+      expect(agentRunner.revertFileChange(third.sessionId, userTimestamps[1]!, "test.txt")).toEqual(
+        { ok: true },
+      )
+      expect(existsSync(join(gitDir, "test.txt"))).toBe(false)
+
+      // 回退第三轮修改的文件：恢复该轮修改前的原始内容。
+      expect(agentRunner.revertFileChange(third.sessionId, userTimestamps[2]!, "base.txt")).toEqual(
+        { ok: true },
+      )
+      expect(readFileSync(join(gitDir, "base.txt"), "utf8")).toBe("base\n")
+
+      // 无快照（时间戳未命中）或文件未在该轮变更：失败返回 ok:false。
+      expect(agentRunner.revertFileChange(third.sessionId, -1, "base.txt")).toEqual({ ok: false })
+      expect(
+        agentRunner.revertFileChange(third.sessionId, userTimestamps[2]!, "missing.txt"),
+      ).toEqual({ ok: false })
+    } finally {
+      rmSync(gitDir, { recursive: true, force: true })
+    }
+  })
+
   it("发送附件文件并写入 message.files，并在删除消息轮时一并清理物理文件和文件夹", async () => {
     const { agentRunner } = await importRunner()
     holder.streamResponses = [assistant([{ type: "text", text: "你好" }])]

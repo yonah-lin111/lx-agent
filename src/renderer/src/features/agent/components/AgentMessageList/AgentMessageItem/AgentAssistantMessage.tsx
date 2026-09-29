@@ -34,6 +34,7 @@ import type {
   ProposedPlanData,
   ReviewFindingItem,
 } from "@/features/agent/types"
+import type { FileChangeRevertTarget } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { EMPTY_SUGGESTED_QUESTION_CONTEXT } from "./constants"
 import type { MessageItemGroupsResult } from "./hooks/useMessageItemGroups"
@@ -58,6 +59,8 @@ export interface AgentAssistantMessageProps {
   onAcceptPlan?: (plan: ProposedPlanData) => void
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   hasSubsequentUserMessage?: boolean
+  // 文件修改回退上下文（sessionId + 该轮用户消息时间戳）；缺省时不提供回退能力。
+  fileChangeRevert?: FileChangeRevertTarget
 }
 
 // 助手消息气泡与执行组渲染组件。
@@ -78,6 +81,7 @@ export const AgentAssistantMessage = ({
   onAcceptPlan,
   onApplyReviewFixes,
   hasSubsequentUserMessage = false,
+  fileChangeRevert,
 }: AgentAssistantMessageProps): React.JSX.Element => {
   const { t } = useTranslation()
   const previewRef = useRef<HTMLDivElement>(null)
@@ -398,8 +402,6 @@ export const AgentAssistantMessage = ({
             return <AgentExecutionGroup key={groupIndex} items={executionItems} />
           })}
         </div>
-        {/* 文件修改统计：本条回复内 edit/write/apply_patch 的 diff 汇总（含续写消息）。 */}
-        {messageFileChanges && <FileChangesCard summary={messageFileChanges} className="mt-1.5" />}
         {assistantError && (
           <div className="agent-message-error-container mt-2 flex flex-col gap-1.5">
             <div className="border-t border-white/10" />
@@ -444,6 +446,14 @@ export const AgentAssistantMessage = ({
           isLoading={isLoadingSuggestedQuestions}
           onSelect={handleSendSuggestedQuestion}
           onEcho={handleEchoSuggestedQuestion}
+        />
+      )}
+      {/* 文件修改统计：气泡外、底部统计数据上方（本条回复内 edit/write/apply_patch 的 diff 汇总）。 */}
+      {messageFileChanges && (
+        <FileChangesCard
+          summary={messageFileChanges}
+          revertTarget={fileChangeRevert}
+          className="mt-1"
         />
       )}
       {!isStreamingNow && !isLoading && (hasActionableContent || assistantError) && (

@@ -18,6 +18,7 @@ vi.mock("@/agent/agentRunner", () => ({
     deleteSession: vi.fn(),
     deleteSessions: vi.fn(),
     deleteMessageTurn: vi.fn(),
+    revertFileChange: vi.fn(() => ({ ok: true })),
     getPromptAssembly: vi.fn(),
     setCollaborationMode: vi.fn(),
   },
@@ -135,6 +136,27 @@ describe("agent IPC handlers", () => {
     expect(() => deleteHandler(undefined, "")).toThrow("INVALID_SESSION_ID")
     expect(() => turnHandler(undefined, "", 1)).toThrow("INVALID_SESSION_ID")
     expect(() => turnHandler(undefined, "sess-1", "abc")).toThrow("INVALID_MESSAGE_TIMESTAMP")
+  })
+
+  it("revertFileChange handler 校验输入并转发到 agentRunner", async () => {
+    vi.resetModules()
+    const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
+    const { agentRunner } = await import("@/agent/agentRunner")
+
+    registerAgentHandlers(() => undefined)
+
+    const revertHandler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.revertFileChange,
+    )?.[1]
+    expect(revertHandler).toBeTypeOf("function")
+
+    revertHandler(undefined, "sess-1", 123456, "src/a.ts")
+    expect(agentRunner.revertFileChange).toHaveBeenCalledWith("sess-1", 123456, "src/a.ts")
+
+    // 非法输入返回 ok:false，不调用 agentRunner。
+    expect(revertHandler(undefined, "", 123456, "src/a.ts")).toEqual({ ok: false })
+    expect(revertHandler(undefined, "sess-1", "abc", "src/a.ts")).toEqual({ ok: false })
+    expect(revertHandler(undefined, "sess-1", 123456, "")).toEqual({ ok: false })
   })
 
   it("setSessionPinned/deleteSessions handler 校验并转发到 agentRunner", async () => {

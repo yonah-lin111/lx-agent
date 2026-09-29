@@ -34,11 +34,13 @@ import {
 } from "@shared/contracts/sessionProjection"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
+import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { getAppDataRoot } from "../paths"
 import { copySessionText, exportSessionToFile } from "./export/sessionExporter"
 import { jobRegistry } from "./jobs/jobRegistry"
 import { AgentSessionRunner } from "./sessionRunner"
 import { spillManager } from "./spill/spillManager"
+import { toSnapshotRelativePath } from "./tools/path-utils"
 
 /**
  * 多会话 Agent 管理器（Main 进程单例）：
@@ -241,6 +243,29 @@ export class SessionRunnerManager {
   public getSessionProjection(sessionId?: string, tabId?: string): SessionProjectionState {
     const runner = this.getRunner(sessionId, tabId)
     return runner ? runner.getTurnStore().getProjection() : createInitialSessionProjectionState()
+  }
+
+  // 回退单个文件到指定轮次开始前的快照状态（非 git / 无快照 / 文件未变更返回 ok:false）。
+  public revertFileChange(
+    sessionId: string,
+    userMessageTimestamp: number,
+    filePath: string,
+  ): { ok: boolean } {
+    const session = agentSessionService.getSession(sessionId)
+    if (!session) return { ok: false }
+    const snapshot = agentSessionService.getSnapshotByUserTimestamp(sessionId, userMessageTimestamp)
+    if (!snapshot) return { ok: false }
+    try {
+      const changes = JSON.parse(snapshot.files_changed) as SnapshotFileChange[]
+      const relativePath = toSnapshotRelativePath(session.cwd, filePath)
+      const change = changes.find((item) => item.file === relativePath)
+      if (!change) return { ok: false }
+      gitSnapshotService.revert(session.cwd, snapshot.hash_start, [change])
+      return { ok: true }
+    } catch {
+      // 快照损坏或回滚异常：静默失败，由渲染端提示。
+      return { ok: false }
+    }
   }
 
   public deleteMessageTurn(sessionId: string, userMessageTimestamp: number): void {

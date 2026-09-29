@@ -561,6 +561,22 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     return openFileAt(targetPath, line)
   })
 
+  ipcMain.handle(
+    AGENT_CHANNELS.revertFileChange,
+    (_, sessionId: unknown, userMessageTimestamp: unknown, filePath: unknown) => {
+      if (
+        typeof sessionId !== "string" ||
+        !sessionId ||
+        typeof userMessageTimestamp !== "number" ||
+        typeof filePath !== "string" ||
+        !filePath
+      ) {
+        return { ok: false }
+      }
+      return agentRunner.revertFileChange(sessionId, userMessageTimestamp, filePath)
+    },
+  )
+
   ipcMain.handle(AGENT_CHANNELS.showItemInFolder, (_, filePath: unknown) => {
     if (typeof filePath !== "string" || !filePath) {
       return { ok: false }

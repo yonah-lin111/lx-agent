@@ -49,6 +49,8 @@ export const AGENT_CHANNELS = {
   questionResponse: "agent:questionResponse",
   // LSP 结果跳转：系统默认编辑器打开文件并定位行。
   openFileAt: "agent:openFileAt",
+  // 回退单个文件到指定轮次开始前的快照状态。
+  revertFileChange: "agent:revertFileChange",
   // 在资源管理器中显示文件（多平台原生支持）。
   showItemInFolder: "agent:showItemInFolder",
   // 会话导出与复制通道

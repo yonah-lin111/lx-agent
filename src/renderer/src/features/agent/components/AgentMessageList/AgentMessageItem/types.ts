@@ -107,4 +107,8 @@ export interface AgentMessageItemProps {
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   // 下方是否已存在用户消息（方案/审查卡片执行后置灰禁用）。
   hasSubsequentUserMessage?: boolean
+  // 会话 id（文件回退等操作定位用；子代理面板等只读场景不传）。
+  sessionId?: string
+  // 该 QA 组用户消息时间戳（文件修改回退的快照定位）。
+  userMessageTimestamp?: number
 }

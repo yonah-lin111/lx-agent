@@ -114,16 +114,26 @@ describe("buildFileChangeSummary", () => {
 })
 
 describe("buildFlowFileChangesByStepId", () => {
-  it("按 turn 聚合写工具 diff 并挂到该轮最后一个 assistant 步骤", () => {
+  it("按 turn 聚合写工具 diff 并挂到该轮最后一个 assistant 步骤（附带用户消息时间戳）", () => {
     const steps: ExecutionStep[] = [
-      makeAssistantStep("assistant-early", 1, 1),
+      {
+        id: "user-1",
+        turnIndex: 1,
+        stepIndex: 1,
+        kind: "user",
+        title: "修改文件",
+        status: "done",
+        timestamp: 1000,
+        userContent: { text: "修改文件" },
+      },
+      makeAssistantStep("assistant-early", 1, 2),
       makeToolStep(
         "tool-1",
         1,
         { toolName: "edit", args: { filePath: "src/a.ts" }, diff: makeDiff("src/a.ts", 4, 1) },
-        2,
+        3,
       ),
-      makeAssistantStep("assistant-final", 1, 3),
+      makeAssistantStep("assistant-final", 1, 4),
       makeToolStep(
         "tool-2",
         2,
@@ -132,28 +142,31 @@ describe("buildFlowFileChangesByStepId", () => {
           args: {},
           diffs: [makeDiff("src/b.ts", 2, 0), makeDiff("src/c.ts", 1, 1)],
         },
-        4,
+        5,
       ),
-      makeAssistantStep("assistant-turn2", 2, 5),
+      makeAssistantStep("assistant-turn2", 2, 6),
       // turn 3 只有工具没有 assistant：不产生条目
       makeToolStep(
         "tool-3",
         3,
         { toolName: "write", args: { path: "src/d.ts" }, diff: makeDiff("src/d.ts", 1, 0) },
-        6,
+        7,
       ),
     ]
 
     const result = buildFlowFileChangesByStepId(steps)
 
     expect(result.has("assistant-early")).toBe(false)
-    expect(result.get("assistant-final")?.files).toEqual([
+    expect(result.get("assistant-final")?.summary.files).toEqual([
       { filePath: "src/a.ts", added: 4, removed: 1, line: 1 },
     ])
-    expect(result.get("assistant-turn2")?.files).toEqual([
+    expect(result.get("assistant-final")?.userMessageTimestamp).toBe(1000)
+    expect(result.get("assistant-turn2")?.summary.files).toEqual([
       { filePath: "src/b.ts", added: 2, removed: 0, line: 1 },
       { filePath: "src/c.ts", added: 1, removed: 1, line: 1 },
     ])
+    // turn 2 无用户步骤：无回退时间戳
+    expect(result.get("assistant-turn2")?.userMessageTimestamp).toBeUndefined()
     expect(result.size).toBe(2)
   })
 

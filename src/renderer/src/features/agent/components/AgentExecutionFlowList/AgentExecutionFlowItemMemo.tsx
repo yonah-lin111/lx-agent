@@ -8,6 +8,8 @@ export const AgentExecutionFlowItemMemo = memo(AgentExecutionFlowItem, (prev, ne
     prev.step === next.step &&
     prev.isExpanded === next.isExpanded &&
     prev.hasSubsequentUserMessage === next.hasSubsequentUserMessage &&
+    prev.fileChangesUserMessageTimestamp === next.fileChangesUserMessageTimestamp &&
+    prev.sessionId === next.sessionId &&
     // 聚合结果每次重算新建对象，按结构判定是否真正变化。
     isSameFileChangeSummary(prev.fileChanges, next.fileChanges)
   )

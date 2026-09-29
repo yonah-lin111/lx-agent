@@ -166,6 +166,7 @@ export const AgentExecutionFlowList = forwardRef<
                       maxTurn={maxTurn}
                       readOnly={readOnly}
                       canContinue={canContinue}
+                      sessionId={sessionId}
                       isStepExpanded={isStepExpanded}
                       onToggleStepExpand={toggleStepExpanded}
                       onToggleGroupExpand={toggleGroupExpanded}

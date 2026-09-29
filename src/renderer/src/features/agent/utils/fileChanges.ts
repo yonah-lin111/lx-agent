@@ -17,6 +17,19 @@ export interface FileChangeSummary {
   totalRemoved: number
 }
 
+// 文件回退上下文（sessionId + 该轮用户消息时间戳）。
+export interface FileChangeRevertTarget {
+  sessionId: string
+  userMessageTimestamp: number
+}
+
+// 执行流单个 assistant 步骤的文件修改挂载项。
+export interface FlowFileChangesEntry {
+  summary: FileChangeSummary
+  // 该轮用户消息时间戳（回退快照定位；缺失时不提供回退）。
+  userMessageTimestamp?: number
+}
+
 // 聚合输入条目（diff 及其路径缺省回退值）。
 interface FileChangeEntry {
   diff: AgentDiff
@@ -67,14 +80,19 @@ export const buildFileChangeSummary = (entries: FileChangeEntry[]): FileChangeSu
 // 按工具步骤聚合该 turn 的文件修改，返回"该 turn 最后一个 assistant 步骤 id → 汇总"映射。
 export const buildFlowFileChangesByStepId = (
   steps: ExecutionStep[],
-): Map<string, FileChangeSummary> => {
+): Map<string, FlowFileChangesEntry> => {
   const entriesByTurn = new Map<number, FileChangeEntry[]>()
-  // 顺序遍历后写覆盖：得到每个 turn 最后一个 assistant 步骤。
+  // 顺序遍历后写覆盖：得到每个 turn 最后一个 assistant 步骤与用户消息时间戳。
   const lastAssistantStepIdByTurn = new Map<number, string>()
+  const userTimestampByTurn = new Map<number, number>()
 
   for (const step of steps) {
     if (step.kind === "assistant") {
       lastAssistantStepIdByTurn.set(step.turnIndex, step.id)
+      continue
+    }
+    if (step.kind === "user") {
+      if (step.timestamp !== undefined) userTimestampByTurn.set(step.turnIndex, step.timestamp)
       continue
     }
     if (step.kind !== "tool" || !step.toolContent) continue
@@ -103,12 +121,17 @@ export const buildFlowFileChangesByStepId = (
     entriesByTurn.set(step.turnIndex, turnEntries)
   }
 
-  const summaryByStepId = new Map<string, FileChangeSummary>()
+  const summaryByStepId = new Map<string, FlowFileChangesEntry>()
   for (const [turnIndex, entries] of entriesByTurn) {
     const assistantStepId = lastAssistantStepIdByTurn.get(turnIndex)
     if (!assistantStepId) continue
     const summary = buildFileChangeSummary(entries)
-    if (summary) summaryByStepId.set(assistantStepId, summary)
+    if (!summary) continue
+    const userMessageTimestamp = userTimestampByTurn.get(turnIndex)
+    summaryByStepId.set(assistantStepId, {
+      summary,
+      ...(userMessageTimestamp !== undefined ? { userMessageTimestamp } : {}),
+    })
   }
   return summaryByStepId
 }

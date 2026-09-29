@@ -418,6 +418,11 @@ export const agent = {
   filesChangedSingular: "1 file changed",
   filesChangedPlural: "{{count}} files changed",
   openFile: "Open File",
+  revertFile: "Revert File",
+  revertFileConfirm:
+    "Revert {{file}} to before this change? Later changes to this file will also be overwritten.",
+  revertFileSuccess: "Reverted {{file}} to its previous state",
+  revertFileFailed: "Revert failed: file snapshot unavailable",
   openSpillFile: "Open Full Output File",
   answeredQuestions: "Answered Questions",
   thinkingProcess: "Thinking Process",

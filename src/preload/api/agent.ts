@@ -95,6 +95,8 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.questionResponse, response),
   openFileAt: (filePath: string, line: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.openFileAt, filePath, line),
+  revertFileChange: (sessionId: string, userMessageTimestamp: number, filePath: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.revertFileChange, sessionId, userMessageTimestamp, filePath),
   showItemInFolder: (filePath: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.showItemInFolder, filePath),
   getContextUsage: (selection?: ModelSelection, sessionId?: string, tabId?: string) =>

@@ -1044,6 +1044,7 @@ export const AgentPage = ({
               onContinue={continueChat}
               onAcceptPlan={acceptAndExecutePlan}
               onApplyReviewFixes={acceptAndExecuteReviewFixes}
+              sessionId={currentSessionId ?? undefined}
             />
             {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}
             <AgentSubagentPanel

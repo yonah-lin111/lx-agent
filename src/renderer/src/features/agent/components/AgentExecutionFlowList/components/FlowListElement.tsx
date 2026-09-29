@@ -1,7 +1,7 @@
 import { Compass, Cpu, Layers, Minimize2, RefreshCw, Undo2 } from "lucide-react"
 import { Fragment } from "react"
 import type { ExecutionStep, ProposedPlanData, ReviewFindingItem } from "@/features/agent/types"
-import type { FileChangeSummary } from "@/features/agent/utils/fileChanges"
+import type { FlowFileChangesEntry } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowGroup } from "../AgentExecutionFlowGroup"
 import { AgentExecutionFlowItemMemo } from "../AgentExecutionFlowItemMemo"
@@ -15,7 +15,7 @@ type FlowListElementProps = {
   turnStatsMap: Map<number, TurnStats>
   turnMessageIdMap: Map<number, string>
   // 该轮文件修改汇总（键为 assistant 步骤 id；仅对应轮次最后一个 assistant 步骤命中）。
-  fileChangesByStepId: Map<string, FileChangeSummary>
+  fileChangesByStepId: Map<string, FlowFileChangesEntry>
   runningTurnSet: Set<number>
   hasNonGroupableAfterByIndex: boolean[]
   maxUserTurnIndex: number
@@ -24,6 +24,8 @@ type FlowListElementProps = {
   maxTurn: number
   readOnly: boolean
   canContinue: boolean
+  // 当前会话 id（文件修改回退等操作定位用）。
+  sessionId?: string
   isStepExpanded: (step: ExecutionStep) => boolean
   onToggleStepExpand: (step: ExecutionStep) => void
   onToggleGroupExpand: (groupId: string) => void
@@ -55,6 +57,7 @@ export const FlowListElement = ({
   maxTurn,
   readOnly,
   canContinue,
+  sessionId,
   isStepExpanded,
   onToggleStepExpand,
   onToggleGroupExpand,
@@ -204,7 +207,11 @@ export const FlowListElement = ({
           onApplyReviewFixes={onApplyReviewFixes}
           onFillInput={onFillInput}
           hasSubsequentUserMessage={element.step.turnIndex < maxUserTurnIndex}
-          fileChanges={fileChangesByStepId.get(element.step.id)}
+          fileChanges={fileChangesByStepId.get(element.step.id)?.summary}
+          fileChangesUserMessageTimestamp={
+            fileChangesByStepId.get(element.step.id)?.userMessageTimestamp
+          }
+          sessionId={sessionId}
         />
       ) : (
         <AgentExecutionFlowGroup

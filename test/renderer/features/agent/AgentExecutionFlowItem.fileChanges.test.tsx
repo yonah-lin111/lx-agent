@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { AgentDiff } from "@shared/contracts/agent"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AgentExecutionFlowItem } from "@/features/agent/components/AgentExecutionFlowList/AgentExecutionFlowItem"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList/AgentExecutionFlowList"
@@ -71,6 +71,22 @@ describe("AgentExecutionFlowItem 文件修改统计", () => {
 
     expect(screen.queryByTestId("file-changes-card")).toBeNull()
   })
+
+  it("提供会话与用户消息时间戳时卡片提供回退按钮", () => {
+    render(
+      <AgentExecutionFlowItem
+        step={makeAssistantStep()}
+        isExpanded
+        onToggleExpand={vi.fn()}
+        fileChanges={makeSummary()}
+        sessionId="session-1"
+        fileChangesUserMessageTimestamp={1000}
+      />,
+    )
+
+    fireEvent.click(screen.getByText("1 file changed"))
+    expect(document.querySelector(".agent-file-changes-revert")).not.toBeNull()
+  })
 })
 
 describe("AgentExecutionFlowList 文件修改统计", () => {
@@ -118,5 +134,47 @@ describe("AgentExecutionFlowList 文件修改统计", () => {
 
     expect(screen.getByTestId("file-changes-card")).not.toBeNull()
     expect(screen.getByText("1 file changed")).not.toBeNull()
+  })
+
+  it("用户步骤时间戳贯通为文件回退上下文", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "user-1",
+        role: "user",
+        blocks: [{ kind: "text", text: "修改文件" }],
+        isStreaming: false,
+        timestamp: 1000,
+      },
+      {
+        id: "assistant-1",
+        role: "assistant",
+        model: "gpt-4o",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "tc-1",
+            toolName: "edit",
+            args: { filePath: "src/a.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolResult",
+            toolCallId: "tc-1",
+            toolName: "edit",
+            text: "ok",
+            isError: false,
+            diff: makeDiff("src/a.ts", 10, 2),
+          },
+          { kind: "text", text: "修改完成" },
+        ],
+        isStreaming: false,
+        timestamp: 2000,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} isStreaming={false} sessionId="session-1" />)
+
+    fireEvent.click(screen.getByText("1 file changed"))
+    expect(document.querySelector(".agent-file-changes-revert")).not.toBeNull()
   })
 })

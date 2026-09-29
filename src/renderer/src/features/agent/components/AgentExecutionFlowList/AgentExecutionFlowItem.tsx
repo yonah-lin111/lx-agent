@@ -65,6 +65,10 @@ export interface AgentExecutionFlowItemProps {
   hasSubsequentUserMessage?: boolean
   // 该轮文件修改汇总（仅挂在每轮最后一个 assistant 步骤上）。
   fileChanges?: FileChangeSummary
+  // 该轮用户消息时间戳（文件修改回退的快照定位）。
+  fileChangesUserMessageTimestamp?: number
+  // 当前会话 id（文件修改回退等操作定位用）。
+  sessionId?: string
 }
 
 /**
@@ -80,10 +84,18 @@ export const AgentExecutionFlowItem = ({
   onFillInput,
   hasSubsequentUserMessage = false,
   fileChanges,
+  fileChangesUserMessageTimestamp,
+  sessionId,
 }: AgentExecutionFlowItemProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
+
+  // 文件修改回退上下文：会话与用户消息时间戳齐备时提供回退能力。
+  const fileChangeRevert =
+    sessionId && fileChangesUserMessageTimestamp !== undefined
+      ? { sessionId, userMessageTimestamp: fileChangesUserMessageTimestamp }
+      : undefined
 
   const meta = getKindMeta(step)
 
@@ -632,7 +644,7 @@ export const AgentExecutionFlowItem = ({
           {/* 本轮文件修改汇总：展开区底部展示，点击文件打开定位变更行 */}
           {fileChanges && (
             <div className="agent-execution-flow-file-changes mt-2">
-              <FileChangesCard summary={fileChanges} />
+              <FileChangesCard summary={fileChanges} revertTarget={fileChangeRevert} />
             </div>
           )}
         </div>
