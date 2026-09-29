@@ -59,6 +59,8 @@ export interface GameStageProps {
   isSuspended: boolean
   onMinimize: () => void
   onClose: () => void
+  // 游戏覆盖层容器 ref：快捷键弹窗挂载其中，限制在覆盖层范围内。
+  modalContainerRef?: React.RefObject<HTMLElement | null>
 }
 
 /**
@@ -72,6 +74,7 @@ export const GameStage = ({
   isSuspended,
   onMinimize,
   onClose,
+  modalContainerRef,
 }: GameStageProps): React.JSX.Element => {
   const { t, locale } = useTranslation()
   const { success: successToast, error: errorToast } = useLxToast()
@@ -443,6 +446,7 @@ export const GameStage = ({
         isOpen={isKeymapOpen}
         keymap={keymap}
         isSaving={isKeymapSaving}
+        container={modalContainerRef?.current ?? null}
         onClose={() => setIsKeymapOpen(false)}
         onSave={(next) => void handleSaveKeymap(next)}
       />

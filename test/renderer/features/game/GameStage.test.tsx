@@ -170,6 +170,35 @@ describe("GameStage", () => {
     })
   })
 
+  it("快捷键弹窗挂载到覆盖层容器内并限制在容器范围", async () => {
+    const api = createApiMock()
+    installApi(api)
+
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const modalContainerRef = { current: container as HTMLElement | null }
+
+    render(
+      <GameStage
+        entry={createEntry()}
+        isSuspended={false}
+        modalContainerRef={modalContainerRef}
+        onMinimize={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    )
+    await waitFor(() => {
+      expect(document.querySelector("webview")).not.toBeNull()
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }))
+
+    const backdrop = container.querySelector(".lx-modal-backdrop")
+    expect(backdrop).not.toBeNull()
+    expect(backdrop?.className).toContain("absolute")
+    container.remove()
+  })
+
   it("暂停面板的快捷键入口也可打开面板", async () => {
     const api = createApiMock()
     installApi(api)

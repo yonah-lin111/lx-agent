@@ -145,6 +145,25 @@ describe("GameOverlay", () => {
     expect(useGameSessionStore.getState().isOpen).toBe(false)
   })
 
+  it("快捷键弹窗挂载在游戏覆盖层容器内", async () => {
+    installApi(createApiMock())
+
+    const { container } = render(<GameOverlay />)
+    act(() => {
+      useGameSessionStore.getState().startRom(createEntry())
+    })
+    await waitFor(() => {
+      expect(document.querySelector("webview")).not.toBeNull()
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }))
+
+    const overlay = container.querySelector(".game-overlay")
+    const backdrop = overlay?.querySelector(".lx-modal-backdrop")
+    expect(backdrop).not.toBeNull()
+    expect(backdrop?.className).toContain("absolute")
+  })
+
   it("ESC 不再关闭游戏，内置舞台保持挂载", () => {
     installApi(createApiMock())
 

@@ -59,6 +59,8 @@ export interface GameKeymapPanelProps {
   isSaving: boolean
   onClose: () => void
   onSave: (keymap: GameKeymap | null) => void
+  // 弹窗挂载容器（游戏覆盖层）；缺省挂载到 document.body。
+  container?: HTMLElement | null
 }
 
 /**
@@ -72,6 +74,7 @@ export const GameKeymapPanel = ({
   isSaving,
   onClose,
   onSave,
+  container,
 }: GameKeymapPanelProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<Record<GameKeyAction, string>>(() => resolveGameKeymap(keymap))
@@ -181,7 +184,13 @@ export const GameKeymapPanel = ({
   }
 
   return (
-    <LxModal isOpen={isOpen} title={t("game.keymap.title")} width={640} onClose={onClose}>
+    <LxModal
+      isOpen={isOpen}
+      title={t("game.keymap.title")}
+      width={640}
+      container={container}
+      onClose={onClose}
+    >
       <div className="flex flex-col gap-3 text-xs">
         <p className="text-white/55">{t("game.keymap.hint")}</p>
 
