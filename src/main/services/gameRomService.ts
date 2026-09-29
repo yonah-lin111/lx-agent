@@ -18,7 +18,9 @@ import {
   GAME_TITLE_MAX_LENGTH,
   type GameImportInvalidReason,
   type GameImportResult,
+  type GameKeymap,
   type GameRomEntry,
+  normalizeGameKeymap,
 } from "@shared/contracts/game"
 import type Database from "better-sqlite3"
 import { getDatabase } from "@/db"
@@ -57,11 +59,22 @@ interface GameRomEntryRow {
   created_at: string
   updated_at: string
   last_played_at: string | null
+  keymap: string | null
 }
 
 // 服务可注入的文件目录（默认取应用数据目录，测试传入临时目录）。
 export interface GameRomServiceDirs {
   gameDir: string
+}
+
+// 反序列化落库键位；损坏数据按"无覆盖"处理，不阻塞游戏列表。
+const parseStoredKeymap = (raw: string | null): GameKeymap | null => {
+  if (!raw) return null
+  try {
+    return normalizeGameKeymap(JSON.parse(raw))
+  } catch {
+    return null
+  }
 }
 
 // 行 → 契约对象。
@@ -73,6 +86,7 @@ const toGameRomEntry = (row: GameRomEntryRow): GameRomEntry => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   lastPlayedAt: row.last_played_at,
+  keymap: parseStoredKeymap(row.keymap),
 })
 
 // 校验正整数条目 id。
@@ -314,6 +328,18 @@ export const createGameRomService = (
     return toGameRomEntry(requireRow(entryId))
   }
 
+  // 保存每游戏按键覆盖：null / 空对象落库为 NULL（全部回退默认键位）。
+  const saveKeymap = (id: number, keymap: unknown): GameRomEntry => {
+    const entryId = assertEntryId(id)
+    requireRow(entryId)
+    const normalized = normalizeGameKeymap(keymap)
+    const now = new Date().toISOString()
+    getConnection()
+      .prepare("UPDATE game_rom_entry SET keymap = ?, updated_at = ? WHERE id = ?")
+      .run(normalized ? JSON.stringify(normalized) : null, now, entryId)
+    return toGameRomEntry(requireRow(entryId))
+  }
+
   // 读取 ROM 文件路径（协议层按条目 id 解析，不接受任意路径）。
   const getRomFilePath = (id: number): string | null => {
     const entryId = assertEntryId(id)
@@ -388,6 +414,7 @@ export const createGameRomService = (
     rename,
     remove,
     markPlayed,
+    saveKeymap,
     getRomFilePath,
     readSave,
     writeSave,

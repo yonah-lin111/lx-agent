@@ -30,6 +30,10 @@ export const registerGameHandlers = (): void => {
 
   ipcMain.handle(GAME_CHANNELS.markPlayed, (_, id: number) => gameRomService.markPlayed(id))
 
+  ipcMain.handle(GAME_CHANNELS.saveKeymap, (_, id: number, keymap: unknown) =>
+    gameRomService.saveKeymap(id, keymap),
+  )
+
   ipcMain.handle(GAME_CHANNELS.writeSave, (_, id: number, data: unknown) =>
     gameRomService.writeSave(id, data),
   )

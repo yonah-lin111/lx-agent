@@ -25,6 +25,8 @@ interface LxModalProps {
   maxHeight?: number | string
   // 标题行右侧、关闭按钮左侧的操作插槽。
   headerActions?: React.ReactNode
+  // 挂载容器；默认挂载到 document.body。传入容器时遮罩改为容器内绝对定位，限制在容器范围内。
+  container?: HTMLElement | null
 }
 
 /**
@@ -42,6 +44,7 @@ export const LxModal = ({
   minHeight,
   maxHeight = "calc(100vh - 32px)",
   headerActions,
+  container,
 }: LxModalProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const [isAnimatingOut, setIsAnimatingOut] = useState<boolean>(false)
@@ -103,12 +106,13 @@ export const LxModal = ({
   if (!shouldRender) return null
 
   const animationClass = isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+  const backdropPositionClass = container ? "absolute" : "fixed"
 
   return createPortal(
     <div
       ref={backdropRef}
       aria-modal={isOpen ? "true" : undefined}
-      className="lx-modal-backdrop fixed inset-0 z-[999998] flex items-center justify-center"
+      className={`lx-modal-backdrop ${backdropPositionClass} inset-0 z-[999998] flex items-center justify-center`}
       inert={!isOpen}
       role="dialog"
       onClick={handleBackdropClick}
@@ -136,6 +140,6 @@ export const LxModal = ({
         <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">{children}</div>
       </section>
     </div>,
-    document.body,
+    container ?? document.body,
   )
 }

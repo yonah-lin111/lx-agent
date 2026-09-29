@@ -5,6 +5,7 @@ import { useTranslation } from "@/i18n"
 export interface GamePauseOverlayProps {
   onResume: () => void
   onRestart?: () => void
+  onOpenKeymap?: () => void
   onMinimize?: () => void
   onClose?: () => void
 }
@@ -20,6 +21,7 @@ const SECONDARY_BUTTON_CLASS =
 export const GamePauseOverlay = ({
   onResume,
   onRestart,
+  onOpenKeymap,
   onMinimize,
   onClose,
 }: GamePauseOverlayProps): React.JSX.Element => {
@@ -37,6 +39,11 @@ export const GamePauseOverlay = ({
         {onRestart ? (
           <button type="button" className={SECONDARY_BUTTON_CLASS} onClick={onRestart}>
             {t("game.pause.restart")}
+          </button>
+        ) : null}
+        {onOpenKeymap ? (
+          <button type="button" className={SECONDARY_BUTTON_CLASS} onClick={onOpenKeymap}>
+            {t("game.keymap.open")}
           </button>
         ) : null}
         {onMinimize ? (

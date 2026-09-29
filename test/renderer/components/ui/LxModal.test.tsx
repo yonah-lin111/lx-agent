@@ -31,6 +31,30 @@ describe("LxModal", () => {
     expect(screen.getByText("弹窗内容")).not.toBeNull()
   })
 
+  it("传入 container 时挂载到容器内，遮罩改为容器内绝对定位", () => {
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+
+    render(
+      <LxModal isOpen={true} title="测试弹窗" container={container} onClose={vi.fn()}>
+        <div>弹窗内容</div>
+      </LxModal>,
+    )
+
+    const backdrop = container.querySelector(".lx-modal-backdrop")
+    expect(backdrop).not.toBeNull()
+    expect(backdrop?.className).toContain("absolute")
+    expect(backdrop?.className).not.toContain("fixed")
+    // 不再挂载到 body 顶层。
+    expect(
+      Array.from(document.body.children).some((element) =>
+        element.classList.contains("lx-modal-backdrop"),
+      ),
+    ).toBe(false)
+
+    container.remove()
+  })
+
   it("点击遮罩层可触发 onClose", () => {
     const handleClose = vi.fn()
     render(
