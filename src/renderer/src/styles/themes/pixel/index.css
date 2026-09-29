@@ -140,8 +140,8 @@
 /* 基础按钮风格（非下拉/菜单选项，排除 Agent 消息内部的内联切换按钮；ghost 变体为显式无边框/无底色，不强制浮雕） */
 [data-theme="pixel"]
 button:not([role="option"]):not(.agent-tool-diff-toggle):not(.agent-file-changes-header):not(
-  .agent-file-changes-open
-):not(.agent-file-changes-revert):not([data-variant="ghost"]),
+  [data-variant="ghost"]
+),
 [data-theme="pixel"]
   [role="button"]:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghost"]) {
   transition: none !important;

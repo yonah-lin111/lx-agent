@@ -3151,7 +3151,7 @@
   text-shadow: 1px 1px 0px #000000;
 }
 
-/* 展开明细槽：黑曜石暗槽 + 直角 + 内凹阴影 */
+/* 展开明细槽：黑曜石暗槽 + 直角 + 内凹阴影（文件行本身复用 level 3 导航行像素槽样式） */
 [data-theme="pixel"] .agent-file-changes-list {
   border: 2px solid #000000 !important;
   background-color: #14141d !important;
@@ -3159,32 +3159,6 @@
   box-shadow:
     inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
-}
-
-[data-theme="pixel"] .agent-file-changes-item {
-  border-radius: 0px !important;
-}
-
-[data-theme="pixel"] .agent-file-changes-item:hover {
-  background-color: #20202c !important;
-}
-
-/* 文件行打开按钮：扁平内联，不参与全局浮雕按钮皮肤 */
-[data-theme="pixel"] button.agent-file-changes-open,
-[data-theme="pixel"] .agent-file-changes-open {
-  font-family: var(--theme-font-family) !important;
-  border: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border-radius: 0px !important;
-  color: #d6d6e8 !important;
-  text-shadow: 1px 1px 0px #000000;
-}
-
-[data-theme="pixel"] button.agent-file-changes-open:hover,
-[data-theme="pixel"] .agent-file-changes-open:hover {
-  color: #ffffff !important;
 }
 
 [data-theme="pixel"] .agent-file-changes-path {
@@ -3195,25 +3169,4 @@
 [data-theme="pixel"] .agent-file-changes-file-icon {
   color: #a6a6bc !important;
   filter: drop-shadow(1px 1px 0px #000000);
-}
-
-[data-theme="pixel"] .agent-file-changes-open-icon {
-  color: #7f7f99 !important;
-}
-
-/* 回退按钮：扁平内联，悬停金矿橙黄 */
-[data-theme="pixel"] button.agent-file-changes-revert,
-[data-theme="pixel"] .agent-file-changes-revert {
-  border: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border-radius: 0px !important;
-  color: #a6a6bc !important;
-}
-
-[data-theme="pixel"] button.agent-file-changes-revert:hover:not(:disabled),
-[data-theme="pixel"] .agent-file-changes-revert:hover:not(:disabled) {
-  background-color: #2b2b3b !important;
-  color: #ffaa00 !important;
 }

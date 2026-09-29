@@ -1,6 +1,8 @@
 import { ChevronDown, ExternalLink, FileCode, FileDiff, Loader2, RotateCcw } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
@@ -88,54 +90,60 @@ export const FileChangesCard = ({
       {isExpanded && (
         <div className="agent-file-changes-list mt-1 flex w-full flex-col gap-0.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.08))] bg-black/20 p-1">
           {summary.files.map((file) => (
-            <div
+            // 文件行为叶子级导航行（level 3）：行点击不打开，行尾图标按钮打开文件并定位首个变更行。
+            <LxNavItem
               key={file.filePath}
-              className="agent-file-changes-item group flex w-full min-w-0 items-center gap-1.5 rounded-[4px] px-1.5 py-1 text-xs transition-colors hover:bg-white/10"
-            >
-              <LxTooltip placement="top" content={file.filePath}>
-                <button
-                  type="button"
-                  aria-label={t("agent.openFile")}
-                  onClick={() => void agentApi.openFileAt(file.filePath, file.line)}
-                  className="agent-file-changes-open flex min-w-0 flex-1 items-center gap-1.5 rounded-[4px] text-left focus:outline-none"
-                >
-                  <FileCode className="agent-file-changes-file-icon h-3 w-3 shrink-0 text-white/35" />
-                  <span className="agent-file-changes-path min-w-0 flex-1 truncate font-mono text-white/70">
-                    {file.filePath}
-                  </span>
+              level={3}
+              size="small"
+              className="agent-file-changes-item"
+              prefix={
+                <FileCode className="agent-file-changes-file-icon h-3.5 w-3.5 shrink-0 text-white/35" />
+              }
+              label={file.filePath}
+              labelClassName="agent-file-changes-path font-mono text-white/70"
+              suffix={
+                <>
                   <span className="agent-file-changes-item-added shrink-0 font-mono text-emerald-400/90">
                     +{file.added}
                   </span>
                   <span className="agent-file-changes-item-removed shrink-0 font-mono text-rose-400/90">
                     −{file.removed}
                   </span>
-                  <ExternalLink className="agent-file-changes-open-icon h-3 w-3 shrink-0 text-white/25 transition-colors group-hover:text-white/60" />
-                </button>
-              </LxTooltip>
-              {revertTarget && (
-                <LxTooltip
-                  placement="top"
-                  click={{
-                    content: t("agent.revertFileConfirm", { file: file.filePath }),
-                    placement: "top",
-                  }}
-                  onConfirm={() => void handleRevert(file)}
-                >
-                  <button
-                    type="button"
-                    aria-label={t("agent.revertFile")}
-                    disabled={revertingPath !== null}
-                    className="agent-file-changes-revert flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] text-white/30 transition-colors hover:bg-white/10 hover:text-amber-300 disabled:opacity-50 focus:outline-none"
+                  <LxIconButton
+                    size="small"
+                    aria-label={t("agent.openFile")}
+                    title={{ content: t("agent.openFile"), placement: "top" }}
+                    className="agent-file-changes-open"
+                    onClick={() => void agentApi.openFileAt(file.filePath, file.line)}
                   >
-                    {revertingPath === file.filePath ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <RotateCcw className="h-3 w-3" />
-                    )}
-                  </button>
-                </LxTooltip>
-              )}
-            </div>
+                    <ExternalLink />
+                  </LxIconButton>
+                  {revertTarget && (
+                    <LxTooltip
+                      placement="top"
+                      click={{
+                        content: t("agent.revertFileConfirm", { file: file.filePath }),
+                        placement: "top",
+                      }}
+                      onConfirm={() => void handleRevert(file)}
+                    >
+                      <LxIconButton
+                        size="small"
+                        aria-label={t("agent.revertFile")}
+                        disabled={revertingPath !== null}
+                        className="agent-file-changes-revert"
+                      >
+                        {revertingPath === file.filePath ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <RotateCcw />
+                        )}
+                      </LxIconButton>
+                    </LxTooltip>
+                  )}
+                </>
+              }
+            />
           ))}
         </div>
       )}

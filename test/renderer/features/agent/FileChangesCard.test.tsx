@@ -81,12 +81,18 @@ describe("FileChangesCard", () => {
     expect(screen.getByText("src/a.ts")).not.toBeNull()
     expect(screen.getByText("src/b.ts")).not.toBeNull()
 
-    const items = document.querySelectorAll(".agent-file-changes-item")
+    const items = document.querySelectorAll<HTMLElement>(".agent-file-changes-item")
     expect(items.length).toBe(2)
     expect(items[0].querySelector(".agent-file-changes-item-added")?.textContent).toBe("+10")
     expect(items[0].querySelector(".agent-file-changes-item-removed")?.textContent).toBe("−2")
 
+    // 文件行为叶子级导航行：行点击不打开文件，仅行尾图标按钮打开并定位首个变更行。
+    expect(items[0].getAttribute("data-item-level")).toBe("3")
+    fireEvent.click(items[0])
+    expect(agentApi.openFileAt).not.toHaveBeenCalled()
+
     const openButtons = screen.getAllByRole("button", { name: "Open File" })
+    expect(openButtons.length).toBe(2)
     fireEvent.click(openButtons[0])
     expect(agentApi.openFileAt).toHaveBeenCalledWith("src/a.ts", 42)
 

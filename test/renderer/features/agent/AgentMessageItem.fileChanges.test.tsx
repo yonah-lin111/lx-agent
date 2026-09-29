@@ -87,7 +87,12 @@ describe("AgentMessageItem 文件修改统计", () => {
     expect(screen.getByText("src/b.ts")).not.toBeNull()
     expect(screen.getByText("src/c.ts")).not.toBeNull()
 
+    // 行点击不打开文件，点击行尾"打开文件"图标按钮才调用打开定位（首个文件为 src/a.ts）。
     fireEvent.click(screen.getByText("src/a.ts"))
+    expect(agentApi.openFileAt).not.toHaveBeenCalled()
+
+    const openButtons = screen.getAllByRole("button", { name: "Open File" })
+    fireEvent.click(openButtons[0])
     expect(agentApi.openFileAt).toHaveBeenCalledWith("src/a.ts", 42)
   })
 
