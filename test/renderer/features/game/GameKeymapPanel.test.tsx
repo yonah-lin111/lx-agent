@@ -54,6 +54,17 @@ describe("GameKeymapPanel", () => {
     expect(within(screen.getByRole("button", { name: "A button" })).getByText("X")).toBeDefined()
   })
 
+  it("条目为可聚焦的 div 项，Enter 可进入捕获态", () => {
+    renderPanel()
+
+    const row = screen.getByRole("button", { name: "Up" })
+    expect(row.tagName).toBe("DIV")
+    expect(row.getAttribute("tabindex")).toBe("0")
+
+    fireEvent.keyDown(row, { key: "Enter" })
+    expect(rowValue("Up").textContent).toBe("Press a key…")
+  })
+
   it("点击行后按新键完成绑定，保存只落差异覆盖", () => {
     const { onSave } = renderPanel()
 

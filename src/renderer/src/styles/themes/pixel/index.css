@@ -1618,6 +1618,33 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   text-shadow: 1px 1px 0px #000000 !important;
 }
 
+/* 快捷键面板条目：沿用叶子行像素凹槽，捕获态绿石高亮、冲突态红石描边 */
+[data-theme="pixel"]
+.game-keymap-item--capturing[data-item-level="3"]:not([aria-current]):not(.bg-white\/10):not(
+  .bg-white\/5
+) {
+  background-color: #14141c !important;
+  border-left: 4px solid #55ff55 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25) !important;
+}
+
+[data-theme="pixel"]
+  .game-keymap-item--conflict[data-item-level="3"]:not([aria-current]):not(.bg-white\/10):not(
+    .bg-white\/5
+  ) {
+  border-color: #ff5555 !important;
+}
+
+/* 快捷键值芯片：像素凹槽 */
+[data-theme="pixel"] .game-keymap-value {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #14141c !important;
+  font-family: var(--theme-font-family) !important;
+}
+
 /* 顶部栏游戏入口：进行中会话使用金锭橙像素字色 */
 [data-theme="pixel"] .header-game-icon[data-game-active="true"] {
   color: #ffaa00 !important;

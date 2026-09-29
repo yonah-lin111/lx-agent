@@ -9,6 +9,7 @@ import {
 import type React from "react"
 import { useEffect, useMemo, useState } from "react"
 import { LxModal } from "@/components/ui/LxModal"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { formatGameKeyLabel, GAME_KEY_ACTION_LABEL_KEYS } from "@/features/game/utils"
 import { useTranslation } from "@/i18n"
 
@@ -41,12 +42,12 @@ const MODIFIER_CODES = new Set([
   "MetaRight",
 ])
 
-const ROW_CLASS =
-  "flex w-full cursor-pointer items-center justify-between gap-3 rounded-[6px] border border-white/10 bg-white/5 px-3 py-1.5 text-left text-xs text-white/85 transition-colors hover:bg-white/10"
-const ROW_ACTIVE_CLASS = "border-[var(--color-theme-accent)] bg-white/10"
+// 条目基底：与 LxNavItem 叶子行组合；避开 bg-white/5 等工具类，防止像素主题把全部条目渲染成选中态。
+const ROW_CLASS = "game-keymap-item border border-white/10 bg-white/[0.04]"
+const ROW_ACTIVE_CLASS = "border-[var(--color-theme-accent)] bg-white/[0.08]"
 const ROW_CONFLICT_CLASS = "border-red-400/70"
 const VALUE_CLASS =
-  "shrink-0 rounded-[4px] border border-white/15 bg-black/30 px-2 py-0.5 font-mono text-xs text-white/90"
+  "game-keymap-value shrink-0 rounded-[4px] border border-white/15 bg-black/30 px-2 py-0.5 font-mono text-xs text-white/90"
 const FOOTER_BUTTON_CLASS =
   "cursor-pointer rounded-[var(--theme-radius-base)] border border-white/15 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
 const SAVE_BUTTON_CLASS =
@@ -160,14 +161,17 @@ export const GameKeymapPanel = ({
 
   const renderRow = (action: GameKeyAction): React.JSX.Element => {
     const isCapturing = capturing === action
-    const rowClass = `${ROW_CLASS} ${isCapturing ? ROW_ACTIVE_CLASS : ""} ${
-      conflicts.has(action) ? ROW_CONFLICT_CLASS : ""
-    }`
+    const hasConflict = conflicts.has(action)
+    // 状态同时用修饰类暴露给像素主题（捕获态高亮 / 冲突态红石描边）。
+    const rowClass = `${ROW_CLASS} ${
+      isCapturing ? `game-keymap-item--capturing ${ROW_ACTIVE_CLASS}` : ""
+    } ${hasConflict ? `game-keymap-item--conflict ${ROW_CONFLICT_CLASS}` : ""}`
 
     return (
-      <button
+      <LxNavItem
         key={action}
-        type="button"
+        size="small"
+        level={3}
         aria-label={t(GAME_KEY_ACTION_LABEL_KEYS[action])}
         className={rowClass}
         onClick={() => {
@@ -175,11 +179,15 @@ export const GameKeymapPanel = ({
           setNotice(null)
         }}
       >
-        <span>{t(GAME_KEY_ACTION_LABEL_KEYS[action])}</span>
+        <span
+          className={`min-w-0 flex-1 truncate ${hasConflict ? "text-red-300" : "text-white/85"}`}
+        >
+          {t(GAME_KEY_ACTION_LABEL_KEYS[action])}
+        </span>
         <span className={VALUE_CLASS}>
           {isCapturing ? t("game.keymap.pressKey") : formatGameKeyLabel(draft[action], t)}
         </span>
-      </button>
+      </LxNavItem>
     )
   }
 
