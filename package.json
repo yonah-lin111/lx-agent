@@ -6,7 +6,7 @@
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
-    "predev": "node scripts/setupWorktreeNodeModules.mjs",
+    "predev": "node scripts/setupWorktreeNodeModules.mjs && node scripts/patchDevElectronName.mjs",
     "dev": "pnpm rebuild:native:electron && electron-vite dev",
     "prebuild": "node scripts/setupWorktreeNodeModules.mjs",
     "build": "pnpm typecheck && pnpm rebuild:native:electron && electron-vite build",
