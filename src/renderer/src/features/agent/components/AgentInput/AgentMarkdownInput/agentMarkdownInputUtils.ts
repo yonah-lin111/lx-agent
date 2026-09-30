@@ -1,6 +1,7 @@
 import type { CollaborationMode, PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
 import type { TranslationKey } from "@/i18n"
 import { COLLABORATION_MODE_META } from "@/lib/collaborationModes"
+import { isFuzzyMatch } from "@/lib/fuzzyMatch"
 import type {
   AgentInputCommand,
   ClawMentionCandidate,
@@ -171,15 +172,7 @@ export const getMissingRequiredCommand = (
   return { id: command.id, name: command.name, placeholder: command.argumentPlaceholder }
 }
 
-export const isFuzzyMatch = (query: string, keyword: string): boolean => {
-  if (!query) return true
-  let queryIndex = 0
-  for (const character of keyword) {
-    if (character === query[queryIndex]) queryIndex += 1
-    if (queryIndex === query.length) return true
-  }
-  return false
-}
+export { isFuzzyMatch }
 
 // @ 提及面板的 Skill 种类 tag 文本。
 export const SKILL_MENTION_TAG = "skill"
