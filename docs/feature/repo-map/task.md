@@ -76,8 +76,11 @@
 
 - **步骤**
   1. `assembly.ts`：注册 `createRepoMapTool(cwd)`、`ALL_TOOL_NAMES` 加 `"repo_map"`。
-  2. `src/shared/settings.ts`：`SUBAGENT_PERMISSION_TOOL_NAMES` 加 `"repo_map"`。
-- **期望**：build/plan/review 激活且可用；minimal 不激活；子代理默认工具集包含。
+  2. `capabilityService.ts`：`DEFAULT_TOOLS` 加 `"repo_map"`（默认能力快照激活）。
+  3. `src/shared/settings.ts`：`SUBAGENT_PERMISSION_TOOL_NAMES` 加 `"repo_map"`。
+  4. `permissions/rule.ts` `EXEMPT_TOOLS`、`compaction/contextPruner.ts` `DEFAULT_PRUNABLE_TOOLS`、`subagent/agentRoles.ts` explorer 白名单同步登记（只读语义一致性）。
+  5. `sessionRunner.send()` 首轮装配前 `await primeRepoMapSnapshot(cwd)`（有界超时，TTL 复用）。
+- **期望**：build/plan/review 激活且可用；minimal 不激活；子代理默认工具集包含；首个请求即注入地图。
 
 ## 阶段 4：提示词注入
 
@@ -101,16 +104,16 @@
 ### T12 测试
 
 - **步骤**
-  1. `test/main/agent/repoMap/` 覆盖：tokenize、graph、pagerank、renderer、cache、gitFiles、symbolExtractor（fixture TS/JS/Python）、snapshot。
-  2. `test/main/agent/tools/repoMap.test.ts` 工具契约。
-  3. 受影响既有测试同步更新（`ALL_TOOL_NAMES` / 权限组断言等）。
+  1. `test/main/agent/repoMap/` 覆盖：tokenize、graph、pagerank、renderer、cache、gitFiles、symbolExtractor（fixture TS/JS/Python）、index（端到端+缓存+focus）、snapshot（TTL/冷却/去重/超时）。
+  2. `test/main/agent/tools/repoMap.test.ts` 工具契约；`test/main/agent/prompts/repoMapSection.test.ts` 注入契约。
+  3. 受影响既有测试同步更新（`capabilityService`/`agentRunner`/`agentRoles` 工具列表断言）。
 - **期望**：新增用例全绿；既有受影响用例更新后全绿。
 
 ### T13 精确校验
 
 - **步骤**
-  1. `pnpm vitest run <受影响文件>`；`pnpm typecheck`；`pnpm lint`。
-- **期望**：类型与格式零错误；不做全量验证。
+  1. `pnpm vitest run <受影响文件>`；`pnpm typecheck`；`pnpm exec biome check --write <变更文件> --linter-enabled=false`；`pnpm exec electron-vite build` 验证打包解析。
+- **期望**：类型与格式零错误；构建通过；不做全量验证。
 
 ## 阶段 7：提交与合并
 

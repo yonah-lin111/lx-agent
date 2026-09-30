@@ -107,8 +107,13 @@ export interface RepoMapResult { map: string; cacheHit: boolean; buildTimeMs: nu
 ### 6.5 激活与权限
 
 1. `ALL_TOOL_NAMES`（`assembly.ts:210`）加 `"repo_map"`，并在 `assembly.ts` 注册 `createRepoMapTool(cwd)`。
-2. `SUBAGENT_PERMISSION_TOOL_NAMES`（`src/shared/settings.ts:408`）加 `"repo_map"`：权限目录、角色白名单校验、默认子代理工具集同步生效（子代理可用；符合只读组语义）。
-3. 模式门控：plan/review 黑名单不含只读工具 → 自动放行；minimal 白名单不含 → 自动禁用（fail-closed，符合预期）。
+2. `DEFAULT_TOOLS`（`capabilityService.ts:4`）加 `"repo_map"`：默认能力快照激活该工具（实现期补充，激活链必需）。
+3. `SUBAGENT_PERMISSION_TOOL_NAMES`（`src/shared/settings.ts:408`）加 `"repo_map"`：权限目录、角色白名单校验、默认子代理工具集同步生效（子代理可用；符合只读组语义）。
+4. `EXEMPT_TOOLS`（`permissions/rule.ts:18`）加 `"repo_map"`：本地只读工具永不询问，显式登记不留“未知工具默认放行”的隐式路径（实现期补充）。
+5. `DEFAULT_PRUNABLE_TOOLS`（`compaction/contextPruner.ts:22`）加 `"repo_map"`：历史大输出可被修剪（实现期补充）。
+6. explorer 内置角色白名单（`subagent/agentRoles.ts:16`）加 `"repo_map"`：探索子代理可用（只读语义一致；实现期补充）。
+7. 模式门控：plan/review 黑名单不含只读工具 → 自动放行；minimal 白名单不含 → 自动禁用（fail-closed，符合预期）。
+8. 会话启动预热：`sessionRunner.send()` 在首轮装配前 `await primeRepoMapSnapshot(cwd)`（TTL 内直接复用；有界 5s 超时，失败静默），保证首个请求即带入地图。
 
 ### 6.6 资源与打包
 
