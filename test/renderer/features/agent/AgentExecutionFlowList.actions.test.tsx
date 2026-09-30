@@ -190,20 +190,22 @@ describe("AgentExecutionFlowList 交互动作", () => {
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 1000, behavior: "smooth" })
   })
 
-  it("turn 汇总行的删除按钮弹出选项菜单并回传 onDeleteMessage", () => {
-    const onDeleteMessage = vi.fn()
-    render(<AgentExecutionFlowList messages={turnMessages()} onDeleteMessage={onDeleteMessage} />)
+  it("turn 汇总行的删除按钮弹出与 /undo 一致的三选一菜单并回传 onUndoOption", () => {
+    const onUndoOption = vi.fn()
+    render(<AgentExecutionFlowList messages={turnMessages()} onUndoOption={onUndoOption} />)
 
     const summary = screen.getByTestId("turn-summary-1")
     fireEvent.click(within(summary).getByLabelText("Delete turn"))
 
-    // 无文件改动：菜单仅含"仅删除本轮"。
-    expect(document.querySelector(".agent-turn-delete-revert")).toBeNull()
-    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+    // 三个选项与取消全部常显（不因无文件改动隐藏）。
+    expect(document.querySelector('[data-option="revert_and_delete"]')).not.toBeNull()
+    expect(document.querySelector('[data-option="revert_only"]')).not.toBeNull()
+    expect(document.querySelector('[data-option="cancel"]')).not.toBeNull()
+    const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
     expect(keepRow).not.toBeNull()
-    fireEvent.click(keepRow!)
+    fireEvent.mouseDown(keepRow!)
 
-    expect(onDeleteMessage).toHaveBeenCalledWith("a1", false)
+    expect(onUndoOption).toHaveBeenCalledWith("delete_only")
   })
 
   it("点击 subagent 名称打开面板并可关闭", () => {

@@ -15,6 +15,7 @@ import {
   AgentThinkingBlock,
   AgentTodoCallBlock,
   AgentToolCallBlock,
+  AgentUndoOptionsList,
   AgentWebSearchBlock,
   AgentWireframeCallBlock,
   type ExecutionItemMeta,
@@ -28,6 +29,7 @@ import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import { useSuggestedQuestions } from "@/features/agent/hooks/useSuggestedQuestions"
 import type {
+  AgentUndoOption,
   ChatBlock,
   ChatMessage,
   LspToolDetails,
@@ -50,7 +52,7 @@ export interface AgentAssistantMessageProps {
   suggestedQuestionContext?: SuggestedQuestionContextMessage[]
   onSendSuggestedQuestion?: (question: string) => void
   onEchoToInput?: (question: string) => void
-  onDelete?: (messageId: string) => void
+  onUndoOption?: (option: AgentUndoOption) => void
   onOpenSubagent?: (toolCall: ToolCallBlock, subagentIndex?: number) => void
   readOnly?: boolean
   showScrollToBottom?: boolean
@@ -72,7 +74,7 @@ export const AgentAssistantMessage = ({
   suggestedQuestionContext,
   onSendSuggestedQuestion,
   onEchoToInput,
-  onDelete,
+  onUndoOption,
   onOpenSubagent,
   readOnly = false,
   showScrollToBottom = false,
@@ -471,19 +473,30 @@ export const AgentAssistantMessage = ({
               >
                 {copied ? <Check className="text-emerald-400" /> : <Copy />}
               </LxIconButton>
-              {!readOnly && onDelete && (
+              {!readOnly && onUndoOption && (
                 <LxTooltip
+                  trigger="click"
+                  closeOnContentClick
                   hover={{
-                    content: t("agent.deleteMessage"),
+                    content: t("agent.deleteTurn"),
                     placement: "top",
                   }}
                   click={{
-                    content: t("agent.deleteQaConfirm"),
+                    content: (
+                      <div
+                        className="agent-message-undo-options flex min-w-64 flex-col gap-0.5"
+                        aria-label={t("agent.undoTitle")}
+                      >
+                        <AgentUndoOptionsList
+                          onSelect={(option) => onUndoOption(option)}
+                          onCancel={() => undefined}
+                        />
+                      </div>
+                    ),
                     placement: "top",
-                    onConfirm: () => onDelete(message.id),
                   }}
                 >
-                  <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
+                  <LxIconButton size="small" aria-label={t("agent.deleteTurn")}>
                     <Trash2 />
                   </LxIconButton>
                 </LxTooltip>

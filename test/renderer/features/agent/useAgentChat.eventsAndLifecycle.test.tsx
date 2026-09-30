@@ -296,7 +296,7 @@ describe("useAgentChat 轮次生命周期", () => {
     expect(agentApi.restore).toHaveBeenCalledWith([], undefined, "tab-1")
   })
 
-  it("deleteTurn 移除指定 AI 消息所在轮次并插入撤销摘要", async () => {
+  it("applyUndoOption(delete_only) 移除最后一条 AI 消息所在轮次并插入撤销摘要", async () => {
     const { result } = await renderAgentChat()
 
     act(() => {
@@ -305,11 +305,10 @@ describe("useAgentChat 轮次生命周期", () => {
       eventHandler({ type: "message_start", message: userMessage("第二轮问题", 3) })
       eventHandler({ type: "message_start", message: assistantMessage("第二轮回答", 4) })
     })
-    const target = result.current.messages[3]
-    expect(target.role).toBe("assistant")
+    expect(result.current.messages[3]?.role).toBe("assistant")
 
     act(() => {
-      result.current.deleteTurn(target.id)
+      result.current.applyUndoOption("delete_only")
     })
 
     expect(result.current.messages.map((message) => message.role)).toEqual([

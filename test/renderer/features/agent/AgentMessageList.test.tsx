@@ -166,7 +166,7 @@ describe("AgentMessageList", () => {
   })
 
   it("删除按钮只出现在最后一条助手消息：中间轮次不展示，尾部撤销摘要不影响", async () => {
-    const onDeleteMessage = vi.fn()
+    const onUndoOption = vi.fn()
     const messages: ChatMessage[] = [
       userMessage("u-1", "第一轮问题"),
       {
@@ -187,24 +187,20 @@ describe("AgentMessageList", () => {
     ]
 
     const { rerender } = render(
-      <AgentMessageList
-        messages={messages}
-        onSelectPrompt={vi.fn()}
-        onDeleteMessage={onDeleteMessage}
-      />,
+      <AgentMessageList messages={messages} onSelectPrompt={vi.fn()} onUndoOption={onUndoOption} />,
     )
 
     // 两轮均渲染操作行，但删除按钮仅一个（最后一条助手消息 a-2）。
-    const deleteButtons = screen.getAllByRole("button", { name: "Delete message" })
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete turn" })
     expect(deleteButtons.length).toBe(1)
 
     fireEvent.click(deleteButtons[0]!)
-    fireEvent.click(
-      document.querySelector<HTMLButtonElement>(
-        'button[aria-label="Confirm"], button[aria-label="确认"]',
-      )!,
-    )
-    expect(onDeleteMessage).toHaveBeenCalledWith("a-2")
+    // 删除按钮弹出与 /undo 一致的三选一菜单：选择"仅撤销对话"。
+    expect(document.querySelector('[data-option="revert_and_delete"]')).not.toBeNull()
+    expect(document.querySelector('[data-option="revert_only"]')).not.toBeNull()
+    expect(document.querySelector('[data-option="cancel"]')).not.toBeNull()
+    fireEvent.mouseDown(document.querySelector<HTMLElement>('[data-option="delete_only"]')!)
+    expect(onUndoOption).toHaveBeenCalledWith("delete_only")
 
     // 尾部追加撤销摘要（非对话条目）：删除入口仍保持在最后一条助手消息上。
     rerender(
@@ -220,10 +216,10 @@ describe("AgentMessageList", () => {
           },
         ]}
         onSelectPrompt={vi.fn()}
-        onDeleteMessage={onDeleteMessage}
+        onUndoOption={onUndoOption}
       />,
     )
-    expect(screen.getAllByRole("button", { name: "Delete message" }).length).toBe(1)
+    expect(screen.getAllByRole("button", { name: "Delete turn" }).length).toBe(1)
   })
 
   it("用户消息与其后 AI 回复合并为 QA 对，未吸顶时绝对定位容器不渲染", () => {

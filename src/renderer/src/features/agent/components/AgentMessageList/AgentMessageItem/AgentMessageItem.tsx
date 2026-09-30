@@ -19,7 +19,7 @@ export const AgentMessageItem = ({
   onStartEdit,
   onCancelEdit,
   onEdit,
-  onDelete,
+  onUndoOption,
   onFork,
   onOpenSubagent,
   readOnly = false,
@@ -90,7 +90,7 @@ export const AgentMessageItem = ({
       suggestedQuestionContext={suggestedQuestionContext}
       onSendSuggestedQuestion={onSendSuggestedQuestion}
       onEchoToInput={onEchoToInput}
-      onDelete={onDelete}
+      onUndoOption={onUndoOption}
       onOpenSubagent={onOpenSubagent}
       readOnly={readOnly}
       showScrollToBottom={showScrollToBottom}

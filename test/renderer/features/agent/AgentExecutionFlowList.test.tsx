@@ -2309,8 +2309,8 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("不要使用mcp")).not.toBeNull()
   })
 
-  it("在执行流程列表中，assistant 步骤支持删除整轮 QA 并在确认后触发 onDeleteMessage 回调", async () => {
-    const onDeleteMessage = vi.fn()
+  it("在执行流程列表中，assistant 步骤删除按钮弹出三选一菜单并回传 onUndoOption", async () => {
+    const onUndoOption = vi.fn()
     const messages: ChatMessage[] = [
       {
         id: "u-1",
@@ -2328,25 +2328,27 @@ describe("AgentExecutionFlowList", () => {
       },
     ]
 
-    render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
+    render(<AgentExecutionFlowList messages={messages} onUndoOption={onUndoOption} />)
 
     // 验证 assistant 步骤上存在删除按钮
     const deleteBtn = screen.getByRole("button", { name: /删除轮次|Delete turn/i })
     expect(deleteBtn).not.toBeNull()
-    // 点击删除按钮弹出 LxNavItem 选项菜单：该轮无文件改动 → 仅"仅删除本轮"单行。
+    // 点击删除按钮弹出与 /undo 一致的三选一菜单：三个选项与取消全部常显。
     fireEvent.click(deleteBtn)
 
-    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+    const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
     expect(keepRow).not.toBeNull()
-    expect(document.querySelector(".agent-turn-delete-revert")).toBeNull()
-    fireEvent.click(keepRow!)
+    expect(document.querySelector('[data-option="revert_and_delete"]')).not.toBeNull()
+    expect(document.querySelector('[data-option="revert_only"]')).not.toBeNull()
+    expect(document.querySelector('[data-option="cancel"]')).not.toBeNull()
+    fireEvent.mouseDown(keepRow!)
 
-    // 验证 onDeleteMessage 被正确调用并传入 a-1 的 messageId 与显式 revertFiles=false
-    expect(onDeleteMessage).toHaveBeenCalledTimes(1)
-    expect(onDeleteMessage).toHaveBeenCalledWith("a-1", false)
+    // 验证 onUndoOption 被正确调用并传入 delete_only（仅删除本轮）。
+    expect(onUndoOption).toHaveBeenCalledTimes(1)
+    expect(onUndoOption).toHaveBeenCalledWith("delete_only")
   })
 
-  it("当处于只读模式或未提供 onDeleteMessage 时，assistant 步骤不展示删除按钮", () => {
+  it("当处于只读模式或未提供 onUndoOption 时，assistant 步骤不展示删除按钮", () => {
     const messages: ChatMessage[] = [
       {
         id: "u-1",
@@ -2365,7 +2367,7 @@ describe("AgentExecutionFlowList", () => {
     ]
 
     const { rerender } = render(
-      <AgentExecutionFlowList messages={messages} onDeleteMessage={vi.fn()} readOnly={true} />,
+      <AgentExecutionFlowList messages={messages} onUndoOption={vi.fn()} readOnly={true} />,
     )
     expect(screen.queryByRole("button", { name: /删除轮次|Delete turn/i })).toBeNull()
 
@@ -2374,7 +2376,7 @@ describe("AgentExecutionFlowList", () => {
   })
 
   it("在执行流程列表中，终态 error 步骤同样支持删除整轮 QA", () => {
-    const onDeleteMessage = vi.fn()
+    const onUndoOption = vi.fn()
     const messages: ChatMessage[] = [
       {
         id: "u-1",
@@ -2394,17 +2396,17 @@ describe("AgentExecutionFlowList", () => {
       },
     ]
 
-    render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
+    render(<AgentExecutionFlowList messages={messages} onUndoOption={onUndoOption} />)
 
     const deleteBtn = screen.getByRole("button", { name: /删除轮次|Delete turn/i })
     expect(deleteBtn).not.toBeNull()
     fireEvent.click(deleteBtn)
 
-    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+    const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
     expect(keepRow).not.toBeNull()
-    fireEvent.click(keepRow!)
+    fireEvent.mouseDown(keepRow!)
 
-    expect(onDeleteMessage).toHaveBeenCalledWith("a-error", false)
+    expect(onUndoOption).toHaveBeenCalledWith("delete_only")
   })
 
   it("正确渲染 turn、modelSwitch、undo、compaction 分割线的图标、文字与样式", () => {

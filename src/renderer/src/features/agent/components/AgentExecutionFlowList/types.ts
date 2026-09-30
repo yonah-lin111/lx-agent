@@ -25,6 +25,7 @@ import type { LxTagColor } from "@/components/ui/LxTag"
 import { isMcpToolCall } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import type { useModelSettings } from "@/features/agent/hooks/modelsStore"
 import type {
+  AgentUndoOption,
   ChatMessage,
   ExecutionStep,
   ExecutionStepKind,
@@ -305,7 +306,7 @@ export interface AgentExecutionFlowListProps {
   // 审查项回填到输入框
   onFillInput?: (text: string) => void
   // 删除指定 AI 消息所在的一轮对话；revertFiles 为该轮文件是否一并回退（显式选择）。
-  onDeleteMessage?: (messageId: string, revertFiles: boolean) => void
+  onUndoOption?: (option: AgentUndoOption) => void
   // 子代理面板开合回传（父级据此遮盖并 inert 输入区与状态栏）
   onSubagentPanelOpenChange?: (isOpen: boolean) => void
   // 是否只读模式

@@ -366,22 +366,6 @@ export const useAgentChatTurns = ({
     })
   }, [isStreaming, errorToast, successToast, t, tabId])
 
-  // 删除指定 AI 消息所在的一轮对话；revertFiles 为显式回退选择（缺省回退旧启发式）。
-  const deleteTurn = useCallback(
-    (aiMessageId: string, revertFiles?: boolean) => {
-      if (isStreaming) return
-      const list = messagesRef.current
-      const aiIndex = list.findIndex((message) => message.id === aiMessageId)
-      if (aiIndex < 0) return
-      const userIndex = list.findLastIndex(
-        (message, index) => index < aiIndex && message.role === "user",
-      )
-      if (userIndex < 0) return
-      removeTurn(userIndex, revertFiles)
-    },
-    [isStreaming, removeTurn],
-  )
-
   return {
     stopStreaming,
     createNewChat,
@@ -390,6 +374,5 @@ export const useAgentChatTurns = ({
     undoLastTurn,
     applyUndoOption,
     compactChat,
-    deleteTurn,
   }
 }

@@ -38,7 +38,7 @@ export const AgentExecutionFlowList = forwardRef<
       onAcceptPlan,
       onApplyReviewFixes,
       onFillInput,
-      onDeleteMessage,
+      onUndoOption,
       onSubagentPanelOpenChange,
       readOnly = false,
     },
@@ -179,7 +179,7 @@ export const AgentExecutionFlowList = forwardRef<
                       onAcceptPlan={onAcceptPlan}
                       onApplyReviewFixes={onApplyReviewFixes}
                       onFillInput={onFillInput}
-                      onDeleteMessage={onDeleteMessage}
+                      onUndoOption={onUndoOption}
                       deletableMessageId={deletableMessageId}
                       onContinue={onContinue}
                       settings={settings}

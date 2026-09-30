@@ -2,7 +2,12 @@ import { Compass, Cpu, Layers, Minimize2, RefreshCw, Undo2 } from "lucide-react"
 import { Fragment } from "react"
 import { FileChangesCard } from "@/features/agent/components/blocks"
 import { useAgentFileReverts } from "@/features/agent/hooks/agentFileRevertStore"
-import type { ExecutionStep, ProposedPlanData, ReviewFindingItem } from "@/features/agent/types"
+import type {
+  AgentUndoOption,
+  ExecutionStep,
+  ProposedPlanData,
+  ReviewFindingItem,
+} from "@/features/agent/types"
 import type { FlowFileChangesEntry } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowGroup } from "../AgentExecutionFlowGroup"
@@ -37,7 +42,8 @@ type FlowListElementProps = {
   onAcceptPlan?: (plan: ProposedPlanData) => void
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   onFillInput?: (text: string) => void
-  onDeleteMessage?: (messageId: string, revertFiles: boolean) => void
+  // 整轮撤销/删除：删除按钮菜单与 /undo 一致，回传三选一选项。
+  onUndoOption?: (option: AgentUndoOption) => void
   // 可删除目标消息 id（会话最后一条助手消息；仅该轮展示删除入口）。
   deletableMessageId?: string
   onContinue?: () => void
@@ -71,7 +77,7 @@ export const FlowListElement = ({
   onAcceptPlan,
   onApplyReviewFixes,
   onFillInput,
-  onDeleteMessage,
+  onUndoOption,
   deletableMessageId,
   onContinue,
   settings,
@@ -125,7 +131,7 @@ export const FlowListElement = ({
   // 仅会话最后一条助手消息所在轮次可删除（不允许删除中间轮次）。
   const canDeleteTurn =
     !readOnly &&
-    Boolean(onDeleteMessage) &&
+    Boolean(onUndoOption) &&
     turnMessageId !== undefined &&
     turnMessageId === deletableMessageId &&
     !isTurnRunning
@@ -264,10 +270,8 @@ export const FlowListElement = ({
         <FlowTurnSummaryBar
           turnIndex={elementTurnIndex}
           turnStats={turnStats}
-          turnMessageId={turnMessageId}
-          fileChangeCount={turnFileChanges?.summary.files.length ?? 0}
           canDeleteTurn={canDeleteTurn}
-          onDeleteMessage={onDeleteMessage}
+          onUndoOption={onUndoOption}
           settings={settings}
         />
       )}

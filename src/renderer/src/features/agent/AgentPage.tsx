@@ -96,7 +96,6 @@ export const AgentPage = ({
     createNewChat,
     applyUndoOption,
     compactChat,
-    deleteTurn,
     restoreChat,
     editMessage,
     refreshContextUsage,
@@ -1020,7 +1019,7 @@ export const AgentPage = ({
             onAcceptPlan={acceptAndExecutePlan}
             onApplyReviewFixes={acceptAndExecuteReviewFixes}
             onFillInput={echoToInput}
-            onDeleteMessage={deleteTurn}
+            onUndoOption={applyUndoOption}
             onSubagentPanelOpenChange={setIsFlowSubagentOpen}
           />
         ) : (
@@ -1034,7 +1033,7 @@ export const AgentPage = ({
               onEchoToInput={echoToInput}
               onSelectPrompt={(prompt) => sendMessage(prompt)}
               onEditMessage={editMessage}
-              onDeleteMessage={deleteTurn}
+              onUndoOption={applyUndoOption}
               onOpenSubagent={openSubagent}
               onFork={handleFork}
               isSubagentPanelOpen={activeSubagentId !== null}

@@ -20,6 +20,7 @@ import {
   groupAgentMessages,
 } from "@/features/agent/messageGrouping"
 import type {
+  AgentUndoOption,
   ChatBlock,
   ChatMessage,
   ProposedPlanData,
@@ -52,7 +53,7 @@ export interface AgentMessageListProps {
   onEchoToInput?: (question: string) => void
   onSelectPrompt: (prompt: string) => void
   onEditMessage?: (messageId: string, newContent: string) => void
-  onDeleteMessage?: (messageId: string) => void
+  onUndoOption?: (option: AgentUndoOption) => void
   // 点击"从此分支"：从该用户轮切割复制历史到新会话。
   onFork?: (userMessageTimestamp: number) => void
   // 点击子代理 label 打开面板弹窗。
@@ -93,7 +94,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       onEchoToInput,
       onSelectPrompt,
       onEditMessage,
-      onDeleteMessage,
+      onUndoOption,
       onFork,
       onOpenSubagent,
       isSubagentPanelOpen = false,
@@ -514,7 +515,6 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                             onEditMessage?.(id, newContent)
                             setEditingMessageId(null)
                           }}
-                          onDelete={onDeleteMessage}
                           onFork={canFork ? onFork : undefined}
                           onOpenSubagent={onOpenSubagent}
                         />
@@ -534,10 +534,8 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                           isLastGroupAi ? onSendSuggestedQuestion : undefined
                         }
                         onEchoToInput={isLastGroupAi ? onEchoToInput : undefined}
-                        onDelete={
-                          assistant.message.id === deletableAssistantId
-                            ? onDeleteMessage
-                            : undefined
+                        onUndoOption={
+                          assistant.message.id === deletableAssistantId ? onUndoOption : undefined
                         }
                         onOpenSubagent={onOpenSubagent}
                         canContinue={isLastGroupAi ? canContinue : false}

@@ -78,8 +78,8 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
     ]
 
     it("删除按钮位于 Turn 底部左侧，且位于模型名称的左侧同行始终展示", () => {
-      const onDeleteMessage = vi.fn()
-      render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
+      const onUndoOption = vi.fn()
+      render(<AgentExecutionFlowList messages={messages} onUndoOption={onUndoOption} />)
 
       const turnSummary = screen.getByTestId("turn-summary-1")
       expect(turnSummary).not.toBeNull()
@@ -100,25 +100,27 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
       ).toBeTruthy()
     })
 
-    it("单次回调：点击删除弹出选项菜单，点击菜单行精准触发（无文件改动仅一行）", () => {
-      const onDeleteMessage = vi.fn()
-      render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
+    it("单次回调：点击删除弹出三选一菜单，点击菜单行精准触发", () => {
+      const onUndoOption = vi.fn()
+      render(<AgentExecutionFlowList messages={messages} onUndoOption={onUndoOption} />)
 
       const turnSummary = screen.getByTestId("turn-summary-1")
       const deleteBtn = within(turnSummary).getByRole("button", {
         name: /删除轮次|Delete turn/i,
       })
 
-      // 点击删除按钮弹出 LxNavItem 选项菜单：无文件改动 → 仅"仅删除本轮"。
+      // 点击删除按钮弹出与 /undo 一致的三选一菜单：三个选项与取消全部常显。
       fireEvent.click(deleteBtn)
-      expect(document.querySelector(".agent-turn-delete-revert")).toBeNull()
-      const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+      expect(document.querySelector('[data-option="revert_and_delete"]')).not.toBeNull()
+      expect(document.querySelector('[data-option="revert_only"]')).not.toBeNull()
+      expect(document.querySelector('[data-option="cancel"]')).not.toBeNull()
+      const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
       expect(keepRow).not.toBeNull()
-      expect(onDeleteMessage).not.toHaveBeenCalled()
-      fireEvent.click(keepRow!)
+      expect(onUndoOption).not.toHaveBeenCalled()
+      fireEvent.mouseDown(keepRow!)
 
-      expect(onDeleteMessage).toHaveBeenCalledTimes(1)
-      expect(onDeleteMessage).toHaveBeenCalledWith("a-1", false)
+      expect(onUndoOption).toHaveBeenCalledTimes(1)
+      expect(onUndoOption).toHaveBeenCalledWith("delete_only")
     })
   })
 
@@ -142,7 +144,7 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
       ]
 
       render(
-        <AgentExecutionFlowList messages={messages} isStreaming={true} onDeleteMessage={vi.fn()} />,
+        <AgentExecutionFlowList messages={messages} isStreaming={true} onUndoOption={vi.fn()} />,
       )
 
       expect(screen.queryByRole("button", { name: /删除轮次|Delete turn/i })).toBeNull()
@@ -166,14 +168,12 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
         },
       ]
 
-      render(
-        <AgentExecutionFlowList messages={messages} readOnly={true} onDeleteMessage={vi.fn()} />,
-      )
+      render(<AgentExecutionFlowList messages={messages} readOnly={true} onUndoOption={vi.fn()} />)
 
       expect(screen.queryByRole("button", { name: /删除轮次|Delete turn/i })).toBeNull()
     })
 
-    it("未传入 onDeleteMessage 时不展示删除按钮", () => {
+    it("未传入 onUndoOption 时不展示删除按钮", () => {
       const messages: ChatMessage[] = [
         {
           id: "u-1",
@@ -197,7 +197,7 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
     })
 
     it("异常中断 / error 轮次在底部左侧同样正常展示删除按钮", () => {
-      const onDeleteMessage = vi.fn()
+      const onUndoOption = vi.fn()
       const messages: ChatMessage[] = [
         {
           id: "u-1",
@@ -217,7 +217,7 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
         },
       ]
 
-      render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
+      render(<AgentExecutionFlowList messages={messages} onUndoOption={onUndoOption} />)
 
       const turnSummary = screen.getByTestId("turn-summary-1")
       const deleteBtn = within(turnSummary).getByRole("button", {
@@ -226,15 +226,15 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
       expect(deleteBtn).not.toBeNull()
 
       fireEvent.click(deleteBtn)
-      const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+      const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
       expect(keepRow).not.toBeNull()
-      fireEvent.click(keepRow!)
+      fireEvent.mouseDown(keepRow!)
 
-      expect(onDeleteMessage).toHaveBeenCalledWith("a-err", false)
+      expect(onUndoOption).toHaveBeenCalledWith("delete_only")
     })
 
     it("多轮对话中仅最后一条助手消息所在轮展示删除按钮，中间轮次不允许删除", () => {
-      const onDeleteMessage = vi.fn()
+      const onUndoOption = vi.fn()
       const messages: ChatMessage[] = [
         {
           id: "u-1",
@@ -268,7 +268,7 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
         },
       ]
 
-      render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
+      render(<AgentExecutionFlowList messages={messages} onUndoOption={onUndoOption} />)
 
       // 整页只有最后一轮存在删除入口：第一轮汇总行存在但无删除按钮。
       const deleteButtons = screen.getAllByRole("button", { name: /删除轮次|Delete turn/i })
@@ -283,16 +283,16 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
 
       // 删除第二轮
       fireEvent.click(deleteBtn2)
-      const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+      const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
       expect(keepRow).not.toBeNull()
-      fireEvent.click(keepRow!)
+      fireEvent.mouseDown(keepRow!)
 
-      expect(onDeleteMessage).toHaveBeenCalledTimes(1)
-      expect(onDeleteMessage).toHaveBeenCalledWith("a-2", false)
+      expect(onUndoOption).toHaveBeenCalledTimes(1)
+      expect(onUndoOption).toHaveBeenCalledWith("delete_only")
     })
 
     it("尾部存在撤销摘要时，最后一条助手消息所在轮仍保留删除按钮", () => {
-      const onDeleteMessage = vi.fn()
+      const onUndoOption = vi.fn()
       const messages: ChatMessage[] = [
         {
           id: "u-1",
@@ -318,14 +318,14 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
         },
       ]
 
-      render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
+      render(<AgentExecutionFlowList messages={messages} onUndoOption={onUndoOption} />)
 
       const deleteBtn = screen.getByRole("button", { name: /删除轮次|Delete turn/i })
       expect(deleteBtn).not.toBeNull()
 
       fireEvent.click(deleteBtn)
-      fireEvent.click(document.querySelector<HTMLElement>(".agent-turn-delete-keep")!)
-      expect(onDeleteMessage).toHaveBeenCalledWith("a-1", false)
+      fireEvent.mouseDown(document.querySelector<HTMLElement>('[data-option="delete_only"]')!)
+      expect(onUndoOption).toHaveBeenCalledWith("delete_only")
     })
   })
 })

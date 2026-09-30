@@ -129,7 +129,7 @@ export const useAgentChat = (
 
   const frames = useAgentChatFrames({ core })
   useAgentChatEvents({ core, frames })
-  const { stopStreaming, createNewChat, undoLastTurn, applyUndoOption, compactChat, deleteTurn } =
+  const { stopStreaming, createNewChat, undoLastTurn, applyUndoOption, compactChat } =
     useAgentChatTurns({
       core,
       frames,
@@ -173,7 +173,6 @@ export const useAgentChat = (
     applyUndoOption,
     isOnlyOneTurnLeft,
     compactChat,
-    deleteTurn,
     restoreChat,
     editMessage,
     refreshContextUsage,
