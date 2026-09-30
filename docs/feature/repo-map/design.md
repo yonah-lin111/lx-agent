@@ -102,7 +102,8 @@ export interface RepoMapResult { map: string; cacheHit: boolean; buildTimeMs: nu
 - section 文本（`literal: true`）：
   - `getRepoMapSnapshot(ctx.cwd)` 命中 → `<repo_map>\n(结构地图说明行)\n\n{map}\n</repo_map>`；
   - 未命中/超过 TTL → 返回空串并 fire-and-forget `primeRepoMapSnapshot(ctx.cwd)`（TTL 内部重建，stale-while-revalidate），不阻塞装配。
-- `snapshot.ts` 快照语义：cwd 键控；首次构建 1024 token、5s 超时、失败存 null 并 60s 内不重试；TTL 5 分钟——过期后保留旧文本并后台重建，下次装配自动换新。会话内通常稳定（对齐 grill #6）。
+- `snapshot.ts` 快照语义：cwd 键控；首次构建 1024 token、调用方等待预算 5s；构建失败/空地图进入 60s 冷却；TTL 5 分钟——过期后保留旧文本并后台重建，下次装配自动换新。会话内通常稳定（对齐 grill #6）。调用方等待超时**不中断**后台构建：完成后下一轮装配即可注入（验证期修正，见 §7）。
+- 预热时机（验证期修正）：`runSessionTurn` 在创建 TurnContext 前用与装配完全一致的 cwd 表达式 `host.cwd ?? resolveCwd()` 预热；homedir 兜底不预热（非项目目录）。预热不再放在 `send()`（其 cwd 解析与装配可能分叉，实测导致注入未生效）。
 
 ### 6.5 激活与权限
 
@@ -113,7 +114,7 @@ export interface RepoMapResult { map: string; cacheHit: boolean; buildTimeMs: nu
 5. `DEFAULT_PRUNABLE_TOOLS`（`compaction/contextPruner.ts:22`）加 `"repo_map"`：历史大输出可被修剪（实现期补充）。
 6. explorer 内置角色白名单（`subagent/agentRoles.ts:16`）加 `"repo_map"`：探索子代理可用（只读语义一致；实现期补充）。
 7. 模式门控：plan/review 黑名单不含只读工具 → 自动放行；minimal 白名单不含 → 自动禁用（fail-closed，符合预期）。
-8. 会话启动预热：`sessionRunner.send()` 在首轮装配前 `await primeRepoMapSnapshot(cwd)`（TTL 内直接复用；有界 5s 超时，失败静默），保证首个请求即带入地图。
+8. 会话启动预热（验证期修正为轮次级）：`runSessionTurn` 在装配前 `await primeRepoMapSnapshot(host.cwd ?? resolveCwd())`（TTL 内直接复用；等待预算 5s，超时后台继续，下一轮注入）。终端 `[repoMap] snapshot ready: <cwd> (...)` 日志可确认预热结果。
 
 ### 6.6 资源与打包
 
@@ -129,7 +130,7 @@ export interface RepoMapResult { map: string; cacheHit: boolean; buildTimeMs: nu
 
 ## 7. 风险与回滚
 
-- **首启性能**：冷缓存首次构建受 5s 超时约束，超时即不注入；磁盘缓存让后续会话毫秒级。回滚：删 `cache/repomap` 目录即可。
+- **首启性能**：冷缓存首次构建受 5s 等待预算约束；超时后后台构建继续，完成后下一轮装配注入；磁盘缓存让后续会话毫秒级。回滚：删 `cache/repomap` 目录即可。
 - **minified/生成产物（验证期实测修复）**：压缩文件整个文件是一行，若签名取整行会让缓存膨胀（实测 lx-agent 主仓库 `resources/emulator` 导致 394MB 缓存、首建超 5s 超时、注入失败）。三重防线：单条签名截断 200 字符、单文件 512KB 上限跳过、`loadCache` 超 32MB 按损坏处理。修复后同仓库实测首建 1.6s、缓存 2.9MB。
 - **wasm 体积**：约 8MB 入库；不影响安装包其他部分。
 - **提示词膨胀**：固定 ≤1024 token；TTL 内文本稳定，不随编辑抖动（grill #6）。
