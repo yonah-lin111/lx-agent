@@ -1,17 +1,16 @@
-import { Check, ChevronDown, ChevronRight, Search } from "lucide-react"
+import { Check, ChevronDown, ChevronRight } from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { LxInput } from "@/components/ui/LxInput"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import type { LxSelectGroup, LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { filterSelectOptions, SelectSearchField } from "@/components/ui/selectSearch"
 import {
   TooltipLayerContext,
   useFloatingLayer,
   useLayerPresence,
 } from "@/components/ui/useFloatingLayer"
-import { isFuzzyMatch } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import { useTranslation } from "@/i18n"
 
 // 模型选项扩展类型（携带可选思考等级）。
@@ -151,26 +150,7 @@ export const AgentModelSelect = ({
   }, [options, value])
 
   // 关键词过滤（仅模型名，大小写不敏感）；分组内无命中则整组隐藏。
-  const filteredOptions = useMemo(() => {
-    const keyword = query.trim().toLocaleLowerCase()
-    if (!keyword) return options
-    return options
-      .map((item) =>
-        isGroup(item)
-          ? {
-              ...item,
-              options: item.options.filter((option) =>
-                isFuzzyMatch(keyword, option.label.toLocaleLowerCase()),
-              ),
-            }
-          : item,
-      )
-      .filter((item) =>
-        isGroup(item)
-          ? item.options.length > 0
-          : isFuzzyMatch(keyword, item.label.toLocaleLowerCase()),
-      )
-  }, [options, query])
+  const filteredOptions = useMemo(() => filterSelectOptions(options, query), [options, query])
 
   const handleSelect = (modelVal: string, chosenVariant?: string): void => {
     setIsOpen(false)
@@ -335,13 +315,10 @@ export const AgentModelSelect = ({
               style={{ ...(listboxStyle ?? undefined), zIndex: 50 }}
             >
               <div className="shrink-0 pb-1">
-                <LxInput
-                  aria-label={t("agent.searchModel")}
-                  placeholder={t("agent.searchModel")}
-                  prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
-                  size="small"
+                <SelectSearchField
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={setQuery}
+                  placeholder={t("agent.searchModel")}
                 />
               </div>
               <div

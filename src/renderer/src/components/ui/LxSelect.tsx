@@ -1,9 +1,11 @@
 import { Check, ChevronDown } from "lucide-react"
 import type React from "react"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxMenuItem } from "@/components/ui/LxMenuItem"
+import { filterSelectOptions, SelectSearchField } from "@/components/ui/selectSearch"
 import { useFloatingLayer, useLayerPresence } from "@/components/ui/useFloatingLayer"
+import { useTranslation } from "@/i18n"
 
 // 下拉选项。
 export interface LxSelectOption<T> {
@@ -39,6 +41,8 @@ export interface LxSelectProps<T> {
   // 触发按钮尺寸。默认为 "medium"。
   size?: LxSelectSize
   disabled?: boolean
+  // 是否在展开面板顶部展示搜索框（按选项 label 模糊过滤）。默认为 true。
+  searchable?: boolean
   // 未选中任何选项（value 无匹配）时的占位提示。
   placeholder?: string
 }
@@ -82,16 +86,20 @@ export const LxSelect = <T extends string>({
   zIndex = 50,
   size = "medium",
   disabled = false,
+  searchable = true,
   placeholder,
 }: LxSelectProps<T>): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState<boolean>(false)
+  const [query, setQuery] = useState<string>("")
   const [listboxStyle, setListboxStyle] = useState<{
     left: number
     top: number
     minWidth: number
   } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const listboxRef = useRef<HTMLDivElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const optionsRef = useRef<HTMLDivElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const selectedOption = options
     .flatMap((item) => (isGroup(item) ? item.options : [item]))
@@ -104,7 +112,7 @@ export const LxSelect = <T extends string>({
   useFloatingLayer({
     isOpen,
     active: shouldRender,
-    rootRef: listboxRef,
+    rootRef: panelRef,
     insideRefs: [containerRef],
     anchorRef: containerRef,
     onClose: () => setIsOpen(false),
@@ -117,7 +125,7 @@ export const LxSelect = <T extends string>({
       const button = buttonRef.current
       if (!button) return
       const rect = button.getBoundingClientRect()
-      const listbox = listboxRef.current
+      const listbox = panelRef.current
       // 首次测量时 minWidth 尚未生效，取按钮宽度作为列表宽度下限。
       const listboxWidth = Math.max(listbox?.offsetWidth ?? rect.width, rect.width)
       const listboxHeight = listbox?.offsetHeight ?? 0
@@ -136,15 +144,21 @@ export const LxSelect = <T extends string>({
 
   // 展开时滚动到选中选项，使其位于下拉容器视口内。
   useEffect(() => {
-    if (!isOpen || !shouldRender || !listboxRef.current) return
-    const selectedEl = listboxRef.current.querySelector(
+    if (!isOpen || !shouldRender || !optionsRef.current) return
+    const selectedEl = optionsRef.current.querySelector(
       '[aria-selected="true"]',
     ) as HTMLElement | null
     if (!selectedEl) return
-    const listbox = listboxRef.current
-    listbox.scrollTop =
-      selectedEl.offsetTop - listbox.clientHeight / 2 + selectedEl.clientHeight / 2
+    const optionsEl = optionsRef.current
+    optionsEl.scrollTop =
+      selectedEl.offsetTop - optionsEl.clientHeight / 2 + selectedEl.clientHeight / 2
   }, [isOpen, shouldRender, value])
+
+  // 关闭后清空搜索词，下次展开回到全量列表。
+  useEffect(() => {
+    if (isOpen) return
+    setQuery("")
+  }, [isOpen])
 
   const renderOption = (option: LxSelectOption<T>, isGrouped = false): React.JSX.Element => {
     const isSelected = option.value === value
@@ -177,6 +191,12 @@ export const LxSelect = <T extends string>({
       </LxMenuItem>
     )
   }
+
+  // 搜索关键词过滤；未开启搜索时始终使用全量选项。
+  const visibleOptions = useMemo(
+    () => (searchable ? filterSelectOptions(options, query) : options),
+    [searchable, options, query],
+  )
 
   const isTriggerUnimported = selectedOption?.isImported === false
 
@@ -213,25 +233,43 @@ export const LxSelect = <T extends string>({
       {shouldRender &&
         createPortal(
           <div
-            ref={listboxRef}
-            className={`fixed flex max-h-60 flex-col gap-0.5 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-lg [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+            ref={panelRef}
+            className={`fixed flex max-h-60 flex-col rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-lg ${
               isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
             }`}
-            role="listbox"
             style={{ ...(listboxStyle ?? undefined), zIndex }}
           >
-            {options.map((item) =>
-              isGroup(item) ? (
-                <div key={item.label} className="flex flex-col gap-0.5">
-                  <div className={`flex items-center ${SIZE_ROW_CLASSES[LIST_SIZE]} text-white/35`}>
-                    {item.label}
-                  </div>
-                  {item.options.map((option) => renderOption(option, true))}
+            {searchable ? (
+              <div className="shrink-0 pb-1">
+                <SelectSearchField value={query} onChange={setQuery} />
+              </div>
+            ) : null}
+            <div
+              ref={optionsRef}
+              role="listbox"
+              className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {visibleOptions.length === 0 ? (
+                <div className="flex items-center px-2.5 py-2 text-xs text-white/35">
+                  {t("common.noMatchingOptions")}
                 </div>
               ) : (
-                renderOption(item)
-              ),
-            )}
+                visibleOptions.map((item) =>
+                  isGroup(item) ? (
+                    <div key={item.label} className="flex flex-col gap-0.5">
+                      <div
+                        className={`flex items-center ${SIZE_ROW_CLASSES[LIST_SIZE]} text-white/35`}
+                      >
+                        {item.label}
+                      </div>
+                      {item.options.map((option) => renderOption(option, true))}
+                    </div>
+                  ) : (
+                    renderOption(item)
+                  ),
+                )
+              )}
+            </div>
           </div>,
           document.body,
         )}
