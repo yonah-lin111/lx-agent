@@ -190,17 +190,17 @@ describe("AgentExecutionFlowList 文件修改统计", () => {
 
     // 点击删除按钮：菜单含两行（N=1 个文件改动）。
     fireEvent.click(screen.getByRole("button", { name: "Delete turn" }))
-    const revertRow = document.querySelector<HTMLElement>('[data-option="revert_and_delete"]')
-    const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
+    const revertRow = document.querySelector<HTMLElement>(".agent-turn-delete-revert")
+    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
     expect(revertRow).not.toBeNull()
     expect(keepRow).not.toBeNull()
 
-    fireEvent.mouseDown(revertRow!)
+    fireEvent.click(revertRow!)
     expect(onUndoOption).toHaveBeenCalledWith("revert_and_delete")
 
     // 重新展开菜单：选择"仅删除本轮"传 revertFiles=false。
     fireEvent.click(screen.getByRole("button", { name: "Delete turn" }))
-    fireEvent.mouseDown(document.querySelector<HTMLElement>('[data-option="delete_only"]')!)
+    fireEvent.click(document.querySelector<HTMLElement>(".agent-turn-delete-keep")!)
     expect(onUndoOption).toHaveBeenLastCalledWith("delete_only")
   })
 
@@ -224,10 +224,10 @@ describe("AgentExecutionFlowList 文件修改统计", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: "Delete turn" }))
-    expect(document.querySelector('[data-option="revert_and_delete"]')).not.toBeNull()
-    expect(document.querySelector('[data-option="revert_only"]')).not.toBeNull()
-    expect(document.querySelector('[data-option="cancel"]')).not.toBeNull()
-    fireEvent.mouseDown(document.querySelector<HTMLElement>('[data-option="delete_only"]')!)
+    expect(document.querySelector(".agent-turn-delete-revert")).not.toBeNull()
+    expect(document.querySelector(".agent-turn-delete-revert-only")).not.toBeNull()
+    expect(document.querySelectorAll(".agent-turn-delete-menu .lx-nav-item").length).toBe(3)
+    fireEvent.click(document.querySelector<HTMLElement>(".agent-turn-delete-keep")!)
     expect(onUndoOption).toHaveBeenCalledWith("delete_only")
   })
 })

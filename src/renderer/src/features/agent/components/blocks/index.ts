@@ -14,10 +14,9 @@ export { AgentThinkingBlock } from "./AgentThinkingBlock"
 export { AgentTodoCallBlock, type AgentTodoCallBlockProps } from "./AgentTodoCallBlock"
 export { AgentToolCallBlock } from "./AgentToolCallBlock"
 export {
-  AGENT_UNDO_OPTION_ORDER,
-  AgentUndoOptionsList,
-  type AgentUndoOptionsListProps,
-} from "./AgentUndoOptionsList"
+  AgentUndoOptionsMenu,
+  type AgentUndoOptionsMenuProps,
+} from "./AgentUndoOptionsMenu"
 export { AgentUndoSummary, type AgentUndoSummaryProps } from "./AgentUndoSummary"
 export {
   AgentViewImageBlock,

@@ -15,7 +15,7 @@ import {
   AgentThinkingBlock,
   AgentTodoCallBlock,
   AgentToolCallBlock,
-  AgentUndoOptionsList,
+  AgentUndoOptionsMenu,
   AgentWebSearchBlock,
   AgentWireframeCallBlock,
   type ExecutionItemMeta,
@@ -482,17 +482,7 @@ export const AgentAssistantMessage = ({
                     placement: "top",
                   }}
                   click={{
-                    content: (
-                      <div
-                        className="agent-message-undo-options flex min-w-64 flex-col gap-0.5"
-                        aria-label={t("agent.undoTitle")}
-                      >
-                        <AgentUndoOptionsList
-                          onSelect={(option) => onUndoOption(option)}
-                          onCancel={() => undefined}
-                        />
-                      </div>
-                    ),
+                    content: <AgentUndoOptionsMenu onSelect={(option) => onUndoOption(option)} />,
                     placement: "top",
                   }}
                 >

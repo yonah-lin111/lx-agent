@@ -196,10 +196,10 @@ describe("AgentMessageList", () => {
 
     fireEvent.click(deleteButtons[0]!)
     // 删除按钮弹出与 /undo 一致的三选一菜单：选择"仅撤销对话"。
-    expect(document.querySelector('[data-option="revert_and_delete"]')).not.toBeNull()
-    expect(document.querySelector('[data-option="revert_only"]')).not.toBeNull()
-    expect(document.querySelector('[data-option="cancel"]')).not.toBeNull()
-    fireEvent.mouseDown(document.querySelector<HTMLElement>('[data-option="delete_only"]')!)
+    expect(document.querySelector(".agent-turn-delete-revert")).not.toBeNull()
+    expect(document.querySelector(".agent-turn-delete-revert-only")).not.toBeNull()
+    expect(document.querySelectorAll(".agent-turn-delete-menu .lx-nav-item").length).toBe(3)
+    fireEvent.click(document.querySelector<HTMLElement>(".agent-turn-delete-keep")!)
     expect(onUndoOption).toHaveBeenCalledWith("delete_only")
 
     // 尾部追加撤销摘要（非对话条目）：删除入口仍保持在最后一条助手消息上。

@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { AgentUndoOptionsList } from "@/features/agent/components/blocks"
+import { AgentUndoOptionsMenu } from "@/features/agent/components/blocks"
 import { getModelDisplayName } from "@/features/agent/hooks/modelsStore"
 import type { AgentUndoOption } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
@@ -33,17 +33,7 @@ export const FlowTurnSummaryBar = ({
 }: FlowTurnSummaryBarProps): React.JSX.Element => {
   const { t } = useTranslation()
 
-  const undoOptionsMenu = (
-    <div
-      className="agent-turn-undo-options flex min-w-64 flex-col gap-0.5"
-      aria-label={t("agent.undoTitle")}
-    >
-      <AgentUndoOptionsList
-        onSelect={(option) => onUndoOption?.(option)}
-        onCancel={() => undefined}
-      />
-    </div>
-  )
+  const undoOptionsMenu = <AgentUndoOptionsMenu onSelect={(option) => onUndoOption?.(option)} />
 
   return (
     <div

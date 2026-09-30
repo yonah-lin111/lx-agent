@@ -198,12 +198,12 @@ describe("AgentExecutionFlowList 交互动作", () => {
     fireEvent.click(within(summary).getByLabelText("Delete turn"))
 
     // 三个选项与取消全部常显（不因无文件改动隐藏）。
-    expect(document.querySelector('[data-option="revert_and_delete"]')).not.toBeNull()
-    expect(document.querySelector('[data-option="revert_only"]')).not.toBeNull()
-    expect(document.querySelector('[data-option="cancel"]')).not.toBeNull()
-    const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
+    expect(document.querySelector(".agent-turn-delete-revert")).not.toBeNull()
+    expect(document.querySelector(".agent-turn-delete-revert-only")).not.toBeNull()
+    expect(document.querySelectorAll(".agent-turn-delete-menu .lx-nav-item").length).toBe(3)
+    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
     expect(keepRow).not.toBeNull()
-    fireEvent.mouseDown(keepRow!)
+    fireEvent.click(keepRow!)
 
     expect(onUndoOption).toHaveBeenCalledWith("delete_only")
   })

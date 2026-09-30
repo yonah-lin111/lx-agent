@@ -3229,3 +3229,21 @@
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.7) !important;
   text-shadow: 1px 1px 0px #000000;
 }
+
+/* ========================================================
+ * 22. 撤销/删除选项菜单（LxNavItem 列表行）
+ * ======================================================== */
+[data-theme="pixel"] .agent-turn-delete-revert {
+  color: #ffd479;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-turn-delete-keep {
+  color: #ff9a9a;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-turn-delete-revert-only {
+  color: #9ad0ff;
+  text-shadow: 1px 1px 0px #000000;
+}

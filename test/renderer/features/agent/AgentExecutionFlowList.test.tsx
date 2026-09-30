@@ -2336,12 +2336,12 @@ describe("AgentExecutionFlowList", () => {
     // 点击删除按钮弹出与 /undo 一致的三选一菜单：三个选项与取消全部常显。
     fireEvent.click(deleteBtn)
 
-    const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
+    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
     expect(keepRow).not.toBeNull()
-    expect(document.querySelector('[data-option="revert_and_delete"]')).not.toBeNull()
-    expect(document.querySelector('[data-option="revert_only"]')).not.toBeNull()
-    expect(document.querySelector('[data-option="cancel"]')).not.toBeNull()
-    fireEvent.mouseDown(keepRow!)
+    expect(document.querySelector(".agent-turn-delete-revert")).not.toBeNull()
+    expect(document.querySelector(".agent-turn-delete-revert-only")).not.toBeNull()
+    expect(document.querySelectorAll(".agent-turn-delete-menu .lx-nav-item").length).toBe(3)
+    fireEvent.click(keepRow!)
 
     // 验证 onUndoOption 被正确调用并传入 delete_only（仅删除本轮）。
     expect(onUndoOption).toHaveBeenCalledTimes(1)
@@ -2402,9 +2402,9 @@ describe("AgentExecutionFlowList", () => {
     expect(deleteBtn).not.toBeNull()
     fireEvent.click(deleteBtn)
 
-    const keepRow = document.querySelector<HTMLElement>('[data-option="delete_only"]')
+    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
     expect(keepRow).not.toBeNull()
-    fireEvent.mouseDown(keepRow!)
+    fireEvent.click(keepRow!)
 
     expect(onUndoOption).toHaveBeenCalledWith("delete_only")
   })
