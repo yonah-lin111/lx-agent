@@ -25,6 +25,7 @@ import { registerSkillHandlers } from "@/ipc/skillHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerUpdateHandlers } from "@/ipc/updateHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
+import { composeWindowTitle, resolveDevEnvLabel } from "@/lib/devEnvLabel"
 import { isDevRuntime, resolveDevUserDataDir } from "@/lib/runtimeMode"
 import { ensureLoginShellPath } from "@/lib/shellEnv"
 import { registerGameProtocol } from "@/protocols/gameProtocol"
@@ -65,6 +66,14 @@ const createWindow = (): void => {
     },
   })
 
+  // 开发态窗口标题：拦截页面标题更新并追加 git 环境标签；打包态不注册，行为与现状一致。
+  if (devEnvLabel) {
+    window.webContents.on("page-title-updated", (event, title) => {
+      event.preventDefault()
+      window.setTitle(composeWindowTitle(title, devEnvLabel))
+    })
+  }
+
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(process.env.ELECTRON_RENDERER_URL)
     return
@@ -78,6 +87,9 @@ const isDev = isDevRuntime()
 if (isDev) {
   app.setPath("userData", resolveDevUserDataDir(app.getPath("appData"), app.getAppPath()))
 }
+
+// 开发态窗口标题附加 git 环境标签（分支/工作区），便于区分多 worktree 实例；打包态为 null（不注册拦截）。
+const devEnvLabel = isDev ? resolveDevEnvLabel(app.getAppPath()) : null
 
 // 同一 worktree 允许并行的 dev 实例数（基础槽位 + -2…-N 顺延槽位）。
 const MAX_DEV_INSTANCES = 10
