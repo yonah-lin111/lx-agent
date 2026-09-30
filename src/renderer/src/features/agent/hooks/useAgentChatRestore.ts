@@ -4,6 +4,7 @@ import {
   createChatMessageId,
   mergeSubagentSnapshots,
 } from "@/features/agent/hooks/agentChatStreamUtils"
+import { agentFileRevertStore } from "@/features/agent/hooks/agentFileRevertStore"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import type { AgentChatCore } from "@/features/agent/hooks/useAgentChat.types"
 import { toChatMessage } from "@/features/agent/utils"
@@ -64,6 +65,7 @@ export const useAgentChatRestore = ({
           )
           setMessages(mergeSubagentSnapshots(chatMessages))
           setTodos(restored.todos ?? [])
+          agentFileRevertStore.setSessionMarks(sessionId, restored.fileReverts ?? [])
           setInputText("")
         })
         .catch(() => {

@@ -3102,3 +3102,148 @@
 [data-theme="pixel"] .agent-execution-flow-grill-question-content {
   width: 100% !important;
 }
+
+/* ========================================================
+ * 20. 文件修改统计卡片 (FileChangesCard) - 折叠标题栏与黑曜石明细槽
+ * ======================================================== */
+/* 折叠标题栏：对齐执行流步骤的折叠面板样式（安山岩底 + 2px 黑框 + 内凹浮雕） */
+[data-theme="pixel"] .agent-file-changes-header {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  background-color: #2a2638 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.16),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+  color: #c9c9dd !important;
+  text-shadow: 1px 1px 0px #000000;
+  padding: 3px 6px !important;
+}
+
+[data-theme="pixel"] .agent-file-changes-header:hover {
+  background-color: #343044 !important;
+  color: #ffffff !important;
+}
+
+/* 折叠箭头：与步骤头部一致的面板文字色与硬阴影 */
+[data-theme="pixel"] .agent-file-changes-header svg:not(.agent-file-changes-icon) {
+  color: #a6a6bc !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="pixel"] .agent-file-changes-icon {
+  color: #55ff55 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="pixel"] .agent-file-changes-total-added,
+[data-theme="pixel"] .agent-file-changes-item-added {
+  color: #55ff55 !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-file-changes-total-removed,
+[data-theme="pixel"] .agent-file-changes-item-removed {
+  color: #ff5555 !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* 展开明细槽：黑曜石暗槽 + 直角 + 内凹阴影（文件行本身复用 level 3 导航行像素槽样式） */
+[data-theme="pixel"] .agent-file-changes-list {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="pixel"] .agent-file-changes-path {
+  font-family: var(--theme-font-family) !important;
+  color: #ececf6 !important;
+}
+
+[data-theme="pixel"] .agent-file-changes-file-icon {
+  color: #a6a6bc !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+/* ========================================================
+ * 21. 文件回退 item 与撤销文件状态（已回退标记）
+ * ======================================================== */
+/* 回退 item 折叠标题栏：琥珀调面板（边框/浮雕由通用按钮皮肤提供，仅补背景/文字） */
+[data-theme="pixel"] .agent-flow-file-revert-header {
+  font-family: var(--theme-font-family) !important;
+  background-color: #2a2638 !important;
+  border-radius: 0px !important;
+  color: #ffd479 !important;
+  text-shadow: 1px 1px 0px #000000;
+  padding: 3px 6px !important;
+}
+
+[data-theme="pixel"] .agent-flow-file-revert-header:hover {
+  background-color: #343044 !important;
+  color: #ffe6a8 !important;
+}
+
+/* 回退明细槽：黑曜石暗槽 + 直角 + 内凹阴影 */
+[data-theme="pixel"] .agent-flow-file-revert-list {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -2px -2px 0px 0px rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="pixel"] .agent-flow-file-revert-path {
+  color: #b8a8d8 !important;
+}
+
+[data-theme="pixel"] .agent-flow-file-revert-time {
+  color: #727288 !important;
+}
+
+/* 卡片"已回退"标签与折叠态计数 */
+[data-theme="pixel"] .agent-file-changes-reverted-tag {
+  background-color: rgba(255, 170, 60, 0.18) !important;
+  color: #ffd479 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-file-changes-reverted-count {
+  color: #ffd479 !important;
+}
+
+/* 撤销条目文件状态提示条 */
+[data-theme="pixel"] .agent-execution-flow-undo-files-state {
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  background-color: #2a2638 !important;
+  color: #d8c8a8 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.7) !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* ========================================================
+ * 22. 撤销/删除选项菜单（LxNavItem 列表行）
+ * ======================================================== */
+[data-theme="pixel"] .agent-turn-delete-revert {
+  color: #ffd479;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-turn-delete-keep {
+  color: #ff9a9a;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="pixel"] .agent-turn-delete-revert-only {
+  color: #9ad0ff;
+  text-shadow: 1px 1px 0px #000000;
+}

@@ -15,9 +15,11 @@ import {
   AgentThinkingBlock,
   AgentTodoCallBlock,
   AgentToolCallBlock,
+  AgentUndoOptionsMenu,
   AgentWebSearchBlock,
   AgentWireframeCallBlock,
   type ExecutionItemMeta,
+  FileChangesCard,
   GrillQuestionCard,
   ProposedPlanCard,
   ReviewFindingsCard,
@@ -27,12 +29,14 @@ import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import { useSuggestedQuestions } from "@/features/agent/hooks/useSuggestedQuestions"
 import type {
+  AgentUndoOption,
   ChatBlock,
   ChatMessage,
   LspToolDetails,
   ProposedPlanData,
   ReviewFindingItem,
 } from "@/features/agent/types"
+import type { FileChangeRevertTarget } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { EMPTY_SUGGESTED_QUESTION_CONTEXT } from "./constants"
 import type { MessageItemGroupsResult } from "./hooks/useMessageItemGroups"
@@ -48,7 +52,7 @@ export interface AgentAssistantMessageProps {
   suggestedQuestionContext?: SuggestedQuestionContextMessage[]
   onSendSuggestedQuestion?: (question: string) => void
   onEchoToInput?: (question: string) => void
-  onDelete?: (messageId: string) => void
+  onUndoOption?: (option: AgentUndoOption) => void
   onOpenSubagent?: (toolCall: ToolCallBlock, subagentIndex?: number) => void
   readOnly?: boolean
   showScrollToBottom?: boolean
@@ -57,6 +61,8 @@ export interface AgentAssistantMessageProps {
   onAcceptPlan?: (plan: ProposedPlanData) => void
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   hasSubsequentUserMessage?: boolean
+  // 文件修改回退上下文（sessionId + 该轮用户消息时间戳）；缺省时不提供回退能力。
+  fileChangeRevert?: FileChangeRevertTarget
 }
 
 // 助手消息气泡与执行组渲染组件。
@@ -68,7 +74,7 @@ export const AgentAssistantMessage = ({
   suggestedQuestionContext,
   onSendSuggestedQuestion,
   onEchoToInput,
-  onDelete,
+  onUndoOption,
   onOpenSubagent,
   readOnly = false,
   showScrollToBottom = false,
@@ -77,6 +83,7 @@ export const AgentAssistantMessage = ({
   onAcceptPlan,
   onApplyReviewFixes,
   hasSubsequentUserMessage = false,
+  fileChangeRevert,
 }: AgentAssistantMessageProps): React.JSX.Element => {
   const { t } = useTranslation()
   const previewRef = useRef<HTMLDivElement>(null)
@@ -95,6 +102,7 @@ export const AgentAssistantMessage = ({
     webSearchCallGroupById,
     skillCallGroupById,
     executionGroups,
+    messageFileChanges,
     assistantError,
     isStreamingNow,
     hasOutput,
@@ -239,7 +247,7 @@ export const AgentAssistantMessage = ({
                   key={groupIndex}
                   toolCall={group.block}
                   toolResult={toolResultByToolCallId.get(group.block.toolCallId)}
-                  diff={diffByToolCallId.get(group.block.toolCallId)}
+                  diff={diffByToolCallId.get(group.block.toolCallId)?.[0]}
                   defaultExpanded={isStreamingNow}
                 />
               )
@@ -442,6 +450,14 @@ export const AgentAssistantMessage = ({
           onEcho={handleEchoSuggestedQuestion}
         />
       )}
+      {/* 文件修改统计：气泡外、底部统计数据上方（本条回复内 edit/write/apply_patch 的 diff 汇总）。 */}
+      {messageFileChanges && (
+        <FileChangesCard
+          summary={messageFileChanges}
+          revertTarget={fileChangeRevert}
+          className="mt-1"
+        />
+      )}
       {!isStreamingNow && !isLoading && (hasActionableContent || assistantError) && (
         <div className="mt-1 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
@@ -457,19 +473,20 @@ export const AgentAssistantMessage = ({
               >
                 {copied ? <Check className="text-emerald-400" /> : <Copy />}
               </LxIconButton>
-              {!readOnly && onDelete && (
+              {!readOnly && onUndoOption && (
                 <LxTooltip
+                  trigger="click"
+                  closeOnContentClick
                   hover={{
-                    content: t("agent.deleteMessage"),
+                    content: t("agent.deleteTurn"),
                     placement: "top",
                   }}
                   click={{
-                    content: t("agent.deleteQaConfirm"),
+                    content: <AgentUndoOptionsMenu onSelect={(option) => onUndoOption(option)} />,
                     placement: "top",
-                    onConfirm: () => onDelete(message.id),
                   }}
                 >
-                  <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
+                  <LxIconButton size="small" aria-label={t("agent.deleteTurn")}>
                     <Trash2 />
                   </LxIconButton>
                 </LxTooltip>

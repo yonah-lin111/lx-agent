@@ -1,4 +1,10 @@
-import type { AgentMessage, AssistantMessage, StopReason, Usage } from "@shared/contracts/agent"
+import type {
+  AgentDiff,
+  AgentMessage,
+  AssistantMessage,
+  StopReason,
+  Usage,
+} from "@shared/contracts/agent"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 import { Agent } from "@/agent/core/agent"
@@ -706,5 +712,43 @@ describe("Agent 消息转换", () => {
     await runPrompt(agent, "问题")
     agent.reset()
     expect(agent.state.messages).toEqual([])
+  })
+})
+
+describe("Agent 工具结果结构化产物", () => {
+  it("工具返回 details.diffs 时随 ToolResultMessage 落库（apply_patch 多文件）", async () => {
+    const diffs: AgentDiff[] = [
+      { fileName: "a.ts", lines: [], truncated: false, stats: { added: 1, removed: 0 } },
+      { fileName: "b.ts", lines: [], truncated: false, stats: { added: 2, removed: 3 } },
+    ]
+    const patchTool: AgentTool<z.ZodType<{ text: string }>> = {
+      name: "apply_patch",
+      label: "打补丁",
+      description: "应用补丁",
+      inputSchema: z.object({ text: z.string() }),
+      execute: async (): Promise<AgentToolResult> => ({
+        content: [{ type: "text", text: "applied" }],
+        details: { diffs },
+      }),
+    }
+
+    const agent = new Agent({
+      streamFn: createMockStreamFn([
+        assistant([toolCallBlock("call-1", "apply_patch", { text: "x" })], "toolUse"),
+        assistant([{ type: "text", text: "完成" }], "stop"),
+      ]),
+      initialState: { model: TEST_MODEL, tools: [patchTool] },
+    })
+
+    const events = await runPrompt(agent, "hi")
+
+    const toolResultEvent = events.find(
+      (event) => event.type === "message_start" && event.message.role === "toolResult",
+    )
+    expect(toolResultEvent?.type).toBe("message_start")
+    if (toolResultEvent?.type !== "message_start") return
+    if (toolResultEvent.message.role !== "toolResult") return
+    expect(toolResultEvent.message.diffs).toEqual(diffs)
+    expect(toolResultEvent.message.diff).toBeUndefined()
   })
 })

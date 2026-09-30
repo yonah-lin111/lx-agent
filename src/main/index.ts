@@ -34,6 +34,7 @@ import { gameRomService } from "@/services/gameRomService"
 import { notificationService } from "@/services/notificationService"
 import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
 import { startScreenshotCleanupScheduler } from "@/services/screenshotCleanupService"
+import { startSnapshotCleanupScheduler } from "@/services/snapshotCleanupService"
 import { terminalService } from "@/services/terminalService"
 import { updateService } from "@/services/updateService"
 
@@ -149,12 +150,14 @@ if (!hasSingleInstanceLock) {
     }
 
     const stopScreenshotCleanup = startScreenshotCleanupScheduler()
+    const stopSnapshotCleanup = startSnapshotCleanupScheduler()
 
     // 打包态 GUI 启动不继承终端环境：先解析登录 shell PATH 再连 MCP server（幂等；失败降级不阻塞），
     // 否则 nvm/homebrew 安装的 MCP 命令（npx、codegraph 等）spawn 报 ENOENT。
     void ensureLoginShellPath().then(() => mcpManager.ensureConnected())
     app.on("will-quit", () => {
       stopScreenshotCleanup()
+      stopSnapshotCleanup()
       // 生命周期 hook：退出路径 best-effort 派发 SessionEnd（quit，不等待异步工作）。
       agentRunner.disposeAll("quit")
       terminalService.disposeAll()

@@ -148,6 +148,8 @@ export type ChatBlock =
       isError: boolean
       durationMs?: number
       diff?: AgentDiff
+      // 多文件可视化 diff（apply_patch 工具结果落库，恢复后重建统计卡片）。
+      diffs?: AgentDiff[]
       // 子代理面板数据（随 task 工具结果落库，恢复后重建弹窗）。
       subagent?: SubagentData
       // 批量扇出子代理数据（随 task 批量模式结果落库，恢复后重建弹窗）。
@@ -228,6 +230,9 @@ export interface AgentPromptCard {
   description: string
   prompt: string
 }
+
+// 撤销选项：回退文件并撤销对话 / 仅撤销对话 / 仅回退文件（保留对话）。
+export type AgentUndoOption = "revert_and_delete" | "delete_only" | "revert_only"
 
 // 执行步骤类型。
 export type ExecutionStepKind =
@@ -397,6 +402,8 @@ export interface ExecutionToolContent {
   isError?: boolean
   durationMs?: number
   diff?: AgentDiff
+  // 多文件可视化 diff（apply_patch 工具产物，驱动执行流文件统计卡片）。
+  diffs?: AgentDiff[]
   lsp?: LspToolDetails
   // 图片查看结果（view_image 工具；驱动执行流程图片块渲染）。
   image?: ViewImageDetails
@@ -439,6 +446,8 @@ export interface ExecutionUndoContent {
   }[]
   toolCallCount?: number
   fileChangeCount?: number
+  // 本轮文件改动是否已被回退（删除/撤销时的显式选择；仅展示用）。
+  filesReverted?: boolean
   undoneAt?: number
 }
 

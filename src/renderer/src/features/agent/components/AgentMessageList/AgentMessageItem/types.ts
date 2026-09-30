@@ -1,5 +1,6 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
 import type {
+  AgentUndoOption,
   ChatBlock,
   ChatMessage,
   ProposedPlanData,
@@ -88,7 +89,8 @@ export interface AgentMessageItemProps {
   onStartEdit?: () => void
   onCancelEdit?: () => void
   onEdit?: (id: string, newContent: string) => void
-  onDelete?: (messageId: string) => void
+  // 整轮撤销/删除：删除按钮菜单与 /undo 一致，回传三选一选项。
+  onUndoOption?: (option: AgentUndoOption) => void
   // 点击"从此分支"：从该用户轮切割复制历史到新会话（assistant / toolResult 消息不显示）。
   onFork?: (userMessageTimestamp: number) => void
   // 点击子代理 label 打开面板弹窗。
@@ -107,4 +109,8 @@ export interface AgentMessageItemProps {
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   // 下方是否已存在用户消息（方案/审查卡片执行后置灰禁用）。
   hasSubsequentUserMessage?: boolean
+  // 会话 id（文件回退等操作定位用；子代理面板等只读场景不传）。
+  sessionId?: string
+  // 该 QA 组用户消息时间戳（文件修改回退的快照定位）。
+  userMessageTimestamp?: number
 }

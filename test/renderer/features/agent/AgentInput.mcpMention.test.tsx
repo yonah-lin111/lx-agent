@@ -72,7 +72,6 @@ const renderMentionInput = async (): Promise<{ view: EditorView }> => {
         onSend={vi.fn()}
         onStop={vi.fn()}
         onClear={vi.fn()}
-        onUndo={vi.fn()}
         onCompact={vi.fn()}
         selectedModel="m"
         onModelChange={vi.fn()}

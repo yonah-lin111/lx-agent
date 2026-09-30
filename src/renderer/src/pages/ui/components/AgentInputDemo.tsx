@@ -52,7 +52,7 @@ export const AgentInputDemo = (): React.JSX.Element => {
               setFiles([])
               toast.info(t("uiPreview.demos.toast.cleared"))
             }}
-            onUndo={() => toast.info(t("uiPreview.demos.toast.undo"))}
+            onUndoOption={() => toast.info(t("uiPreview.demos.toast.undo"))}
             onCompact={() => toast.info(t("uiPreview.demos.toast.compact"))}
             selectedModel={model}
             onModelChange={setModel}

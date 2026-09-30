@@ -190,17 +190,22 @@ describe("AgentExecutionFlowList 交互动作", () => {
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 1000, behavior: "smooth" })
   })
 
-  it("turn 汇总行的删除按钮经二次确认后回传 onDeleteMessage", () => {
-    const onDeleteMessage = vi.fn()
-    render(<AgentExecutionFlowList messages={turnMessages()} onDeleteMessage={onDeleteMessage} />)
+  it("turn 汇总行的删除按钮弹出与 /undo 一致的三选一菜单并回传 onUndoOption", () => {
+    const onUndoOption = vi.fn()
+    render(<AgentExecutionFlowList messages={turnMessages()} onUndoOption={onUndoOption} />)
 
     const summary = screen.getByTestId("turn-summary-1")
     fireEvent.click(within(summary).getByLabelText("Delete turn"))
 
-    // 二次确认由 LxTooltip 确认气泡承载
-    fireEvent.click(screen.getByLabelText("Confirm"))
+    // 三个选项与取消全部常显（不因无文件改动隐藏）。
+    expect(document.querySelector(".agent-turn-delete-revert")).not.toBeNull()
+    expect(document.querySelector(".agent-turn-delete-revert-only")).not.toBeNull()
+    expect(document.querySelectorAll(".agent-turn-delete-menu .lx-nav-item").length).toBe(3)
+    const keepRow = document.querySelector<HTMLElement>(".agent-turn-delete-keep")
+    expect(keepRow).not.toBeNull()
+    fireEvent.click(keepRow!)
 
-    expect(onDeleteMessage).toHaveBeenCalledWith("a1")
+    expect(onUndoOption).toHaveBeenCalledWith("delete_only")
   })
 
   it("点击 subagent 名称打开面板并可关闭", () => {

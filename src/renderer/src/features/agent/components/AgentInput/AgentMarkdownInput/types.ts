@@ -1,5 +1,6 @@
 import type { AutoConfigurableMode, CollaborationMode } from "@shared/contracts/agent"
 import type React from "react"
+import type { AgentUndoOption } from "@/features/agent/types"
 import type { GitWorktreeOption } from "@/features/git"
 import type { AgentInputFile } from "../AgentInputFiles"
 
@@ -36,8 +37,8 @@ export interface AgentMarkdownInputProps {
   worktreeName?: string
   onWorktreeSelect?: (path: string) => void
   onClear?: () => void
-  onUndo?: () => void
-  isOnlyOneTurnLeft?: () => boolean
+  // /undo 选项面板选择回调（回退文件并撤销对话 / 仅撤销对话 / 仅回退文件）。
+  onUndoOption?: (option: AgentUndoOption) => void
   onCompact?: () => void
   onAddFiles?: (files: AgentInputFile[]) => void
   allowProjectChange?: boolean
@@ -60,7 +61,7 @@ export type AgentInputActiveMode =
   | "worktree"
   | "project"
   | "session"
-  | "undo_confirm"
+  | "undo_options"
   | "skill"
   | "historyPrompt"
   | null

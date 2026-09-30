@@ -13,6 +13,10 @@ export { AgentSubagentBlock } from "./AgentSubagentBlock"
 export { AgentThinkingBlock } from "./AgentThinkingBlock"
 export { AgentTodoCallBlock, type AgentTodoCallBlockProps } from "./AgentTodoCallBlock"
 export { AgentToolCallBlock } from "./AgentToolCallBlock"
+export {
+  AgentUndoOptionsMenu,
+  type AgentUndoOptionsMenuProps,
+} from "./AgentUndoOptionsMenu"
 export { AgentUndoSummary, type AgentUndoSummaryProps } from "./AgentUndoSummary"
 export {
   AgentViewImageBlock,
@@ -23,6 +27,7 @@ export {
   AgentWireframeCallBlock,
   type AgentWireframeCallBlockProps,
 } from "./AgentWireframeCallBlock"
+export { FileChangesCard, type FileChangesCardProps } from "./FileChangesCard"
 export { GrillQuestionCard, type GrillQuestionCardProps } from "./GrillQuestionCard"
 export {
   ProposedPlanCard,

@@ -94,10 +94,8 @@ export const AgentPage = ({
     canContinue,
     stopStreaming,
     createNewChat,
-    undoLastTurn,
-    isOnlyOneTurnLeft,
+    applyUndoOption,
     compactChat,
-    deleteTurn,
     restoreChat,
     editMessage,
     refreshContextUsage,
@@ -1021,7 +1019,7 @@ export const AgentPage = ({
             onAcceptPlan={acceptAndExecutePlan}
             onApplyReviewFixes={acceptAndExecuteReviewFixes}
             onFillInput={echoToInput}
-            onDeleteMessage={deleteTurn}
+            onUndoOption={applyUndoOption}
             onSubagentPanelOpenChange={setIsFlowSubagentOpen}
           />
         ) : (
@@ -1035,7 +1033,7 @@ export const AgentPage = ({
               onEchoToInput={echoToInput}
               onSelectPrompt={(prompt) => sendMessage(prompt)}
               onEditMessage={editMessage}
-              onDeleteMessage={deleteTurn}
+              onUndoOption={applyUndoOption}
               onOpenSubagent={openSubagent}
               onFork={handleFork}
               isSubagentPanelOpen={activeSubagentId !== null}
@@ -1044,6 +1042,7 @@ export const AgentPage = ({
               onContinue={continueChat}
               onAcceptPlan={acceptAndExecutePlan}
               onApplyReviewFixes={acceptAndExecuteReviewFixes}
+              sessionId={currentSessionId ?? undefined}
             />
             {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}
             <AgentSubagentPanel
@@ -1106,8 +1105,7 @@ export const AgentPage = ({
           canUseBtw={hasMainUserMessage}
           onStop={handleStop}
           onClear={handleNewChat}
-          onUndo={undoLastTurn}
-          isOnlyOneTurnLeft={isOnlyOneTurnLeft}
+          onUndoOption={applyUndoOption}
           onCompact={compactChat}
           selectedModel={selectedModel}
           selectedVariant={selectedVariant}

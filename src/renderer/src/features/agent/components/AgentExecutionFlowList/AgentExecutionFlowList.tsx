@@ -1,7 +1,9 @@
 import { ArrowDownToLine, ChevronUp, Workflow } from "lucide-react"
-import { forwardRef, useEffect, useState } from "react"
+import { forwardRef, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useModelSettings } from "@/features/agent/hooks/modelsStore"
+import { findDeletableAssistantMessageId } from "@/features/agent/messageGrouping"
+import { buildFlowFileChangesByTurn } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { AgentSubagentPanel } from "../panels/AgentSubagentPanel"
 import { AgentExecutionFlowEmpty } from "./AgentExecutionFlowEmpty"
@@ -36,7 +38,7 @@ export const AgentExecutionFlowList = forwardRef<
       onAcceptPlan,
       onApplyReviewFixes,
       onFillInput,
-      onDeleteMessage,
+      onUndoOption,
       onSubagentPanelOpenChange,
       readOnly = false,
     },
@@ -60,6 +62,12 @@ export const AgentExecutionFlowList = forwardRef<
       toggleGroupExpanded,
       isGroupExpanded,
     } = useFlowSteps({ messages, promptAssembly, isStreaming, activeFilter })
+
+    // 每轮文件修改汇总：在该轮末尾（最后一个步骤之后）统一展示。
+    const fileChangesByTurn = useMemo(() => buildFlowFileChangesByTurn(steps), [steps])
+
+    // 删除入口只出现在最后一条助手消息所在轮次（与消息列表同一规则）。
+    const deletableMessageId = useMemo(() => findDeletableAssistantMessageId(messages), [messages])
 
     const { turnStatsMap, turnMessageIdMap, runningTurnSet, stats, filterCounts } = useFlowStats({
       steps,
@@ -153,6 +161,7 @@ export const AgentExecutionFlowList = forwardRef<
                       renderedFlowElements={renderedFlowElements}
                       turnStatsMap={turnStatsMap}
                       turnMessageIdMap={turnMessageIdMap}
+                      fileChangesByTurn={fileChangesByTurn}
                       runningTurnSet={runningTurnSet}
                       hasNonGroupableAfterByIndex={hasNonGroupableAfterByIndex}
                       maxUserTurnIndex={maxUserTurnIndex}
@@ -161,6 +170,7 @@ export const AgentExecutionFlowList = forwardRef<
                       maxTurn={maxTurn}
                       readOnly={readOnly}
                       canContinue={canContinue}
+                      sessionId={sessionId}
                       isStepExpanded={isStepExpanded}
                       onToggleStepExpand={toggleStepExpanded}
                       onToggleGroupExpand={toggleGroupExpanded}
@@ -169,7 +179,8 @@ export const AgentExecutionFlowList = forwardRef<
                       onAcceptPlan={onAcceptPlan}
                       onApplyReviewFixes={onApplyReviewFixes}
                       onFillInput={onFillInput}
-                      onDeleteMessage={onDeleteMessage}
+                      onUndoOption={onUndoOption}
+                      deletableMessageId={deletableMessageId}
                       onContinue={onContinue}
                       settings={settings}
                     />

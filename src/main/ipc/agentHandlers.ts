@@ -29,6 +29,7 @@ import { promptTemplateLoader } from "@/agent/prompts/promptTemplateLoader"
 import { questionManager } from "@/agent/question/questionManager"
 import { getUserSkillDirs, skillLoader, stripFrontmatter } from "@/agent/skills/skillLoader"
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
+import { resolveOpenFilePath } from "@/agent/tools/path-utils"
 import { getStandardSkillsDir } from "@/paths"
 import { notificationService } from "@/services/notificationService"
 
@@ -520,15 +521,21 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     agentRunner.deleteSessions(validIds)
   })
 
-  ipcMain.handle(AGENT_CHANNELS.deleteMessageTurn, (_, sessionId: unknown, timestamp: unknown) => {
-    if (typeof sessionId !== "string" || !sessionId.trim()) {
-      throw new Error("INVALID_SESSION_ID")
-    }
-    if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) {
-      throw new Error("INVALID_MESSAGE_TIMESTAMP")
-    }
-    agentRunner.deleteMessageTurn(sessionId, timestamp)
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.deleteMessageTurn,
+    (_, sessionId: unknown, timestamp: unknown, revertFiles: unknown) => {
+      if (typeof sessionId !== "string" || !sessionId.trim()) {
+        throw new Error("INVALID_SESSION_ID")
+      }
+      if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) {
+        throw new Error("INVALID_MESSAGE_TIMESTAMP")
+      }
+      if (typeof revertFiles !== "boolean") {
+        throw new Error("INVALID_REVERT_FILES")
+      }
+      agentRunner.deleteMessageTurn(sessionId, timestamp, revertFiles)
+    },
+  )
 
   ipcMain.handle(AGENT_CHANNELS.forkSession, (_, sessionId: unknown, timestamp: unknown) => {
     if (typeof sessionId !== "string" || !sessionId.trim()) {
@@ -555,8 +562,41 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     if (typeof filePath !== "string" || !filePath || typeof line !== "number") {
       return { ok: false }
     }
-    return openFileAt(filePath, line)
+    // diff 等场景存工作区相对路径；按当前会话 cwd 解析，避免打包环境 main cwd 不可靠。
+    const targetPath = resolveOpenFilePath(filePath, agentRunner.getCurrentCwd(), existsSync)
+    return openFileAt(targetPath, line)
   })
+
+  ipcMain.handle(
+    AGENT_CHANNELS.revertFileChange,
+    (_, sessionId: unknown, userMessageTimestamp: unknown, filePath: unknown) => {
+      if (
+        typeof sessionId !== "string" ||
+        !sessionId ||
+        typeof userMessageTimestamp !== "number" ||
+        typeof filePath !== "string" ||
+        !filePath
+      ) {
+        return { ok: false }
+      }
+      return agentRunner.revertFileChange(sessionId, userMessageTimestamp, filePath)
+    },
+  )
+
+  ipcMain.handle(
+    AGENT_CHANNELS.revertTurnFiles,
+    (_, sessionId: unknown, userMessageTimestamp: unknown) => {
+      if (
+        typeof sessionId !== "string" ||
+        !sessionId ||
+        typeof userMessageTimestamp !== "number" ||
+        !Number.isFinite(userMessageTimestamp)
+      ) {
+        return { ok: false, error: "INVALID_INPUT" }
+      }
+      return agentRunner.revertTurnFiles(sessionId, userMessageTimestamp)
+    },
+  )
 
   ipcMain.handle(AGENT_CHANNELS.showItemInFolder, (_, filePath: unknown) => {
     if (typeof filePath !== "string" || !filePath) {

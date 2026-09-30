@@ -6,6 +6,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
+import type { AgentUndoOption } from "@/features/agent/types"
 import type { GitWorktreeOption } from "@/features/git"
 import { useTranslation } from "@/i18n"
 import { AgentContextUsagePill } from "../AgentContextUsagePill"
@@ -43,8 +44,8 @@ export interface AgentInputProps {
   onSend: (options?: { delivery?: "queue" | "steer" }) => void
   onStop: () => void
   onClear: () => void
-  onUndo: () => void
-  isOnlyOneTurnLeft?: () => boolean
+  // 撤销选项回调：回退文件并撤销对话 / 仅撤销对话 / 仅回退文件（/undo 二级面板选择后触发）。
+  onUndoOption?: (option: AgentUndoOption) => void
   onCompact: () => void
   selectedModel: string
   selectedVariant?: string
@@ -112,8 +113,7 @@ export const AgentInput = ({
   onSend,
   onStop,
   onClear,
-  onUndo,
-  isOnlyOneTurnLeft,
+  onUndoOption,
   onCompact,
   selectedModel,
   selectedVariant,
@@ -526,8 +526,7 @@ export const AgentInput = ({
           allowProjectChange={allowProjectChange}
           currentSessionId={currentSessionId}
           onClear={onClear}
-          onUndo={onUndo}
-          isOnlyOneTurnLeft={isOnlyOneTurnLeft}
+          onUndoOption={onUndoOption}
           onCompact={onCompact}
           onAddFiles={handleAddFiles}
         />
