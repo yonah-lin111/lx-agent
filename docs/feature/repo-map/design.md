@@ -130,6 +130,7 @@ export interface RepoMapResult { map: string; cacheHit: boolean; buildTimeMs: nu
 ## 7. 风险与回滚
 
 - **首启性能**：冷缓存首次构建受 5s 超时约束，超时即不注入；磁盘缓存让后续会话毫秒级。回滚：删 `cache/repomap` 目录即可。
+- **minified/生成产物（验证期实测修复）**：压缩文件整个文件是一行，若签名取整行会让缓存膨胀（实测 lx-agent 主仓库 `resources/emulator` 导致 394MB 缓存、首建超 5s 超时、注入失败）。三重防线：单条签名截断 200 字符、单文件 512KB 上限跳过、`loadCache` 超 32MB 按损坏处理。修复后同仓库实测首建 1.6s、缓存 2.9MB。
 - **wasm 体积**：约 8MB 入库；不影响安装包其他部分。
 - **提示词膨胀**：固定 ≤1024 token；TTL 内文本稳定，不随编辑抖动（grill #6）。
 - **工具误用**：描述中限定使用场景；只读无副作用，最坏情况是浪费一次调用。
