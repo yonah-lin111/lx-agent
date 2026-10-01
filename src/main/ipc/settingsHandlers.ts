@@ -7,6 +7,7 @@ import { mcpManager } from "@/agent/mcp/mcpManager"
 import { invalidateModelCache } from "@/agent/stream/modelFactory"
 import { BUILT_IN_AGENT_ROLES, resolveAgentRoles } from "@/agent/subagent/agentRoles"
 import { getCliVersions, runCliLifecycleAction } from "@/services/cliToolService"
+import { getEnvironmentVersions } from "@/services/environmentService"
 import { getMcpPresetStatus, installMcpPreset } from "@/services/mcpPresetService"
 import { fetchModelsDevCatalog, fetchProviderModels } from "@/services/modelFetchService"
 import {
@@ -116,5 +117,8 @@ export const registerSettingsHandlers = (): void => {
   ipcMain.handle(SETTINGS_CHANNELS.getTokenSaverSettings, () => getTokenSaverSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveTokenSaverSettings, (_, input) =>
     saveTokenSaverSettings(input),
+  )
+  ipcMain.handle(SETTINGS_CHANNELS.getEnvironmentVersions, (_, options) =>
+    getEnvironmentVersions(options),
   )
 }

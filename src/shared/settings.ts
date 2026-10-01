@@ -182,6 +182,30 @@ export interface CliLifecycleResult {
   detail?: string
 }
 
+// 支持的系统环境运行时标识。
+export type EnvironmentId = "git" | "node" | "python" | "java"
+
+export const ALL_ENVIRONMENT_IDS: readonly EnvironmentId[] = [
+  "git",
+  "node",
+  "python",
+  "java",
+] as const
+
+// 系统环境运行时检测信息。
+export interface EnvironmentRuntimeInfo {
+  id: EnvironmentId
+  name: string
+  displayName: string
+  command: string
+  installed: boolean
+  version: string | null
+  path: string | null
+  isRequired: boolean
+  descriptionKey: string
+  downloadUrl: string
+}
+
 // 支持的 LSP 语言标识。
 export type LspLanguageId = "typescript" | "python" | "json" | "html" | "css"
 
@@ -540,5 +564,6 @@ export interface SettingsApi {
     saveOpenClawSettings: (settings: OpenClawSettings) => Promise<OpenClawSettings>
     getTokenSaverSettings: () => Promise<TokenSaverSettings>
     saveTokenSaverSettings: (settings: TokenSaverSettings) => Promise<TokenSaverSettings>
+    getEnvironmentVersions: (options?: { force?: boolean }) => Promise<EnvironmentRuntimeInfo[]>
   }
 }

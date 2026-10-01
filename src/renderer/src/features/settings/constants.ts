@@ -1,5 +1,6 @@
 import {
   Bot,
+  Boxes,
   BrainCircuit,
   Cable,
   Code,
@@ -42,6 +43,7 @@ export interface SettingsSection {
     | "settings.tokenSaver"
     | "settings.voice"
     | "settings.openclaw"
+    | "settings.environment"
   icon: LucideIcon
 }
 
@@ -112,6 +114,7 @@ export const SETTINGS_NAV_GROUPS: readonly SettingsNavGroup[] = [
       { id: "openclaw", labelKey: "settings.openclaw", icon: Network },
       { id: "lsp", labelKey: "settings.lsp", icon: Code2 },
       { id: "cli", labelKey: "settings.cli", icon: Terminal },
+      { id: "environment", labelKey: "settings.environment", icon: Boxes },
     ],
   },
 ] as const
