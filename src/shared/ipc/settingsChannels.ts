@@ -37,4 +37,5 @@ export const SETTINGS_CHANNELS = {
   saveOpenClawSettings: "settings:openclaw:save",
   getTokenSaverSettings: "settings:token-saver:get",
   saveTokenSaverSettings: "settings:token-saver:save",
+  getEnvironmentVersions: "settings:environment:get-versions",
 } as const

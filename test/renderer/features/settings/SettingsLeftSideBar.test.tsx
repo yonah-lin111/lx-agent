@@ -3,6 +3,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { SETTINGS_SECTIONS } from "@/features/settings"
 import { useSettingsDraftStore } from "@/features/settings/hooks/settingsDraftStore"
 import { I18nProvider } from "@/i18n"
 import { SettingsLeftSideBar } from "@/pages/settings/components/SettingsLeftSideBar"
@@ -175,7 +176,7 @@ describe("SettingsLeftSideBar 分组导航", () => {
     renderSideBar(true)
 
     const nav = within(screen.getByRole("navigation", { name: "Settings" }))
-    expect(nav.getAllByRole("button")).toHaveLength(16)
+    expect(nav.getAllByRole("button")).toHaveLength(SETTINGS_SECTIONS.length)
     expect(nav.queryByRole("button", { name: "Models & Cost" })).toBeNull()
     expect(document.querySelectorAll('[data-group-divider="true"]')).toHaveLength(4)
 

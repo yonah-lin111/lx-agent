@@ -194,4 +194,32 @@ export const agentTools = {
   cliCurrentVersion: "当前",
   cliNoMatches: "未找到匹配的 CLI 工具",
   cliUpToDate: "已是最新版本",
+  environment: "运行环境",
+  environmentDesc: "检测系统基础开发环境（Node.js、Git、Python、Java）的安装状态与版本",
+  environmentDoc: `### 系统运行环境检测
+
+检测 LX Agent 运行所需的系统环境及推荐的扩展运行时。
+
+#### 💡 核心依赖与环境说明
+- **Git**：当前 App 核心依赖，用于代码仓库管理、Worktree 工作区隔离、差异对比与代码提交。
+- **Node.js**：当前 App 核心依赖，用于驱动 npm/npx 插件生命周期及运行本地 MCP Server。
+- **Python**：可选扩展环境，用于支持 Python 生态的 MCP Server 工具及数据分析脚本。
+- **Java**：可选扩展环境，用于支持基于 Java 的 LSP 语言服务器（如 Eclipse JDT.LS）。`,
+  environmentSearchPlaceholder: "搜索运行环境...",
+  environmentRefresh: "刷新状态",
+  environmentRefreshing: "正在探测...",
+  environmentInstalled: "已安装",
+  environmentNotInstalled: "未检测到",
+  environmentRequiredTag: "必需",
+  environmentOptionalTag: "可选",
+  environmentGet: "获取 {{name}}",
+  environmentVersion: "版本",
+  environmentPath: "检测路径",
+  environmentGitDesc: "LX Agent 核心依赖。用于分支管理、Worktree 工作区隔离、变更 Diff 与版本提交。",
+  environmentNodeDesc: "LX Agent 核心依赖。用于执行 npm/npx 插件进程与运行本地 MCP Server。",
+  environmentPythonDesc: "可选扩展环境。用于支持 Python 生态的 MCP Server 工具及本地数据分析脚本。",
+  environmentJavaDesc: "可选扩展环境。用于支持基于 Java 的 LSP 语言服务器（如 Eclipse JDT.LS 代码补全分析）。",
+  environmentLoadFailed: "加载环境检测结果失败",
+  environmentNoMatches: "未找到匹配的运行环境",
+  environmentCopyVersionSuccess: "版本号已复制到剪贴板",
 }
