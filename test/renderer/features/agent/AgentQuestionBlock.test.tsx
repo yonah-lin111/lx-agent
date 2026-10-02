@@ -136,4 +136,43 @@ describe("AgentQuestionBlock 只读展示与答案恢复", () => {
       expect(restoredToolCall?.answers).toEqual(answers)
     }
   })
+
+  it("挂起状态下渲染 options 的 description 并具备自适应高度和顶部对齐类名", () => {
+    const toolCall: ToolCallBlock = {
+      kind: "toolCall",
+      toolCallId: "call-pending-1",
+      toolName: "question",
+      status: "running",
+      args: {},
+      question: {
+        requestId: "req-pending-1",
+        toolCallId: "call-pending-1",
+        sessionId: null,
+        questions: [
+          {
+            question: "线框图布局是否满足设计要求？",
+            options: [
+              { label: "批准线框图并继续", description: "布局符合预期，可以进行后续页面开发" },
+              { label: "需要调整线框图布局", description: "提出修改意见" },
+            ],
+          },
+        ],
+      },
+    }
+
+    const { container } = render(<AgentQuestionBlock toolCall={toolCall} />)
+
+    expect(screen.getByText("批准线框图并继续")).not.toBeNull()
+    expect(screen.getByText("布局符合预期，可以进行后续页面开发")).not.toBeNull()
+    expect(screen.getByText("需要调整线框图布局")).not.toBeNull()
+    expect(screen.getByText("提出修改意见")).not.toBeNull()
+
+    const optionLabels = container.querySelectorAll(".agent-question-option")
+    expect(optionLabels.length).toBe(2)
+    for (const option of optionLabels) {
+      expect(option.className).toContain("!items-start")
+      expect(option.className).toContain("!h-auto")
+      expect(option.className).toContain("min-h-[32px]")
+    }
+  })
 })

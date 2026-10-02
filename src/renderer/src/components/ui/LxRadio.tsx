@@ -79,9 +79,9 @@ export const LxRadio = ({
       />
       <span
         aria-hidden="true"
-        className={`lx-radio-dot relative flex ${styles.box} items-center justify-center rounded-full border border-white/25 transition-colors before:rounded-full before:bg-black before:opacity-0 before:transition-opacity ${styles.marker} peer-checked:border-white peer-checked:bg-white peer-checked:before:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-white/40`}
+        className={`lx-radio-dot relative flex shrink-0 ${styles.box} items-center justify-center rounded-full border border-white/25 transition-colors before:rounded-full before:bg-black before:opacity-0 before:transition-opacity ${styles.marker} peer-checked:border-white peer-checked:bg-white peer-checked:before:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-white/40`}
       />
-      <span>{label}</span>
+      <span className="min-w-0 flex-1">{label}</span>
     </label>
   )
 }

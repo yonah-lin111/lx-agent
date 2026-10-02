@@ -93,4 +93,45 @@ describe("FlowItemQuestionContent 参数折叠", () => {
     // 展开后能看到参数
     expect(container.querySelector(".bg-black\\/40")).not.toBeNull()
   })
+
+  it("挂起状态下渲染 options 的 description 说明文字（单选与多选）", () => {
+    const content: ExecutionToolContent = {
+      toolName: "question",
+      args: {},
+      question: {
+        requestId: "req-desc",
+        toolCallId: "call-question-desc",
+        sessionId: "session-desc",
+        questions: [
+          {
+            question: "单选问题",
+            options: [
+              { label: "Option 1", description: "Description 1" },
+              { label: "Option 2", description: "Description 2" },
+            ],
+          },
+          {
+            question: "多选问题",
+            multiSelect: true,
+            options: [
+              { label: "Multi 1", description: "Multi Description 1" },
+              { label: "Multi 2", description: "Multi Description 2" },
+            ],
+          },
+        ],
+      },
+    }
+
+    render(<FlowItemQuestionContent content={content} />)
+
+    expect(screen.getByText("Option 1")).not.toBeNull()
+    expect(screen.getByText("Description 1")).not.toBeNull()
+    expect(screen.getByText("Option 2")).not.toBeNull()
+    expect(screen.getByText("Description 2")).not.toBeNull()
+
+    expect(screen.getByText("Multi 1")).not.toBeNull()
+    expect(screen.getByText("Multi Description 1")).not.toBeNull()
+    expect(screen.getByText("Multi 2")).not.toBeNull()
+    expect(screen.getByText("Multi Description 2")).not.toBeNull()
+  })
 })
