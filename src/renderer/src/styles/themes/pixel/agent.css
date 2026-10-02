@@ -955,6 +955,13 @@
   box-shadow: none !important;
 }
 
+[data-theme="pixel"] .agent-question-answered-desc {
+  color: #a0a0b8 !important;
+  font-family: var(--theme-font-family) !important;
+  font-weight: normal !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
 [data-theme="pixel"] .agent-question-input {
   border: 2px solid #000000 !important;
   background-color: #14141d !important;

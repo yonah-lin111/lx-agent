@@ -37,12 +37,18 @@ describe("AgentQuestionBlock 只读展示与答案恢复", () => {
         questions: [
           {
             question: "你当前最常用排主要编程语言是什么？",
-            options: [{ label: "TypeScript" }, { label: "Rust" }],
+            options: [
+              { label: "TypeScript", description: "带类型的 JS" },
+              { label: "Rust", description: "系统级编程语言" },
+            ],
           },
           {
             question: "你在前端项目中常用哪些技术/框架？（可多选）",
             multiSelect: true,
-            options: [{ label: "React" }, { label: "Vue" }],
+            options: [
+              { label: "React", description: "组件化 UI 库" },
+              { label: "Vue", description: "渐进式框架" },
+            ],
           },
           {
             question: "如果还有其他想测试的交互或反馈，请在此输入（选填）：",
@@ -74,9 +80,11 @@ describe("AgentQuestionBlock 只读展示与答案恢复", () => {
     // 问题与答案均应渲染在 DOM 中
     expect(screen.getByText("你当前最常用排主要编程语言是什么？")).not.toBeNull()
     expect(screen.getByText("TypeScript")).not.toBeNull()
+    expect(screen.getByText("带类型的 JS")).not.toBeNull()
 
     expect(screen.getByText("你在前端项目中常用哪些技术/框架？（可多选）")).not.toBeNull()
     expect(screen.getByText("React")).not.toBeNull()
+    expect(screen.getByText("组件化 UI 库")).not.toBeNull()
 
     expect(screen.getByText("如果还有其他想测试的交互或反馈，请在此输入（选填）：")).not.toBeNull()
     expect(screen.getByText("2222")).not.toBeNull()

@@ -134,4 +134,37 @@ describe("FlowItemQuestionContent 参数折叠", () => {
     expect(screen.getByText("Multi 2")).not.toBeNull()
     expect(screen.getByText("Multi Description 2")).not.toBeNull()
   })
+
+  it("已完成状态下能正确回显所选选项的 description 说明", () => {
+    const content: ExecutionToolContent = {
+      toolName: "question",
+      args: {
+        questions: [
+          {
+            question: "线框图布局是否满足设计要求？",
+            options: [
+              { label: "批准线框图并继续", description: "布局符合预期，可以进行后续开发" },
+              { label: "需要调整线框图布局", description: "提出修改意见" },
+            ],
+          },
+        ],
+      },
+      answers: [
+        {
+          question: "线框图布局是否满足设计要求？",
+          answer: ["批准线框图并继续"],
+        },
+      ],
+      result:
+        '{"answers":[{"question":"线框图布局是否满足设计要求？","answer":["批准线框图并继续"]}]}',
+      durationMs: 50,
+      toolCallId: "call-question-done-desc",
+    }
+
+    render(<FlowItemQuestionContent content={content} />)
+
+    expect(screen.getByText("线框图布局是否满足设计要求？")).not.toBeNull()
+    expect(screen.getByText("→ 批准线框图并继续")).not.toBeNull()
+    expect(screen.getByText("布局符合预期，可以进行后续开发")).not.toBeNull()
+  })
 })

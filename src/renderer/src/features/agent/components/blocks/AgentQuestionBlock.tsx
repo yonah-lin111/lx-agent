@@ -135,14 +135,26 @@ export const AgentQuestionBlock = ({
                     </div>
                     {answers.length > 0 && (
                       <div className="agent-question-answered-answers-container flex flex-col gap-1">
-                        {answers.map((answer) => (
-                          <div
-                            key={answer}
-                            className="agent-question-answered-value min-w-0 break-words text-xs leading-relaxed text-white/70"
-                          >
-                            {answer}
-                          </div>
-                        ))}
+                        {answers.map((answer) => {
+                          const optionDesc = question.options?.find(
+                            (option) => option.label === answer,
+                          )?.description
+                          return (
+                            <div
+                              key={answer}
+                              className="agent-question-answered-value flex min-w-0 flex-col gap-0.5"
+                            >
+                              <span className="min-w-0 break-words text-xs leading-relaxed text-white/70">
+                                {answer}
+                              </span>
+                              {optionDesc && (
+                                <span className="agent-question-answered-desc min-w-0 break-words text-xs leading-normal text-white/45">
+                                  {optionDesc}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
