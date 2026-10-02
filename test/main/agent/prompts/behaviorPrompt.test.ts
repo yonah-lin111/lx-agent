@@ -33,6 +33,9 @@ describe("DEFAULT_BEHAVIOR_PROMPT (XML 行为基线)", () => {
     expect(DEFAULT_BEHAVIOR_PROMPT).toContain("`git reset --hard`")
     expect(DEFAULT_BEHAVIOR_PROMPT).toContain("`file_path:line_number`")
     expect(DEFAULT_BEHAVIOR_PROMPT).toContain("`wireframe`")
+    expect(DEFAULT_BEHAVIOR_PROMPT).toContain(
+      "Immediately after invoking `wireframe`, you MUST invoke the `question` tool",
+    )
     expect(DEFAULT_BEHAVIOR_PROMPT).toContain("`![alt](url)`")
     expect(DEFAULT_BEHAVIOR_PROMPT).toContain("`lx-image://local<absolute_path>`")
   })

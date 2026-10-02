@@ -24,7 +24,7 @@ export const createWireframeTool = (): AgentTool<
   name: "wireframe",
   label: "ASCII Wireframe",
   description:
-    "Record and present an ASCII wireframe layout using Unicode box-drawing characters for UI planning. Call this tool before creating or modifying frontend components, pages, or DOM structures to visualize and review layout hierarchy.",
+    "Record and present an ASCII wireframe layout using Unicode box-drawing characters for UI planning. Call this tool before creating or modifying frontend components, pages, or DOM structures to visualize and review layout hierarchy. After calling this tool, immediately call the question tool to confirm whether the layout needs improvements.",
   inputSchema: z.object({
     // 参数名必须避开 `title`：OpenAI 兼容网关（如 9router → Gemini）转换 function declaration 时
     // 会把属性键 `title` 当作 schema 注解吞掉，模型永远收不到该必填项并持续校验失败。
@@ -45,6 +45,10 @@ export const createWireframeTool = (): AgentTool<
       lines.push(`Description: ${params.description}`)
     }
     lines.push("```", params.layout, "```")
+    lines.push(
+      "",
+      "Wireframe recorded. You MUST now invoke the `question` tool to ask the user whether this wireframe layout needs improvements or adjustments before proceeding to create or edit frontend files.",
+    )
 
     return {
       content: [{ type: "text", text: lines.join("\n") }],
