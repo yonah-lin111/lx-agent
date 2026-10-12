@@ -27,6 +27,8 @@ describe("preload game API", () => {
     await api.game.rename(3, "标题")
     await api.game.remove(3)
     await api.game.markPlayed(3)
+    await api.game.saveKeymap(3, { a: "KeyX" })
+    await api.game.saveKeymap(3, null)
     await api.game.writeSave(3, saveBytes)
     await api.game.writeState(3, 2, stateBytes)
     await api.game.getRuntimeConfig()
@@ -38,6 +40,8 @@ describe("preload game API", () => {
       [GAME_CHANNELS.rename, 3, "标题"],
       [GAME_CHANNELS.remove, 3],
       [GAME_CHANNELS.markPlayed, 3],
+      [GAME_CHANNELS.saveKeymap, 3, { a: "KeyX" }],
+      [GAME_CHANNELS.saveKeymap, 3, null],
       [GAME_CHANNELS.writeSave, 3, saveBytes],
       [GAME_CHANNELS.writeState, 3, 2, stateBytes],
       [GAME_CHANNELS.getRuntimeConfig],

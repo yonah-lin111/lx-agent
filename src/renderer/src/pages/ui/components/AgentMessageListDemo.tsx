@@ -74,10 +74,13 @@ export const AgentMessageListDemo = (): React.JSX.Element => {
   }
 
   /**
-   * 删除指定消息。
+   * 撤销/删除最后一条消息所在轮次（演示用：移除最后一轮问答）。
    */
-  const handleDeleteMessage = (messageId: string): void => {
-    setMessages((current) => current.filter((message) => message.id !== messageId))
+  const handleUndoOption = (): void => {
+    setMessages((current) => {
+      const lastUserIndex = current.findLastIndex((message) => message.role === "user")
+      return lastUserIndex < 0 ? current : current.slice(0, lastUserIndex)
+    })
   }
 
   return (
@@ -99,7 +102,7 @@ export const AgentMessageListDemo = (): React.JSX.Element => {
             messages={messages}
             onSelectPrompt={() => {}}
             onEditMessage={handleEditMessage}
-            onDeleteMessage={handleDeleteMessage}
+            onUndoOption={handleUndoOption}
           />
         </div>
       </UiPreviewSection>

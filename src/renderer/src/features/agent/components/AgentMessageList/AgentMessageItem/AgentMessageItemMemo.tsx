@@ -32,6 +32,8 @@ export const AgentMessageItemMemo = memo(AgentMessageItem, (prev, next) => {
     prev.readOnly === next.readOnly &&
     prev.showScrollToBottom === next.showScrollToBottom &&
     prev.canContinue === next.canContinue &&
-    prev.suggestedQuestionContext === next.suggestedQuestionContext
+    prev.suggestedQuestionContext === next.suggestedQuestionContext &&
+    prev.sessionId === next.sessionId &&
+    prev.userMessageTimestamp === next.userMessageTimestamp
   )
 })

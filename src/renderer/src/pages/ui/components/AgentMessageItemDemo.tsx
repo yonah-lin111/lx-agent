@@ -111,7 +111,7 @@ export const AgentMessageItemDemo = (): React.JSX.Element => {
           <AgentMessageItem
             message={userMessage}
             onEdit={handleEditUserMessage}
-            onDelete={() => {}}
+            onUndoOption={() => {}}
           />
         </div>
       </UiPreviewSection>
@@ -120,12 +120,12 @@ export const AgentMessageItemDemo = (): React.JSX.Element => {
         description={t("uiPreview.demos.aiMessageDesc")}
       >
         <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#212121] p-3">
-          <AgentMessageItem message={assistantMessage} onDelete={() => {}} />
+          <AgentMessageItem message={assistantMessage} onUndoOption={() => {}} />
         </div>
       </UiPreviewSection>
       <UiPreviewSection title={t("agent.turnUndoneSummary")} description={t("agent.undoSummary")}>
         <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#212121] p-3">
-          <AgentMessageItem message={undoMessage} onDelete={() => {}} />
+          <AgentMessageItem message={undoMessage} onUndoOption={() => {}} />
         </div>
       </UiPreviewSection>
     </div>

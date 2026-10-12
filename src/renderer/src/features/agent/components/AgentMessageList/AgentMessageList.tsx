@@ -14,8 +14,13 @@ import {
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
 import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSuggestedPromptCards"
-import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
+import {
+  buildQaGroups,
+  findDeletableAssistantMessageId,
+  groupAgentMessages,
+} from "@/features/agent/messageGrouping"
 import type {
+  AgentUndoOption,
   ChatBlock,
   ChatMessage,
   ProposedPlanData,
@@ -48,7 +53,7 @@ export interface AgentMessageListProps {
   onEchoToInput?: (question: string) => void
   onSelectPrompt: (prompt: string) => void
   onEditMessage?: (messageId: string, newContent: string) => void
-  onDeleteMessage?: (messageId: string) => void
+  onUndoOption?: (option: AgentUndoOption) => void
   // 点击"从此分支"：从该用户轮切割复制历史到新会话。
   onFork?: (userMessageTimestamp: number) => void
   // 点击子代理 label 打开面板弹窗。
@@ -67,6 +72,8 @@ export interface AgentMessageListProps {
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   // 滚动导航状态变动通知（供外部按钮响应 disabled 状态更新）。
   onNavigationStateChange?: (state: { canScrollBottom: boolean }) => void
+  // 当前会话 id（文件修改回退等操作定位用；未落库会话缺省）。
+  sessionId?: string
 }
 
 const NEAR_BOTTOM_THRESHOLD = 250
@@ -87,7 +94,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       onEchoToInput,
       onSelectPrompt,
       onEditMessage,
-      onDeleteMessage,
+      onUndoOption,
       onFork,
       onOpenSubagent,
       isSubagentPanelOpen = false,
@@ -97,6 +104,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       onAcceptPlan,
       onApplyReviewFixes,
       onNavigationStateChange,
+      sessionId,
     },
     ref,
   ): React.JSX.Element => {
@@ -160,6 +168,11 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
     }, [messageGroups])
 
     const lastGroup = messageGroups.at(-1)
+    // 删除入口只出现在最后一条助手消息上（尾部撤销/压缩等条目不影响判定）。
+    const deletableAssistantId = useMemo(
+      () => findDeletableAssistantMessageId(messages),
+      [messages],
+    )
     // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙。
     const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
     // 各 QA 组的 DOM 引用（按组头消息 id 索引），用于侧边栏展开时的视口锚点恢复。
@@ -502,7 +515,6 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                             onEditMessage?.(id, newContent)
                             setEditingMessageId(null)
                           }}
-                          onDelete={onDeleteMessage}
                           onFork={canFork ? onFork : undefined}
                           onOpenSubagent={onOpenSubagent}
                         />
@@ -522,13 +534,17 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                           isLastGroupAi ? onSendSuggestedQuestion : undefined
                         }
                         onEchoToInput={isLastGroupAi ? onEchoToInput : undefined}
-                        onDelete={isLastGroupAi ? onDeleteMessage : undefined}
+                        onUndoOption={
+                          assistant.message.id === deletableAssistantId ? onUndoOption : undefined
+                        }
                         onOpenSubagent={onOpenSubagent}
                         canContinue={isLastGroupAi ? canContinue : false}
                         onContinue={isLastGroupAi ? onContinue : undefined}
                         onAcceptPlan={onAcceptPlan}
                         onApplyReviewFixes={onApplyReviewFixes}
                         hasSubsequentUserMessage={hasSubsequentUserMessage}
+                        sessionId={sessionId}
+                        userMessageTimestamp={userMessage?.timestamp}
                       />
                     )}
                   </div>

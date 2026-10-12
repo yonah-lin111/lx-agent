@@ -270,6 +270,50 @@ describe("gameRomService 快速存档读写", () => {
   })
 })
 
+describe("gameRomService 每游戏键位", () => {
+  it("导入时无覆盖，saveKeymap 落库后 list 与 rename 都能读回", () => {
+    const entry = importEntry("demo.gba")
+    const entryId = entry?.id ?? 0
+    expect(entry?.keymap).toBeNull()
+
+    const saved = service.saveKeymap(entryId, { up: "ArrowUp", a: "KeyX" })
+
+    expect(saved.keymap).toEqual({ up: "ArrowUp", a: "KeyX" })
+    expect(service.list()[0]?.keymap).toEqual({ up: "ArrowUp", a: "KeyX" })
+    expect(service.rename(entryId, "改名").keymap).toEqual({ up: "ArrowUp", a: "KeyX" })
+  })
+
+  it("空对象与 null 清空覆盖", () => {
+    const entry = importEntry("demo.gba")
+    const entryId = entry?.id ?? 0
+
+    service.saveKeymap(entryId, { a: "KeyX" })
+    expect(service.saveKeymap(entryId, {}).keymap).toBeNull()
+
+    service.saveKeymap(entryId, { a: "KeyX" })
+    expect(service.saveKeymap(entryId, null).keymap).toBeNull()
+  })
+
+  it("拒绝非法键位与不存在的条目", () => {
+    const entry = importEntry("demo.gba")
+    const entryId = entry?.id ?? 0
+
+    expect(() => service.saveKeymap(entryId, { nope: "KeyX" })).toThrow("INVALID_GAME_INPUT")
+    expect(() => service.saveKeymap(entryId, { a: "KeyNope" })).toThrow("INVALID_GAME_INPUT")
+    expect(() => service.saveKeymap(entryId, "KeyX")).toThrow("INVALID_GAME_INPUT")
+    expect(() => service.saveKeymap(999, { a: "KeyX" })).toThrow("GAME_ENTRY_NOT_FOUND")
+  })
+
+  it("落库数据损坏时按无覆盖读取，不阻塞列表", () => {
+    const entry = importEntry("demo.gba")
+    const entryId = entry?.id ?? 0
+    database.prepare("UPDATE game_rom_entry SET keymap = ? WHERE id = ?").run("{broken", entryId)
+
+    expect(service.list()[0]?.keymap).toBeNull()
+    expect(service.saveKeymap(entryId, { a: "KeyX" }).keymap).toEqual({ a: "KeyX" })
+  })
+})
+
 describe("gameRomService 旧布局重置", () => {
   it("无旧布局时不动作", () => {
     expect(service.resetLegacyLayout()).toBe(false)

@@ -15,6 +15,7 @@ vi.mock("@/services/gameRomService", () => ({
     rename: vi.fn(),
     remove: vi.fn(),
     markPlayed: vi.fn(),
+    saveKeymap: vi.fn(),
     writeSave: vi.fn(),
     writeState: vi.fn(),
   },
@@ -79,10 +80,13 @@ describe("game IPC handlers", () => {
     const saveBytes = new Uint8Array([1, 2, 3])
     const stateBytes = new Uint8Array([4, 5, 6])
 
+    const keymap = { a: "KeyX" }
+
     handlers.get(GAME_CHANNELS.list)?.({})
     handlers.get(GAME_CHANNELS.rename)?.({}, 3, "新标题")
     handlers.get(GAME_CHANNELS.remove)?.({}, 3)
     handlers.get(GAME_CHANNELS.markPlayed)?.({}, 3)
+    handlers.get(GAME_CHANNELS.saveKeymap)?.({}, 3, keymap)
     handlers.get(GAME_CHANNELS.writeSave)?.({}, 3, saveBytes)
     handlers.get(GAME_CHANNELS.writeState)?.({}, 3, 2, stateBytes)
 
@@ -90,8 +94,17 @@ describe("game IPC handlers", () => {
     expect(gameRomService.rename).toHaveBeenCalledWith(3, "新标题")
     expect(gameRomService.remove).toHaveBeenCalledWith(3)
     expect(gameRomService.markPlayed).toHaveBeenCalledWith(3)
+    expect(gameRomService.saveKeymap).toHaveBeenCalledWith(3, keymap)
     expect(gameRomService.writeSave).toHaveBeenCalledWith(3, saveBytes)
     expect(gameRomService.writeState).toHaveBeenCalledWith(3, 2, stateBytes)
+  })
+
+  it("saveKeymap 转发 null（恢复默认）与非法输入", async () => {
+    const { gameRomService } = await import("@/services/gameRomService")
+    const handlers = await registerHandlers()
+
+    handlers.get(GAME_CHANNELS.saveKeymap)?.({}, 5, null)
+    expect(gameRomService.saveKeymap).toHaveBeenCalledWith(5, null)
   })
 
   it("运行时配置返回 guest preload 的 file:// URL", async () => {

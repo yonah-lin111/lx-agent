@@ -93,4 +93,78 @@ describe("FlowItemQuestionContent 参数折叠", () => {
     // 展开后能看到参数
     expect(container.querySelector(".bg-black\\/40")).not.toBeNull()
   })
+
+  it("挂起状态下渲染 options 的 description 说明文字（单选与多选）", () => {
+    const content: ExecutionToolContent = {
+      toolName: "question",
+      args: {},
+      question: {
+        requestId: "req-desc",
+        toolCallId: "call-question-desc",
+        sessionId: "session-desc",
+        questions: [
+          {
+            question: "单选问题",
+            options: [
+              { label: "Option 1", description: "Description 1" },
+              { label: "Option 2", description: "Description 2" },
+            ],
+          },
+          {
+            question: "多选问题",
+            multiSelect: true,
+            options: [
+              { label: "Multi 1", description: "Multi Description 1" },
+              { label: "Multi 2", description: "Multi Description 2" },
+            ],
+          },
+        ],
+      },
+    }
+
+    render(<FlowItemQuestionContent content={content} />)
+
+    expect(screen.getByText("Option 1")).not.toBeNull()
+    expect(screen.getByText("Description 1")).not.toBeNull()
+    expect(screen.getByText("Option 2")).not.toBeNull()
+    expect(screen.getByText("Description 2")).not.toBeNull()
+
+    expect(screen.getByText("Multi 1")).not.toBeNull()
+    expect(screen.getByText("Multi Description 1")).not.toBeNull()
+    expect(screen.getByText("Multi 2")).not.toBeNull()
+    expect(screen.getByText("Multi Description 2")).not.toBeNull()
+  })
+
+  it("已完成状态下能正确回显所选选项的 description 说明", () => {
+    const content: ExecutionToolContent = {
+      toolName: "question",
+      args: {
+        questions: [
+          {
+            question: "线框图布局是否满足设计要求？",
+            options: [
+              { label: "批准线框图并继续", description: "布局符合预期，可以进行后续开发" },
+              { label: "需要调整线框图布局", description: "提出修改意见" },
+            ],
+          },
+        ],
+      },
+      answers: [
+        {
+          question: "线框图布局是否满足设计要求？",
+          answer: ["批准线框图并继续"],
+        },
+      ],
+      result:
+        '{"answers":[{"question":"线框图布局是否满足设计要求？","answer":["批准线框图并继续"]}]}',
+      durationMs: 50,
+      toolCallId: "call-question-done-desc",
+    }
+
+    render(<FlowItemQuestionContent content={content} />)
+
+    expect(screen.getByText("线框图布局是否满足设计要求？")).not.toBeNull()
+    expect(screen.getByText("→ 批准线框图并继续")).not.toBeNull()
+    expect(screen.getByText("布局符合预期，可以进行后续开发")).not.toBeNull()
+  })
 })

@@ -25,6 +25,7 @@ import { registerSkillHandlers } from "@/ipc/skillHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerUpdateHandlers } from "@/ipc/updateHandlers"
 import { registerUsageHandlers } from "@/ipc/usageHandlers"
+import { composeWindowTitle, resolveDevEnvLabel } from "@/lib/devEnvLabel"
 import { isDevRuntime, resolveDevUserDataDir } from "@/lib/runtimeMode"
 import { ensureLoginShellPath } from "@/lib/shellEnv"
 import { registerGameProtocol } from "@/protocols/gameProtocol"
@@ -34,6 +35,7 @@ import { gameRomService } from "@/services/gameRomService"
 import { notificationService } from "@/services/notificationService"
 import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
 import { startScreenshotCleanupScheduler } from "@/services/screenshotCleanupService"
+import { startSnapshotCleanupScheduler } from "@/services/snapshotCleanupService"
 import { terminalService } from "@/services/terminalService"
 import { updateService } from "@/services/updateService"
 
@@ -64,6 +66,14 @@ const createWindow = (): void => {
     },
   })
 
+  // 开发态窗口标题：拦截页面标题更新并追加 git 环境标签；打包态不注册，行为与现状一致。
+  if (devEnvLabel) {
+    window.webContents.on("page-title-updated", (event, title) => {
+      event.preventDefault()
+      window.setTitle(composeWindowTitle(title, devEnvLabel))
+    })
+  }
+
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(process.env.ELECTRON_RENDERER_URL)
     return
@@ -77,6 +87,9 @@ const isDev = isDevRuntime()
 if (isDev) {
   app.setPath("userData", resolveDevUserDataDir(app.getPath("appData"), app.getAppPath()))
 }
+
+// 开发态窗口标题附加 git 环境标签（分支/工作区），便于区分多 worktree 实例；打包态为 null（不注册拦截）。
+const devEnvLabel = isDev ? resolveDevEnvLabel(app.getAppPath()) : null
 
 // 同一 worktree 允许并行的 dev 实例数（基础槽位 + -2…-N 顺延槽位）。
 const MAX_DEV_INSTANCES = 10
@@ -149,12 +162,14 @@ if (!hasSingleInstanceLock) {
     }
 
     const stopScreenshotCleanup = startScreenshotCleanupScheduler()
+    const stopSnapshotCleanup = startSnapshotCleanupScheduler()
 
     // 打包态 GUI 启动不继承终端环境：先解析登录 shell PATH 再连 MCP server（幂等；失败降级不阻塞），
     // 否则 nvm/homebrew 安装的 MCP 命令（npx、codegraph 等）spawn 报 ENOENT。
     void ensureLoginShellPath().then(() => mcpManager.ensureConnected())
     app.on("will-quit", () => {
       stopScreenshotCleanup()
+      stopSnapshotCleanup()
       // 生命周期 hook：退出路径 best-effort 派发 SessionEnd（quit，不等待异步工作）。
       agentRunner.disposeAll("quit")
       terminalService.disposeAll()

@@ -4,7 +4,7 @@ export type {
   AgentInputProjectPanelProps,
   AgentInputSessionPanelProps,
   AgentSkillMentionPanelProps,
-  AgentUndoConfirmPanelProps,
+  AgentUndoOptionsPanelProps,
 } from "./components"
 export {
   AgentInputCommandPanel,
@@ -14,7 +14,7 @@ export {
   AgentInputProjectPanel,
   AgentInputSessionPanel,
   AgentSkillMentionPanel,
-  AgentUndoConfirmPanel,
+  AgentUndoOptionsPanel,
 } from "./components"
 export type {
   AgentHistoryPromptItem,

@@ -50,8 +50,13 @@ export const agentApi: AgentApi["agent"] = {
   deleteSession: (sessionId: string) => ipcRenderer.invoke(AGENT_CHANNELS.deleteSession, sessionId),
   deleteSessions: (sessionIds: string[]) =>
     ipcRenderer.invoke(AGENT_CHANNELS.deleteSessions, sessionIds),
-  deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.deleteMessageTurn, sessionId, userMessageTimestamp),
+  deleteMessageTurn: (sessionId: string, userMessageTimestamp: number, revertFiles: boolean) =>
+    ipcRenderer.invoke(
+      AGENT_CHANNELS.deleteMessageTurn,
+      sessionId,
+      userMessageTimestamp,
+      revertFiles,
+    ),
   forkSession: (sessionId: string, userMessageTimestamp?: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.forkSession, sessionId, userMessageTimestamp),
   getMcpStatus: () => ipcRenderer.invoke(AGENT_CHANNELS.getMcpStatus),
@@ -95,6 +100,10 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.questionResponse, response),
   openFileAt: (filePath: string, line: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.openFileAt, filePath, line),
+  revertFileChange: (sessionId: string, userMessageTimestamp: number, filePath: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.revertFileChange, sessionId, userMessageTimestamp, filePath),
+  revertTurnFiles: (sessionId: string, userMessageTimestamp: number) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.revertTurnFiles, sessionId, userMessageTimestamp),
   showItemInFolder: (filePath: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.showItemInFolder, filePath),
   getContextUsage: (selection?: ModelSelection, sessionId?: string, tabId?: string) =>

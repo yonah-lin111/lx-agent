@@ -250,7 +250,7 @@ describe("agentRunner todo 清单", () => {
 
     holder.llmMessages = []
     holder.streamResponses = [assistant([{ type: "text", text: "删轮后的新对话" }])]
-    agentRunner.deleteMessageTurn(sessionId, firstUserTimestamp)
+    agentRunner.deleteMessageTurn(sessionId, firstUserTimestamp, false)
 
     // todo entry 已随轮删除。
     const todoRows = holder

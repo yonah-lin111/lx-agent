@@ -32,7 +32,7 @@ describe("/cd 命令测试", () => {
     onChangeRef: { current: vi.fn() },
     onSendRef: { current: vi.fn() },
     setActiveMode: vi.fn(),
-    setUndoConfirmIndex: vi.fn(),
+    setUndoOptionIndex: vi.fn(),
     updatePanelPosition: vi.fn(),
     setBlockCommands: vi.fn(),
     setBlockCommandPosition: vi.fn(),

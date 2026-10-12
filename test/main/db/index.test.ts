@@ -38,7 +38,17 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14])
+    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14, 15])
+  })
+
+  it("迁移后 game_rom_entry 增加 keymap 列", () => {
+    database = new Database(":memory:")
+    runMigrations(database)
+
+    const columns = database.prepare("PRAGMA table_info(game_rom_entry)").all() as Array<{
+      name: string
+    }>
+    expect(columns.some((column) => column.name === "keymap")).toBe(true)
   })
 
   it("迁移后 project_item 移除 sort_order 并保留 worktree_path，project_folder 增加 parent_folder_id", () => {
@@ -105,7 +115,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14])
+    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14, 15])
     const columns = database.prepare("PRAGMA table_info(project_item)").all() as Array<{
       name: string
     }>
@@ -121,7 +131,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14])
+    expect(versions).toEqual([1, 2, 3, 6, 7, 8, 9, 10, 11, 13, 14, 15])
   })
 
   it("版本号被其他迁移占用时告警并跳过该迁移", () => {
@@ -135,17 +145,16 @@ describe("runMigrations", () => {
     `)
     database
       .prepare("INSERT INTO _migrations (version, name, applied_at) VALUES (?, ?, ?)")
-      .run(13, "create_arcade_rom_entry", "2026-09-17T00:00:00.000Z")
+      .run(15, "add_arcade_rom_keymap", "2026-09-17T00:00:00.000Z")
 
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     runMigrations(database)
 
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('已登记为 "create_arcade_rom_entry"'))
-    const tables = database
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
-      .all()
-      .map((row) => (row as { name: string }).name)
-    expect(tables).not.toContain("game_rom_entry")
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('已登记为 "add_arcade_rom_keymap"'))
+    const columns = database.prepare("PRAGMA table_info(game_rom_entry)").all() as Array<{
+      name: string
+    }>
+    expect(columns.some((column) => column.name === "keymap")).toBe(false)
     warn.mockRestore()
   })
 })

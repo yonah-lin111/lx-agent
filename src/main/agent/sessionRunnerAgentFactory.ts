@@ -19,6 +19,7 @@ import { createCompactionSummaryMessage } from "./compaction"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { Agent } from "./core/agent"
 import type { Model } from "./core/types"
+import { buildPendingFileRevertBlock } from "./fileRevertMarks"
 import { hookResultMessages, hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
 import { sanitizeMcpNameSegment } from "./mcp/mcpManager"
@@ -239,8 +240,15 @@ export const buildSessionAgent = (
       const prunedMessages = pruneHistoricalToolOutputs(messages)
       const todoList = host.turnStore.getTodo()
       const todoMessage = todoList.length > 0 ? [createTodoStateMessage(todoList)] : []
+      // 未告知 agent 的文件回退提示（仅卡片回退产生；该轮 flush 成功后标记已告知，只注入一次）。
+      const revertBlock = host.currentSessionId
+        ? buildPendingFileRevertBlock(host.currentSessionId)
+        : null
+      const revertMessage: AgentMessage[] = revertBlock
+        ? [{ role: "user", content: revertBlock, timestamp: Date.now() }]
+        : []
       const boundary = host.compactor.getBoundary()
-      if (!boundary) return [...todoMessage, ...prunedMessages]
+      if (!boundary) return [...todoMessage, ...revertMessage, ...prunedMessages]
       const messageSeqs = host.turnStore.getMessageSeqs()
       const kept = prunedMessages.filter((_, index) => {
         const seq = messageSeqs[index] ?? -1
@@ -254,6 +262,7 @@ export const buildSessionAgent = (
           boundary.manual,
           boundary.model,
         ),
+        ...revertMessage,
         ...kept,
       ]
     },

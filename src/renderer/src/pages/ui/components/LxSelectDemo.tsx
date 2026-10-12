@@ -77,6 +77,7 @@ export const LxSelectDemo = (): React.JSX.Element => {
       >
         <div className="grid gap-3 lg:grid-cols-2">
           <LxSelect value={value} onChange={setValue} options={modelOptions} />
+          <LxSelect searchable={false} value={value} onChange={setValue} options={modelOptions} />
           <LxSelect
             value="disabled"
             onChange={() => {}}

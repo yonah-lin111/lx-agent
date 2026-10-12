@@ -134,6 +134,8 @@ const api: ProjectApi &
     getTokenSaverSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getTokenSaverSettings),
     saveTokenSaverSettings: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.saveTokenSaverSettings, settings),
+    getEnvironmentVersions: (options) =>
+      ipcRenderer.invoke(SETTINGS_CHANNELS.getEnvironmentVersions, options),
   },
 
   agent: agentApi,

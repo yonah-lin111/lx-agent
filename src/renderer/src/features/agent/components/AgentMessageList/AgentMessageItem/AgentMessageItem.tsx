@@ -19,7 +19,7 @@ export const AgentMessageItem = ({
   onStartEdit,
   onCancelEdit,
   onEdit,
-  onDelete,
+  onUndoOption,
   onFork,
   onOpenSubagent,
   readOnly = false,
@@ -29,9 +29,17 @@ export const AgentMessageItem = ({
   onAcceptPlan,
   onApplyReviewFixes,
   hasSubsequentUserMessage = false,
+  sessionId,
+  userMessageTimestamp,
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
   const settings = useModelSettings()
+
+  // 文件修改回退上下文：会话与用户消息时间戳齐备时提供回退能力。
+  const fileChangeRevert =
+    sessionId && userMessageTimestamp !== undefined
+      ? { sessionId, userMessageTimestamp }
+      : undefined
 
   // 上下文压缩摘要块：非交互（不可编辑/删除），诚实地标注"此处已压缩"；压缩中展示 loading 占位。
   if (message.role === "compactionSummary") {
@@ -82,7 +90,7 @@ export const AgentMessageItem = ({
       suggestedQuestionContext={suggestedQuestionContext}
       onSendSuggestedQuestion={onSendSuggestedQuestion}
       onEchoToInput={onEchoToInput}
-      onDelete={onDelete}
+      onUndoOption={onUndoOption}
       onOpenSubagent={onOpenSubagent}
       readOnly={readOnly}
       showScrollToBottom={showScrollToBottom}
@@ -91,6 +99,7 @@ export const AgentMessageItem = ({
       onAcceptPlan={onAcceptPlan}
       onApplyReviewFixes={onApplyReviewFixes}
       hasSubsequentUserMessage={hasSubsequentUserMessage}
+      fileChangeRevert={fileChangeRevert}
     />
   )
 }

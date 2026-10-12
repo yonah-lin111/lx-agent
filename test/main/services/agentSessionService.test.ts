@@ -633,4 +633,41 @@ describe("agentSessionService", () => {
     // 回滚：新会话行不应残留。
     expect(service.listSessions().length).toBe(before)
   })
+
+  it("listSnapshotFilesChanged 返回全部快照行的变更 JSON", () => {
+    const sessionId = randomUUID()
+    const now = new Date().toISOString()
+    service.insertSession({
+      externalId: sessionId,
+      projectId: null,
+      page: "/",
+      title: "t",
+      cwd: "/proj",
+      createdAt: now,
+      updatedAt: now,
+    })
+    service.insertSnapshot({
+      externalId: "s1",
+      sessionId,
+      userMessageTimestamp: 100,
+      hashStart: "",
+      hashEnd: "",
+      filesChanged: '[{"status":"M","file":"a.ts","blob":"aaa"}]',
+      createdAt: now,
+    })
+    service.insertSnapshot({
+      externalId: "s2",
+      sessionId,
+      userMessageTimestamp: 200,
+      hashStart: "tree",
+      hashEnd: "tree2",
+      filesChanged: '[{"status":"A","file":"b.ts"}]',
+      createdAt: now,
+    })
+
+    expect(service.listSnapshotFilesChanged().sort()).toEqual([
+      '[{"status":"A","file":"b.ts"}]',
+      '[{"status":"M","file":"a.ts","blob":"aaa"}]',
+    ])
+  })
 })

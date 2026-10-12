@@ -64,6 +64,7 @@ describe("wireframe tool", () => {
     expect(text).toContain("# Wireframe: Dashboard Overview")
     expect(text).toContain("Description: Header on top, content below")
     expect(text).toContain("```\n" + layout + "\n```")
+    expect(text).toContain("Wireframe recorded. You MUST now invoke the `question` tool")
 
     expect(result.details).toEqual({
       title: "Dashboard Overview",
@@ -84,11 +85,26 @@ describe("wireframe tool", () => {
     expect(text).toContain("# Wireframe: Small Box")
     expect(text).not.toContain("Description:")
     expect(text).toContain("```\n" + layout + "\n```")
+    expect(text).toContain("Wireframe recorded. You MUST now invoke the `question` tool")
     expect(result.details).toEqual({
       title: "Small Box",
       layout,
       description: undefined,
     })
+  })
+
+  it("includes explicit question tool instruction in description and return text", async () => {
+    const tool = createWireframeTool()
+    expect(tool.description).toContain("immediately call the question tool")
+
+    const result = await tool.execute("call_789", {
+      name: "Navigation Header",
+      layout: "┌─┐\n└─┘",
+    })
+    const text = (result.content[0] as { type: "text"; text: string }).text
+    expect(text).toContain(
+      "Wireframe recorded. You MUST now invoke the `question` tool to ask the user whether this wireframe layout needs improvements or adjustments before proceeding to create or edit frontend files.",
+    )
   })
 
   it("is registered in ALL_TOOL_NAMES, createRegistry, and DEFAULT_TOOLS", () => {

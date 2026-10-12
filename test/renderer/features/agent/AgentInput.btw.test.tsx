@@ -68,7 +68,6 @@ const renderInput = async (options: {
           canUseBtw={options.canUseBtw ?? true}
           onStop={vi.fn()}
           onClear={vi.fn()}
-          onUndo={vi.fn()}
           onCompact={vi.fn()}
           selectedModel="m"
           onModelChange={vi.fn()}

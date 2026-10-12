@@ -430,6 +430,38 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       .prepare("DELETE FROM agent_snapshot WHERE session_id = ? AND user_message_timestamp = ?")
       .run(sessionId, userMessageTimestamp)
   },
+
+  // 全量快照行的变更 JSON（快照垃圾回收的存活根集合，原样返回由调用方解析）。
+  listSnapshotFilesChanged(): string[] {
+    const rows = getConnection()
+      .prepare("SELECT files_changed FROM agent_snapshot")
+      .all() as Array<{ files_changed: string }>
+    return rows.map((row) => row.files_changed)
+  },
+
+  // 指定会话的全部快照行（按轮次升序；回退标记读改写、注入与渲染共用）。
+  listSnapshotRows(
+    sessionId: string,
+  ): Array<{ user_message_timestamp: number; files_changed: string }> {
+    return getConnection()
+      .prepare(
+        "SELECT user_message_timestamp, files_changed FROM agent_snapshot WHERE session_id = ? ORDER BY user_message_timestamp ASC",
+      )
+      .all(sessionId) as Array<{ user_message_timestamp: number; files_changed: string }>
+  },
+
+  // 覆写指定轮次快照的变更列表 JSON（回退标记读改写用）。
+  updateSnapshotFilesChanged(
+    sessionId: string,
+    userMessageTimestamp: number,
+    filesChanged: string,
+  ): void {
+    getConnection()
+      .prepare(
+        "UPDATE agent_snapshot SET files_changed = ? WHERE session_id = ? AND user_message_timestamp = ?",
+      )
+      .run(filesChanged, sessionId, userMessageTimestamp)
+  },
 })
 
 // 生成业务键（供 agent_session / entry / call 使用）。

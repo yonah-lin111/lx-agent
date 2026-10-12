@@ -209,7 +209,6 @@ export const AgentBtwPanel = ({
         onSend={handleSend}
         onStop={() => undefined}
         onClear={() => undefined}
-        onUndo={() => undefined}
         onCompact={() => undefined}
         selectedModel={selectedModel}
         selectedVariant={selectedVariant}

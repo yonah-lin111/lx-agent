@@ -5,6 +5,8 @@ import type {
   AgentForkResult,
   AgentMessage,
   AgentRestoredSession,
+  AgentRevertFileResult,
+  AgentRevertTurnFilesResult,
   AgentSendContext,
   AgentSendOptions,
   AgentSendResult,
@@ -99,8 +101,12 @@ export const agentApi = {
   deleteSession: (sessionId: string): Promise<void> => window.api.agent.deleteSession(sessionId),
   deleteSessions: (sessionIds: string[]): Promise<void> =>
     window.api.agent.deleteSessions(sessionIds),
-  deleteMessageTurn: (sessionId: string, userMessageTimestamp: number): Promise<void> =>
-    window.api.agent.deleteMessageTurn(sessionId, userMessageTimestamp),
+  deleteMessageTurn: (
+    sessionId: string,
+    userMessageTimestamp: number,
+    revertFiles: boolean,
+  ): Promise<void> =>
+    window.api.agent.deleteMessageTurn(sessionId, userMessageTimestamp, revertFiles),
   forkSession: (sessionId: string, userMessageTimestamp?: number): Promise<AgentForkResult> =>
     window.api.agent.forkSession(sessionId, userMessageTimestamp),
   getMcpStatus: (): Promise<McpServerStatusItem[]> =>
@@ -141,6 +147,17 @@ export const agentApi = {
     window.api.agent.questionRespond(response),
   openFileAt: (filePath: string, line: number): Promise<{ ok: boolean }> =>
     window.api.agent.openFileAt(filePath, line),
+  revertFileChange: (
+    sessionId: string,
+    userMessageTimestamp: number,
+    filePath: string,
+  ): Promise<AgentRevertFileResult> =>
+    window.api.agent.revertFileChange(sessionId, userMessageTimestamp, filePath),
+  revertTurnFiles: (
+    sessionId: string,
+    userMessageTimestamp: number,
+  ): Promise<AgentRevertTurnFilesResult> =>
+    window.api.agent.revertTurnFiles(sessionId, userMessageTimestamp),
   showItemInFolder: (filePath: string): Promise<{ ok: boolean }> =>
     window.api.agent.showItemInFolder(filePath),
   getContextUsage: (

@@ -15,7 +15,13 @@ const VENDORED_EMULATOR_SOURCE = readFileSync(
 
 // 单个已导入游戏的模拟器设置键：ejs-<gameId>-<core>-<gameName>-settings（core 段随版本可能变化）。
 const SETTINGS_KEY = "ejs-lx-game-3-gba-lx-game-3-settings"
-const KEYMAP_VERSION_KEY = "lx-game-keymap-version"
+
+// 构造携带 keys 参数的宿主页地址（宿主按游戏下发的完整键位表）。
+const wrapperSearch = (keys?: Record<string, number>): string => {
+  const params = new URLSearchParams({ entry: "7", lang: "zh-CN", color: "#38bdf8" })
+  if (keys) params.set("keys", JSON.stringify(keys))
+  return `?${params.toString()}`
+}
 
 interface StorageLike {
   readonly length: number
@@ -34,6 +40,8 @@ interface FakeEmulator {
   isPopupOpen: () => boolean
   localization: (text: string) => string
   displayMessage: (message: string) => void
+  controls: Record<string, Record<string, { value: number; value2?: string }>>
+  checkGamepadInputs: () => void
   gameManager: {
     simulateInput: (player: number, slot: number, value: number) => void
     toggleFastForward: (enabled: number) => void
@@ -66,6 +74,7 @@ interface LoadOptions {
   menuDisplay?: string
   settingValue?: string
   popupOpen?: boolean
+  search?: string
   fetchImpl?: (url: string) => Promise<FakeFetchResponse>
 }
 
@@ -103,6 +112,8 @@ const loadWrapper = (options: LoadOptions = {}) => {
   const localization = vi.fn((text: string) => text)
   const displayMessage = vi.fn()
   const report = vi.fn()
+  const checkGamepadInputs = vi.fn()
+  const messageCallbacks: Array<(message: unknown) => void> = []
   const emulator: FakeEmulator = {
     started: options.started ?? true,
     paused: options.paused ?? false,
@@ -111,6 +122,8 @@ const loadWrapper = (options: LoadOptions = {}) => {
     isPopupOpen: () => options.popupOpen ?? false,
     localization,
     displayMessage,
+    controls: {},
+    checkGamepadInputs,
     gameManager: {
       simulateInput,
       toggleFastForward,
@@ -123,7 +136,7 @@ const loadWrapper = (options: LoadOptions = {}) => {
   }
 
   const windowStub = {
-    location: { search: "?entry=7&lang=zh-CN&color=%2338bdf8" },
+    location: { search: options.search ?? wrapperSearch() },
     localStorage: storage,
     fetch: (url: string) =>
       options.fetchImpl ? options.fetchImpl(url) : Promise.reject(new Error("offline")),
@@ -146,7 +159,10 @@ const loadWrapper = (options: LoadOptions = {}) => {
       return timeouts.length
     },
     clearTimeout: vi.fn(),
-    lxGameBridge: { report, onMessage: vi.fn() },
+    lxGameBridge: {
+      report,
+      onMessage: (callback: (message: unknown) => void) => messageCallbacks.push(callback),
+    },
     EJS_emulator: emulator,
     EJS_defaultControls: undefined as
       | Record<string, Record<string, { value: number; value2?: string }>>
@@ -179,6 +195,10 @@ const loadWrapper = (options: LoadOptions = {}) => {
     localization,
     displayMessage,
     report,
+    checkGamepadInputs,
+    sendMessage: (message: unknown): void => {
+      for (const callback of messageCallbacks) callback(message)
+    },
     timers,
     flushTimeouts: (): void => {
       while (timeouts.length > 0) {
@@ -269,58 +289,87 @@ describe("模拟器宿主页默认键位", () => {
     expect(buttons.saveSavFiles).toBe(false)
     expect(buttons.loadSavFiles).toBe(false)
   })
+
+  it("隐藏 EmulatorJS 自带的 Control Settings 改键入口（改键统一走应用面板）", () => {
+    expect(loadWrapper().window.EJS_Buttons?.gamepad).toBe(false)
+  })
 })
 
-describe("模拟器宿主页键位迁移", () => {
-  it("把已落盘的 controlSettings 换成新默认映射，保留其余设置", () => {
-    const legacyBlob = JSON.stringify({
-      controlSettings: {
-        4: { value: 38, value2: "DPAD_UP" },
-        8: { value: 90, value2: "BUTTON_1" },
-      },
-      settings: { volume: 0.4, shader: "disabled" },
-      cheats: [{ desc: "demo", code: "AAAA", checked: true }],
-    })
-    const globalSettings = JSON.stringify({ volume: 0.4, muted: false })
-    const harness = loadWrapper({
-      storageSeed: {
-        [SETTINGS_KEY]: legacyBlob,
-        "ejs-lx-game-9-mgba-lx-game-9-settings": JSON.stringify({ settings: {}, cheats: [] }),
-        "ejs-other-settings": JSON.stringify({ manual: true }),
-        "ejs-settings": globalSettings,
-      },
-    })
+describe("模拟器宿主页每游戏键位", () => {
+  it("URL keys 参数覆盖对应动作，其余保持默认", () => {
+    const harness = loadWrapper({ search: wrapperSearch({ up: 38, a: 88, pause: 80 }) })
+    const player = (harness.window.EJS_defaultControls?.["0"] ?? {}) as Record<
+      string,
+      { value: number }
+    >
 
-    const migrated = JSON.parse(harness.storage.getItem(SETTINGS_KEY) as string)
-    expect(migrated.controlSettings).toEqual(harness.window.EJS_defaultControls)
-    // 结构必须是 玩家 → 槽位；扁平结构会让 EmulatorJS 的控制遍历崩溃。
-    expect(migrated.controlSettings[0][8]).toEqual({ value: 74, value2: "BUTTON_1" })
-    expect(migrated.controlSettings[1]).toEqual({})
-    expect(migrated.settings).toEqual({ volume: 0.4, shader: "disabled" })
-    expect(migrated.cheats).toEqual([{ desc: "demo", code: "AAAA", checked: true }])
-    expect(harness.storage.getItem(KEYMAP_VERSION_KEY)).toBe("3")
-
-    // 无 controlSettings 的游戏设置与非游戏键一律不动。
-    expect(
-      JSON.parse(harness.storage.getItem("ejs-lx-game-9-mgba-lx-game-9-settings") as string),
-    ).toEqual({ settings: {}, cheats: [] })
-    expect(harness.storage.getItem("ejs-other-settings")).toBe(JSON.stringify({ manual: true }))
-    expect(harness.storage.getItem("ejs-settings")).toBe(globalSettings)
+    expect(player[4]?.value).toBe(38)
+    expect(player[8]?.value).toBe(88)
+    expect(player[6]?.value).toBe(65)
   })
 
-  it("迁移标记已写入时不再覆盖用户在模拟器里的手动改键", () => {
-    const userBlob = JSON.stringify({
+  it("非法 keys 参数回退默认键位", () => {
+    const harness = loadWrapper({ search: "?entry=7&keys=not-json" })
+    const player = (harness.window.EJS_defaultControls?.["0"] ?? {}) as Record<
+      string,
+      { value: number }
+    >
+
+    expect(player[4]?.value).toBe(87)
+    expect(player[8]?.value).toBe(74)
+  })
+
+  it("ready / onGameStart 把应用侧键位写入运行中的模拟器，覆盖存量 localStorage 设置", () => {
+    const storedBlob = JSON.stringify({
       controlSettings: { 8: { value: 88, value2: "BUTTON_1" } },
-      settings: {},
+      settings: { volume: 0.4 },
       cheats: [],
     })
     const harness = loadWrapper({
-      storageSeed: { [SETTINGS_KEY]: userBlob, [KEYMAP_VERSION_KEY]: "3" },
+      search: wrapperSearch({ a: 80 }),
+      storageSeed: { [SETTINGS_KEY]: storedBlob },
     })
 
-    expect(JSON.parse(harness.storage.getItem(SETTINGS_KEY) as string).controlSettings).toEqual({
-      8: { value: 88, value2: "BUTTON_1" },
+    harness.window.EJS_ready?.()
+    expect(harness.emulator.controls[0]?.[8]).toEqual({ value: 80, value2: "BUTTON_1" })
+    expect(harness.checkGamepadInputs).toHaveBeenCalled()
+
+    harness.emulator.controls = {}
+    harness.window.EJS_onGameStart?.()
+    expect(harness.emulator.controls[0]?.[8]).toEqual({ value: 80, value2: "BUTTON_1" })
+  })
+
+  it("不改写 localStorage 中的存量设置（旧模拟器内改键不迁移）", () => {
+    const storedBlob = JSON.stringify({
+      controlSettings: { 8: { value: 88, value2: "BUTTON_1" } },
+      settings: { volume: 0.4 },
+      cheats: [],
     })
+    const harness = loadWrapper({ storageSeed: { [SETTINGS_KEY]: storedBlob } })
+
+    harness.window.EJS_ready?.()
+    harness.window.EJS_onGameStart?.()
+
+    expect(harness.storage.getItem(SETTINGS_KEY)).toBe(storedBlob)
+  })
+
+  it("宿主 keymap 消息即时替换控制映射与热键", () => {
+    const harness = loadWrapper()
+
+    harness.sendMessage({ type: "keymap", keys: { a: 80, turboA: 70, speed: 72, pause: 80 } })
+
+    expect(harness.emulator.controls[0]?.[8]).toEqual({ value: 80, value2: "BUTTON_1" })
+    harness.press("keydown", 70)
+    expect(Array.from(harness.timers.values()).map((timer) => timer.delay)).toEqual([50])
+    harness.tick()
+    expect(harness.simulateInput).toHaveBeenLastCalledWith(0, 8, 1)
+
+    harness.press("keydown", 72)
+    harness.flushTimeouts()
+    expect(harness.setFastForwardRatio).toHaveBeenLastCalledWith(2)
+
+    harness.press("keydown", 80)
+    expect(harness.report).toHaveBeenLastCalledWith({ type: "escape" })
   })
 })
 
@@ -352,6 +401,22 @@ describe("模拟器宿主页连点", () => {
     const harness = loadWrapper()
 
     harness.press("keydown", 73)
+    harness.tick()
+    expect(harness.simulateInput).toHaveBeenLastCalledWith(0, 0, 1)
+  })
+
+  it("连点键可被每游戏键位重绑，默认 U/I 失效", () => {
+    const harness = loadWrapper({ search: wrapperSearch({ turboA: 70, turboB: 71 }) })
+
+    harness.press("keydown", 85)
+    harness.press("keydown", 73)
+    expect(harness.timers.size).toBe(0)
+
+    harness.press("keydown", 70)
+    harness.tick()
+    expect(harness.simulateInput).toHaveBeenLastCalledWith(0, 8, 1)
+
+    harness.press("keydown", 71)
     harness.tick()
     expect(harness.simulateInput).toHaveBeenLastCalledWith(0, 0, 1)
   })
@@ -418,6 +483,18 @@ describe("模拟器宿主页 ESC 退出", () => {
   it("模拟器自身弹窗打开时 ESC 不外泄", () => {
     const harness = loadWrapper({ popupOpen: true })
 
+    harness.pressEscape()
+    expect(harness.report).not.toHaveBeenCalled()
+  })
+
+  it("暂停键可被每游戏键位重绑，默认 ESC 失效", () => {
+    const harness = loadWrapper({ search: wrapperSearch({ pause: 80 }) })
+
+    const rebound = harness.press("keydown", 80)
+    expect(harness.report).toHaveBeenLastCalledWith({ type: "escape" })
+    expect(rebound.preventDefault).toHaveBeenCalled()
+
+    harness.report.mockClear()
     harness.pressEscape()
     expect(harness.report).not.toHaveBeenCalled()
   })
@@ -580,17 +657,29 @@ describe("注入键位与 vendored EmulatorJS 控制链路", () => {
     expect(self.controls[0][4].value).toBe(87)
   })
 
-  it("迁移写回的存量设置符合 EmulatorJS 控制链路预期", () => {
-    const legacyBlob = JSON.stringify({
-      controlSettings: { 4: { value: 38, value2: "DPAD_UP" } },
-      settings: { volume: 0.4 },
-      cheats: [],
-    })
-    const harness = loadWrapper({ storageSeed: { [SETTINGS_KEY]: legacyBlob } })
-    const migrated = JSON.parse(harness.storage.getItem(SETTINGS_KEY) as string)
+  it("每游戏键位经真实 setupKeys 归一化后派发到正确槽位", () => {
+    const harness = loadWrapper({ search: wrapperSearch({ a: 70, up: 38 }) })
+    const controls = harness.window.EJS_defaultControls as Record<string, unknown>
 
-    const { self } = createVendoredControlHarness(migrated.controlSettings)
-    expect(self.controls[0][8].value).toBe(74)
+    const { prototype, self } = createVendoredControlHarness(controls)
+    expect(self.controls[0][8].value).toBe(70)
+    expect(self.controls[0][4].value).toBe(38)
+
+    prototype.keyChange.call(self, {
+      keyCode: 70,
+      repeat: false,
+      preventDefault: vi.fn(),
+      type: "keydown",
+    })
+    expect(self.gameManager.simulateInput).toHaveBeenLastCalledWith(0, 8, 1)
+  })
+
+  it("keymap 消息更新后的控制映射符合 EmulatorJS 控制链路预期", () => {
+    const harness = loadWrapper()
+    harness.sendMessage({ type: "keymap", keys: { a: 70 } })
+
+    const { self } = createVendoredControlHarness(harness.emulator.controls)
+    expect(self.controls[0][8].value).toBe(70)
     expect(self.controls[1]).toEqual({})
   })
 
@@ -682,5 +771,16 @@ describe("模拟器宿主页倍速", () => {
     expect(harness.setFastForwardRatio).toHaveBeenLastCalledWith(1)
     expect(harness.toggleFastForward).toHaveBeenLastCalledWith(0)
     expect(harness.report).toHaveBeenCalledWith({ type: "speed", ratio: 1 })
+  })
+
+  it("倍速键可被每游戏键位重绑，默认 Tab 失效", () => {
+    const harness = loadWrapper({ search: wrapperSearch({ speed: 72 }) })
+
+    harness.press("keydown", 9)
+    expect(harness.setFastForwardRatio).not.toHaveBeenCalled()
+
+    harness.press("keydown", 72)
+    harness.flushTimeouts()
+    expect(harness.setFastForwardRatio).toHaveBeenLastCalledWith(2)
   })
 })

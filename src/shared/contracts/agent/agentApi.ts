@@ -22,6 +22,8 @@ import type {
   AgentContextUsage,
   AgentForkResult,
   AgentRestoredSession,
+  AgentRevertFileResult,
+  AgentRevertTurnFilesResult,
   AgentSendContext,
   AgentSendOptions,
   AgentSendResult,
@@ -99,8 +101,12 @@ export interface AgentApi {
     deleteSession: (sessionId: string) => Promise<void>
     // 批量删除会话（逐条复用单删的完整清理链；空数组为空操作）。
     deleteSessions: (sessionIds: string[]) => Promise<void>
-    // 删除一轮对话：以该轮用户消息的 timestamp 定位（问题 + 回答 + 工具调用级联删除）。
-    deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) => Promise<void>
+    // 删除一轮对话：以该轮用户消息的 timestamp 定位（问题 + 回答 + 工具调用级联删除）；revertFiles 为显式回退选择。
+    deleteMessageTurn: (
+      sessionId: string,
+      userMessageTimestamp: number,
+      revertFiles: boolean,
+    ) => Promise<void>
     // 会话分支：从指定用户轮（timestamp 定位）切割复制历史到新会话；不传 timestamp = 整会话复制（v1 UI 不暴露）。
     forkSession: (sessionId: string, userMessageTimestamp?: number) => Promise<AgentForkResult>
     // 获取全部 MCP server 的连接状态。
@@ -164,6 +170,17 @@ export interface AgentApi {
     questionRespond: (response: QuestionResponse) => Promise<{ ok: boolean }>
     // 用系统默认编辑器打开文件并定位到行（LSP 结果跳转）。
     openFileAt: (filePath: string, line: number) => Promise<{ ok: boolean }>
+    // 回退单个文件到指定轮次（userMessageTimestamp 定位）开始前的快照状态；成功返回回退时间并记录已回退标记。
+    revertFileChange: (
+      sessionId: string,
+      userMessageTimestamp: number,
+      filePath: string,
+    ) => Promise<AgentRevertFileResult>
+    // 仅回退指定轮次修改的文件（保留对话）；成功返回文件列表并记录已回退标记。
+    revertTurnFiles: (
+      sessionId: string,
+      userMessageTimestamp: number,
+    ) => Promise<AgentRevertTurnFilesResult>
     // 在系统文件管理器/资源管理器中高亮定位文件。
     showItemInFolder: (filePath: string) => Promise<{ ok: boolean }>
     // 查询当前会话上下文容量（模型切换后状态栏主动刷新；selection 指定要显示的模型窗口）。

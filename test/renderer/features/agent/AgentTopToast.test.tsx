@@ -44,7 +44,6 @@ const defaultInputProps = {
   onSend: vi.fn(),
   onStop: vi.fn(),
   onClear: vi.fn(),
-  onUndo: vi.fn(),
   onCompact: vi.fn(),
   selectedModel: "test-model",
   onModelChange: vi.fn(),

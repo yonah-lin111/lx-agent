@@ -18,6 +18,7 @@ vi.mock("@/features/agent/api/agentApi", () => ({
     restore: vi.fn(),
     restoreSession: vi.fn(),
     deleteMessageTurn: vi.fn(),
+    revertTurnFiles: vi.fn(),
     undoCompaction: vi.fn(),
     listSessions: vi.fn().mockResolvedValue([]),
   },
@@ -295,7 +296,7 @@ describe("useAgentChat 轮次生命周期", () => {
     expect(agentApi.restore).toHaveBeenCalledWith([], undefined, "tab-1")
   })
 
-  it("deleteTurn 移除指定 AI 消息所在轮次并插入撤销摘要", async () => {
+  it("applyUndoOption(delete_only) 移除最后一条 AI 消息所在轮次并插入撤销摘要", async () => {
     const { result } = await renderAgentChat()
 
     act(() => {
@@ -304,11 +305,10 @@ describe("useAgentChat 轮次生命周期", () => {
       eventHandler({ type: "message_start", message: userMessage("第二轮问题", 3) })
       eventHandler({ type: "message_start", message: assistantMessage("第二轮回答", 4) })
     })
-    const target = result.current.messages[3]
-    expect(target.role).toBe("assistant")
+    expect(result.current.messages[3]?.role).toBe("assistant")
 
     act(() => {
-      result.current.deleteTurn(target.id)
+      result.current.applyUndoOption("delete_only")
     })
 
     expect(result.current.messages.map((message) => message.role)).toEqual([
@@ -363,6 +363,59 @@ describe("useAgentChat 轮次生命周期", () => {
     })
     expect(result.current.messages[1].blocks[0]).toMatchObject({ kind: "text", text: "回答" })
     expect(result.current.messages[1].id).toBe(assistantItem.id)
+  })
+
+  it("applyUndoOption：仅回退文件保留对话并写标记；其余选项按显式 revertFiles 删轮", async () => {
+    const { result } = await renderAgentChat()
+    const { agentFileRevertStore } = await import("@/features/agent/hooks/agentFileRevertStore")
+    agentFileRevertStore.clearSession("session-1")
+    vi.mocked(agentApi.restoreSession).mockResolvedValue({
+      messages: [userMessage("第一轮问题", 1), assistantMessage("第一轮回答", 2)],
+      activeCapabilities: { tools: [], mcp: [], skills: [] },
+      todos: [],
+      fileReverts: [],
+    } as never)
+    vi.mocked(agentApi.deleteMessageTurn).mockResolvedValue(undefined as never)
+    vi.mocked(agentApi.revertTurnFiles).mockResolvedValue({
+      ok: true,
+      files: ["src/a.ts"],
+      revertedAt: 99,
+    } as never)
+
+    await act(async () => {
+      result.current.restoreChat("session-1")
+    })
+    expect(result.current.messages).toHaveLength(2)
+
+    // 仅回退文件：保留对话 + 写入回退标记（不调用删轮）。
+    await act(async () => {
+      result.current.applyUndoOption("revert_only")
+    })
+    expect(agentApi.revertTurnFiles).toHaveBeenCalledWith("session-1", 1)
+    expect(agentApi.deleteMessageTurn).not.toHaveBeenCalled()
+    expect(agentFileRevertStore.getMarks("session-1")).toEqual([
+      { userMessageTimestamp: 1, file: "src/a.ts", revertedAt: 99 },
+    ])
+    expect(result.current.messages).toHaveLength(2)
+
+    // 仅撤销对话：删轮显式 revertFiles=false（每步前恢复一次本地消息态）。
+    await act(async () => {
+      result.current.restoreChat("session-1")
+    })
+    act(() => {
+      result.current.applyUndoOption("delete_only")
+    })
+    expect(agentApi.deleteMessageTurn).toHaveBeenCalledWith("session-1", 1, false)
+
+    // 回退文件并撤销对话：显式 revertFiles=true；回退标记随轮清除。
+    await act(async () => {
+      result.current.restoreChat("session-1")
+    })
+    act(() => {
+      result.current.applyUndoOption("revert_and_delete")
+    })
+    expect(agentApi.deleteMessageTurn).toHaveBeenLastCalledWith("session-1", 1, true)
+    expect(agentFileRevertStore.getMarks("session-1")).toEqual([])
   })
 
   it("isOnlyOneTurnLeft 依据用户消息轮数判定", async () => {

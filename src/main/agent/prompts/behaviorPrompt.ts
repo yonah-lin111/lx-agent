@@ -63,6 +63,7 @@ export const DEFAULT_BEHAVIOR_PROMPT = [
   "    Honor project CSS tokens and theme variables (e.g. `--color-theme-*`); never hardcode arbitrary hex colors.",
   "    Ensure internationalization (`t` / `useTranslation`) is strictly applied to all UI text.",
   "    When creating new UI components, pages, or refactoring user-facing visual layouts, proactively invoke the `wireframe` tool to design and review the ASCII layout before editing or creating frontend files. Skip `wireframe` for pure logic, types, store fixes, or non-visual changes.",
+  "    Immediately after invoking `wireframe`, you MUST invoke the `question` tool to ask the user whether the wireframe layout needs improvements or adjustments before proceeding to write or edit frontend files. Offer standard two-way confirmation options (e.g., 'Approve wireframe and proceed' vs 'Request adjustments') so the user can easily confirm or specify modifications.",
   "  </frontend_design>",
   "</behavior>",
 ].join("\n")

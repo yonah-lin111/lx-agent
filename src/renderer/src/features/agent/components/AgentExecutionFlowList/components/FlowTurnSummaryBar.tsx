@@ -1,7 +1,9 @@
 import { Trash2 } from "lucide-react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { AgentUndoOptionsMenu } from "@/features/agent/components/blocks"
 import { getModelDisplayName } from "@/features/agent/hooks/modelsStore"
+import type { AgentUndoOption } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import {
   formatDurationMs,
@@ -13,24 +15,25 @@ import {
 type FlowTurnSummaryBarProps = {
   turnIndex: number
   turnStats?: TurnStats
-  turnMessageId?: string
   canDeleteTurn: boolean
-  onDeleteMessage?: (messageId: string) => void
+  onUndoOption?: (option: AgentUndoOption) => void
   settings: ModelSettingsState
 }
 
 /**
- * 渲染 turn 结束时的综合执行数据统计与整轮删除按钮。
+ * 渲染 turn 结束时的综合执行数据统计与整轮撤销按钮。
+ * 删除按钮弹出与 /undo 命令一致的三选一菜单：回退文件并撤销对话 / 仅撤销对话 / 仅回退文件 / 取消。
  */
 export const FlowTurnSummaryBar = ({
   turnIndex,
   turnStats,
-  turnMessageId,
   canDeleteTurn,
-  onDeleteMessage,
+  onUndoOption,
   settings,
 }: FlowTurnSummaryBarProps): React.JSX.Element => {
   const { t } = useTranslation()
+
+  const undoOptionsMenu = <AgentUndoOptionsMenu onSelect={(option) => onUndoOption?.(option)} />
 
   return (
     <div
@@ -38,17 +41,13 @@ export const FlowTurnSummaryBar = ({
       className="agent-turn-summary flex flex-wrap items-center gap-1.5 py-1 pl-1 font-mono text-xs text-white/40"
     >
       {/* 删除整轮问答按钮：始终显示，位于模型名称左侧并同行 */}
-      {canDeleteTurn && turnMessageId && (
+      {canDeleteTurn && (
         <LxTooltip
-          hover={{
-            content: t("agent.deleteTurn"),
-            placement: "top",
-          }}
-          click={{
-            content: t("agent.deleteTurnConfirm"),
-            placement: "top",
-            onConfirm: () => onDeleteMessage?.(turnMessageId),
-          }}
+          trigger="click"
+          closeOnContentClick
+          content={undoOptionsMenu}
+          contentClassName="!p-1"
+          placement="top"
         >
           <LxIconButton
             size="small"

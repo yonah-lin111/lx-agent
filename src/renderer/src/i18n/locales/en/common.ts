@@ -11,6 +11,7 @@ export const common = {
   add: "Add",
   create: "Create",
   search: "Search",
+  noMatchingOptions: "No matching options",
   loading: "Loading...",
   success: "Success",
   failed: "Failed",

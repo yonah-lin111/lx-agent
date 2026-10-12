@@ -17,7 +17,7 @@ import {
   AgentInputSessionPanel,
   type AgentMentionItem,
   AgentSkillMentionPanel,
-  AgentUndoConfirmPanel,
+  AgentUndoOptionsPanel,
 } from "@/features/agent/components/AgentInput/AgentInputCommandPanels"
 
 const position = { top: 10, left: 10 }
@@ -222,10 +222,10 @@ describe("AgentInput 命令面板鼠标点选交互", () => {
     expect(onSelect).toHaveBeenCalledWith(skills[1])
   })
 
-  it("undo 确认面板：点选项回传对应索引", () => {
+  it("undo 选项面板：点选回传对应索引（四项）", () => {
     const onSelect = vi.fn()
     render(
-      <AgentUndoConfirmPanel
+      <AgentUndoOptionsPanel
         isOpen={true}
         position={position}
         activeIndex={0}
@@ -234,9 +234,10 @@ describe("AgentInput 命令面板鼠标点选交互", () => {
     )
 
     const options = screen.getAllByRole("option")
-    fireEvent.mouseDown(options[1])
+    expect(options.length).toBe(4)
+    fireEvent.mouseDown(options[2])
     expect(onSelect).toHaveBeenCalledTimes(1)
-    expect(onSelect).toHaveBeenCalledWith(1)
+    expect(onSelect).toHaveBeenCalledWith(2)
   })
 
   it("历史提示词面板：点选历史条目触发 onSelect", () => {

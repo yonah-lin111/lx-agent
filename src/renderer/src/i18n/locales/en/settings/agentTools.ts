@@ -197,4 +197,32 @@ Detect and manage local installations of popular AI command-line interfaces.
   cliCurrentVersion: "Current",
   cliNoMatches: "No matching CLI tools found",
   cliUpToDate: "Up to date",
+  environment: "Environment",
+  environmentDesc: "Detect installation status and versions of system runtimes (Node.js, Git, Python, Java)",
+  environmentDoc: `### System Runtime Environments
+
+Detects required and optional runtime environments for LX Agent.
+
+#### 💡 Core Dependencies & Environment Details
+- **Git**: Required by LX Agent for repository operations, worktree isolation, diffing, and committing.
+- **Node.js**: Required by LX Agent for npm/npx plugin lifecycles and running local MCP servers.
+- **Python**: Optional runtime for Python-based MCP servers and data analysis scripts.
+- **Java**: Optional runtime for Java-based LSP language servers (such as Eclipse JDT.LS).`,
+  environmentSearchPlaceholder: "Search runtime environments...",
+  environmentRefresh: "Refresh Status",
+  environmentRefreshing: "Probing...",
+  environmentInstalled: "Installed",
+  environmentNotInstalled: "Not Detected",
+  environmentRequiredTag: "Required",
+  environmentOptionalTag: "Optional",
+  environmentGet: "Get {{name}}",
+  environmentVersion: "Version",
+  environmentPath: "Binary Path",
+  environmentGitDesc: "LX Agent core dependency. Used for repository management, worktree isolation, code diffs, and commits.",
+  environmentNodeDesc: "LX Agent core dependency. Used for npm/npx plugins and running local MCP servers.",
+  environmentPythonDesc: "Optional runtime. Used for Python-based MCP servers and local analysis scripts.",
+  environmentJavaDesc: "Optional runtime. Used for Java-based LSP language servers (such as Eclipse JDT.LS).",
+  environmentLoadFailed: "Failed to load environment runtime info",
+  environmentNoMatches: "No matching runtime environments found",
+  environmentCopyVersionSuccess: "Version copied to clipboard",
 }

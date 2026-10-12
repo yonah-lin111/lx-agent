@@ -55,7 +55,6 @@ const renderInput = async (history: string[], initialText = "") => {
         onSend={onSend}
         onStop={vi.fn()}
         onClear={vi.fn()}
-        onUndo={vi.fn()}
         onCompact={vi.fn()}
         selectedModel="m"
         onModelChange={vi.fn()}

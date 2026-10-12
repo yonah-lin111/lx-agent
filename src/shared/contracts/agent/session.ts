@@ -43,7 +43,27 @@ export interface AgentRestoredSession {
   activeCapabilities: AgentCapabilitySnapshot
   // 任务清单（最后一条 todo entry 快照；空数组 = 无清单）。
   todos: TodoList
+  // 已回退文件标记（卡片标记与 flowlist 回退 item 渲染用；空数组 = 无回退）。
+  fileReverts: AgentFileRevertMark[]
 }
+
+// 已回退文件标记（用户回退后持久化于该轮快照行；渲染、注入与已告知状态共用）。
+export interface AgentFileRevertMark {
+  // 所属轮次（该轮用户消息 timestamp）。
+  userMessageTimestamp: number
+  // 工作区相对路径（快照口径）。
+  file: string
+  // 最近一次回退时间（毫秒）。
+  revertedAt: number
+}
+
+// 单文件回退结果；ok 时携带最近一次回退时间与快照相对路径（渲染层记录标记用）。
+export type AgentRevertFileResult = { ok: true; revertedAt: number; file: string } | { ok: false }
+
+// 仅回退文件（保留对话）结果；ok 时携带回退的文件列表与时间。
+export type AgentRevertTurnFilesResult =
+  | { ok: true; files: string[]; revertedAt: number }
+  | { ok: false; error: string }
 
 // 发送消息选项。
 // delivery: "queue"（默认，当前 run 结束后排队执行）| "steer"（即时插话，注入当前 run 的 turn 边界即时引导转向）。

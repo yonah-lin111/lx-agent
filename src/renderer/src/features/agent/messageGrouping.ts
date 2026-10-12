@@ -69,3 +69,19 @@ export const buildQaGroups = (entries: MessageGroupEntry[]): MessageQaGroup[] =>
   }
   return groups
 }
+
+/**
+ * 可删除目标：会话中最后一条助手消息 id（消息列表与执行流共用同一规则）。
+ * 跳过 modelSwitch / modeSwitch / hookContext / undoSummary 等非对话条目；
+ * 若其前存在用户消息或压缩摘要（该轮不处于对话末端），则不允许删除。
+ */
+export const findDeletableAssistantMessageId = (
+  messages: readonly ChatMessage[],
+): string | undefined => {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index]
+    if (message.role === "assistant") return message.id
+    if (message.role === "user" || message.role === "compactionSummary") return undefined
+  }
+  return undefined
+}

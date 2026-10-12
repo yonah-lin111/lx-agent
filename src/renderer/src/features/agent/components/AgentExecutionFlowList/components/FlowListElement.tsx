@@ -1,9 +1,18 @@
 import { Compass, Cpu, Layers, Minimize2, RefreshCw, Undo2 } from "lucide-react"
 import { Fragment } from "react"
-import type { ExecutionStep, ProposedPlanData, ReviewFindingItem } from "@/features/agent/types"
+import { FileChangesCard } from "@/features/agent/components/blocks"
+import { useAgentFileReverts } from "@/features/agent/hooks/agentFileRevertStore"
+import type {
+  AgentUndoOption,
+  ExecutionStep,
+  ProposedPlanData,
+  ReviewFindingItem,
+} from "@/features/agent/types"
+import type { FlowFileChangesEntry } from "@/features/agent/utils/fileChanges"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowGroup } from "../AgentExecutionFlowGroup"
 import { AgentExecutionFlowItemMemo } from "../AgentExecutionFlowItemMemo"
+import { FlowFileRevertItem } from "../FlowFileRevertItem"
 import type { FilterKind, FlowRenderElement, ModelSettingsState, TurnStats } from "../types"
 import { FlowTurnSummaryBar } from "./FlowTurnSummaryBar"
 
@@ -13,6 +22,8 @@ type FlowListElementProps = {
   renderedFlowElements: FlowRenderElement[]
   turnStatsMap: Map<number, TurnStats>
   turnMessageIdMap: Map<number, string>
+  // 该轮文件修改汇总（键为轮次；在该轮末尾统一展示）。
+  fileChangesByTurn: Map<number, FlowFileChangesEntry>
   runningTurnSet: Set<number>
   hasNonGroupableAfterByIndex: boolean[]
   maxUserTurnIndex: number
@@ -21,6 +32,8 @@ type FlowListElementProps = {
   maxTurn: number
   readOnly: boolean
   canContinue: boolean
+  // 当前会话 id（文件修改回退等操作定位用）。
+  sessionId?: string
   isStepExpanded: (step: ExecutionStep) => boolean
   onToggleStepExpand: (step: ExecutionStep) => void
   onToggleGroupExpand: (groupId: string) => void
@@ -29,7 +42,10 @@ type FlowListElementProps = {
   onAcceptPlan?: (plan: ProposedPlanData) => void
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   onFillInput?: (text: string) => void
-  onDeleteMessage?: (messageId: string) => void
+  // 整轮撤销/删除：删除按钮菜单与 /undo 一致，回传三选一选项。
+  onUndoOption?: (option: AgentUndoOption) => void
+  // 可删除目标消息 id（会话最后一条助手消息；仅该轮展示删除入口）。
+  deletableMessageId?: string
   onContinue?: () => void
   settings: ModelSettingsState
 }
@@ -43,6 +59,7 @@ export const FlowListElement = ({
   renderedFlowElements,
   turnStatsMap,
   turnMessageIdMap,
+  fileChangesByTurn,
   runningTurnSet,
   hasNonGroupableAfterByIndex,
   maxUserTurnIndex,
@@ -51,6 +68,7 @@ export const FlowListElement = ({
   maxTurn,
   readOnly,
   canContinue,
+  sessionId,
   isStepExpanded,
   onToggleStepExpand,
   onToggleGroupExpand,
@@ -59,7 +77,8 @@ export const FlowListElement = ({
   onAcceptPlan,
   onApplyReviewFixes,
   onFillInput,
-  onDeleteMessage,
+  onUndoOption,
+  deletableMessageId,
   onContinue,
   settings,
 }: FlowListElementProps): React.JSX.Element => {
@@ -91,11 +110,31 @@ export const FlowListElement = ({
 
   const turnStats = elementTurnIndex > 0 ? turnStatsMap.get(elementTurnIndex) : undefined
 
+  const turnFileChanges = elementTurnIndex > 0 ? fileChangesByTurn.get(elementTurnIndex) : undefined
+  // 文件回退上下文：会话与用户消息时间戳齐备时提供回退能力。
+  const turnFileChangesRevert =
+    sessionId && turnFileChanges?.userMessageTimestamp !== undefined
+      ? { sessionId, userMessageTimestamp: turnFileChanges.userMessageTimestamp }
+      : undefined
+  // 该轮已回退文件标记：源轮末尾渲染"已回退"item（仅执行流展示）。
+  const sessionFileReverts = useAgentFileReverts(sessionId)
+  const turnFileRevertMarks =
+    turnFileChanges?.userMessageTimestamp !== undefined
+      ? sessionFileReverts.filter(
+          (mark) => mark.userMessageTimestamp === turnFileChanges.userMessageTimestamp,
+        )
+      : []
+
   const turnMessageId = elementTurnIndex > 0 ? turnMessageIdMap.get(elementTurnIndex) : undefined
   const isTurnRunning =
     runningTurnSet.has(elementTurnIndex) || (isStreaming && elementTurnIndex === maxTurn)
+  // 仅会话最后一条助手消息所在轮次可删除（不允许删除中间轮次）。
   const canDeleteTurn =
-    !readOnly && Boolean(onDeleteMessage) && Boolean(turnMessageId) && !isTurnRunning
+    !readOnly &&
+    Boolean(onUndoOption) &&
+    turnMessageId !== undefined &&
+    turnMessageId === deletableMessageId &&
+    !isTurnRunning
 
   const hasTurnSummaryPills =
     turnStats &&
@@ -214,14 +253,25 @@ export const FlowListElement = ({
         />
       )}
 
+      {/* 本轮文件修改汇总：固定在该轮最后一个步骤之后展示，不随流式新步骤漂移 */}
+      {isTurnEnd && turnFileChanges && (
+        <div className="agent-execution-flow-file-changes mt-1.5 w-full">
+          <FileChangesCard summary={turnFileChanges.summary} revertTarget={turnFileChangesRevert} />
+        </div>
+      )}
+
+      {/* 本轮已回退文件 item：挂在源轮文件统计卡片之后（仅执行流展示，消息列表不渲染） */}
+      {isTurnEnd && turnFileRevertMarks.length > 0 && (
+        <FlowFileRevertItem marks={turnFileRevertMarks} className="mt-1.5" />
+      )}
+
       {/* 当该 turn 结束时，在下一行左侧展示该 turn 的综合执行数据统计及删除按钮 */}
       {showTurnBottomBar && (
         <FlowTurnSummaryBar
           turnIndex={elementTurnIndex}
           turnStats={turnStats}
-          turnMessageId={turnMessageId}
           canDeleteTurn={canDeleteTurn}
-          onDeleteMessage={onDeleteMessage}
+          onUndoOption={onUndoOption}
           settings={settings}
         />
       )}

@@ -2,10 +2,11 @@ import type { AgentUndoDiffSummary } from "@shared/contracts/agent"
 import { useCallback } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
 import type { AgentInputFile } from "@/features/agent/components/AgentInput"
+import { agentFileRevertStore } from "@/features/agent/hooks/agentFileRevertStore"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import type { AgentChatCore, AgentChatFrames } from "@/features/agent/hooks/useAgentChat.types"
-import type { ChatBlock, ChatMessage } from "@/features/agent/types"
+import type { AgentUndoOption, ChatBlock, ChatMessage } from "@/features/agent/types"
 import { cleanUserPrompt, toAgentMessages } from "@/features/agent/utils"
 
 /**
@@ -103,7 +104,7 @@ export const useAgentChatTurns = ({
   // 删除一轮对话：移除该轮（问题 + 回答 + 工具调用）并插入撤销摘要，同步 main 侧上下文与 DB。
   // 未命中 DB 用户消息 timestamp（幽灵消息）时仅做本地移除。
   const removeTurn = useCallback(
-    (userIndex: number): void => {
+    (userIndex: number, revertFiles?: boolean): void => {
       const list = messagesRef.current
       const userTimestamp = list[userIndex]?.timestamp
       let nextUserIndex = list.length
@@ -170,6 +171,10 @@ export const useAgentChatTurns = ({
         }
       }
 
+      // 删除/撤销的文件回退语义：显式参数优先；缺省保持"仅末轮回退"旧行为（选项面板接入前的过渡）。
+      const isLastUserTurn = !list.slice(nextUserIndex).some((message) => message.role === "user")
+      const shouldRevertFiles = revertFiles ?? isLastUserTurn
+
       const undoSummaryMessage: ChatMessage = {
         id: `undo-summary-${Date.now()}`,
         role: "undoSummary",
@@ -186,6 +191,7 @@ export const useAgentChatTurns = ({
           toolCalls,
           toolCallCount: toolCalls.length,
           fileChangeCount: diffs.length,
+          filesReverted: shouldRevertFiles && diffs.length > 0,
           undoneAt: Date.now(),
         },
       }
@@ -225,9 +231,11 @@ export const useAgentChatTurns = ({
 
       const sessionId = currentSessionIdRef.current
       if (sessionId && typeof userTimestamp === "number") {
+        // 该轮已消失：本地回退标记同步清除（源轮 item 一并消失）。
+        agentFileRevertStore.removeTurnMarks(sessionId, userTimestamp)
         // 落库成功后再刷新列表，避免读到删除前的旧会话。
         void agentApi
-          .deleteMessageTurn(sessionId, userTimestamp)
+          .deleteMessageTurn(sessionId, userTimestamp, shouldRevertFiles)
           .then(() => {
             void sessionListStore.refresh()
           })
@@ -259,53 +267,88 @@ export const useAgentChatTurns = ({
     })
   }, [errorToast, tabId])
 
-  // 撤销上一轮对话：删除最近一轮（含问题/回答/工具调用）并同步 main 侧与 DB。
-  // 被撤销的用户消息回显到输入框，便于修改后重新发送。
-  const undoLastTurn = useCallback(() => {
-    if (isStreaming || isCompacting) return
-    const list = messagesRef.current
-    const last = list.at(-1)
-    // 末条为压缩摘要：手动可撤销，自动不可撤销（提示并阻止误撤其下轮）。
-    if (last?.role === "compactionSummary") {
-      // 压缩摘要撤销清空输入框（命令文本不残留）；QA 撤销仍回显（见下）。
-      setInputText("")
-      if (last.isManual) {
-        undoManualCompaction()
-      } else {
-        errorToast(t("agent.autoCompactionNotReversible"))
+  // 撤销/删除选项执行：回退文件并撤销对话 / 仅撤销对话 / 仅回退文件（保留对话）。
+  // 被撤销的用户消息回显到输入框（仅撤销对话的两个选项），便于修改后重新发送。
+  const applyUndoOption = useCallback(
+    (option: AgentUndoOption): void => {
+      if (isStreaming || isCompacting) return
+      const list = messagesRef.current
+      const last = list.at(-1)
+      // 末条为压缩摘要：手动可撤销，自动不可撤销（提示并阻止误撤其下轮）。
+      if (last?.role === "compactionSummary") {
+        // 压缩摘要撤销清空输入框（命令文本不残留）；QA 撤销仍回显（见下）。
+        setInputText("")
+        if (last.isManual) {
+          undoManualCompaction()
+        } else {
+          errorToast(t("agent.autoCompactionNotReversible"))
+        }
+        return
       }
-      return
-    }
-    const lastUserIndex = list.findLastIndex((message) => message.role === "user")
-    if (lastUserIndex < 0) return
-    const userMessage = list[lastUserIndex]
-    const rawEchoed = userMessage.blocks
-      .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
-      .map((block) => block.text)
-      .join("\n")
-    const echoed = cleanUserPrompt(rawEchoed, {
-      isSteer: userMessage.isSteer,
-      command: userMessage.command,
-    })
-    setInputText(echoed)
+      const lastUserIndex = list.findLastIndex((message) => message.role === "user")
+      if (lastUserIndex < 0) return
+      const userMessage = list[lastUserIndex]
+      const userTimestamp = userMessage.timestamp
 
-    // 回显附件文件到输入框：直接使用复制路径回显
-    if (userMessage.files && userMessage.files.length > 0) {
-      const echoedFiles: AgentInputFile[] = userMessage.files.map((file, idx) => ({
-        id: `undo-${Date.now()}-${idx}`,
-        name: file.name,
-        path: file.path,
-        type: file.type,
-        size: file.size,
-        extension: file.extension,
-      }))
-      setSelectedFiles(echoedFiles)
-    } else {
-      setSelectedFiles([])
-    }
+      // 仅回退文件：保留对话，按该轮快照恢复并写入回退标记（下轮注入 agent 提示）。
+      if (option === "revert_only") {
+        const sessionId = currentSessionIdRef.current
+        if (!sessionId || typeof userTimestamp !== "number") return
+        void agentApi
+          .revertTurnFiles(sessionId, userTimestamp)
+          .then((result) => {
+            if (!result.ok) {
+              errorToast(t("agent.revertFileFailed"))
+              return
+            }
+            agentFileRevertStore.addMarks(
+              sessionId,
+              result.files.map((file) => ({
+                userMessageTimestamp: userTimestamp,
+                file,
+                revertedAt: result.revertedAt,
+              })),
+            )
+            successToast(t("agent.revertTurnFilesSuccess", { count: result.files.length }))
+          })
+          .catch(() => errorToast(t("agent.revertFileFailed")))
+        return
+      }
 
-    removeTurn(lastUserIndex)
-  }, [isStreaming, isCompacting, removeTurn, undoManualCompaction, errorToast, t])
+      const rawEchoed = userMessage.blocks
+        .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
+        .map((block) => block.text)
+        .join("\n")
+      const echoed = cleanUserPrompt(rawEchoed, {
+        isSteer: userMessage.isSteer,
+        command: userMessage.command,
+      })
+      setInputText(echoed)
+
+      // 回显附件文件到输入框：直接使用复制路径回显
+      if (userMessage.files && userMessage.files.length > 0) {
+        const echoedFiles: AgentInputFile[] = userMessage.files.map((file, idx) => ({
+          id: `undo-${Date.now()}-${idx}`,
+          name: file.name,
+          path: file.path,
+          type: file.type,
+          size: file.size,
+          extension: file.extension,
+        }))
+        setSelectedFiles(echoedFiles)
+      } else {
+        setSelectedFiles([])
+      }
+
+      removeTurn(lastUserIndex, option === "revert_and_delete")
+    },
+    [isStreaming, isCompacting, removeTurn, undoManualCompaction, errorToast, successToast, t],
+  )
+
+  // 兼容入口：撤销上一轮（等价于"回退文件并撤销对话"）。
+  const undoLastTurn = useCallback((): void => {
+    applyUndoOption("revert_and_delete")
+  }, [applyUndoOption])
 
   // 手动压缩上下文（/compact 命令触发）：流式时阻塞提示；其余情况调用 main 侧强制压缩。
   // 失败或无可压缩内容时由 main 侧直接返回具体原因 error 文案并 toast 提示。
@@ -323,29 +366,13 @@ export const useAgentChatTurns = ({
     })
   }, [isStreaming, errorToast, successToast, t, tabId])
 
-  // 删除指定 AI 消息所在的一轮对话。
-  const deleteTurn = useCallback(
-    (aiMessageId: string) => {
-      if (isStreaming) return
-      const list = messagesRef.current
-      const aiIndex = list.findIndex((message) => message.id === aiMessageId)
-      if (aiIndex < 0) return
-      const userIndex = list.findLastIndex(
-        (message, index) => index < aiIndex && message.role === "user",
-      )
-      if (userIndex < 0) return
-      removeTurn(userIndex)
-    },
-    [isStreaming, removeTurn],
-  )
-
   return {
     stopStreaming,
     createNewChat,
     removeTurn,
     undoManualCompaction,
     undoLastTurn,
+    applyUndoOption,
     compactChat,
-    deleteTurn,
   }
 }

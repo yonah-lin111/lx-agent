@@ -1,5 +1,6 @@
 import { Gamepad2, Minus, X } from "lucide-react"
 import type React from "react"
+import { useRef } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { BuiltinGameStage } from "@/features/game/builtin/components/BuiltinGameStage"
 import { BUILTIN_GAME_META } from "@/features/game/builtin/constants"
@@ -21,6 +22,8 @@ export const GameOverlay = (): React.JSX.Element | null => {
   const close = useGameSessionStore((state) => state.close)
   const backToLibrary = useGameSessionStore((state) => state.backToLibrary)
   const { bestScores, submitScore } = useBuiltinBestScores()
+  // 覆盖层容器：舞台内的快捷键弹窗挂载其中，避免遮罩盖住整个应用窗口。
+  const overlayRef = useRef<HTMLElement | null>(null)
 
   if (!session && !isOpen) return null
 
@@ -32,6 +35,7 @@ export const GameOverlay = (): React.JSX.Element | null => {
 
   return (
     <section
+      ref={overlayRef}
       aria-label={t("game.title")}
       className={`game-overlay absolute inset-0 z-[60] flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--theme-radius-base)] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] ${
         isOpen ? "" : "hidden"
@@ -67,6 +71,7 @@ export const GameOverlay = (): React.JSX.Element | null => {
           <GameStage
             entry={session.entry}
             isSuspended={!isOpen}
+            modalContainerRef={overlayRef}
             onMinimize={minimize}
             onClose={close}
           />

@@ -11,6 +11,7 @@ export const common = {
   add: "添加",
   create: "创建",
   search: "搜索",
+  noMatchingOptions: "未找到匹配项",
   loading: "加载中...",
   success: "成功",
   failed: "失败",

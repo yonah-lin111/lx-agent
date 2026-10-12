@@ -176,7 +176,9 @@ describe("HooksSettings", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "PreToolUse" }))
     // 弹窗内下拉须高于 LxModal 层级且包含全部 11 个事件，避免被遮挡或只渲染部分选项。
-    expect(Number((await screen.findByRole("listbox")).style.zIndex)).toBeGreaterThan(999999)
+    // z-index 由下拉面板（listbox 的父节点）承载。
+    const listbox = await screen.findByRole("listbox")
+    expect(Number((listbox.parentElement as HTMLElement).style.zIndex)).toBeGreaterThan(999999)
     expect(screen.getAllByRole("option")).toHaveLength(11)
     fireEvent.mouseDown(screen.getByRole("option", { name: "Stop" }))
 

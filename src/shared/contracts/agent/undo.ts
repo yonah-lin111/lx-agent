@@ -60,6 +60,8 @@ export interface AgentUndoSummaryPayload {
   // 统计指标。
   toolCallCount?: number
   fileChangeCount?: number
+  // 本轮文件改动是否已被回退（删除/撤销时由用户显式选择；仅展示用）。
+  filesReverted?: boolean
   undoneAt?: number
 }
 

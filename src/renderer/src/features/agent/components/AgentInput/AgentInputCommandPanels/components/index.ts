@@ -8,4 +8,7 @@ export { AgentInputModelPanel } from "./AgentInputModelPanel"
 export { AgentInputProjectPanel, type AgentInputProjectPanelProps } from "./AgentInputProjectPanel"
 export { AgentInputSessionPanel, type AgentInputSessionPanelProps } from "./AgentInputSessionPanel"
 export { AgentSkillMentionPanel, type AgentSkillMentionPanelProps } from "./AgentSkillMentionPanel"
-export { AgentUndoConfirmPanel, type AgentUndoConfirmPanelProps } from "./AgentUndoConfirmPanel"
+export {
+  AgentUndoOptionsPanel,
+  type AgentUndoOptionsPanelProps,
+} from "./AgentUndoOptionsPanel"

@@ -105,9 +105,9 @@ export const useAgentInputPanels = ({
   const activeModeRef = useRef(activeMode)
   activeModeRef.current = activeMode
 
-  const [undoConfirmIndex, setUndoConfirmIndex] = useState(0)
-  const undoConfirmIndexRef = useRef(undoConfirmIndex)
-  undoConfirmIndexRef.current = undoConfirmIndex
+  const [undoOptionIndex, setUndoOptionIndex] = useState(0)
+  const undoOptionIndexRef = useRef(undoOptionIndex)
+  undoOptionIndexRef.current = undoOptionIndex
 
   const [commandIndex, setCommandIndex] = useState(0)
   const commandIndexRef = useRef(commandIndex)
@@ -654,7 +654,7 @@ export const useAgentInputPanels = ({
   const isProjectMode = activeMode === "project" && matchedProjects.length > 0
   const isSessionMode = activeMode === "session" && matchedSessions.length > 0
   const isSkillMode = activeMode === "skill" && matchedSkills.length > 0
-  const isUndoConfirmMode = activeMode === "undo_confirm"
+  const isUndoOptionsMode = activeMode === "undo_options"
   const isBlockCommandOpen = blockCommands.length > 0 && !!blockCommandPosition
 
   // 计算面板位置
@@ -672,7 +672,7 @@ export const useAgentInputPanels = ({
           isWorktreeMode ||
           isProjectMode ||
           isSessionMode ||
-          isUndoConfirmMode ||
+          isUndoOptionsMode ||
           isSkillMode
         ? "command"
         : null
@@ -690,7 +690,7 @@ export const useAgentInputPanels = ({
     isProjectMode,
     isSessionMode,
     isSkillMode,
-    isUndoConfirmMode,
+    isUndoOptionsMode,
     getPanelAnchor,
   ])
 
@@ -794,6 +794,22 @@ export const useAgentInputPanels = ({
         }
         setActiveMode("historyPrompt")
         setHistoryPromptIndex(0)
+        setFiles([])
+        setBlockCommands([])
+        return
+      }
+
+      // /undo：文档驱动三选一选项面板（避免执行路径与文档同步互相覆盖模式）。
+      const isUndoInput =
+        docText === "/undo" ||
+        docText.startsWith("/undo ") ||
+        docText.startsWith("/undo:") ||
+        docText.startsWith("/undo-")
+      if (isUndoInput) {
+        if (activeModeRef.current !== "undo_options") {
+          setUndoOptionIndex(0)
+        }
+        setActiveMode("undo_options")
         setFiles([])
         setBlockCommands([])
         return
@@ -923,9 +939,9 @@ export const useAgentInputPanels = ({
     activeMode,
     setActiveMode,
     activeModeRef,
-    undoConfirmIndex,
-    setUndoConfirmIndex,
-    undoConfirmIndexRef,
+    undoOptionIndex,
+    setUndoOptionIndex,
+    undoOptionIndexRef,
     commandIndex,
     setCommandIndex,
     commandIndexRef,
@@ -984,7 +1000,7 @@ export const useAgentInputPanels = ({
     isProjectMode,
     isSessionMode,
     isSkillMode,
-    isUndoConfirmMode,
+    isUndoOptionsMode,
     isBlockCommandOpen,
     syncPanels,
     syncPanelsRef,

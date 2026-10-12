@@ -8,6 +8,7 @@ import {
   CliSettings,
   CollaborationModeSettings,
   CustomCommandSettings,
+  EnvironmentSettings,
   GeneralSettings,
   HooksSettings,
   LspSettings,
@@ -35,6 +36,7 @@ import { type TranslationKey, useTranslation } from "@/i18n"
 const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   general: "settings.generalDesc",
   cli: "settings.cliDesc",
+  environment: "settings.environmentDesc",
   lsp: "settings.lspDesc",
   mcp: "settings.mcpDesc",
   openclaw: "settings.openclawDesc",
@@ -200,6 +202,7 @@ export const SettingsPage = (): React.JSX.Element => {
           ) : null}
           {activeSection === "general" ? <GeneralSettings /> : null}
           {activeSection === "cli" ? <CliSettings /> : null}
+          {activeSection === "environment" ? <EnvironmentSettings /> : null}
           {activeSection === "lsp" ? <LspSettings /> : null}
           {activeSection === "mcp" ? <McpSettings /> : null}
           {activeSection === "openclaw" ? <OpenClawSettings /> : null}

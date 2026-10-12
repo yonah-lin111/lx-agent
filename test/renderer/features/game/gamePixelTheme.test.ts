@@ -107,4 +107,17 @@ describe("我的世界主题游戏视图", () => {
     expect(block).toContain("color: #ffaa00 !important")
     expect(block).toContain("drop-shadow(1px 1px 0px #000000)")
   })
+
+  it("快捷键条目沿用叶子行凹槽，捕获态绿石高亮、冲突态红石描边", () => {
+    const capturingBlock = getRuleBlock('.game-keymap-item--capturing[data-item-level="3"]')
+    expect(capturingBlock).toContain("border-left: 4px solid #55ff55 !important")
+    expect(capturingBlock).toContain("background-color: #14141c !important")
+
+    const conflictBlock = getRuleBlock('.game-keymap-item--conflict[data-item-level="3"]')
+    expect(conflictBlock).toContain("border-color: #ff5555 !important")
+
+    const valueBlock = getRuleBlock('[data-theme="pixel"] .game-keymap-value')
+    expect(valueBlock).toContain("border-radius: 0px !important")
+    expect(valueBlock).toContain("background-color: #14141c !important")
+  })
 })

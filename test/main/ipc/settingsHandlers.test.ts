@@ -37,6 +37,9 @@ vi.mock("@/services/cliToolService", () => ({
   getCliVersions: vi.fn(),
   runCliLifecycleAction: vi.fn(),
 }))
+vi.mock("@/services/environmentService", () => ({
+  getEnvironmentVersions: vi.fn(),
+}))
 vi.mock("@/services/mcpPresetService", () => ({
   getMcpPresetStatus: vi.fn(),
   installMcpPreset: vi.fn(),

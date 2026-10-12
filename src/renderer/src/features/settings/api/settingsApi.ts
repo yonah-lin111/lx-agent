@@ -6,6 +6,7 @@ import type {
   CliLifecycleResult,
   CliSettings,
   CliVersionInfo,
+  EnvironmentRuntimeInfo,
   FetchedProviderModel,
   FetchModelsInput,
   HookSettings,
@@ -91,4 +92,6 @@ export const settingsApi = {
     window.api.settings.getTokenSaverSettings(),
   saveTokenSaverSettings: (settings: TokenSaverSettings): Promise<TokenSaverSettings> =>
     window.api.settings.saveTokenSaverSettings(settings),
+  getEnvironmentVersions: (options?: { force?: boolean }): Promise<EnvironmentRuntimeInfo[]> =>
+    window.api.settings.getEnvironmentVersions(options),
 }

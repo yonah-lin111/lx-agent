@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { EditorView } from "@codemirror/view"
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { useState } from "react"
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { promptHistoryApi } from "@/features/agent/api/promptHistoryApi"
@@ -41,6 +41,7 @@ beforeAll(() => {
 const renderInput = async () => {
   vi.mocked(promptHistoryApi.get).mockResolvedValue([])
   const onClear = vi.fn()
+  const onUndoOption = vi.fn()
   const Harness = () => {
     const [text, setText] = useState("")
     return (
@@ -54,7 +55,7 @@ const renderInput = async () => {
         onSend={vi.fn()}
         onStop={vi.fn()}
         onClear={onClear}
-        onUndo={vi.fn()}
+        onUndoOption={onUndoOption}
         onCompact={vi.fn()}
         selectedModel="m"
         onModelChange={vi.fn()}
@@ -74,7 +75,7 @@ const renderInput = async () => {
   await act(async () => {})
   const content = document.querySelector(".cm-content") as HTMLElement | null
   expect(content).not.toBeNull()
-  return { content: content as HTMLElement, onClear }
+  return { content: content as HTMLElement, onClear, onUndoOption }
 }
 
 describe("AgentInput 命令面板鼠标点选", () => {
@@ -105,6 +106,29 @@ describe("AgentInput 命令面板鼠标点选", () => {
 
     await waitFor(() => {
       expect(onClear).toHaveBeenCalledTimes(1)
+    })
+    expect(view?.state.doc.toString()).toBe("")
+  })
+
+  it("/undo 打开三选一选项面板，点选回传对应选项", async () => {
+    const { content, onUndoOption } = await renderInput()
+    const view = EditorView.findFromDOM(content)
+    expect(view).not.toBeNull()
+    view!.coordsAtPos = vi.fn().mockReturnValue({ left: 10, right: 20, top: 10, bottom: 20 })
+
+    // 输入 /undo：直接打开三选一选项面板。
+    act(() => {
+      view?.dispatch({ changes: { from: 0, insert: "/undo" }, selection: { anchor: 5 } })
+    })
+
+    const undoPanel = await screen.findByLabelText(/撤销本轮|Undo turn/)
+    const options = within(undoPanel).getAllByRole("option")
+    expect(options.length).toBe(4)
+
+    // 点选第 3 项（仅回退文件）→ 回传 revert_only；输入框命令文本被清空。
+    fireEvent.mouseDown(options[2]!)
+    await waitFor(() => {
+      expect(onUndoOption).toHaveBeenCalledWith("revert_only")
     })
     expect(view?.state.doc.toString()).toBe("")
   })

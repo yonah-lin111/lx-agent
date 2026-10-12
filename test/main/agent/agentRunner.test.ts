@@ -1,5 +1,4 @@
-import { execFileSync } from "node:child_process"
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -13,6 +12,7 @@ import type {
 import { streamText } from "ai"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { SnapshotFileChange } from "@/services/gitSnapshotService"
 import { writeConfigTree } from "../../helpers/configLayout"
 
 // 共享状态：临时 config/appData 路径、内存 DB 句柄与脚本化 stream 响应。
@@ -113,6 +113,8 @@ vi.mock("@/agent/stream/aiSdkStreamFn", async () => {
   return {
     createAiSdkStreamFn: () => async (_model: unknown, context: { messages: unknown[] }) => {
       holder.llmRequests.push(context.messages)
+      // 用户消息时间戳（毫秒）是轮次身份：延迟 2ms 模拟真实模型调用，避免连续轮次同毫秒碰撞。
+      await new Promise((resolve) => setTimeout(resolve, 2))
       const response = holder.streamResponses.shift()
       if (!response) {
         throw new Error("No more mock responses")
@@ -491,7 +493,7 @@ describe("agentRunner 持久化", () => {
     ])
     const [firstTurnTimestamp] = readUserTimestamps(second.sessionId)
 
-    agentRunner.deleteMessageTurn(second.sessionId, firstTurnTimestamp)
+    agentRunner.deleteMessageTurn(second.sessionId, firstTurnTimestamp, false)
 
     expect(readRoles(second.sessionId)).toEqual(["user", "assistant", "undoSummary"])
     expect(
@@ -507,7 +509,7 @@ describe("agentRunner 持久化", () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
 
-    agentRunner.deleteMessageTurn(result.sessionId, readUserTimestamps(result.sessionId)[0]!)
+    agentRunner.deleteMessageTurn(result.sessionId, readUserTimestamps(result.sessionId)[0]!, false)
 
     expect(agentRunner.listSessions()).toHaveLength(0)
     expect(
@@ -524,7 +526,7 @@ describe("agentRunner 持久化", () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
 
-    agentRunner.deleteMessageTurn(result.sessionId, -1)
+    agentRunner.deleteMessageTurn(result.sessionId, -1, false)
     const entries = holder
       .db!.prepare("SELECT * FROM agent_session_entry WHERE session_id = ?")
       .all(result.sessionId)
@@ -1003,26 +1005,19 @@ describe("agentRunner 持久化", () => {
     expect(readFileSync(spillPath!, "utf-8")).toBe(bigText)
   })
 
-  it("删除最后轮回滚该轮文件改动（git 快照）", async () => {
+  it("删除最后轮回滚该轮文件改动（文件级前置镜像）", async () => {
     const { agentRunner } = await importRunner()
-    // 临时 git 仓库 cwd（快照回滚前置条件）。
-    const gitDir = mkdtempSync(join(tmpdir(), "lx-git-runner-"))
-    execFileSync("git", ["init", "-q"], { cwd: gitDir, stdio: "ignore" })
-    writeFileSync(join(gitDir, "base.txt"), "base\n", "utf8")
-    execFileSync("git", ["add", "-A"], { cwd: gitDir, stdio: "ignore" })
-    execFileSync(
-      "git",
-      ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init"],
-      { cwd: gitDir, stdio: "ignore" },
-    )
+    // 普通临时目录 cwd（非 git 仓库同样支持回滚）。
+    const workDir = mkdtempSync(join(tmpdir(), "lx-delete-turn-"))
+    writeFileSync(join(workDir, "base.txt"), "base\n", "utf8")
     try {
       // 第一轮正常（无工具调用，无文件变更）。
       holder.streamResponses = [assistant([{ type: "text", text: "第一轮" }])]
-      const first = await agentRunner.send("问题1", undefined, { page: "/", cwd: gitDir })
+      const first = await agentRunner.send("问题1", undefined, { page: "/", cwd: workDir })
       expect(first.ok).toBe(true)
       if (!first.ok) return
 
-      // 第二轮：write 工具真实写文件，触发快照（hash_start → hash_end 变更）。
+      // 第二轮：write 工具真实写文件，触发快照（前置镜像变更列表）。
       holder.streamResponses = [
         assistant(
           [toolCallBlock("tc1", "write", { path: "test.txt", content: "content\n" })],
@@ -1030,10 +1025,10 @@ describe("agentRunner 持久化", () => {
         ),
         assistant([{ type: "text", text: "第二轮完成" }]),
       ]
-      const second = await agentRunner.send("问题2", undefined, { page: "/", cwd: gitDir })
+      const second = await agentRunner.send("问题2", undefined, { page: "/", cwd: workDir })
       expect(second.ok).toBe(true)
       if (!second.ok) return
-      expect(existsSync(join(gitDir, "test.txt"))).toBe(true)
+      expect(existsSync(join(workDir, "test.txt"))).toBe(true)
 
       // 快照行已落库。
       const snapshotRows = holder
@@ -1044,8 +1039,8 @@ describe("agentRunner 持久化", () => {
 
       // 删除最后轮 → 该轮新增文件回滚（删除）。
       const userTimestamps = readUserTimestamps(second.sessionId)
-      agentRunner.deleteMessageTurn(second.sessionId, userTimestamps[1]!)
-      expect(existsSync(join(gitDir, "test.txt"))).toBe(false)
+      agentRunner.deleteMessageTurn(second.sessionId, userTimestamps[1]!, true)
+      expect(existsSync(join(workDir, "test.txt"))).toBe(false)
       // 快照随轮删除一并清理。
       expect(
         holder
@@ -1053,7 +1048,338 @@ describe("agentRunner 持久化", () => {
           .all(second.sessionId),
       ).toHaveLength(0)
     } finally {
-      rmSync(gitDir, { recursive: true, force: true })
+      rmSync(workDir, { recursive: true, force: true })
+    }
+  })
+
+  it("revertFileChange 回退单个文件到该轮修改前（文件级前置镜像，普通目录可用）", async () => {
+    const { agentRunner } = await importRunner()
+    // 普通临时目录 cwd（非 git 仓库同样支持回退）。
+    const workDir = mkdtempSync(join(tmpdir(), "lx-revert-"))
+    writeFileSync(join(workDir, "base.txt"), "base\n", "utf8")
+    try {
+      // 第一轮正常（无文件变更）。
+      holder.streamResponses = [assistant([{ type: "text", text: "第一轮" }])]
+      const first = await agentRunner.send("问题1", undefined, { page: "/", cwd: workDir })
+      expect(first.ok).toBe(true)
+      if (!first.ok) return
+
+      // 第二轮：write 新增 test.txt（快照状态 A）。
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "write", { path: "test.txt", content: "content\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第二轮完成" }]),
+      ]
+      const second = await agentRunner.send("问题2", undefined, { page: "/", cwd: workDir })
+      expect(second.ok).toBe(true)
+      if (!second.ok) return
+      // 模拟后续轮次又修改该文件：回退应一并覆盖。
+      writeFileSync(join(workDir, "test.txt"), "later\n", "utf8")
+
+      // 第三轮：write 修改 base.txt（快照状态 M）。
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc2", "write", { path: "base.txt", content: "changed\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第三轮完成" }]),
+      ]
+      const third = await agentRunner.send("问题3", undefined, { page: "/", cwd: workDir })
+      expect(third.ok).toBe(true)
+      if (!third.ok) return
+
+      const userTimestamps = readUserTimestamps(third.sessionId)
+      expect(userTimestamps).toHaveLength(3)
+
+      // 回退第二轮新增的文件：删除（含被后续修改覆盖的内容）。
+      const revertAdded = agentRunner.revertFileChange(
+        third.sessionId,
+        userTimestamps[1]!,
+        "test.txt",
+      )
+      expect(revertAdded.ok).toBe(true)
+      if (revertAdded.ok) expect(revertAdded.revertedAt).toBeGreaterThan(0)
+      expect(existsSync(join(workDir, "test.txt"))).toBe(false)
+
+      // 回退第三轮修改的文件：恢复该轮修改前的原始内容。
+      const revertModified = agentRunner.revertFileChange(
+        third.sessionId,
+        userTimestamps[2]!,
+        "base.txt",
+      )
+      expect(revertModified.ok).toBe(true)
+      if (revertModified.ok) expect(revertModified.revertedAt).toBeGreaterThan(0)
+      expect(readFileSync(join(workDir, "base.txt"), "utf8")).toBe("base\n")
+
+      // 无快照（时间戳未命中）或文件未在该轮变更：失败返回 ok:false。
+      expect(agentRunner.revertFileChange(third.sessionId, -1, "base.txt")).toEqual({ ok: false })
+      expect(
+        agentRunner.revertFileChange(third.sessionId, userTimestamps[2]!, "missing.txt"),
+      ).toEqual({ ok: false })
+    } finally {
+      rmSync(workDir, { recursive: true, force: true })
+    }
+  })
+
+  it("文件回退标记：落快照行、下轮注入一次、重新回退后再次注入", async () => {
+    const { agentRunner } = await importRunner()
+    const workDir = mkdtempSync(join(tmpdir(), "lx-revert-mark-"))
+    writeFileSync(join(workDir, "base.txt"), "v1\n", "utf8")
+    try {
+      holder.streamResponses = [assistant([{ type: "text", text: "第一轮" }])]
+      const first = await agentRunner.send("问题1", undefined, { page: "/", cwd: workDir })
+      expect(first.ok).toBe(true)
+      if (!first.ok) return
+
+      // 第二轮：write 修改 base.txt（前置镜像 v1）。
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "write", { path: "base.txt", content: "v2\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第二轮完成" }]),
+      ]
+      const second = await agentRunner.send("问题2", undefined, { page: "/", cwd: workDir })
+      expect(second.ok).toBe(true)
+      if (!second.ok) return
+      const userTimestamps = readUserTimestamps(second.sessionId)
+      expect(userTimestamps).toHaveLength(2)
+
+      // 读取快照标记字段。
+      const readChange = (): SnapshotFileChange => {
+        const row = holder
+          .db!.prepare("SELECT files_changed FROM agent_snapshot WHERE session_id = ?")
+          .get(second.sessionId) as { files_changed: string }
+        return (JSON.parse(row.files_changed) as SnapshotFileChange[])[0]!
+      }
+      const containsRevertBlock = (): boolean =>
+        JSON.stringify(holder.llmRequests.at(-1) ?? []).includes("<file_revert>")
+
+      // 回退：文件恢复 + 落回退标记（未告知）。
+      const reverted = agentRunner.revertFileChange(
+        second.sessionId,
+        userTimestamps[1]!,
+        "base.txt",
+      )
+      expect(reverted.ok).toBe(true)
+      expect(readFileSync(join(workDir, "base.txt"), "utf8")).toBe("v1\n")
+      expect(readChange().revertedAt).toBeGreaterThan(0)
+      expect(readChange().revertAnnouncedAt).toBeUndefined()
+
+      // 下一轮注入一次。
+      holder.streamResponses = [assistant([{ type: "text", text: "第三轮" }])]
+      const third = await agentRunner.send("问题3", undefined, { page: "/", cwd: workDir })
+      expect(third.ok).toBe(true)
+      expect(containsRevertBlock()).toBe(true)
+      expect(readChange().revertAnnouncedAt).toBeGreaterThan(0)
+
+      // 再下一轮不再重复注入。
+      holder.streamResponses = [assistant([{ type: "text", text: "第四轮" }])]
+      const fourth = await agentRunner.send("问题4", undefined, { page: "/", cwd: workDir })
+      expect(fourth.ok).toBe(true)
+      expect(containsRevertBlock()).toBe(false)
+
+      // 重新回退同一文件：刷新时间、清空已告知并再次注入。
+      writeFileSync(join(workDir, "base.txt"), "v3\n", "utf8")
+      const again = agentRunner.revertFileChange(second.sessionId, userTimestamps[1]!, "base.txt")
+      expect(again.ok).toBe(true)
+      expect(readChange().revertAnnouncedAt).toBeUndefined()
+      holder.streamResponses = [assistant([{ type: "text", text: "第五轮" }])]
+      const fifth = await agentRunner.send("问题5", undefined, { page: "/", cwd: workDir })
+      expect(fifth.ok).toBe(true)
+      expect(containsRevertBlock()).toBe(true)
+
+      // restore 载荷携带回退标记。
+      const restored = await agentRunner.restoreSession(second.sessionId)
+      expect(restored.fileReverts).toEqual([
+        {
+          userMessageTimestamp: userTimestamps[1]!,
+          file: "base.txt",
+          revertedAt: readChange().revertedAt,
+        },
+      ])
+    } finally {
+      rmSync(workDir, { recursive: true, force: true })
+    }
+  })
+
+  it("revertTurnFiles 仅回退文件（保留对话）并记录回退标记", async () => {
+    const { agentRunner } = await importRunner()
+    const workDir = mkdtempSync(join(tmpdir(), "lx-revert-turn-"))
+    writeFileSync(join(workDir, "other.txt"), "o1\n", "utf8")
+    try {
+      holder.streamResponses = [assistant([{ type: "text", text: "第一轮" }])]
+      const first = await agentRunner.send("问题1", undefined, { page: "/", cwd: workDir })
+      expect(first.ok).toBe(true)
+      if (!first.ok) return
+
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "write", { path: "other.txt", content: "o2\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第二轮完成" }]),
+      ]
+      const second = await agentRunner.send("问题2", undefined, { page: "/", cwd: workDir })
+      expect(second.ok).toBe(true)
+      if (!second.ok) return
+      const userTimestamps = readUserTimestamps(second.sessionId)
+      const entryCount = (
+        holder
+          .db!.prepare("SELECT COUNT(*) AS count FROM agent_session_entry WHERE session_id = ?")
+          .get(second.sessionId) as { count: number }
+      ).count
+
+      const result = agentRunner.revertTurnFiles(second.sessionId, userTimestamps[1]!)
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.files).toEqual(["other.txt"])
+      expect(result.revertedAt).toBeGreaterThan(0)
+      expect(readFileSync(join(workDir, "other.txt"), "utf8")).toBe("o1\n")
+      // 对话保留：entries 数量不变。
+      expect(
+        (
+          holder
+            .db!.prepare("SELECT COUNT(*) AS count FROM agent_session_entry WHERE session_id = ?")
+            .get(second.sessionId) as { count: number }
+        ).count,
+      ).toBe(entryCount)
+      // 标记落库。
+      const restored = await agentRunner.restoreSession(second.sessionId)
+      expect(restored.fileReverts).toEqual([
+        {
+          userMessageTimestamp: userTimestamps[1]!,
+          file: "other.txt",
+          revertedAt: result.revertedAt,
+        },
+      ])
+    } finally {
+      rmSync(workDir, { recursive: true, force: true })
+    }
+  })
+
+  it("deleteMessageTurn revertFiles=false 保留文件改动", async () => {
+    const { agentRunner } = await importRunner()
+    const workDir = mkdtempSync(join(tmpdir(), "lx-delete-keep-"))
+    try {
+      holder.streamResponses = [assistant([{ type: "text", text: "第一轮" }])]
+      const first = await agentRunner.send("问题1", undefined, { page: "/", cwd: workDir })
+      expect(first.ok).toBe(true)
+      if (!first.ok) return
+
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "write", { path: "keep.txt", content: "keep\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第二轮完成" }]),
+      ]
+      const second = await agentRunner.send("问题2", undefined, { page: "/", cwd: workDir })
+      expect(second.ok).toBe(true)
+      if (!second.ok) return
+      expect(existsSync(join(workDir, "keep.txt"))).toBe(true)
+
+      agentRunner.deleteMessageTurn(
+        second.sessionId,
+        readUserTimestamps(second.sessionId)[1]!,
+        false,
+      )
+      expect(existsSync(join(workDir, "keep.txt"))).toBe(true)
+      // 快照行随轮删除。
+      expect(
+        holder
+          .db!.prepare("SELECT * FROM agent_snapshot WHERE session_id = ?")
+          .all(second.sessionId),
+      ).toHaveLength(0)
+    } finally {
+      rmSync(workDir, { recursive: true, force: true })
+    }
+  })
+
+  it("快照垃圾回收系统链路：删轮孤儿镜像被 GC 清除，存活轮次镜像仍可回滚", async () => {
+    const { agentRunner } = await importRunner()
+    const workDir = mkdtempSync(join(tmpdir(), "lx-snap-gc-"))
+    writeFileSync(join(workDir, "base.txt"), "v1\n", "utf8")
+    writeFileSync(join(workDir, "other.txt"), "o1\n", "utf8")
+    try {
+      // 第一轮正常（无文件变更）。
+      holder.streamResponses = [assistant([{ type: "text", text: "第一轮" }])]
+      const first = await agentRunner.send("问题1", undefined, { page: "/", cwd: workDir })
+      expect(first.ok).toBe(true)
+      if (!first.ok) return
+
+      // 第二轮：write 修改 base.txt（前置镜像 v1）。
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "write", { path: "base.txt", content: "v2\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第二轮完成" }]),
+      ]
+      const second = await agentRunner.send("问题2", undefined, { page: "/", cwd: workDir })
+      expect(second.ok).toBe(true)
+      if (!second.ok) return
+
+      // 第三轮（末轮）：write 修改 other.txt（前置镜像 o1）。
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc2", "write", { path: "other.txt", content: "o2\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "第三轮完成" }]),
+      ]
+      const third = await agentRunner.send("问题3", undefined, { page: "/", cwd: workDir })
+      expect(third.ok).toBe(true)
+      if (!third.ok) return
+
+      // 从落库快照中取两轮的前置镜像 blob 与松散对象路径。
+      const objectPath = (blob: string): string =>
+        join(
+          holder.appDataRoot,
+          "snapshots",
+          "store",
+          ".git",
+          "objects",
+          blob.slice(0, 2),
+          blob.slice(2),
+        )
+      const rowBlob = (timestamp: number): string => {
+        const row = holder
+          .db!.prepare(
+            "SELECT files_changed FROM agent_snapshot WHERE session_id = ? AND user_message_timestamp = ?",
+          )
+          .get(third.sessionId, timestamp) as { files_changed: string }
+        const changes = JSON.parse(row.files_changed) as Array<{ blob?: string }>
+        return changes.find((change) => change.blob)!.blob!
+      }
+      const userTimestamps = readUserTimestamps(third.sessionId)
+      expect(userTimestamps).toHaveLength(3)
+      const keptBlob = rowBlob(userTimestamps[1]!)
+      const orphanBlob = rowBlob(userTimestamps[2]!)
+      expect(existsSync(objectPath(keptBlob))).toBe(true)
+      expect(existsSync(objectPath(orphanBlob))).toBe(true)
+
+      // 删除末轮：other.txt 用前置镜像回滚到 o1，该轮快照行删除 → 其镜像成为孤儿。
+      agentRunner.deleteMessageTurn(third.sessionId, userTimestamps[2]!, true)
+      expect(readFileSync(join(workDir, "other.txt"), "utf8")).toBe("o1\n")
+
+      // 两个镜像都调整为一周前落盘后执行标记-清除：无引用者删除，存活引用保留。
+      const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      utimesSync(objectPath(orphanBlob), lastWeek, lastWeek)
+      utimesSync(objectPath(keptBlob), lastWeek, lastWeek)
+      const { cleanOrphanSnapshotBlobs } = await import("@/services/snapshotCleanupService")
+      cleanOrphanSnapshotBlobs()
+
+      expect(existsSync(objectPath(orphanBlob))).toBe(false)
+      expect(existsSync(objectPath(keptBlob))).toBe(true)
+
+      // 存活镜像仍可用于删轮回滚（第二轮此刻已是末轮）：base.txt 恢复 v1。
+      agentRunner.deleteMessageTurn(third.sessionId, userTimestamps[1]!, true)
+      expect(readFileSync(join(workDir, "base.txt"), "utf8")).toBe("v1\n")
+    } finally {
+      rmSync(workDir, { recursive: true, force: true })
     }
   })
 
@@ -1110,7 +1436,7 @@ describe("agentRunner 持久化", () => {
       // 验证当唯一一轮被删除后，会话因只剩初始模型/无消息而被整体删除，附件随之被彻底清理
       const userTimestamps = readUserTimestamps(result.sessionId)
       expect(userTimestamps).toHaveLength(1)
-      agentRunner.deleteMessageTurn(result.sessionId, userTimestamps[0]!)
+      agentRunner.deleteMessageTurn(result.sessionId, userTimestamps[0]!, false)
       expect(existsSync(destFilePath)).toBe(false)
       expect(existsSync(destDir)).toBe(false) // 空目录应当一并被清理
     } finally {

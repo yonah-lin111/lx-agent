@@ -1,21 +1,35 @@
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
-import { isAbsolute, join, resolve } from "node:path"
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { dirname, isAbsolute, join, resolve } from "node:path"
 import { getAppDataRoot } from "@/paths"
 
-// 文件变更项（hash_start → hash_end 的变更列表）。
+// 文件变更项（新增/修改/删除；新格式携带文件级前置镜像 blob 与回退标记）。
 export interface SnapshotFileChange {
   status: "A" | "M" | "D"
   file: string
+  // 文件级前置镜像的 git blob 哈希（新格式；缺失时按旧格式 hash_start tree 回滚）。
+  blob?: string
+  // 最近一次用户回退时间（毫秒；有值 = 已回退，卡片标记与 flowlist 回退 item 用）。
+  revertedAt?: number
+  // 回退提示已注入 agent 并随该轮 flush 落库的时间（避免重复注入）。
+  revertAnnouncedAt?: number
 }
 
+// 大文件 blob 读取上限（默认 1MB 不够，快照恢复按内容整体写回）。
+const MAX_BLOB_BYTES = 64 * 1024 * 1024
+
+// 未被引用 blob 的默认保留宽限期：覆盖「工具捕获 blob → 快照行落库」的在途窗口。
+const DEFAULT_BLOB_GRACE_MS = 24 * 60 * 60 * 1000
+
 /**
- * Git 工作树快照服务。
+ * Git 快照服务。
  *
- * 对每个 cwd 建**隐藏 git 仓库**（{appData}/snapshots/{cwdHash}/.git），object DB 经 alternates
- * 复用真实仓库的 objects（不重复存储）；快照操作一律 `--git-dir <hidden> --work-tree <cwd>`，
- * 不触碰真实仓库的 index/staging。cwd 非 git 仓库时所有操作静默返回 null/[]（能力降级）。
+ * 文件级前置镜像统一存于**共享 blob 仓库**（{appData}/snapshots/store/.git）：blob 内容寻址，
+ * 跨工作区天然去重，无需按 cwd 建库，也不触碰工作区（不建 .git、不改 index/staging）。
+ *
+ * 历史整树快照（hash_start tree）仍按 cwd 使用独立隐藏仓库（{appData}/snapshots/{cwdHash}/.git，
+ * git 仓库经 alternates 复用真实仓库 objects），restoreSnapshot 检测到 hash_start 时走 checkout。
  */
 export class GitSnapshotService {
   // 真实 git 目录；cwd 非 git 仓库（rev-parse 失败）返回 null。
@@ -34,26 +48,42 @@ export class GitSnapshotService {
     }
   }
 
-  // cwd 的稳定哈希（隐藏仓库目录名）。
+  // cwd 的稳定哈希（历史整树快照的隐藏仓库目录名）。
   private hashCwd(cwd: string): string {
     return createHash("sha256").update(cwd).digest("hex").slice(0, 12)
   }
 
-  // 确保隐藏仓库就绪并返回其 git-dir；非 git 仓库返回 null。
+  // cwd 的隐藏仓库（历史整树快照专用）；初始化失败返回 null。
   private ensureRepo(cwd: string): string | null {
-    const realGitDir = this.findRealGitDir(cwd)
-    if (!realGitDir) return null
     const gitDir = join(getAppDataRoot(), "snapshots", this.hashCwd(cwd), ".git")
     if (!existsSync(gitDir)) {
       const hiddenDir = join(getAppDataRoot(), "snapshots", this.hashCwd(cwd))
       mkdirSync(hiddenDir, { recursive: true })
       execFileSync("git", ["init", "-q"], { cwd: hiddenDir, stdio: "ignore" })
-      // object DB 经 alternates 复用真实仓库 objects（共享哈希，避免重复存储）。
-      const objectsDir = join(realGitDir, "objects")
-      mkdirSync(join(gitDir, "objects", "info"), { recursive: true })
-      writeFileSync(join(gitDir, "objects", "info", "alternates"), `${objectsDir}\n`, "utf8")
+      // git 工作区：object DB 经 alternates 复用真实仓库 objects；普通目录独立存储。
+      const realGitDir = this.findRealGitDir(cwd)
+      if (realGitDir) {
+        const objectsDir = join(realGitDir, "objects")
+        mkdirSync(join(gitDir, "objects", "info"), { recursive: true })
+        writeFileSync(join(gitDir, "objects", "info", "alternates"), `${objectsDir}\n`, "utf8")
+      }
     }
     return gitDir
+  }
+
+  // 共享 blob 仓库（所有工作区的文件前置镜像统一存储）；初始化失败返回 null。
+  private ensureBlobStore(): string | null {
+    try {
+      const storeDir = join(getAppDataRoot(), "snapshots", "store")
+      const gitDir = join(storeDir, ".git")
+      if (!existsSync(gitDir)) {
+        mkdirSync(storeDir, { recursive: true })
+        execFileSync("git", ["init", "-q"], { cwd: storeDir, stdio: "ignore" })
+      }
+      return gitDir
+    } catch {
+      return null
+    }
   }
 
   private run(cwd: string, args: string[]): string {
@@ -65,35 +95,39 @@ export class GitSnapshotService {
     }).trim()
   }
 
-  // 捕获当前工作树快照（tree hash）；非 git / 失败返回 null（静默降级）。
-  capture(cwd: string): string | null {
+  // 将文件当前内容写入共享 blob 仓库并返回 blob 哈希（内容寻址去重，跨工作区共享）；失败返回 null。
+  hashFile(absolutePath: string): string | null {
     try {
-      this.run(cwd, ["add", "-A"])
-      return this.run(cwd, ["write-tree"])
+      const gitDir = this.ensureBlobStore()
+      if (!gitDir) return null
+      const output = execFileSync(
+        "git",
+        ["--git-dir", gitDir, "hash-object", "-w", "--", absolutePath],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      ).trim()
+      return output || null
     } catch {
       return null
     }
   }
 
-  // 两次快照间的变更文件列表；非 git / 失败返回 []。
-  diff(start: string, end: string, cwd: string): SnapshotFileChange[] {
+  // 将共享仓库中的 blob 写回目标文件（二进制安全，自动创建父目录）；失败静默降级。
+  restoreBlob(blob: string, absolutePath: string): void {
     try {
-      const output = this.run(cwd, ["diff", "--name-status", start, end])
-      return output
-        .split("\n")
-        .filter(Boolean)
-        .flatMap((line): SnapshotFileChange[] => {
-          const [status, ...rest] = line.split("\t")
-          const file = rest.join("\t")
-          if (!file || (status !== "A" && status !== "M" && status !== "D")) return []
-          return [{ status, file }]
-        })
+      const gitDir = this.ensureBlobStore()
+      if (!gitDir) return
+      const content = execFileSync("git", ["--git-dir", gitDir, "cat-file", "blob", blob], {
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: MAX_BLOB_BYTES,
+      })
+      mkdirSync(dirname(absolutePath), { recursive: true })
+      writeFileSync(absolutePath, content)
     } catch {
-      return []
+      // 快照损坏恢复失败：静默降级（尽力而为）。
     }
   }
 
-  // 回滚到 hash_start 快照（仅按变更列表选择性操作，不触碰其余文件）。
+  // 回滚到旧格式整树快照 hash_start（仅按变更列表选择性 git checkout，不触碰其余文件）。
   revert(cwd: string, start: string, changes: SnapshotFileChange[]): void {
     try {
       for (const change of changes) {
@@ -108,6 +142,68 @@ export class GitSnapshotService {
     } catch {
       // 回滚失败静默降级（尽力而为，不阻断删除轮次）。
     }
+  }
+
+  // 恢复一个快照的变更列表：旧格式（hash_start tree）走 git checkout；新格式逐文件写回前置镜像。
+  restoreSnapshot(cwd: string, hashStart: string, changes: SnapshotFileChange[]): void {
+    if (hashStart) {
+      this.revert(cwd, hashStart, changes)
+      return
+    }
+    for (const change of changes) {
+      const absolute = join(cwd, change.file)
+      if (change.status === "A") {
+        rmSync(absolute, { force: true })
+        continue
+      }
+      if (!change.blob) continue
+      this.restoreBlob(change.blob, absolute)
+    }
+  }
+
+  /**
+   * 标记-清除回收共享 blob 仓库：
+   * 仅删除「未被任何存活快照引用」且「落盘时间超过宽限期」的松散对象；
+   * pack / info 等非松散对象目录不动，单个对象异常静默跳过。
+   */
+  pruneBlobs(
+    referenced: ReadonlySet<string>,
+    options: { graceMs?: number; now?: number } = {},
+  ): { removed: number; kept: number; freedBytes: number } {
+    const result = { removed: 0, kept: 0, freedBytes: 0 }
+    const objectsDir = join(getAppDataRoot(), "snapshots", "store", ".git", "objects")
+    if (!existsSync(objectsDir)) return result
+    const graceMs = options.graceMs ?? DEFAULT_BLOB_GRACE_MS
+    const now = options.now ?? Date.now()
+
+    for (const dirName of readdirSync(objectsDir)) {
+      if (!/^[0-9a-f]{2}$/.test(dirName)) continue
+      let fileNames: string[]
+      try {
+        fileNames = readdirSync(join(objectsDir, dirName))
+      } catch {
+        continue
+      }
+      for (const fileName of fileNames) {
+        if (!/^[0-9a-f]{38}$/.test(fileName)) continue
+        const filePath = join(objectsDir, dirName, fileName)
+        try {
+          const stat = statSync(filePath)
+          if (!stat.isFile()) continue
+          // 存活根或宽限期内：保留。
+          if (referenced.has(dirName + fileName) || now - stat.mtimeMs < graceMs) {
+            result.kept += 1
+            continue
+          }
+          rmSync(filePath, { force: true })
+          result.removed += 1
+          result.freedBytes += stat.size
+        } catch {
+          // 对象并发创建/删除等竞态：静默跳过。
+        }
+      }
+    }
+    return result
   }
 }
 

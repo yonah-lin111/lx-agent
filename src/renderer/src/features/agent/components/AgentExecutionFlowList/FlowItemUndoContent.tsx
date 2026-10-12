@@ -95,6 +95,17 @@ export const FlowItemUndoContent = ({
 
   return (
     <div className="agent-execution-flow-undo-content flex flex-col gap-3 font-mono text-xs text-white/70">
+      {content.filesReverted !== undefined && (
+        <div
+          className={`agent-execution-flow-undo-files-state rounded border px-2 py-1 font-sans text-xs ${
+            content.filesReverted
+              ? "border-amber-400/20 bg-amber-400/10 text-amber-300/90"
+              : "border-white/10 bg-white/5 text-white/50"
+          }`}
+        >
+          {content.filesReverted ? t("agent.undoFilesReverted") : t("agent.undoFilesKept")}
+        </div>
+      )}
       {items.map((item, itemIdx) => {
         const hasDiffs = Boolean(item.diffs && item.diffs.length > 0)
         const hasToolCalls = Boolean(item.toolCalls && item.toolCalls.length > 0)

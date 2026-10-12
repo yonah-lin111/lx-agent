@@ -135,14 +135,26 @@ export const AgentQuestionBlock = ({
                     </div>
                     {answers.length > 0 && (
                       <div className="agent-question-answered-answers-container flex flex-col gap-1">
-                        {answers.map((answer) => (
-                          <div
-                            key={answer}
-                            className="agent-question-answered-value min-w-0 break-words text-xs leading-relaxed text-white/70"
-                          >
-                            {answer}
-                          </div>
-                        ))}
+                        {answers.map((answer) => {
+                          const optionDesc = question.options?.find(
+                            (option) => option.label === answer,
+                          )?.description
+                          return (
+                            <div
+                              key={answer}
+                              className="agent-question-answered-value flex min-w-0 flex-col gap-0.5"
+                            >
+                              <span className="min-w-0 break-words text-xs leading-relaxed text-white/70">
+                                {answer}
+                              </span>
+                              {optionDesc && (
+                                <span className="agent-question-answered-desc min-w-0 break-words text-xs leading-normal text-white/45">
+                                  {optionDesc}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -272,17 +284,21 @@ export const AgentQuestionBlock = ({
                       return (
                         <label
                           key={option.label}
-                          className="agent-question-option flex cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-xs text-white/75 transition-colors hover:bg-white/[0.04]"
+                          className="agent-question-option flex min-h-[32px] cursor-pointer items-start gap-2 rounded-[6px] px-2 py-1.5 text-xs text-white/75 transition-colors hover:bg-white/[0.04]"
                         >
                           <LxCheckbox
                             checked={checked}
                             onChange={(next) => toggleOption(option.label, next)}
                             aria-label={option.label}
+                            size="small"
+                            className="mt-0.5"
                           />
-                          <span className="flex min-w-0 flex-col">
-                            <span>{option.label}</span>
+                          <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="break-words leading-relaxed text-white/85">
+                              {option.label}
+                            </span>
                             {option.description && (
-                              <span className="mt-0.5 text-xs text-white/40">
+                              <span className="mt-0.5 break-words text-xs leading-normal text-white/45">
                                 {option.description}
                               </span>
                             )}
@@ -302,16 +318,19 @@ export const AgentQuestionBlock = ({
                       <LxRadio
                         key={option.label}
                         value={option.label}
-                        className="agent-question-option"
+                        size="small"
+                        className="agent-question-option !h-auto min-h-[32px] !items-start !py-1.5 [&_.lx-radio-dot]:mt-0.5"
                         label={
-                          option.description ? (
-                            <span className="flex min-w-0 flex-col">
-                              <span>{option.label}</span>
-                              <span className="text-xs text-white/40">{option.description}</span>
+                          <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="break-words leading-relaxed text-white/85">
+                              {option.label}
                             </span>
-                          ) : (
-                            option.label
-                          )
+                            {option.description && (
+                              <span className="mt-0.5 break-words text-xs leading-normal text-white/45">
+                                {option.description}
+                              </span>
+                            )}
+                          </span>
                         }
                       />
                     ))}

@@ -135,15 +135,27 @@ export const FlowItemQuestionContent = ({
                 {question.question}
               </div>
               {answers.length > 0 && (
-                <div className="mt-0.5 flex min-w-0 flex-col gap-0.5 pl-3">
-                  {answers.map((answer) => (
-                    <div
-                      key={answer}
-                      className="agent-question-answered-value min-w-0 break-words font-mono text-xs leading-relaxed text-white/70"
-                    >
-                      → {answer}
-                    </div>
-                  ))}
+                <div className="mt-0.5 flex min-w-0 flex-col gap-1 pl-3">
+                  {answers.map((answer) => {
+                    const optionDesc = question.options?.find(
+                      (option) => option.label === answer,
+                    )?.description
+                    return (
+                      <div
+                        key={answer}
+                        className="agent-question-answered-value flex min-w-0 flex-col gap-0.5"
+                      >
+                        <span className="min-w-0 break-words font-mono text-xs leading-relaxed text-white/70">
+                          → {answer}
+                        </span>
+                        {optionDesc && (
+                          <span className="agent-question-answered-desc min-w-0 break-words pl-3 text-xs leading-normal font-sans text-white/45">
+                            {optionDesc}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -263,15 +275,26 @@ export const FlowItemQuestionContent = ({
                       return (
                         <label
                           key={option.label}
-                          className="agent-question-option flex cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-xs text-white/75 transition-colors hover:bg-white/[0.04]"
+                          className="agent-question-option flex min-h-[28px] cursor-pointer items-start gap-2 rounded-[4px] px-2 py-1 text-xs text-white/75 transition-colors hover:bg-white/[0.04]"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <LxCheckbox
                             checked={checked}
                             onChange={(next) => toggleOption(questionIndex, option.label, next)}
                             aria-label={option.label}
+                            size="small"
+                            className="mt-0.5"
                           />
-                          <span>{option.label}</span>
+                          <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="break-words leading-relaxed text-white/85">
+                              {option.label}
+                            </span>
+                            {option.description && (
+                              <span className="mt-0.5 break-words text-xs leading-normal text-white/45">
+                                {option.description}
+                              </span>
+                            )}
+                          </span>
                         </label>
                       )
                     })}
@@ -287,8 +310,20 @@ export const FlowItemQuestionContent = ({
                       <LxRadio
                         key={option.label}
                         value={option.label}
-                        className="agent-question-option !py-1"
-                        label={option.label}
+                        size="small"
+                        className="agent-question-option !h-auto min-h-[28px] !items-start !py-1 [&_.lx-radio-dot]:mt-0.5"
+                        label={
+                          <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="break-words leading-relaxed text-white/85">
+                              {option.label}
+                            </span>
+                            {option.description && (
+                              <span className="mt-0.5 break-words text-xs leading-normal text-white/45">
+                                {option.description}
+                              </span>
+                            )}
+                          </span>
+                        }
                         onClick={(e) => e.stopPropagation()}
                       />
                     ))}
